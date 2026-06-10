@@ -164,3 +164,9 @@ body {
   }
 }
 
+@keyframes mood-pulse {
+  0% { box-shadow: 0 0 10px currentColor; }
+  50% { box-shadow: 0 0 30px currentColor; }
+  100% { box-shadow: 0 0 10px currentColor; }
+}
+

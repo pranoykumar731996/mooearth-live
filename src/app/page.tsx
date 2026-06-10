@@ -14,6 +14,7 @@ import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
+import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
 
 // Dynamic import for heavy Globe component
 const GlobeScene = dynamic(() => import('@/components/Globe/GlobeScene'), {
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<EventCategory | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Splash screen timeout
@@ -55,6 +57,7 @@ export default function HomePage() {
   const handleCategoryChange = useCallback((category: EventCategory | null) => {
     setActiveCategory(category);
     setSelectedEvent(null);
+    setSelectedCountry(null);
   }, []);
 
   const handleEventNavigate = useCallback((event: WorldEvent) => {
@@ -102,12 +105,13 @@ export default function HomePage() {
         }}
       />
 
-      {/* Navigation */}
-      <div className="relative z-40">
+      {/* Top Navbar & Search */}
+      <div className="relative z-30 pointer-events-none">
         <Navbar
-          events={liveEvents}
+          events={filteredEvents}
           onSearch={handleSearch}
           onSelectEvent={handleEventNavigate}
+          onSelectCountry={setSelectedCountry}
         />
       </div>
 
@@ -130,6 +134,8 @@ export default function HomePage() {
               events={filteredEvents}
               selectedEvent={selectedEvent}
               onSelectEvent={handleSelectEvent}
+              selectedCountry={selectedCountry}
+              onSelectCountry={setSelectedCountry}
             />
           )}
         </div>
@@ -141,12 +147,29 @@ export default function HomePage() {
         style={{ zIndex: 10 }}
       />
 
-      {/* Live Feed */}
+      {/* Live Feed or Country Reactions */}
       <div className="relative z-30">
-        <LiveFeed
-          events={filteredEvents}
-          onSelectEvent={handleEventNavigate}
-        />
+        <AnimatePresence mode="wait">
+          {selectedCountry ? (
+            <CountryReactionPanel
+              key="country-panel"
+              country={selectedCountry}
+              onClose={() => setSelectedCountry(null)}
+            />
+          ) : (
+            <motion.div
+              key="live-feed"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+            >
+              <LiveFeed
+                events={filteredEvents}
+                onSelectEvent={handleEventNavigate}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* UI Overlays (Mini Globe, Timeline, AI Button) */}

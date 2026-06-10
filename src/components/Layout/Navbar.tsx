@@ -12,9 +12,10 @@ interface NavbarProps {
   events: WorldEvent[];
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
+  onSelectCountry?: (country: string | null) => void;
 }
 
-export default function Navbar({ events, onSearch, onSelectEvent }: NavbarProps) {
+export default function Navbar({ events, onSearch, onSelectEvent, onSelectCountry }: NavbarProps) {
   return (
     <nav
       id="navbar"
@@ -44,7 +45,7 @@ export default function Navbar({ events, onSearch, onSelectEvent }: NavbarProps)
 
       {/* Search */}
       <div className="flex-1 max-w-md mx-4 sm:mx-8">
-        <SearchBar events={events} onSearch={onSearch} onSelectEvent={onSelectEvent} />
+        <SearchBar events={events} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} />
       </div>
 
       {/* Right Section */}

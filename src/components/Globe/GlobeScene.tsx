@@ -22,17 +22,23 @@ interface GlobeSceneProps {
   events: WorldEvent[];
   selectedEvent: WorldEvent | null;
   onSelectEvent: (event: WorldEvent | null) => void;
+  selectedCountry?: string | null;
+  onSelectCountry?: (country: string | null) => void;
 }
 
 export default function GlobeScene({
   events,
   selectedEvent,
   onSelectEvent,
+  selectedCountry,
+  onSelectCountry,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, pauseRotation, resumeRotation } = useGlobeControls();
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [introDone, setIntroDone] = useState(false);
+  const [countries, setCountries] = useState<any[]>([]);
+  const [globalMood, setGlobalMood] = useState<Record<string, number>>({});
   const lastInteractionTime = useRef<number>(Date.now());
 
   // Track interaction
@@ -50,6 +56,21 @@ export default function GlobeScene({
     });
     observer.observe(el);
     return () => observer.disconnect();
+  }, []);
+
+  // Fetch GeoJSON and Global Mood
+  useEffect(() => {
+    fetch(GLOBE_CONFIG.countriesGeoJsonUrl)
+      .then((res) => res.json())
+      .then((data) => setCountries(data.features))
+      .catch((err) => console.error('Failed to load geojson', err));
+
+    fetch('/api/global-mood')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.globalMood) setGlobalMood(data.globalMood);
+      })
+      .catch((err) => console.error('Failed to load global mood', err));
   }, []);
 
   // Intro animation & init
@@ -119,13 +140,23 @@ export default function GlobeScene({
     }
   }, [globeRef, introDone]);
 
-  // Fly to selected event
+  // Fly to selected event or country
   useEffect(() => {
-    if (selectedEvent && introDone) {
-      flyTo({ lat: selectedEvent.lat, lng: selectedEvent.lng, altitude: 1.2 });
-      recordInteraction();
+    if (introDone) {
+      if (selectedEvent) {
+        flyTo({ lat: selectedEvent.lat, lng: selectedEvent.lng, altitude: 1.2 });
+        recordInteraction();
+      } else if (selectedCountry) {
+        // Find country roughly
+        const countryFeature = countries.find(f => f.properties.NAME === selectedCountry);
+        if (countryFeature) {
+          // Simplistic bounding box or center calculation would be better, but we can rely on a dummy center or use d3-geo
+          // Alternatively we don't zoom tightly for countries without knowing bounds easily, or we do.
+        }
+        recordInteraction();
+      }
     }
-  }, [selectedEvent, flyTo, introDone, recordInteraction]);
+  }, [selectedEvent, selectedCountry, introDone, flyTo, recordInteraction, countries]);
 
   // Auto focus loop — only when idle
   useEffect(() => {
@@ -250,6 +281,23 @@ export default function GlobeScene({
     [onSelectEvent, pauseRotation, recordInteraction]
   );
 
+  // Polygon Colors (Global Mood Map)
+  const getPolygonColor = useCallback((feat: any) => {
+    const name = feat.properties.NAME;
+    const isSelected = selectedCountry === name;
+    
+    if (isSelected) {
+      return 'rgba(0, 229, 255, 0.4)'; // Bright cyan for selected
+    }
+    
+    const intensity = globalMood[name] || 0;
+    if (intensity > 0.7) return `rgba(255, 100, 0, ${0.15 + intensity * 0.2})`; // Hype
+    if (intensity > 0.4) return `rgba(16, 185, 129, ${0.1 + intensity * 0.2})`; // Good
+    if (intensity > 0) return `rgba(59, 130, 246, ${0.05 + intensity * 0.2})`; // Neutral
+    
+    return 'rgba(255, 255, 255, 0.015)';
+  }, [globalMood, selectedCountry]);
+
   return (
     <div
       ref={containerRef}
@@ -295,9 +343,30 @@ export default function GlobeScene({
           ringPropagationSpeed="propagationSpeed"
           ringRepeatPeriod="repeatPeriod"
 
+          // Polygons (Countries)
+          polygonsData={countries}
+          polygonCapColor={getPolygonColor}
+          polygonSideColor={() => 'rgba(0,0,0,0.1)'}
+          polygonStrokeColor={() => '#111'}
+          polygonAltitude={(feat: any) => (selectedCountry === feat.properties.NAME ? 0.04 : 0.01)}
+          onPolygonClick={(feat: any) => {
+            const name = feat.properties.NAME;
+            if (onSelectCountry) onSelectCountry(name);
+            onSelectEvent(null);
+            pauseRotation();
+            recordInteraction();
+          }}
+          onPolygonHover={(feat: any) => {
+            if (globeRef.current) {
+              const el = document.body;
+              el.style.cursor = feat ? 'pointer' : 'default';
+            }
+          }}
+
           // Globe interaction
           onGlobeClick={() => {
             onSelectEvent(null);
+            if (onSelectCountry) onSelectCountry(null);
             resumeRotation();
             recordInteraction();
           }}

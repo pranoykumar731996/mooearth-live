@@ -14,6 +14,7 @@ interface SearchBarProps {
   events: WorldEvent[];
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
+  onSelectCountry?: (country: string | null) => void;
 }
 
 const PLACEHOLDER_TEXTS = [
@@ -24,10 +25,11 @@ const PLACEHOLDER_TEXTS = [
   "Business news in London..."
 ];
 
-export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBarProps) {
+export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCountry }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [results, setResults] = useState<WorldEvent[]>([]);
+  const [countryResult, setCountryResult] = useState<string | null>(null);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +51,22 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
         onSearch(value);
         const q = value.trim().toLowerCase();
         if (q.length > 0) {
+          // Detect country queries
+          const reactionKeywords = ['reaction', 'fan', 'celebration', 'anger', 'mood'];
+          const isReactionQuery = reactionKeywords.some(kw => q.includes(kw));
+          
+          let foundCountry = null;
+          if (isReactionQuery) {
+            const uniqueCountries = Array.from(new Set(events.map(e => e.country)));
+            for (const c of uniqueCountries) {
+              if (q.includes(c.toLowerCase())) {
+                foundCountry = c;
+                break;
+              }
+            }
+          }
+          setCountryResult(foundCountry);
+
           setResults(
             events.filter(
               (e) =>
@@ -56,10 +74,11 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
                 e.city.toLowerCase().includes(q) ||
                 e.country.toLowerCase().includes(q) ||
                 e.category.toLowerCase().includes(q)
-            ).slice(0, 6)
+            ).slice(0, foundCountry ? 3 : 6) // show fewer events if country is found
           );
         } else {
           setResults([]);
+          setCountryResult(null);
         }
       }, SEARCH_DEBOUNCE_MS);
     },
@@ -68,12 +87,24 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
 
   const handleSelect = useCallback(
     (event: WorldEvent) => {
-      setQuery(event.city);
+      setQuery('');
       setResults([]);
+      setCountryResult(null);
       setIsFocused(false);
       onSelectEvent(event);
     },
     [onSelectEvent]
+  );
+
+  const handleSelectCountry = useCallback(
+    (country: string) => {
+      setQuery('');
+      setResults([]);
+      setCountryResult(null);
+      setIsFocused(false);
+      if (onSelectCountry) onSelectCountry(country);
+    },
+    [onSelectCountry]
   );
 
   // Close dropdown on outside click
@@ -180,6 +211,24 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
               <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest px-2">AI Suggestions</span>
             </div>
             <div className="p-2 space-y-1">
+              {countryResult && (
+                <button
+                  onClick={() => handleSelectCountry(countryResult)}
+                  className="w-full flex items-center gap-4 px-3 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-left cursor-pointer group mb-2"
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-cyan-400/20 border border-cyan-400/30 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                    <span className="text-sm">🌍</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white group-hover:text-cyan-100 truncate transition-colors">
+                      View Reactions in {countryResult}
+                    </p>
+                    <p className="text-[11px] font-medium text-cyan-400 mt-0.5 tracking-wide">
+                      Live Emotion & Sentiment
+                    </p>
+                  </div>
+                </button>
+              )}
               {results.map((event) => (
                 <button
                   key={event.id}

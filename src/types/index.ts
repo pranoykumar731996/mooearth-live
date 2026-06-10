@@ -58,3 +58,20 @@ export interface EventArc {
   endLng: number;
   color: string;
 }
+
+export type Mood = '🔥 Hype' | '😄 Celebration' | '😢 Sadness' | '😡 Anger' | '😨 Shock' | '😐 Neutral';
+
+export interface SentimentData {
+  mood: Mood;
+  intensity: number; // 0 to 1
+  explanation: string;
+}
+
+export interface ReactionEvent {
+  id: string;
+  country: string;
+  headlines: WorldEvent[];
+  socialPosts: { id: string; user: string; text: string; time: string; likes: number }[];
+  trendingHashtags: string[];
+  sentiment: SentimentData;
+}
