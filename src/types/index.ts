@@ -6,6 +6,7 @@
 export type EventCategory =
   | 'breaking'
   | 'sports'
+  | 'football'
   | 'technology'
   | 'business'
   | 'weather'
@@ -47,4 +48,13 @@ export interface GlobePointOfView {
   lat: number;
   lng: number;
   altitude: number;
+}
+
+/** Connection arc between two events */
+export interface EventArc {
+  startLat: number;
+  startLng: number;
+  endLat: number;
+  endLng: number;
+  color: string;
 }

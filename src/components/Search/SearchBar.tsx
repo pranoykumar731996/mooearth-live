@@ -16,12 +16,30 @@ interface SearchBarProps {
   onSelectEvent: (event: WorldEvent) => void;
 }
 
+const PLACEHOLDER_TEXTS = [
+  "Ask EarthPulse AI...",
+  "Show football in Brazil...",
+  "Latest technological breakthroughs...",
+  "Weather updates in Mexico...",
+  "Business news in London..."
+];
+
 export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [results, setResults] = useState<WorldEvent[]>([]);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Animate placeholders
+  useEffect(() => {
+    if (isFocused || query) return;
+    const interval = setInterval(() => {
+      setPlaceholderIdx((prev) => (prev + 1) % PLACEHOLDER_TEXTS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isFocused, query]);
 
   const handleChange = useCallback(
     (value: string) => {
@@ -71,38 +89,65 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md" id="search-container">
+    <div ref={containerRef} className="relative w-full max-w-lg" id="search-container">
       <div
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl
-                    backdrop-blur-xl border transition-all duration-300
+        className={`flex items-center gap-3 px-5 py-3.5 rounded-full
+                    glass transition-all duration-300 relative overflow-hidden group
                     ${
-                      isFocused
-                        ? 'border-cyan-500/40 shadow-[0_0_30px_rgba(0,229,255,0.1)] bg-white/[0.07]'
-                        : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.06]'
+                      isFocused || query
+                        ? 'border-cyan-500/50 shadow-[0_0_40px_rgba(0,229,255,0.2)] bg-black/40'
+                        : 'border-white/10 bg-black/20 hover:bg-black/30 hover:border-white/20'
                     }`}
       >
+        {/* Animated background glow on focus */}
+        <div className={`absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/5 to-purple-500/10 opacity-0 transition-opacity duration-500 ${isFocused ? 'opacity-100' : ''}`} />
+
         <svg
-          className="text-white/40 shrink-0"
-          width="18"
-          height="18"
+          className={`shrink-0 relative z-10 transition-colors duration-300 ${isFocused ? 'text-cyan-400' : 'text-white/40'}`}
+          width="20"
+          height="20"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="2.5"
+          strokeLinecap="round"
         >
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
-        <input
-          id="search-input"
-          type="text"
-          value={query}
-          onChange={(e) => handleChange(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          placeholder="Search countries, cities, topics..."
-          className="flex-1 bg-transparent text-sm text-white placeholder-white/30
-                     outline-none"
-        />
+        
+        <div className="flex-1 relative h-6 flex items-center z-10">
+          <input
+            id="search-input"
+            type="text"
+            value={query}
+            onChange={(e) => handleChange(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            className="w-full h-full bg-transparent text-sm font-medium text-white outline-none z-10"
+          />
+          
+          {/* Animated Placeholder */}
+          <AnimatePresence mode="wait">
+            {!query && !isFocused && (
+              <motion.span
+                key={placeholderIdx}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.3 }}
+                className="absolute text-sm text-white/40 pointer-events-none"
+              >
+                {PLACEHOLDER_TEXTS[placeholderIdx]}
+              </motion.span>
+            )}
+            {(!query && isFocused) && (
+              <span className="absolute text-sm text-white/20 pointer-events-none">
+                Ask EarthPulse AI...
+              </span>
+            )}
+          </AnimatePresence>
+        </div>
+
         {query && (
           <button
             onClick={() => {
@@ -110,9 +155,9 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
               onSearch('');
               setResults([]);
             }}
-            className="text-white/30 hover:text-white/60 transition-colors cursor-pointer"
+            className="relative z-10 text-white/30 hover:text-white transition-colors cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -124,33 +169,35 @@ export default function SearchBar({ events, onSearch, onSelectEvent }: SearchBar
       <AnimatePresence>
         {isFocused && results.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full mt-2 w-full rounded-xl overflow-hidden
-                       backdrop-blur-xl border border-white/10 z-[100]"
-            style={{ background: 'rgba(10,10,20,0.95)' }}
+            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute top-[calc(100%+12px)] w-full rounded-2xl overflow-hidden glass z-[100]"
+            style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 40px rgba(0,229,255,0.1)' }}
           >
-            {results.map((event) => (
-              <button
-                key={event.id}
-                onClick={() => handleSelect(event)}
-                className="w-full flex items-center gap-3 px-4 py-3
-                           hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: CATEGORY_MAP[event.category].color }}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{event.title}</p>
-                  <p className="text-xs text-white/40 mt-0.5">
-                    {event.city}, {event.country}
-                  </p>
-                </div>
-              </button>
-            ))}
+            <div className="p-2 border-b border-white/5 bg-black/40">
+              <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest px-2">AI Suggestions</span>
+            </div>
+            <div className="p-2 space-y-1">
+              {results.map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => handleSelect(event)}
+                  className="w-full flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
+                    <span className="text-sm">{CATEGORY_MAP[event.category].emoji}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white/90 group-hover:text-white truncate transition-colors">{event.title}</p>
+                    <p className="text-[11px] font-medium text-cyan-400/60 mt-0.5 tracking-wide">
+                      {event.city}, {event.country}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

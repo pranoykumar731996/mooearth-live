@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
+/* ============================================================
+   EarthPulse AI — Global Styles & Design System
+   ============================================================ */
+
+/* ---------- CSS Custom Properties ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #030308;
+  --color-surface: rgba(10, 10, 15, 0.6);
+  --color-glass: rgba(255, 255, 255, 0.03);
+  --color-glass-border: rgba(255, 255, 255, 0.05);
+  --color-accent: #00e5ff;
+  --color-accent-glow: rgba(0, 229, 255, 0.4);
+  --color-accent-soft: rgba(0, 229, 255, 0.1);
+  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ---------- Base Reset ---------- */
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-primary);
+  background: var(--color-bg);
+  color: white;
+  overflow: hidden;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Scrollbar Styles ---------- */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ---------- Marker Animations ---------- */
+@keyframes marker-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 15px var(--glow),
+      0 0 30px var(--glow-soft);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 25px var(--glow),
+      0 0 50px var(--glow-soft);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes marker-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+    border-width: 2px;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+    border-width: 0px;
+  }
 }
+
+/* ---------- Globe Layout Tricks ---------- */
+.globe-marker {
+  pointer-events: auto !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* ---------- Selection Disabled on Globe ---------- */
+#globe-container canvas {
+  outline: none;
+}
+
+#globe-container {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Gradient Overlays ---------- */
+.gradient-top {
+  background: linear-gradient(
+    to bottom,
+    rgba(3, 3, 8, 0.95) 0%,
+    rgba(3, 3, 8, 0.5) 50%,
+    transparent 100%
+  );
+}
+
+.gradient-bottom {
+  background: linear-gradient(
+    to top,
+    rgba(3, 3, 8, 0.95) 0%,
+    rgba(3, 3, 8, 0.6) 50%,
+    transparent 100%
+  );
+}
+
+/* ---------- Glassmorphism Utility ---------- */
+.glass {
+  background: rgba(10, 10, 15, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Focus Visible ---------- */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Ambient Nebula Animation ---------- */
+@keyframes nebula-drift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes marker-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
