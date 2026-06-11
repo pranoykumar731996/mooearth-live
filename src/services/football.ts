@@ -1,6 +1,6 @@
-import { WorldEvent, EventCategory } from '@/types';
+import { WorldEvent } from '@/types';
 
-// Map common football teams to coordinates
+// Map common football teams/cities to coordinates
 const stadiumMap: Record<string, { lat: number; lng: number; country: string; city: string }> = {
   'Real Madrid': { lat: 40.4530, lng: -3.6883, country: 'Spain', city: 'Madrid' },
   'Barcelona': { lat: 41.3809, lng: 2.1228, country: 'Spain', city: 'Barcelona' },
@@ -10,6 +10,13 @@ const stadiumMap: Record<string, { lat: number; lng: number; country: string; ci
   'PSG': { lat: 48.8414, lng: 2.2530, country: 'France', city: 'Paris' },
   'Juventus': { lat: 45.1096, lng: 7.6413, country: 'Italy', city: 'Turin' },
   'AC Milan': { lat: 45.4781, lng: 9.1240, country: 'Italy', city: 'Milan' },
+  'London': { lat: 51.5074, lng: -0.1278, country: 'United Kingdom', city: 'London' },
+  'Madrid': { lat: 40.4168, lng: -3.7038, country: 'Spain', city: 'Madrid' },
+  'Paris': { lat: 48.8566, lng: 2.3522, country: 'France', city: 'Paris' },
+  'Rome': { lat: 41.9028, lng: 12.4964, country: 'Italy', city: 'Rome' },
+  'Berlin': { lat: 52.5200, lng: 13.4050, country: 'Germany', city: 'Berlin' },
+  'Buenos Aires': { lat: -34.6037, lng: -58.3816, country: 'Argentina', city: 'Buenos Aires' },
+  'Rio de Janeiro': { lat: -22.9068, lng: -43.1729, country: 'Brazil', city: 'Rio de Janeiro' },
 };
 
 export async function fetchLiveFootball(): Promise<WorldEvent[]> {
@@ -19,42 +26,74 @@ export async function fetchLiveFootball(): Promise<WorldEvent[]> {
       throw new Error('FOOTBALL_API_KEY not found');
     }
 
-    // Using api.football-data.org format
-    const response = await fetch('https://api.football-data.org/v4/matches', {
+    // Using API-Sports Live Fixtures endpoint
+    const response = await fetch('https://v3.football.api-sports.io/fixtures?live=all', {
       headers: {
-        'X-Auth-Token': apiKey
+        'x-apisports-key': apiKey
       },
       next: { revalidate: 60 }
     });
 
     if (!response.ok) {
-      throw new Error('Football API request failed');
+      throw new Error(`Football API request failed: ${response.status}`);
     }
 
     const data = await response.json();
     
-    return data.matches.map((match: any, index: number) => {
-      const homeTeam = match.homeTeam.shortName || match.homeTeam.name;
-      const awayTeam = match.awayTeam.shortName || match.awayTeam.name;
-      const geo = stadiumMap[homeTeam] || { lat: 46.8182, lng: 8.2275, country: 'Switzerland', city: 'Zurich' }; // Default to FIFA HQ
+    if (!data.response || data.response.length === 0) {
+      throw new Error('No live matches right now, using fallback data');
+    }
+
+    return data.response.map((match: any, index: number) => {
+      const homeTeam = match.teams?.home?.name || 'Unknown Home';
+      const awayTeam = match.teams?.away?.name || 'Unknown Away';
+      const city = match.fixture?.venue?.city || '';
+      const country = match.league?.country || 'Unknown';
+      
+      // Try to find coordinates by team name, then by city name, finally fallback
+      const geo = stadiumMap[homeTeam] || stadiumMap[city] || { 
+        lat: (Math.random() * 90 - 45), 
+        lng: (Math.random() * 180 - 90), 
+        country: country, 
+        city: city || 'Unknown City'
+      }; 
       
       return {
-        id: `football-${Date.now()}-${index}`,
+        id: `football-${match.fixture?.id || Date.now()}-${index}`,
         title: `${homeTeam} vs ${awayTeam}`,
-        summary: `Live match between ${homeTeam} and ${awayTeam}. Current score: ${match.score?.fullTime?.home ?? 0} - ${match.score?.fullTime?.away ?? 0}.`,
-        category: 'football' as any, // We will need to update EventCategory to include 'football'
+        summary: `Live match in ${match.league?.name || 'Unknown League'}. Current score: ${match.goals?.home ?? 0} - ${match.goals?.away ?? 0}.`,
+        category: 'football' as any,
         country: geo.country,
         city: geo.city,
         lat: geo.lat,
         lng: geo.lng,
-        source: 'https://www.fifa.com',
-        publishedAt: match.utcDate,
+        source: 'https://www.api-football.com',
+        publishedAt: match.fixture?.date || new Date().toISOString(),
+        footballData: {
+          homeTeam,
+          awayTeam,
+          homeScore: match.goals?.home ?? 0,
+          awayScore: match.goals?.away ?? 0,
+          status: match.fixture?.status?.short || 'LIVE',
+          elapsed: match.fixture?.status?.elapsed || 0,
+          goals: match.events?.filter((e: any) => e.type === 'Goal').map((e: any) => ({
+            team: e.team.id === match.teams?.home?.id ? 'home' : 'away',
+            player: e.player.name,
+            time: e.time.elapsed
+          })) || [],
+          cards: match.events?.filter((e: any) => e.type === 'Card').map((e: any) => ({
+            team: e.team.id === match.teams?.home?.id ? 'home' : 'away',
+            player: e.player.name,
+            type: e.detail.includes('Yellow') ? 'Yellow' : 'Red',
+            time: e.time.elapsed
+          })) || [],
+        }
       };
     });
   } catch (error) {
     console.warn('Failed to fetch live football, using fallback data:', error);
     
-    // Generate some dynamic mock football data since it's a new category
+    // Generate some dynamic mock football data if API fails or rate limit hits
     return [
       {
         id: `fallback-football-${Date.now()}-1`,
@@ -67,6 +106,18 @@ export async function fetchLiveFootball(): Promise<WorldEvent[]> {
         lng: -3.6883,
         source: 'https://example.com/football',
         publishedAt: new Date().toISOString(),
+        footballData: {
+          homeTeam: 'Real Madrid',
+          awayTeam: 'Barcelona',
+          homeScore: 1,
+          awayScore: 1,
+          status: '2H',
+          elapsed: 65,
+          goals: [
+            { team: 'home', player: 'Vinícius Júnior', time: 24 },
+            { team: 'away', player: 'Robert Lewandowski', time: 45 }
+          ]
+        }
       },
       {
         id: `fallback-football-${Date.now()}-2`,
@@ -79,6 +130,39 @@ export async function fetchLiveFootball(): Promise<WorldEvent[]> {
         lng: -2.2913,
         source: 'https://example.com/football',
         publishedAt: new Date(Date.now() - 15 * 60000).toISOString(),
+        footballData: {
+          homeTeam: 'Manchester United',
+          awayTeam: 'Liverpool',
+          homeScore: 0,
+          awayScore: 2,
+          status: 'HT',
+          elapsed: 45,
+          goals: [
+            { team: 'away', player: 'Mohamed Salah', time: 12 },
+            { team: 'away', player: 'Darwin Núñez', time: 38 }
+          ]
+        }
+      },
+      {
+        id: `fallback-football-${Date.now()}-3`,
+        title: 'Brazil vs Argentina (Practice Match)',
+        summary: 'International Friendly Practice Match underway in Rio de Janeiro. Score is tied 0-0.',
+        category: 'football' as any,
+        country: 'Brazil',
+        city: 'Rio de Janeiro',
+        lat: -22.9068,
+        lng: -43.1729,
+        source: 'https://example.com/football',
+        publishedAt: new Date(Date.now() - 5 * 60000).toISOString(),
+        footballData: {
+          homeTeam: 'Brazil',
+          awayTeam: 'Argentina',
+          homeScore: 0,
+          awayScore: 0,
+          status: 'LIVE',
+          elapsed: 22,
+          goals: []
+        }
       }
     ];
   }

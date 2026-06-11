@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Search Bar Component
+// MooEarth Live — Search Bar Component
 // ============================================================
 
 'use client';
@@ -8,7 +8,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
-import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
+import { useSearch } from '@/hooks/useSearch';
 
 interface SearchBarProps {
   events: WorldEvent[];
@@ -18,7 +18,7 @@ interface SearchBarProps {
 }
 
 const PLACEHOLDER_TEXTS = [
-  "Ask EarthPulse AI...",
+  "Ask MooEarth AI...",
   "Show football in Brazil...",
   "Latest technological breakthroughs...",
   "Weather updates in Mexico...",
@@ -26,13 +26,16 @@ const PLACEHOLDER_TEXTS = [
 ];
 
 export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCountry }: SearchBarProps) {
-  const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [results, setResults] = useState<WorldEvent[]>([]);
-  const [countryResult, setCountryResult] = useState<string | null>(null);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const { query, setQuery, results, countryResult, clearSearch } = useSearch({ events });
+
+  // Sync query to parent for external effects (if any)
+  useEffect(() => {
+    onSearch(query);
+  }, [query, onSearch]);
 
   // Animate placeholders
   useEffect(() => {
@@ -43,68 +46,22 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
     return () => clearInterval(interval);
   }, [isFocused, query]);
 
-  const handleChange = useCallback(
-    (value: string) => {
-      setQuery(value);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        onSearch(value);
-        const q = value.trim().toLowerCase();
-        if (q.length > 0) {
-          // Detect country queries
-          const reactionKeywords = ['reaction', 'fan', 'celebration', 'anger', 'mood'];
-          const isReactionQuery = reactionKeywords.some(kw => q.includes(kw));
-          
-          let foundCountry = null;
-          if (isReactionQuery) {
-            const uniqueCountries = Array.from(new Set(events.map(e => e.country)));
-            for (const c of uniqueCountries) {
-              if (q.includes(c.toLowerCase())) {
-                foundCountry = c;
-                break;
-              }
-            }
-          }
-          setCountryResult(foundCountry);
-
-          setResults(
-            events.filter(
-              (e) =>
-                e.title.toLowerCase().includes(q) ||
-                e.city.toLowerCase().includes(q) ||
-                e.country.toLowerCase().includes(q) ||
-                e.category.toLowerCase().includes(q)
-            ).slice(0, foundCountry ? 3 : 6) // show fewer events if country is found
-          );
-        } else {
-          setResults([]);
-          setCountryResult(null);
-        }
-      }, SEARCH_DEBOUNCE_MS);
-    },
-    [events, onSearch]
-  );
-
   const handleSelect = useCallback(
     (event: WorldEvent) => {
-      setQuery('');
-      setResults([]);
-      setCountryResult(null);
+      clearSearch();
       setIsFocused(false);
       onSelectEvent(event);
     },
-    [onSelectEvent]
+    [onSelectEvent, clearSearch]
   );
 
   const handleSelectCountry = useCallback(
     (country: string) => {
-      setQuery('');
-      setResults([]);
-      setCountryResult(null);
+      clearSearch();
       setIsFocused(false);
       if (onSelectCountry) onSelectCountry(country);
     },
-    [onSelectCountry]
+    [onSelectCountry, clearSearch]
   );
 
   // Close dropdown on outside click
@@ -112,7 +69,6 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
     const handleClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsFocused(false);
-        setResults([]);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -152,7 +108,7 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
             id="search-input"
             type="text"
             value={query}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             className="w-full h-full bg-transparent text-sm font-medium text-white outline-none z-10"
           />
@@ -173,7 +129,7 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
             )}
             {(!query && isFocused) && (
               <span className="absolute text-sm text-white/20 pointer-events-none">
-                Ask EarthPulse AI...
+                Ask MooEarth AI...
               </span>
             )}
           </AnimatePresence>
@@ -182,9 +138,8 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
         {query && (
           <button
             onClick={() => {
-              setQuery('');
+              clearSearch();
               onSearch('');
-              setResults([]);
             }}
             className="relative z-10 text-white/30 hover:text-white transition-colors cursor-pointer"
           >
@@ -198,7 +153,7 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
 
       {/* Dropdown Results */}
       <AnimatePresence>
-        {isFocused && results.length > 0 && (
+        {isFocused && (results.length > 0 || countryResult) && (
           <motion.div
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -236,7 +191,7 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
                   className="w-full flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
                 >
                   <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
-                    <span className="text-sm">{CATEGORY_MAP[event.category].emoji}</span>
+                    <span className="text-sm">{(CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking).emoji}</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white/90 group-hover:text-white truncate transition-colors">{event.title}</p>

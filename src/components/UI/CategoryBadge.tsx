@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Category Badge Component
+// MooEarth Live — Category Badge Component
 // ============================================================
 
 'use client';

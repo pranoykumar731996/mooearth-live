@@ -1,11 +1,11 @@
 {
-  "name": "EarthPulse AI",
-  "short_name": "EarthPulse",
-  "description": "See the World Come Alive — Explore real-world events on an interactive 3D globe",
+  "name": "MooEarth Live",
+  "short_name": "MooEarth",
+  "description": "An immersive emotional globe visualizing live football reactions, celebrations, and global energy during the FIFA World Cup.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#00e5ff",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "any",
   "categories": ["news", "education"],
   "icons": [

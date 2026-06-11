@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Event Popup (Glassmorphism Card)
+// MooEarth Live — Event Popup (Glassmorphism Card)
 // ============================================================
 
 'use client';

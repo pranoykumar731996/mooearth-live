@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Install App Button
+// MooEarth Live — Install App Button
 // ============================================================
 
 'use client';

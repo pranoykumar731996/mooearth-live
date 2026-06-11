@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Demo Event Data
+// MooEarth Live — Demo Event Data
 // ============================================================
 // Replace this file's export with an API call to swap to live data.
 
@@ -8,6 +8,7 @@ import { WorldEvent } from '@/types';
 /** Generate demo events with timestamps relative to current time.
  *  Called lazily on the client to avoid SSR/client mismatch. */
 function createDemoEvents(): WorldEvent[] {
+  const now = Date.now();
   return [
     {
       id: 'evt-001',
@@ -20,7 +21,7 @@ function createDemoEvents(): WorldEvent[] {
       lat: 35.6762,
       lng: 139.6503,
       source: 'https://example.com/japan-quantum',
-      publishedAt: '2026-06-10T05:30:00Z',
+      publishedAt: new Date(now - 5 * 60000).toISOString(),
     },
     {
       id: 'evt-002',
@@ -33,7 +34,7 @@ function createDemoEvents(): WorldEvent[] {
       lat: 28.6139,
       lng: 77.209,
       source: 'https://example.com/india-lunar',
-      publishedAt: '2026-06-10T05:00:00Z',
+      publishedAt: new Date(now - 15 * 60000).toISOString(),
     },
     {
       id: 'evt-003',
@@ -46,7 +47,7 @@ function createDemoEvents(): WorldEvent[] {
       lat: 51.5074,
       lng: -0.1278,
       source: 'https://example.com/lse-record',
-      publishedAt: '2026-06-10T04:30:00Z',
+      publishedAt: new Date(now - 25 * 60000).toISOString(),
     },
     {
       id: 'evt-004',
@@ -59,63 +60,63 @@ function createDemoEvents(): WorldEvent[] {
       lat: 40.7128,
       lng: -74.006,
       source: 'https://example.com/broadway-ai',
-      publishedAt: '2026-06-10T03:30:00Z',
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
     },
     {
       id: 'evt-005',
-      title: 'Brazil Announces 2030 World Cup Stadium Plans',
+      title: 'Record Heatwave Sweeps Across Southern Europe',
       summary:
-        'Rio de Janeiro unveiled ambitious plans for three new sustainable stadiums ahead of the 2030 FIFA World Cup bid. The designs feature solar-powered roofs and rainwater harvesting systems, setting a new standard for sports architecture.',
-      category: 'sports',
-      country: 'Brazil',
-      city: 'Rio de Janeiro',
-      lat: -22.9068,
-      lng: -43.1729,
-      source: 'https://example.com/brazil-stadiums',
-      publishedAt: '2026-06-10T02:30:00Z',
-    },
-    {
-      id: 'evt-006',
-      title: 'Tropical Storm Approaching Gulf of Mexico',
-      summary:
-        'Tropical Storm Elena has intensified to Category 2 strength as it approaches the Gulf of Mexico. Coastal communities in Mexico City and southern Texas are preparing for potential flooding and strong winds over the next 48 hours.',
+        'Meteorologists declare a level-red alert as temperatures in Spain and Italy shatter 100-year records. The heatwave is expected to disrupt agriculture and power grids for the next two weeks.',
       category: 'weather',
-      country: 'Mexico',
-      city: 'Mexico City',
-      lat: 19.4326,
-      lng: -99.1332,
-      source: 'https://example.com/storm-elena',
-      publishedAt: '2026-06-10T05:15:00Z',
-    },
-    {
-      id: 'evt-007',
-      title: 'Real Madrid Signs Record €200M Transfer',
-      summary:
-        'Real Madrid has completed the most expensive transfer in football history, signing Brazilian prodigy Lucas Mendes for €200 million. The 19-year-old forward is expected to lead the club\'s new era of Galácticos.',
-      category: 'sports',
       country: 'Spain',
       city: 'Madrid',
       lat: 40.4168,
       lng: -3.7038,
-      source: 'https://example.com/madrid-transfer',
-      publishedAt: '2026-06-10T01:30:00Z',
+      source: 'https://example.com/europe-heatwave',
+      publishedAt: new Date(now - 45 * 60000).toISOString(),
+    },
+    {
+      id: 'evt-006',
+      title: 'China Opens World\'s Longest Maglev Train Network',
+      summary:
+        'A new high-speed maglev train connecting Beijing to Shanghai in under two hours has officially opened, featuring speeds over 600 km/h. It sets a new standard for sustainable mass transit.',
+      category: 'technology',
+      country: 'China',
+      city: 'Beijing',
+      lat: 39.9042,
+      lng: 116.4074,
+      source: 'https://example.com/china-maglev',
+      publishedAt: new Date(now - 55 * 60000).toISOString(),
+    },
+    {
+      id: 'evt-007',
+      title: 'Global Summit on AI Ethics Concludes with Landmark Treaty',
+      summary:
+        '120 nations have signed the Geneva AI Accord, establishing the first comprehensive international framework for regulating artificial general intelligence, autonomous weapons, and data privacy.',
+      category: 'breaking',
+      country: 'Switzerland',
+      city: 'Geneva',
+      lat: 46.2044,
+      lng: 6.1432,
+      source: 'https://example.com/ai-treaty',
+      publishedAt: new Date(now - 65 * 60000).toISOString(),
     },
     {
       id: 'evt-008',
-      title: "Australia's First Autonomous Drone Delivery Network",
+      title: 'Brazil Announces Massive Amazon Restoration Project',
       summary:
-        'Sydney has launched the Southern Hemisphere\'s first city-wide autonomous drone delivery network. The system covers 500 square kilometers and can deliver packages in under 30 minutes, transforming last-mile logistics.',
-      category: 'technology',
-      country: 'Australia',
-      city: 'Sydney',
-      lat: -33.8688,
-      lng: 151.2093,
-      source: 'https://example.com/sydney-drones',
-      publishedAt: '2026-06-10T00:30:00Z',
+        'The Brazilian government has committed $5 billion to reforest over 20 million hectares of the Amazon rainforest by 2030, utilizing advanced drone-planting technology to speed up ecological recovery.',
+      category: 'weather',
+      country: 'Brazil',
+      city: 'Brasília',
+      lat: -15.7938,
+      lng: -47.8827,
+      source: 'https://example.com/amazon-restoration',
+      publishedAt: new Date(now - 75 * 60000).toISOString(),
     },
     {
       id: 'evt-009',
-      title: 'South Africa Unveils Continental Free Trade Hub',
+      title: 'Cape Town Selected as African Tech Hub Headquarters',
       summary:
         'Cape Town has been designated as the operational headquarters of the African Continental Free Trade Area hub. The initiative is expected to boost intra-African trade by 52% and create millions of jobs across the continent.',
       category: 'breaking',
@@ -124,7 +125,7 @@ function createDemoEvents(): WorldEvent[] {
       lat: -33.9249,
       lng: 18.4241,
       source: 'https://example.com/capetown-trade',
-      publishedAt: '2026-06-09T23:30:00Z',
+      publishedAt: new Date(now - 85 * 60000).toISOString(),
     },
     {
       id: 'evt-010',
@@ -137,7 +138,7 @@ function createDemoEvents(): WorldEvent[] {
       lat: 1.3521,
       lng: 103.8198,
       source: 'https://example.com/singapore-fintech',
-      publishedAt: '2026-06-09T22:30:00Z',
+      publishedAt: new Date(now - 95 * 60000).toISOString(),
     },
   ];
 }

@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Cinematic StarField Background
+// MooEarth Live — Cinematic StarField Background
 // ============================================================
 
 'use client';

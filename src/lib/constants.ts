@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Constants & Configuration
+// MooEarth Live — Constants & Configuration
 // ============================================================
 
 import { CategoryConfig, EventCategory, GlobePointOfView, SidebarItem } from '@/types';

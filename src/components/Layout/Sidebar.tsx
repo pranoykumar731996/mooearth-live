@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Left Sidebar Component
+// MooEarth Live — Left Sidebar Component
 // ============================================================
 
 'use client';

@@ -1,10 +1,11 @@
 // ============================================================
-// EarthPulse AI — Root Layout
+// MooEarth Live — Root Layout
 // ============================================================
 
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { BRANDING } from '@/config/branding';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -13,17 +14,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'EarthPulse AI — See the World Come Alive',
-  description:
-    'Explore real-world events on a stunning interactive 3D globe. Breaking news, sports, technology, business, weather, and entertainment — all visualized in real time.',
+  title: BRANDING.name,
+  description: BRANDING.description,
   keywords: [
-    'EarthPulse AI',
-    'globe',
+    BRANDING.name,
+    BRANDING.shortName,
+    'mooearth',
+    'live globe',
     '3D map',
-    'world events',
-    'breaking news',
+    'football reactions',
+    'celebrations',
+    'world cup',
     'live events',
-    'interactive globe',
+    'emotional earth',
   ],
   manifest: '/manifest.json',
   icons: {
@@ -31,15 +34,16 @@ export const metadata: Metadata = {
     apple: '/icons/icon-512.png',
   },
   openGraph: {
-    title: 'EarthPulse AI — See the World Come Alive',
-    description: 'Explore real-world events on a stunning interactive 3D globe.',
+    title: BRANDING.name,
+    description: BRANDING.description,
     type: 'website',
-    siteName: 'EarthPulse AI',
+    siteName: BRANDING.name,
+    url: BRANDING.url,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#00e5ff',
+  themeColor: BRANDING.themeColor,
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

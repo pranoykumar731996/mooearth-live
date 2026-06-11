@@ -1,11 +1,11 @@
 // ============================================================
-// EarthPulse AI — Live Feed Panel (Right Side)
+// MooEarth Live — Live Feed Panel (Right Side)
 // ============================================================
 
 'use client';
 
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 
@@ -14,8 +14,10 @@ interface LiveFeedProps {
   onSelectEvent: (event: WorldEvent) => void;
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string | undefined): string {
+  if (!dateStr) return 'Just now';
   const diff = Date.now() - new Date(dateStr).getTime();
+  if (Number.isNaN(diff)) return 'Just now';
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
@@ -46,9 +48,12 @@ export default function LiveFeed({ events, onSelectEvent }: LiveFeedProps) {
   // Calculate live counters
   const counters = useMemo(() => {
     const counts: Record<string, number> = {
-      breaking: 0, sports: 0, technology: 0, business: 0, weather: 0, entertainment: 0
+      breaking: 0, sports: 0, football: 0, technology: 0, business: 0, weather: 0, entertainment: 0
     };
-    events.forEach(e => counts[e.category]++);
+    events.forEach(e => {
+      const cat = CATEGORY_MAP[e.category as EventCategory] ? e.category : 'breaking';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
     return counts;
   }, [events]);
 
@@ -77,8 +82,8 @@ export default function LiveFeed({ events, onSelectEvent }: LiveFeedProps) {
           {/* Mini Counters */}
           <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin pb-1">
             {Object.entries(counters).map(([cat, count]) => {
-              if (count === 0) return null;
-              const config = CATEGORY_MAP[cat as EventCategory];
+              if (!count || count === 0) return null;
+              const config = CATEGORY_MAP[cat as EventCategory] || CATEGORY_MAP.breaking;
               return (
                 <div key={cat} className="flex items-center gap-1.5 shrink-0 bg-white/5 px-2 py-1 rounded-md border border-white/5">
                   <span className="text-xs">{config.emoji}</span>
@@ -93,7 +98,7 @@ export default function LiveFeed({ events, onSelectEvent }: LiveFeedProps) {
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
           <AnimatePresence initial={false}>
           {sortedEvents.map((event) => {
-            const config = CATEGORY_MAP[event.category];
+            const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking;
             return (
               <motion.button
                 key={event.id}
@@ -167,7 +172,7 @@ export default function LiveFeed({ events, onSelectEvent }: LiveFeedProps) {
 
         <div className="overflow-y-auto px-4 pb-6 space-y-2" style={{ maxHeight: 'calc(50vh - 80px)' }}>
           {sortedEvents.slice(0, 10).map((event) => {
-            const config = CATEGORY_MAP[event.category];
+            const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking;
             return (
               <button
                 key={event.id}

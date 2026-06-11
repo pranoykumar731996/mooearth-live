@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Globe Controls Hook
+// MooEarth Live — Globe Controls Hook
 // ============================================================
 
 'use client';

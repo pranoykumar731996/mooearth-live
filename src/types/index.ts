@@ -1,5 +1,5 @@
 // ============================================================
-// EarthPulse AI — Type Definitions
+// MooEarth Live — Type Definitions
 // ============================================================
 
 /** Supported event categories */
@@ -11,6 +11,17 @@ export type EventCategory =
   | 'business'
   | 'weather'
   | 'entertainment';
+
+export interface FootballMatchData {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  status: string;      // e.g., '1H', 'HT', '2H', 'FT'
+  elapsed: number;     // e.g., 45
+  goals?: { team: 'home' | 'away'; player: string; time: number }[];
+  cards?: { team: 'home' | 'away'; player: string; type: 'Yellow' | 'Red'; time: number }[];
+}
 
 /** A world event displayed on the globe */
 export interface WorldEvent {
@@ -24,6 +35,7 @@ export interface WorldEvent {
   lng: number;
   source: string;
   publishedAt: string; // ISO 8601
+  footballData?: FootballMatchData; // For V2 Football Engine
 }
 
 /** Visual configuration for a category */
