@@ -24,6 +24,20 @@ function readCelebrations(): any[] {
   }
 }
 
+function isSameCountry(c1?: string | null, c2?: string | null): boolean {
+  if (!c1 || !c2) return false;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+  const n1 = norm(c1);
+  const n2 = norm(c2);
+  if (n1 === n2) return true;
+  if (n1 === 'unitedstates' && n2 === 'unitedstatesofamerica') return true;
+  if (n1 === 'unitedstatesofamerica' && n2 === 'unitedstates') return true;
+  if (n1 === 'usa' && (n2 === 'unitedstates' || n2 === 'unitedstatesofamerica')) return true;
+  if (n1 === 'unitedkingdom' && (n2 === 'england' || n2 === 'uk' || n2 === 'greatbritain')) return true;
+  if ((n1 === 'england' || n1 === 'uk' || n1 === 'greatbritain') && n2 === 'unitedkingdom') return true;
+  return false;
+}
+
 export async function fetchCountryReactions(country: string): Promise<ReactionEvent> {
   const cached = reactionCache.get(country);
   if (cached && Date.now() - cached.timestamp < 2000) {
@@ -42,12 +56,33 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
   // Read local fan celebrations and filter for this country
   const allCelebrations = readCelebrations();
   const countryCelebrations = allCelebrations.filter(
-    (c: any) => c.country.toLowerCase() === country.toLowerCase() && (!c.reports || c.reports < 3)
+    (c: any) => isSameCountry(c.country, country) && (!c.reports || c.reports < 3)
   );
 
-  const newsHeadlines = [...football, ...news].filter(
-    (e) => e.country.toLowerCase() === country.toLowerCase() || e.title.toLowerCase().includes(country.toLowerCase()) || e.summary.toLowerCase().includes(country.toLowerCase())
+  let newsHeadlines = [...football, ...news].filter(
+    (e) =>
+      isSameCountry(e.country, country) ||
+      e.title.toLowerCase().includes(country.toLowerCase()) ||
+      e.summary.toLowerCase().includes(country.toLowerCase())
   );
+
+  // If no general headlines match this country, search specifically for this country
+  if (newsHeadlines.length === 0) {
+    try {
+      const { searchLiveNews } = require('./news');
+      const searchResult = await searchLiveNews(country);
+      if (searchResult.events && searchResult.events.length > 0) {
+        newsHeadlines = [...football, ...searchResult.events].filter(
+          (e) =>
+            isSameCountry(e.country, country) ||
+            e.title.toLowerCase().includes(country.toLowerCase()) ||
+            e.summary.toLowerCase().includes(country.toLowerCase())
+        );
+      }
+    } catch (err) {
+      console.error(`Failed to perform dynamic country search for ${country}:`, err);
+    }
+  }
 
   // Convert celebrations to headlines so they render in the Reaction Feed
   const celebrationHeadlines = countryCelebrations.map((c: any) => ({
