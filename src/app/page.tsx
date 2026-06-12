@@ -516,6 +516,7 @@ export default function HomePage() {
                     handleEventNavigate(e);
                     playHoverBlip();
                   }}
+                  activeCategory={activeCategory}
                 />
               </motion.div>
             )}
