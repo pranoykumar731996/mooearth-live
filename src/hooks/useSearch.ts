@@ -66,7 +66,9 @@ export function useSearch({ events }: UseSearchProps) {
     const q = debouncedQuery.trim().toLowerCase();
     if (!q) return null;
 
-    const activeEventCountries = events.map(e => e.country).filter(Boolean);
+    // Combine local events and server results to scan for matching countries
+    const allEvents = [...events, ...serverResults];
+    const activeEventCountries = allEvents.map(e => e.country).filter(Boolean);
     const uniqueCountries = Array.from(new Set(activeEventCountries));
 
     for (const c of uniqueCountries) {
@@ -78,7 +80,7 @@ export function useSearch({ events }: UseSearchProps) {
       }
     }
     return null;
-  }, [events, debouncedQuery]);
+  }, [events, serverResults, debouncedQuery]);
 
   // Calculate results dynamically (combining local filtered items and server-fetched results)
   const results = useMemo(() => {
