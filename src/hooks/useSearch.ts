@@ -1,19 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { WorldEvent } from '@/types';
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
-
-// A comprehensive list of countries to ensure we can always map a search
-// to a geographic location, even if no active live events are happening there.
-const GLOBAL_COUNTRIES = [
-  'United States', 'United Kingdom', 'Japan', 'China', 'India', 'Brazil',
-  'Australia', 'Germany', 'France', 'Canada', 'Mexico', 'Spain', 'Italy',
-  'Argentina', 'South Korea', 'Russia', 'South Africa', 'Nigeria', 'Egypt',
-  'Saudi Arabia', 'Turkey', 'Indonesia', 'Netherlands', 'Switzerland', 'Sweden',
-  'Norway', 'Denmark', 'Finland', 'Portugal', 'Greece', 'New Zealand',
-  'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Philippines', 'Colombia',
-  'Chile', 'Peru', 'Venezuela', 'Morocco', 'Kenya', 'Ghana', 'UAE', 'Israel',
-  'Pakistan', 'Bangladesh', 'Sri Lanka', 'Nepal', 'Ukraine', 'Poland', 'Romania'
-];
 
 interface UseSearchProps {
   events: WorldEvent[];
@@ -22,55 +9,8 @@ interface UseSearchProps {
 export function useSearch({ events }: UseSearchProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [results, setResults] = useState<WorldEvent[]>([]);
-  const [countryResult, setCountryResult] = useState<string | null>(null);
+  const [serverResults, setServerResults] = useState<WorldEvent[]>([]);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Parse and match query to countries and events
-  const executeSearch = useCallback((q: string) => {
-    if (!q || q.trim().length === 0) {
-      setResults([]);
-      setCountryResult(null);
-      return;
-    }
-
-    const lowerQ = q.trim().toLowerCase();
-
-    // 1. Detect and match countries
-    let foundCountry: string | null = null;
-    const activeEventCountries = events.map(e => e.country).filter(Boolean);
-    const uniqueCountries = Array.from(new Set([...GLOBAL_COUNTRIES, ...activeEventCountries]));
-
-    // Match if query contains the country (e.g. "brazil reactions")
-    // or if the country starts with the query (e.g. "braz")
-    for (const c of uniqueCountries) {
-      if (c) {
-        const countryLower = c.toLowerCase();
-        if (lowerQ.includes(countryLower) || (lowerQ.length >= 3 && countryLower.startsWith(lowerQ))) {
-          foundCountry = c;
-          break; // Prefer the first strong match
-        }
-      }
-    }
-    setCountryResult(foundCountry);
-
-    // 2. Filter events
-    const filtered = events.filter((e) => {
-      // Fuzzy match against title, city, country, category
-      return (
-        (e.title && e.title.toLowerCase().includes(lowerQ)) ||
-        (e.city && e.city.toLowerCase().includes(lowerQ)) ||
-        (e.country && e.country.toLowerCase().includes(lowerQ)) ||
-        (e.category && e.category.toLowerCase().includes(lowerQ)) ||
-        // Always include events from the matched country to ensure results aren't empty
-        (foundCountry && e.country === foundCountry)
-      );
-    });
-
-    // If we found a country, we prioritize it as a special action item
-    // so we can show slightly fewer raw event results to save space
-    setResults(filtered.slice(0, foundCountry ? 4 : 8));
-  }, [events]);
 
   const handleChange = useCallback((value: string) => {
     setQuery(value);
@@ -81,29 +21,108 @@ export function useSearch({ events }: UseSearchProps) {
     
     debounceRef.current = setTimeout(() => {
       setDebouncedQuery(value);
-      executeSearch(value);
     }, SEARCH_DEBOUNCE_MS);
-  }, [executeSearch]);
+  }, []);
 
   const clearSearch = useCallback(() => {
     setQuery('');
     setDebouncedQuery('');
-    setResults([]);
-    setCountryResult(null);
+    setServerResults([]);
   }, []);
 
-  // Ensure search updates if underlying events change while query is active
+  // Fetch search results from server when query changes
   useEffect(() => {
-    if (debouncedQuery) {
-      executeSearch(debouncedQuery);
+    const q = debouncedQuery.trim();
+    if (!q) {
+      setServerResults([]);
+      return;
     }
-  }, [events, debouncedQuery, executeSearch]);
+
+    let isMounted = true;
+
+    async function fetchSearchResults() {
+      try {
+        const res = await fetch(`/api/events?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error('Search request failed');
+        const data = await res.json();
+        
+        if (isMounted) {
+          setServerResults(data.events || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch search results from server:', err);
+      }
+    }
+
+    fetchSearchResults();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedQuery]);
+
+  // Calculate countryResult dynamically
+  const countryResult = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return null;
+
+    const activeEventCountries = events.map(e => e.country).filter(Boolean);
+    const uniqueCountries = Array.from(new Set(activeEventCountries));
+
+    for (const c of uniqueCountries) {
+      if (c) {
+        const countryLower = c.toLowerCase();
+        if (q.includes(countryLower) || (q.length >= 3 && countryLower.startsWith(q))) {
+          return c;
+        }
+      }
+    }
+    return null;
+  }, [events, debouncedQuery]);
+
+  // Calculate results dynamically (combining local filtered items and server-fetched results)
+  const results = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    const localFiltered = events.filter((e) => {
+      return (
+        (e.title && e.title.toLowerCase().includes(q)) ||
+        (e.city && e.city.toLowerCase().includes(q)) ||
+        (e.country && e.country.toLowerCase().includes(q)) ||
+        (e.category && e.category.toLowerCase().includes(q)) ||
+        (countryResult && e.country === countryResult)
+      );
+    });
+
+    // Merge and deduplicate by ID
+    const seen = new Set<string>();
+    const combined: WorldEvent[] = [];
+
+    for (const e of localFiltered) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id);
+        combined.push(e);
+      }
+    }
+
+    for (const e of serverResults) {
+      if (!seen.has(e.id)) {
+        seen.add(e.id);
+        combined.push(e);
+      }
+    }
+
+    return combined.slice(0, countryResult ? 4 : 8);
+  }, [events, debouncedQuery, countryResult, serverResults]);
 
   return {
     query,
+    debouncedQuery,
     setQuery: handleChange,
     results,
     countryResult,
     clearSearch
   };
 }
+

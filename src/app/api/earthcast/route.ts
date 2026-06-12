@@ -169,25 +169,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('EarthCast route error:', error);
     
-    // Emergency fallback
-    const fallback = renderTemplateCommentary({
-      eventType: 'atmosphere_check',
-      country: 'the world',
-      globalEnergyScore: 50,
-      uploadCount: 0,
-    });
-
     return NextResponse.json({
-      narration: {
-        text: fallback.text,
-        emotionColor: fallback.emotionColor,
-        intensity: fallback.intensity,
-        audioBase64: null,
-        eventType: 'atmosphere_check',
-        country: 'the world',
-        timestamp: new Date().toISOString(),
-      },
+      error: 'Narration temporarily unavailable',
       stats: cacheEngine.getStats(),
-    });
+    }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { WorldEvent, EventCategory } from '@/types';
-import { demoEvents } from '@/data/events';
 
 // Map common keywords to coordinates
 const geoMap: Record<string, { lat: number; lng: number; country: string; city: string }> = {
@@ -30,7 +30,7 @@ function assignCoordinates(title: string, content: string) {
   return geoMap[randomKey];
 }
 
-export async function fetchLiveNews(): Promise<WorldEvent[]> {
+export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
     const apiKey = process.env.NEWS_API_KEY;
     if (!apiKey) {
@@ -48,7 +48,7 @@ export async function fetchLiveNews(): Promise<WorldEvent[]> {
 
     const data = await response.json();
     
-    return data.articles.map((article: any, index: number) => {
+    const events = (data.articles || []).map((article: any, index: number) => {
       const geo = assignCoordinates(article.title, article.description || '');
       
       return {
@@ -64,12 +64,56 @@ export async function fetchLiveNews(): Promise<WorldEvent[]> {
         publishedAt: article.publishedAt,
       };
     });
+
+    return { events, active: true };
   } catch (error) {
     console.warn('Failed to fetch live news, using fallback data:', error);
-    // Return fallback demo events
-    return demoEvents.filter(e => e.category !== 'sports').map(e => ({
-      ...e,
-      id: `fallback-news-${Date.now()}-${e.id}`
-    }));
+    return { events: [], active: false };
   }
 }
+
+export async function searchLiveNews(query: string): Promise<{ events: WorldEvent[]; active: boolean }> {
+  try {
+    const apiKey = process.env.NEWS_API_KEY;
+    if (!apiKey) {
+      throw new Error('NEWS_API_KEY not found');
+    }
+
+    const response = await fetch(`https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&apikey=${apiKey}`, {
+      next: { revalidate: 60 }
+    });
+
+    if (!response.ok) {
+      throw new Error(`News Search API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.errors) {
+      throw new Error(`GNews Search API error: ${JSON.stringify(data.errors)}`);
+    }
+
+    const events = (data.articles || []).map((article: any, index: number) => {
+      const geo = assignCoordinates(article.title, article.description || '');
+      
+      return {
+        id: `news-search-${Date.now()}-${index}`,
+        title: article.title,
+        summary: article.description || 'No summary available.',
+        category: 'breaking' as EventCategory,
+        country: geo.country,
+        city: geo.city,
+        lat: geo.lat,
+        lng: geo.lng,
+        source: article.url,
+        publishedAt: article.publishedAt,
+      };
+    });
+
+    return { events, active: true };
+  } catch (error) {
+    console.warn('Failed to search news:', error);
+    return { events: [], active: false };
+  }
+}
+

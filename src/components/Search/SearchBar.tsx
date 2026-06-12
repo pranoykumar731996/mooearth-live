@@ -30,12 +30,12 @@ export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCou
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { query, setQuery, results, countryResult, clearSearch } = useSearch({ events });
+  const { query, debouncedQuery, setQuery, results, countryResult, clearSearch } = useSearch({ events });
 
-  // Sync query to parent for external effects (if any)
+  // Sync debounced query to parent for external effects (prevents page-wide rerenders on every keystroke)
   useEffect(() => {
-    onSearch(query);
-  }, [query, onSearch]);
+    onSearch(debouncedQuery);
+  }, [debouncedQuery, onSearch]);
 
   // Animate placeholders
   useEffect(() => {

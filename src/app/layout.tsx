@@ -14,6 +14,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.mooearth.live'),
   title: BRANDING.name,
   description: BRANDING.description,
   keywords: [
@@ -29,6 +30,9 @@ export const metadata: Metadata = {
     'emotional earth',
   ],
   manifest: '/manifest.json',
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-512.png',

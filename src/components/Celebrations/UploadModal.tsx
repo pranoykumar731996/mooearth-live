@@ -41,6 +41,18 @@ const COUNTRY_COORDINATES: Record<string, { lat: number; lng: number }> = {
   'Chile':          { lat: -35.6751, lng: -71.5430 },
 };
 
+const FALLBACK_WORLD_CUP_MATCHES = [
+  { id: 'wc-1', title: 'United States vs Morocco (Group Stage)' },
+  { id: 'wc-2', title: 'Mexico vs Sweden (Group Stage)' },
+  { id: 'wc-3', title: 'Canada vs Saudi Arabia (Group Stage)' },
+  { id: 'wc-4', title: 'Spain vs Croatia (Group Stage)' },
+  { id: 'wc-5', title: 'Brazil vs Japan (Group Stage)' },
+  { id: 'wc-6', title: 'Argentina vs Senegal (Group Stage)' },
+  { id: 'wc-7', title: 'Germany vs Uruguay (Group Stage)' },
+  { id: 'wc-8', title: 'France vs South Korea (Group Stage)' },
+];
+
+
 export default function UploadModal({ isOpen, onClose, matches, currentUser, onUploadSuccess }: UploadModalProps) {
   const [activeTab, setActiveTab] = useState<'video' | 'image' | 'audio'>('video');
   const [selectedMatch, setSelectedMatch] = useState('');
@@ -58,10 +70,16 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
 
   // Initialize selected match
   useEffect(() => {
-    if (matches && matches.length > 0 && !selectedMatch) {
-      setSelectedMatch(matches[0].title);
+    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
+    if (activeMatches.length > 0) {
+      const exists = activeMatches.some(m => m.title === selectedMatch);
+      if (!selectedMatch || !exists) {
+        setSelectedMatch(activeMatches[0].title);
+      }
     }
   }, [matches, selectedMatch]);
+
+  const displayMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
 
   if (!isOpen) return null;
 
@@ -350,28 +368,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
               </div>
             )}
 
-            {/* Demo Mode media injector */}
-            <div className="mt-3 border-t border-white/5 pt-2.5 w-full flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  const isAudio = activeTab === 'audio';
-                  const isVideo = activeTab === 'video';
-                  const mimeType = isAudio ? 'audio/webm' : isVideo ? 'video/mp4' : 'image/png';
-                  const fileName = isAudio ? 'voice-reaction.webm' : isVideo ? 'fan-celebration.mp4' : 'fan-photo.png';
-                  const blob = new Blob([`mock-${activeTab}-data`], { type: mimeType });
-                  const mockFile = new File([blob], fileName, { type: mimeType });
-                  setFile(mockFile);
-                  setError(null);
-                  if (isAudio) {
-                    setRecordedAudioUrl('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
-                  }
-                }}
-                className="text-[10px] text-cyan-400/70 hover:text-cyan-400 hover:underline uppercase tracking-wider font-semibold cursor-pointer"
-              >
-                ⚡ [Demo Mode] Inject Mock {activeTab.toUpperCase()} File
-              </button>
-            </div>
           </div>
 
           {/* Select Match */}
@@ -382,7 +378,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
               onChange={(e) => setSelectedMatch(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white focus:border-cyan-500 focus:outline-none transition-colors text-sm"
             >
-              {matches.map((m) => (
+              {displayMatches.map((m) => (
                 <option key={m.id} value={m.title} className="bg-neutral-900 text-white">
                   {m.title}
                 </option>

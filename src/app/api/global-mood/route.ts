@@ -6,7 +6,7 @@ export const revalidate = 60; // Revalidate every 60 seconds
 
 export async function GET() {
   try {
-    const events = await fetchAllEvents();
+    const { events } = await fetchAllEvents();
     
     // Simulate global mood intensities based on event count per country
     const countryCounts: Record<string, number> = {};

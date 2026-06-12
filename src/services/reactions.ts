@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactionEvent } from '@/types';
 import { fetchLiveFootball } from './football';
 import { fetchLiveNews } from './news';
@@ -30,10 +31,13 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
   }
 
   // 1. Fetch related headlines (Football + News)
-  const [football, news] = await Promise.all([
+  const [footballResult, newsResult] = await Promise.all([
     fetchLiveFootball(),
     fetchLiveNews()
   ]);
+
+  const football = footballResult.events;
+  const news = newsResult.events;
 
   // Read local fan celebrations and filter for this country
   const allCelebrations = readCelebrations();
@@ -71,33 +75,10 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
   let contextText = allHeadlines.map(h => h.title).join('. ');
   
   if (!contextText) {
-    // Generate deterministic diverse states based on country string hash
-    const hash = country.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const state = hash % 5;
-    
-    if (state === 0) contextText = `${country} just scored a massive win! Fans are in absolute celebration.`;
-    else if (state === 1) contextText = `${country} suffers a devastating loss and is knocked out of the tournament.`;
-    else if (state === 2) contextText = `A controversial referee decision leaves ${country} fans furious and angry.`;
-    else if (state === 3) contextText = `Total shock as ${country} pulls off an unbelievable upset victory!`;
-    else contextText = `${country} is preparing for their upcoming World Cup fixture. Fans are gathering in the host cities.`;
-
-    // Ensure the country always has at least one headline to show in the UI
-    allHeadlines.push({
-      id: `mock-headline-${country}-${Date.now()}`,
-      title: contextText,
-      summary: `Live reporting and sentiment tracking for ${country} as events unfold on the global stage.`,
-      category: 'breaking',
-      country: country,
-      city: 'Capital',
-      lat: 0,
-      lng: 0,
-      source: 'MooEarth Live',
-      publishedAt: new Date().toISOString()
-    });
+    contextText = `No live events currently reported for ${country}`;
   }
 
-  // 2. Fetch Social Reactions
-  const socialData = await fetchSocialReactions(country, contextText);
+  const socialData = await fetchSocialReactions(country);
 
   // 3. Analyze Sentiment (Use celebration sentiment if there are fan uploads)
   let sentiment;

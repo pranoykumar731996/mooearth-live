@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { WorldEvent, ReactionEvent } from '@/types';
 
 export type EmotionColor = string;
@@ -65,11 +65,7 @@ export function useEmotionMap(
   selectedCountry: string | null,
   activeReaction: ReactionEvent | null
 ) {
-  const [emotionMap, setEmotionMap] = useState<Record<string, EmotionColor>>({});
-  const [trendingCountries, setTrendingCountries] = useState<TrendingCountry[]>([]);
-  const [globalEnergyScore, setGlobalEnergyScore] = useState<number>(0);
-
-  useEffect(() => {
+  return useMemo(() => {
     const countryData: Record<string, {
       goals: number;
       uploads: number;
@@ -224,9 +220,6 @@ export function useEmotionMap(
           moodLabel = '💙 Calm';
       }
 
-      // Handle Penalty Shootout unstable atmosphere flicker
-      const isFlickering = data.flicker;
-      
       newMap[country] = `${color}${energy.toFixed(2)})`;
 
       totalActiveEnergy += energy;
@@ -266,11 +259,10 @@ export function useEmotionMap(
     const activityModifier = Math.min(celebrations.length * 5 + events.length * 2, 40);
     const finalEnergyScore = Math.round(Math.min((avgEnergy * 60) + activityModifier, 100));
 
-    setEmotionMap(newMap);
-    setTrendingCountries(sortedTrending);
-    setGlobalEnergyScore(finalEnergyScore);
-
+    return {
+      emotionMap: newMap,
+      trendingCountries: sortedTrending,
+      globalEnergyScore: finalEnergyScore
+    };
   }, [events, celebrations, selectedCountry, activeReaction]);
-
-  return { emotionMap, trendingCountries, globalEnergyScore };
 }

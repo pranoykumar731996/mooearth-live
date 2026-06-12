@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any */
 // ============================================================
 // MooEarth Live — useEarthCast Hook
 // Central orchestrator for the cinematic AI narration system.
@@ -37,7 +38,7 @@ interface UseEarthCastProps {
 }
 
 const COOLDOWN_MS = 30000; // 30 seconds between narrations
-const AUTO_INTERVAL_MS = 25000; // 25 seconds for auto-mode atmospheric checks
+// const AUTO_INTERVAL_MS = 25000;
 const MAX_HISTORY = 10;
 
 // Detect event type from a football event
@@ -123,7 +124,6 @@ export function useEarthCast({
   isMuted,
   onFlyToCountry,
   playNarrationIntro,
-  playDeepPulse,
   playTensionDrone,
 }: UseEarthCastProps) {
   // Core state
@@ -423,40 +423,12 @@ export function useEarthCast({
   }, [events, isEarthCastActive, narrationState, celebrations.length, globalEnergyScore, trendingCountries, triggerNarration]);
 
   // ============================================================
-  // AUTO MODE — Periodic atmospheric narrations
+  // AUTO MODE — Periodic atmospheric narrations (Disabled in production launch)
   // ============================================================
   useEffect(() => {
-    if (!isEarthCastActive || !isAutoMode) {
-      if (autoModeTimer.current) {
-        clearInterval(autoModeTimer.current);
-        autoModeTimer.current = null;
-      }
-      return;
-    }
-
-    autoModeTimer.current = setInterval(() => {
-      if (narrationState !== 'idle') return;
-
-      const topCountry = trendingCountries[0];
-      const context: EarthCastContext = {
-        eventType: 'atmosphere_check',
-        country: topCountry?.country || 'the world',
-        globalEnergyScore,
-        uploadCount: celebrations.length,
-        trendingMood: topCountry?.mood || 'electric',
-      };
-
-      if (playDeepPulse && !isMuted) playDeepPulse();
-      triggerNarration(context);
-    }, AUTO_INTERVAL_MS);
-
-    return () => {
-      if (autoModeTimer.current) {
-        clearInterval(autoModeTimer.current);
-        autoModeTimer.current = null;
-      }
-    };
-  }, [isEarthCastActive, isAutoMode, narrationState, trendingCountries, globalEnergyScore, celebrations.length, isMuted, playDeepPulse, triggerNarration]);
+    // Disabled: EarthCast narration should ONLY trigger from real live match events.
+    return;
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {

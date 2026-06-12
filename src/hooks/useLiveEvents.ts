@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
 import { WorldEvent } from '@/types';
-import { demoEvents } from '@/data/events';
+
+export interface ApiStatus {
+  newsActive: boolean;
+  footballActive: boolean;
+  earthCastActive: boolean;
+}
 
 export function useLiveEvents() {
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>({
+    newsActive: false,
+    footballActive: false,
+    earthCastActive: false,
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -17,14 +27,21 @@ export function useLiveEvents() {
         const data = await response.json();
         
         if (isMounted) {
-          setEvents(data.events);
+          setEvents(data.events || []);
+          if (data.status) {
+            setApiStatus(data.status);
+          }
           setIsLoading(false);
         }
       } catch (error) {
         console.error('Error fetching live events:', error);
         if (isMounted) {
-          // Fallback if the API fails entirely
-          if (events.length === 0) setEvents(demoEvents);
+          // Keep events empty, but mark API statuses as inactive
+          setApiStatus({
+            newsActive: false,
+            footballActive: false,
+            earthCastActive: false,
+          });
           setIsLoading(false);
         }
       }
@@ -42,5 +59,6 @@ export function useLiveEvents() {
     };
   }, []);
 
-  return { events, isLoading };
+  return { events, isLoading, apiStatus };
 }
+

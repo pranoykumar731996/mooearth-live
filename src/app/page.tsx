@@ -77,7 +77,7 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const { events: liveEvents, isLoading: isEventsLoading } = useLiveEvents();
+  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents();
 
   // Filtered events
   const filteredEvents = useEventFilter({
@@ -301,6 +301,7 @@ export default function HomePage() {
       <div className="relative z-30 pointer-events-none">
         <Navbar
           events={filteredEvents}
+          apiStatus={apiStatus}
           onSearch={handleSearch}
           onSelectEvent={handleEventNavigate}
           onSelectCountry={setSelectedCountry}
@@ -414,24 +415,28 @@ export default function HomePage() {
         className="absolute z-[2] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
         style={{ width: '110vw', height: '110vh' }}
       >
-        <div className="w-full h-full pointer-events-auto">
-          {!isLoading && (
-            <GlobeScene
-              events={filteredEvents}
-              selectedEvent={selectedEvent}
-              onSelectEvent={handleSelectEvent}
-              selectedCountry={selectedCountry}
-              onSelectCountry={setSelectedCountry}
-              celebration={activeCelebration}
-              celebrations={celebrations}
-              onSelectCelebration={setSelectedCelebration}
-              globalEnergyScore={globalEnergyScore}
-              isCinematicModeActive={isCinematicMode || isFullScreenGlobe}
-              emotionMap={emotionMap}
-              earthCastActive={earthCast.isEarthCastActive}
-              earthCastAudioLevel={earthCast.audioLevel}
-            />
-          )}
+        <div 
+          className="w-full h-full transition-opacity duration-1000"
+          style={{ 
+            opacity: isLoading ? 0 : 1,
+            pointerEvents: isLoading ? 'none' : 'auto'
+          }}
+        >
+          <GlobeScene
+            events={filteredEvents}
+            selectedEvent={selectedEvent}
+            onSelectEvent={handleSelectEvent}
+            selectedCountry={selectedCountry}
+            onSelectCountry={setSelectedCountry}
+            celebration={activeCelebration}
+            celebrations={celebrations}
+            onSelectCelebration={setSelectedCelebration}
+            globalEnergyScore={globalEnergyScore}
+            isCinematicModeActive={isCinematicMode || isFullScreenGlobe}
+            emotionMap={emotionMap}
+            earthCastActive={earthCast.isEarthCastActive}
+            earthCastAudioLevel={earthCast.audioLevel}
+          />
         </div>
       </div>
 

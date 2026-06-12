@@ -8,9 +8,11 @@ import { WorldEvent } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
 import { BRANDING } from '@/config/branding';
+import { ApiStatus } from '@/hooks/useLiveEvents';
 
 interface NavbarProps {
   events: WorldEvent[];
+  apiStatus: ApiStatus;
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
   onSelectCountry?: (country: string | null) => void;
@@ -25,6 +27,7 @@ interface NavbarProps {
 
 export default function Navbar({
   events,
+  apiStatus,
   onSearch,
   onSelectEvent,
   onSelectCountry,
@@ -36,6 +39,8 @@ export default function Navbar({
   isCinematicModeActive,
   onToggleCinematicMode,
 }: NavbarProps) {
+  const isSystemActive = apiStatus?.newsActive && apiStatus?.footballActive && apiStatus?.earthCastActive;
+
   return (
     <nav
       id="navbar"
@@ -46,20 +51,66 @@ export default function Navbar({
         background: 'linear-gradient(180deg, rgba(5,5,15,0.85) 0%, rgba(5,5,15,0.6) 100%)',
       }}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600
-                        flex items-center justify-center text-base shadow-lg shadow-cyan-500/20">
-          🌍
+      {/* Logo & Status Badge */}
+      <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600
+                          flex items-center justify-center text-base shadow-lg shadow-cyan-500/20">
+            🌍
+          </div>
+          <div className="hidden sm:block">
+            <h1 className="text-base font-bold text-white leading-tight">
+              MooEarth
+              <span className="text-cyan-400"> Live</span>
+            </h1>
+            <p className="text-[10px] text-white/30 leading-none -mt-0.5 tracking-wider">
+              {BRANDING.tagline}
+            </p>
+          </div>
         </div>
-        <div className="hidden sm:block">
-          <h1 className="text-base font-bold text-white leading-tight">
-            MooEarth
-            <span className="text-cyan-400"> Live</span>
-          </h1>
-          <p className="text-[10px] text-white/30 leading-none -mt-0.5 tracking-wider">
-            {BRANDING.tagline}
-          </p>
+
+        {/* Live Data Production Badge */}
+        <div className="relative group pointer-events-auto cursor-help">
+          <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${
+            isSystemActive 
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+              : 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
+          }`}>
+            <span className="w-1.5 h-1.5 rounded-full relative flex">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                isSystemActive ? 'bg-emerald-400' : 'bg-red-400'
+              }`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                isSystemActive ? 'bg-emerald-500' : 'bg-red-500'
+              }`} />
+            </span>
+            <span>{isSystemActive ? 'LIVE DATA ACTIVE' : 'LIVE DATA OFFLINE'}</span>
+          </div>
+
+          {/* Tooltip */}
+          <div className="absolute left-0 top-8 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 scale-95 group-hover:scale-100 origin-top-left">
+            <div className="glass px-4 py-3 rounded-2xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/10 flex flex-col gap-2 bg-[#090915]/95 min-w-[150px]">
+              <div className="text-[9px] uppercase tracking-wider text-white/45 border-b border-white/5 pb-1">API Connections</div>
+              <div className="flex items-center justify-between gap-4">
+                <span>News Feed API</span>
+                <span className={apiStatus?.newsActive ? 'text-emerald-400' : 'text-red-400'}>
+                  {apiStatus?.newsActive ? '🟢 Connected' : '🔴 Offline'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span>Football API</span>
+                <span className={apiStatus?.footballActive ? 'text-emerald-400' : 'text-red-400'}>
+                  {apiStatus?.footballActive ? '🟢 Connected' : '🔴 Offline'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span>EarthCast AI</span>
+                <span className={apiStatus?.earthCastActive ? 'text-emerald-400' : 'text-red-400'}>
+                  {apiStatus?.earthCastActive ? '🟢 Connected' : '🔴 Offline'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

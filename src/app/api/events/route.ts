@@ -1,13 +1,18 @@
-import { NextResponse } from 'next/server';
-import { fetchAllEvents } from '@/services/events';
+import { NextRequest, NextResponse } from 'next/server';
+import { fetchAllEvents, searchAllEvents } from '@/services/events';
 import { generateEventSummary } from '@/services/ai';
 
-// In Next.js App Router, you can configure route segment config
-export const revalidate = 60; // Revalidate every 60 seconds at the edge/server
+// In Next.js App Router, we force dynamic rendering since it relies on dynamic searchParams
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const events = await fetchAllEvents();
+    const { searchParams } = request.nextUrl;
+    const query = searchParams.get('q') || '';
+
+    const { events, status } = query.trim()
+      ? await searchAllEvents(query.trim())
+      : await fetchAllEvents();
     
     // Process summaries concurrently (up to a limit, but Promise.all is fine for a small batch)
     const processedEvents = await Promise.all(
@@ -17,9 +22,20 @@ export async function GET() {
       })
     );
 
-    return NextResponse.json({ events: processedEvents });
+    const earthCastActive = !!process.env.OPENAI_API_KEY;
+
+    return NextResponse.json({
+      events: processedEvents,
+      status: {
+        newsActive: status.newsActive,
+        footballActive: status.footballActive,
+        earthCastActive,
+      }
+    });
   } catch (error) {
     console.error('API /events error:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
   }
 }
+
+

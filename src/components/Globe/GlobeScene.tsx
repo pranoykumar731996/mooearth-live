@@ -77,6 +77,36 @@ export default function GlobeScene({
   const celebrationProcessedRef = useRef<string | null>(null);
   const cloudsMeshRef = useRef<THREE.Mesh | null>(null);
 
+  // Mobile state detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Progressive Texture URLs
+  const [globeTextureUrl, setGlobeTextureUrl] = useState(GLOBE_CONFIG.globePlaceholderUrl);
+  const [cloudsTextureUrl, setCloudsTextureUrl] = useState(GLOBE_CONFIG.cloudsPlaceholderUrl);
+
+  // Preload high-resolution textures in background
+  useEffect(() => {
+    const globeImg = new Image();
+    globeImg.src = GLOBE_CONFIG.globeImageUrl;
+    globeImg.onload = () => {
+      setGlobeTextureUrl(GLOBE_CONFIG.globeImageUrl);
+    };
+
+    const cloudsImg = new Image();
+    cloudsImg.src = GLOBE_CONFIG.cloudsImageUrl;
+    cloudsImg.onload = () => {
+      setCloudsTextureUrl(GLOBE_CONFIG.cloudsImageUrl);
+    };
+  }, []);
+
   // Cinematic Camera Hook
   useCinematicCamera(events, { flyTo, pauseRotation, resumeRotation }, introDone);
 
@@ -101,7 +131,11 @@ export default function GlobeScene({
   useEffect(() => {
     fetch(GLOBE_CONFIG.countriesGeoJsonUrl)
       .then((res) => res.json())
-      .then((data) => setCountries(data.features))
+      .then((data) => {
+        // Handle both standard TopoJSON and raw GeoJSON features
+        const features = data.features || (data.objects ? data.objects.countries : data);
+        setCountries(features);
+      })
       .catch((err) => console.error('Failed to load geojson', err));
 
     fetch('/api/global-mood')
@@ -137,23 +171,29 @@ export default function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
     
-    // Check if clouds already added
-    if (scene.children.some((c: any) => c.name === 'clouds')) return;
-
-    // Add clouds
-    new THREE.TextureLoader().load(GLOBE_CONFIG.cloudsImageUrl, (cloudsTexture) => {
-      const cloudsGeometry = new THREE.SphereGeometry(globe.getGlobeRadius() * 1.006, 75, 75);
-      const cloudsMaterial = new THREE.MeshPhongMaterial({
-        map: cloudsTexture,
-        transparent: true,
-        opacity: 0.3,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      });
-      const clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
-      clouds.name = 'clouds';
-      scene.add(clouds);
-      cloudsMeshRef.current = clouds;
+    // Load the current clouds texture (starts as placeholder, then gets swapped with high-res)
+    new THREE.TextureLoader().load(cloudsTextureUrl, (cloudsTexture) => {
+      const existingClouds = scene.children.find((c: any) => c.name === 'clouds') as THREE.Mesh;
+      if (existingClouds) {
+        if (existingClouds.material && 'map' in existingClouds.material) {
+          (existingClouds.material as any).map = cloudsTexture;
+          (existingClouds.material as any).needsUpdate = true;
+        }
+      } else {
+        const segments = isMobile ? 36 : 75; // Optimize polygon count on mobile devices
+        const cloudsGeometry = new THREE.SphereGeometry(globe.getGlobeRadius() * 1.006, segments, segments);
+        const cloudsMaterial = new THREE.MeshPhongMaterial({
+          map: cloudsTexture,
+          transparent: true,
+          opacity: 0.3,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
+        clouds.name = 'clouds';
+        scene.add(clouds);
+        cloudsMeshRef.current = clouds;
+      }
     });
 
     // Enhance lighting
@@ -167,7 +207,7 @@ export default function GlobeScene({
     if (ambientLight) {
       ambientLight.intensity = 0.5;
     }
-  }, [globeRef, introDone]);
+  }, [globeRef, introDone, cloudsTextureUrl, isMobile]);
 
   // Unified Render Loop: Phase 8 (Breathing/Rotation), Phase 10 (Energy), Phase 1 (Flicker)
   useEffect(() => {
@@ -403,7 +443,8 @@ export default function GlobeScene({
   // Connection arcs — pair adjacent events
   const arcsData = useMemo<EventArc[]>(() => {
     const arcs: EventArc[] = [];
-    for (let i = 0; i < events.length; i += 2) {
+    const maxArcs = isMobile ? 4 : events.length; // Limit arcs on mobile to save performance
+    for (let i = 0; i < events.length && arcs.length < maxArcs; i += 2) {
       if (i + 1 < events.length) {
         arcs.push({
           startLat: events[i].lat,
@@ -415,12 +456,15 @@ export default function GlobeScene({
       }
     }
     return arcs;
-  }, [events]);
+  }, [events, isMobile]);
 
   // Ring data (Goal Shockwaves + Default Pulse + Celebration Mega-Rings)
   const ringsData = useMemo(() => {
     const rings: any[] = [];
-    events.forEach(e => {
+    // Only render rings for the 3 most recent events on mobile to avoid CPU/GPU overhead
+    const activeEvents = isMobile ? events.slice(-3) : events;
+    
+    activeEvents.forEach(e => {
       // Default ambient pulse
       rings.push({
         lat: e.lat,
@@ -442,7 +486,7 @@ export default function GlobeScene({
           repeatPeriod: 4000,
           color: 'rgba(255, 215, 0, 0.8)',
           event: e,
-        });
+         });
       }
     });
 
@@ -478,7 +522,7 @@ export default function GlobeScene({
     }
 
     return rings;
-  }, [events, celebration]);
+  }, [events, celebration, isMobile]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -714,6 +758,35 @@ export default function GlobeScene({
     return capColor.replace(/0\.[0-9]+\)/, '0.5)').replace(/15\)/, '5)'); 
   }, [getPolygonColor, celebration]);
 
+  // Stable Globe Callbacks & Memoized Configs
+  const getPolygonStrokeColor = useCallback(() => 'rgba(255,255,255,0.05)', []);
+
+  const handlePolygonClick = useCallback((feat: any) => {
+    const name = feat.properties.NAME;
+    if (onSelectCountry) onSelectCountry(name);
+    onSelectEvent(null);
+    pauseRotation();
+    recordInteraction();
+  }, [onSelectCountry, onSelectEvent, pauseRotation, recordInteraction]);
+
+  const handlePolygonHover = useCallback((feat: any) => {
+    const el = document.body;
+    el.style.cursor = feat ? 'pointer' : 'default';
+  }, []);
+
+  const handleGlobeClick = useCallback(() => {
+    onSelectEvent(null);
+    if (onSelectCountry) onSelectCountry(null);
+    resumeRotation();
+    recordInteraction();
+  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction]);
+
+  const rendererConfig = useMemo(() => ({
+    antialias: !isMobile, // Disable antialiasing on mobile to increase FPS
+    alpha: true,
+    powerPreference: 'high-performance' as const
+  }), [isMobile]);
+
   return (
     <div
       ref={containerRef}
@@ -730,13 +803,13 @@ export default function GlobeScene({
           height={dimensions.height}
 
           // Textures & Atmosphere
-          globeImageUrl={GLOBE_CONFIG.globeImageUrl}
+          globeImageUrl={globeTextureUrl}
           bumpImageUrl={GLOBE_CONFIG.bumpImageUrl}
           backgroundImageUrl=""
           backgroundColor="rgba(0,0,0,0)"
           showAtmosphere={true}
           atmosphereColor={celebration?.active ? celebration.colors.primary : GLOBE_CONFIG.atmosphereColor}
-          atmosphereAltitude={celebration?.active ? 0.4 : GLOBE_CONFIG.atmosphereAltitude}
+          atmosphereAltitude={celebration?.active ? (isMobile ? 0.35 : 0.4) : (isMobile ? 0.2 : GLOBE_CONFIG.atmosphereAltitude)}
 
           // Connection Arcs
           arcsData={arcsData}
@@ -763,34 +836,18 @@ export default function GlobeScene({
           polygonsData={countries}
           polygonCapColor={getPolygonColor}
           polygonSideColor={getPolygonSideColor}
-          polygonStrokeColor={() => 'rgba(255,255,255,0.05)'}
+          polygonStrokeColor={getPolygonStrokeColor}
           polygonAltitude={getPolygonAltitude}
-          polygonsTransitionDuration={1500}
-          onPolygonClick={(feat: any) => {
-            const name = feat.properties.NAME;
-            if (onSelectCountry) onSelectCountry(name);
-            onSelectEvent(null);
-            pauseRotation();
-            recordInteraction();
-          }}
-          onPolygonHover={(feat: any) => {
-            if (globeRef.current) {
-              const el = document.body;
-              el.style.cursor = feat ? 'pointer' : 'default';
-            }
-          }}
+          polygonsTransitionDuration={isMobile ? 500 : 1500} // Faster transitions on mobile
+          onPolygonClick={handlePolygonClick}
+          onPolygonHover={isMobile ? undefined : handlePolygonHover} // Disable raycasting hover queries on touch screens
 
           // Globe interaction
-          onGlobeClick={() => {
-            onSelectEvent(null);
-            if (onSelectCountry) onSelectCountry(null);
-            resumeRotation();
-            recordInteraction();
-          }}
+          onGlobeClick={handleGlobeClick}
 
           // Performance
           animateIn={true}
-          rendererConfig={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+          rendererConfig={rendererConfig}
         />
       )}
 
