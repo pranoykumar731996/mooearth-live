@@ -19,15 +19,48 @@ import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
 import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
+import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
 import EarthCastToggle from '@/components/EarthCast/EarthCastToggle';
 import NarrationHistory from '@/components/EarthCast/NarrationHistory';
 import AIOptimizationDashboard from '@/components/EarthCast/AIOptimizationDashboard';
+import AIAssistantDrawer from '@/components/EarthCast/AIAssistantDrawer';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
 import TimelineSlider from '@/components/Timeline/TimelineSlider';
 import AuthModal from '@/components/Layout/AuthModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
+import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
+
+const TEAM_FLAGS: Record<string, string> = {
+  'Mexico': '🇲🇽',
+  'South Africa': '🇿🇦',
+  'South Korea': '🇰🇷',
+  'Czechia': '🇨🇿',
+  'Canada': '🇨🇦',
+  'Bosnia and Herzegovina': '🇧🇦',
+  'USA': '🇺🇸',
+  'United States': '🇺🇸',
+  'Paraguay': '🇵🇾',
+  'Qatar': '🇶🇦',
+  'Switzerland': '🇨🇭',
+  'Brazil': '🇧🇷',
+  'Morocco': '🇲🇦',
+  'Haiti': '🇭🇹',
+  'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'Australia': '🇦🇺',
+  'Türkiye': '🇹🇷',
+  'Turkey': '🇹🇷',
+  'Germany': '🇩🇪',
+  'Croatia': '🇭🇷',
+  'Argentina': '🇦🇷',
+  'Japan': '🇯🇵',
+  'France': '🇫🇷',
+};
+
+function getTeamFlag(team: string): string {
+  return TEAM_FLAGS[team] || '🏳️';
+}
 
 // Dynamic import for heavy Globe component
 const GlobeScene = dynamic(() => import('@/components/Globe/GlobeScene'), {
@@ -54,6 +87,9 @@ export default function HomePage() {
   const [activeReaction, setActiveReaction] = useState<any>(null);
   const [isFullScreenGlobe, setIsFullScreenGlobe] = useState(false);
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures'>('emotional');
+  const [isPlayEarthActive, setIsPlayEarthActive] = useState(false);
 
   // Load session on mount
   useEffect(() => {
@@ -89,7 +125,7 @@ export default function HomePage() {
   // Fetch celebrations from API
   const fetchCelebrations = useCallback(async () => {
     try {
-      const res = await fetch('/api/celebrations');
+      const res = await fetch(`/api/celebrations?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setCelebrations(data.celebrations || []);
@@ -111,7 +147,8 @@ export default function HomePage() {
     liveEvents,
     celebrations,
     selectedCountry,
-    activeReaction
+    activeReaction,
+    selectedEvent
   );
 
   // Goal Celebration System
@@ -132,7 +169,7 @@ export default function HomePage() {
   }, [customCelebration, dismissHookCelebration]);
 
   // Phase 7: Sound Design (Web Audio API Procedural Synth Engine)
-  const { playHoverBlip, playDeepPulse, playUploadSuccess, playGoalCelebration, playNarrationIntro, playTensionDrone } = useSoundDesign(isMuted);
+  const { playHoverBlip, playDeepPulse, playUploadSuccess, playGoalCelebration, playNarrationIntro, playTensionDrone, playCorrectSound, playWrongSound, playTimerTick, playLevelUp } = useSoundDesign(isMuted, globalEnergyScore);
 
   // EarthCast: Fly camera to a country by name
   const handleEarthCastFlyTo = useCallback((country: string) => {
@@ -240,7 +277,13 @@ export default function HomePage() {
   // Handle event selection
   const handleSelectEvent = useCallback((event: WorldEvent | null) => {
     setSelectedEvent(event);
-  }, []);
+    if (event && event.footballData) {
+      // Small timeout to let camera flight start first
+      setTimeout(() => {
+        earthCast.narrateMatch(event);
+      }, 500);
+    }
+  }, [earthCast]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -321,6 +364,15 @@ export default function HomePage() {
             setIsCinematicMode(!isCinematicMode);
             playHoverBlip();
           }}
+          isPlayEarthActive={isPlayEarthActive}
+          onTogglePlayEarth={() => {
+            setIsPlayEarthActive(!isPlayEarthActive);
+            if (isPlayEarthActive) {
+              setSelectedCountry(null);
+              setSelectedEvent(null);
+            }
+            playHoverBlip();
+          }}
         />
       </div>
 
@@ -354,8 +406,8 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - hidden on full screen globe */}
-      {!isFullScreenGlobe && (
+      {/* Sidebar - hidden on full screen globe and Play Earth mode */}
+      {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <Sidebar
             activeCategory={activeCategory}
@@ -364,42 +416,132 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Phase 5: Global Trending Countries Scoreboard (hidden on full screen globe) */}
-      {!isFullScreenGlobe && (
-        <div className="fixed left-24 top-24 bottom-24 w-64 z-20 rounded-3xl glass border border-white/10 flex flex-col overflow-hidden hidden xl:flex shadow-[0_0_40px_rgba(0,0,0,0.5)] pointer-events-auto">
-          <div className="px-5 py-4 border-b border-white/[0.05] shrink-0">
-            <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-1.5">
-              <span>🔥</span> MOST EMOTIONAL
-            </h3>
-            <p className="text-[9px] text-white/40 uppercase tracking-widest font-semibold mt-0.5">Global Activity Score</p>
+      {/* Phase 5: Left HUD Sidebar Panel (hidden on full screen globe and Play Earth mode) */}
+      {!isFullScreenGlobe && !isPlayEarthActive && (
+        <div className="fixed left-24 top-24 bottom-24 w-64 z-20 rounded-3xl glass border border-white/10 flex flex-col overflow-hidden hidden lg:flex shadow-[0_0_40px_rgba(0,0,0,0.5)] pointer-events-auto">
+          {/* Tab Selector */}
+          <div className="flex border-b border-white/[0.06] bg-black/40 shrink-0">
+            <button
+              onClick={() => {
+                setLeftPanelTab('emotional');
+                playHoverBlip();
+              }}
+              className={`flex-1 py-3 text-center text-[10px] font-black tracking-widest transition-all cursor-pointer border-b-2 ${
+                leftPanelTab === 'emotional'
+                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
+                  : 'text-white/40 border-transparent hover:text-white/70'
+              }`}
+            >
+              🔥 EMOTIONAL
+            </button>
+            <button
+              onClick={() => {
+                setLeftPanelTab('fixtures');
+                playHoverBlip();
+              }}
+              className={`flex-1 py-3 text-center text-[10px] font-black tracking-widest transition-all cursor-pointer border-b-2 ${
+                leftPanelTab === 'fixtures'
+                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
+                  : 'text-white/40 border-transparent hover:text-white/70'
+              }`}
+            >
+              ⚽ FIXTURES
+            </button>
           </div>
+
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            {trendingCountries.map((tc) => (
-              <motion.div
-                key={tc.country}
-                onClick={() => {
-                  setSelectedCountry(tc.country);
-                  setSelectedEvent(null);
-                  playHoverBlip();
-                }}
-                whileHover={{ scale: 1.02 }}
-                className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1.5 ${
-                  selectedCountry === tc.country ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg leading-none">{tc.flag}</span>
-                    <span className="font-bold text-white text-xs truncate max-w-[120px]">{tc.country}</span>
-                  </div>
-                  <span className="text-[10px] font-black text-cyan-400">{tc.score}%</span>
+            {leftPanelTab === 'emotional' ? (
+              <>
+                <div className="px-1 pb-1">
+                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Global Activity Score</h4>
                 </div>
-                <div className="flex items-center justify-between text-[9px] text-white/50">
-                  <span className="uppercase font-semibold tracking-wider">{tc.mood}</span>
-                  <span className="truncate max-w-[140px] text-white/30">{tc.activityText}</span>
+                {trendingCountries.map((tc) => (
+                  <motion.div
+                    key={tc.country}
+                    onClick={() => {
+                      setSelectedCountry(tc.country);
+                      setSelectedEvent(null);
+                      playHoverBlip();
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1.5 ${
+                      selectedCountry === tc.country ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg leading-none">{tc.flag}</span>
+                        <span className="font-bold text-white text-xs truncate max-w-[120px]">{tc.country}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-cyan-400">{tc.score}%</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[9px] text-white/50">
+                      <span className="uppercase font-semibold tracking-wider">{tc.mood}</span>
+                      <span className="truncate max-w-[140px] text-white/30">{tc.activityText}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="px-1 pb-1">
+                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h4>
                 </div>
-              </motion.div>
-            ))}
+                {liveEvents.filter(e => e.category === 'football').map((event) => {
+                  if (!event.footballData) return null;
+                  const fd = event.footballData;
+                  const isLive = fd.status === 'LIVE';
+                  const isFT = fd.status === 'FT';
+                  
+                  return (
+                    <motion.div
+                      key={event.id}
+                      onClick={() => {
+                        setSelectedCountry(event.country);
+                        setSelectedEvent(event);
+                        playHoverBlip();
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1.5 ${
+                        selectedEvent?.id === event.id ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-sm shrink-0">{getTeamFlag(fd.homeTeam)}</span>
+                          <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.homeTeam}</span>
+                        </div>
+                        {fd.status !== 'NS' && (
+                          <span className="text-xs font-black text-white px-2 py-0.5 bg-white/10 rounded tabular-nums">{fd.homeScore}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-sm shrink-0">{getTeamFlag(fd.awayTeam)}</span>
+                          <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.awayTeam}</span>
+                        </div>
+                        {fd.status !== 'NS' && (
+                          <span className="text-xs font-black text-white px-2 py-0.5 bg-white/10 rounded tabular-nums">{fd.awayScore}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-[9px] mt-1 border-t border-white/5 pt-2 font-medium">
+                        {isLive ? (
+                          <span className="text-emerald-400 font-bold animate-pulse flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                            LIVE {fd.elapsed}'
+                          </span>
+                        ) : isFT ? (
+                          <span className="text-white/35 font-bold uppercase tracking-wider">FT</span>
+                        ) : (
+                          <span className="text-cyan-400/80 font-bold uppercase tracking-wider">UPCOMING</span>
+                        )}
+                        <span className="text-white/30 truncate max-w-[100px]">{event.city}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </>
+            )}
 
             {/* EarthCast Narration History */}
             <NarrationHistory
@@ -443,6 +585,29 @@ export default function HomePage() {
       {/* GOAL CELEBRATION OVERLAY */}
       <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />
 
+      {/* EVENT DETAIL POPUP OVERLAY */}
+      {!isPlayEarthActive && (
+        <EventPopup event={selectedEvent} onClose={() => handleSelectEvent(null)} />
+      )}
+
+      {/* PLAY EARTH GAME MODE OVERLAY */}
+      <PlayEarthOverlay
+        isActive={isPlayEarthActive}
+        selectedCountry={selectedCountry}
+        onClose={() => {
+          setIsPlayEarthActive(false);
+          setSelectedCountry(null);
+          setSelectedEvent(null);
+          playHoverBlip();
+        }}
+        onPlaySound={playHoverBlip}
+        onCorrectSound={playCorrectSound}
+        onWrongSound={playWrongSound}
+        onTimerTick={playTimerTick}
+        onLevelUp={playLevelUp}
+        username={currentUser?.username || 'Guest'}
+      />
+
       {/* EARTHCAST NARRATION OVERLAY */}
       <EarthCastOverlay
         currentNarration={earthCast.currentNarration}
@@ -456,6 +621,15 @@ export default function HomePage() {
         isOpen={isAiDashboardOpen}
         onClose={() => setIsAiDashboardOpen(false)}
         stats={earthCast.aiStats}
+      />
+
+      {/* MOOEARTH AI ASSISTANT DRAWER */}
+      <AIAssistantDrawer
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        events={filteredEvents}
+        trendingCountries={trendingCountries}
+        globalEnergyScore={globalEnergyScore}
       />
 
       {/* AUTHENTICATION MODAL */}
@@ -482,7 +656,7 @@ export default function HomePage() {
       />
 
       {/* Live Feed or Country Reactions */}
-      {!isFullScreenGlobe && (
+      {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
             {selectedCountry ? (
@@ -517,6 +691,9 @@ export default function HomePage() {
                     playHoverBlip();
                   }}
                   activeCategory={activeCategory}
+                  onSelectCountry={setSelectedCountry}
+                  onPlaySound={playHoverBlip}
+                  footballActive={apiStatus?.footballActive}
                 />
               </motion.div>
             )}
@@ -626,7 +803,17 @@ export default function HomePage() {
             UPLOAD REACTION
           </button>
 
-          <button className="relative group w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-300/50 shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:shadow-[0_0_60px_rgba(0,229,255,0.6)] transition-all duration-300 hover:scale-110">
+          <button
+            onClick={() => {
+              setIsAssistantOpen(!isAssistantOpen);
+              playHoverBlip();
+            }}
+            className={`relative group w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-300/50 transition-all duration-300 hover:scale-110 cursor-pointer ${
+              isAssistantOpen
+                ? 'shadow-[0_0_50px_rgba(0,229,255,0.6)] border-cyan-400 scale-105'
+                : 'shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:shadow-[0_0_60px_rgba(0,229,255,0.6)]'
+            }`}
+          >
             <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-[marker-ring_2s_linear_infinite]" />
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a2 2 0 0 1 2 2c0 7.49-2 14-2 14" />
@@ -636,7 +823,7 @@ export default function HomePage() {
             {/* Tooltip */}
             <div className="absolute right-[calc(100%+16px)] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               <div className="glass px-4 py-2 rounded-xl text-sm font-medium text-white shadow-xl">
-                MooEarth AI Assistant
+                {isAssistantOpen ? 'Close AI Assistant' : 'MooEarth AI Assistant'}
               </div>
             </div>
           </button>

@@ -61,17 +61,42 @@ export function useGoalCelebration(events: WorldEvent[]) {
   const [celebration, setCelebration] = useState<GoalCelebration | null>(null);
   const processedGoalIds = useRef<Set<string>>(new Set());
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRun = useRef(true);
 
   const dismiss = useCallback(() => {
     setCelebration(null);
   }, []);
 
   useEffect(() => {
+    if (isFirstRun.current) {
+      // On initial load, mark all currently existing goals as processed so we don't celebrate past goals.
+      for (const event of events) {
+        if (event.footballData?.goals) {
+          for (const goal of event.footballData.goals) {
+            const goalId = `${event.id}-${goal.player}-${goal.time}`;
+            processedGoalIds.current.add(goalId);
+          }
+        }
+      }
+      isFirstRun.current = false;
+      return;
+    }
+
     for (const event of events) {
       if (!event.footballData?.goals?.length) continue;
 
+      const matchStatus = event.footballData.status;
+
       for (const goal of event.footballData.goals) {
         const goalId = `${event.id}-${goal.player}-${goal.time}`;
+
+        // If match is NOT live, just mark goals as seen — never celebrate them
+        if (matchStatus !== 'LIVE' && matchStatus !== 'HT') {
+          processedGoalIds.current.add(goalId);
+          continue;
+        }
+
+        // Already celebrated this goal
         if (processedGoalIds.current.has(goalId)) continue;
 
         processedGoalIds.current.add(goalId);

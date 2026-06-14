@@ -21,7 +21,7 @@ export function useLiveEvents() {
 
     async function fetchEvents() {
       try {
-        const response = await fetch('/api/events');
+        const response = await fetch(`/api/events?t=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
         
         const data = await response.json();

@@ -107,7 +107,7 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
   }));
 
   const allHeadlines = [...celebrationHeadlines, ...newsHeadlines];
-  let contextText = allHeadlines.map(h => h.title).join('. ');
+  let contextText = allHeadlines.map(h => `${h.title}: ${h.summary}`).join('. ');
   
   if (!contextText) {
     contextText = `No live events currently reported for ${country}`;

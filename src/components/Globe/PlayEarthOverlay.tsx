@@ -1,0 +1,708 @@
+// ============================================================
+// Play Earth — Interactive Game Overlay
+// ============================================================
+// Premium, cinematic quiz game HUD. Renders as a fixed overlay
+// above the globe. Manages category selection, timed questions,
+// result display, streaks, XP, and badge animations.
+
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase } from '@/types';
+import { getNextQuestion, QUIZ_CATEGORIES, XP_REWARDS, calculateLevel } from '@/data/questions';
+import { findCountryMeta } from '@/data/questions/countryMetadata';
+
+const TIMER_SECONDS = 15;
+const STREAK_BONUS_MULTIPLIER = 1.5; // 50% bonus XP at streak ≥3
+
+interface PlayEarthOverlayProps {
+  isActive: boolean;
+  selectedCountry: string | null;
+  onClose: () => void;
+  onPlaySound: () => void;
+  onCorrectSound: () => void;
+  onWrongSound: () => void;
+  onTimerTick: (urgency: number) => void;
+  onLevelUp: () => void;
+  username: string;
+}
+
+/** Load game state from localStorage */
+function loadGameState(username: string): PlayerGameState {
+  if (typeof window === 'undefined') return createDefaultState(username);
+  try {
+    const raw = localStorage.getItem(`mooearth_quiz_progress_${username}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return createDefaultState(username);
+}
+
+function createDefaultState(username: string): PlayerGameState {
+  return {
+    username, xp: 0, level: 1, streak: 0, bestStreak: 0,
+    totalCorrect: 0, totalAnswered: 0, answeredIds: [],
+    countriesExplored: [], badges: [],
+  };
+}
+
+/** Save game state to localStorage */
+function saveGameState(state: PlayerGameState) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(`mooearth_quiz_progress_${state.username}`, JSON.stringify(state));
+  } catch (e) {}
+}
+
+export default function PlayEarthOverlay({
+  isActive, selectedCountry, onClose, onPlaySound,
+  onCorrectSound, onWrongSound, onTimerTick, onLevelUp, username,
+}: PlayEarthOverlayProps) {
+  const [phase, setPhase] = useState<PlayEarthPhase>('intro');
+  const [gameState, setGameState] = useState<PlayerGameState>(() => loadGameState(username));
+  const [selectedCategory, setSelectedCategory] = useState<QuizCategory>('geography');
+  const [currentQuestion, setCurrentQuestion] = useState<EarthQuestion | null>(null);
+  const [timer, setTimer] = useState(TIMER_SECONDS);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [xpGained, setXpGained] = useState(0);
+  const [showXpFloat, setShowXpFloat] = useState(false);
+  const [leveledUp, setLeveledUp] = useState(false);
+  const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load game state when username changes
+  useEffect(() => {
+    setGameState(loadGameState(username));
+  }, [username]);
+
+  // Reset quiz state and manage phase transitions on active/country changes
+  useEffect(() => {
+    if (!isActive) return;
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+
+    if (selectedCountry) {
+      setPhase('category-select');
+      onPlaySound();
+    } else {
+      setPhase('intro');
+    }
+
+    setIsLoadingQuestion(false);
+    setCurrentQuestion(null);
+    setSelectedAnswer(null);
+    setIsCorrect(null);
+    setTimer(TIMER_SECONDS);
+    setXpGained(0);
+    setShowXpFloat(false);
+    setLeveledUp(false);
+  }, [isActive, selectedCountry, onPlaySound]);
+
+  // Timer countdown during question phase
+  useEffect(() => {
+    if (phase !== 'question' || selectedAnswer !== null) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    setTimer(TIMER_SECONDS);
+    timerRef.current = setInterval(() => {
+      setTimer(prev => {
+        if (prev <= 1) {
+          // Time's up — treat as wrong answer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+          handleAnswer(-1); // -1 = no answer selected
+          return 0;
+        }
+        // Play tick sound with increasing urgency in last 5 seconds
+        if (prev <= 6) {
+          const urgency = (6 - prev) / 5; // 0 → 1
+          onTimerTick(urgency);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, selectedAnswer]);
+
+  /** Start a new question for the selected country/category */
+  const startQuestion = useCallback((category: QuizCategory) => {
+    if (!selectedCountry) return;
+    setSelectedCategory(category);
+    setIsLoadingQuestion(true);
+    onPlaySound();
+
+    if (loadTimeoutRef.current) {
+      clearTimeout(loadTimeoutRef.current);
+    }
+
+    loadTimeoutRef.current = setTimeout(() => {
+      const q = getNextQuestion(selectedCountry, category, gameState.answeredIds);
+      if (q) {
+        setCurrentQuestion(q);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setXpGained(0);
+        setShowXpFloat(false);
+        setLeveledUp(false);
+        setPhase('question');
+      } else {
+        setPhase('summary');
+      }
+      setIsLoadingQuestion(false);
+    }, 800);
+  }, [selectedCountry, gameState.answeredIds, onPlaySound]);
+
+  /** Handle answer selection */
+  const handleAnswer = useCallback((index: number) => {
+    if (!currentQuestion || selectedAnswer !== null) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    const correct = index === currentQuestion.correctIndex;
+    setSelectedAnswer(index);
+    setIsCorrect(correct);
+
+    setGameState(prev => {
+      const next = { ...prev };
+      next.totalAnswered++;
+      next.answeredIds = [...prev.answeredIds, currentQuestion.id];
+
+      if (correct) {
+        next.totalCorrect++;
+        next.streak++;
+        if (next.streak > next.bestStreak) next.bestStreak = next.streak;
+
+        // Calculate XP
+        let xp = XP_REWARDS[currentQuestion.difficulty] || 100;
+        if (next.streak >= 3) xp = Math.floor(xp * STREAK_BONUS_MULTIPLIER);
+        // Time bonus: faster answers get bonus
+        const timeBonus = Math.floor((timer / TIMER_SECONDS) * 50);
+        xp += timeBonus;
+        next.xp += xp;
+        setXpGained(xp);
+        setShowXpFloat(true);
+
+        // Level check
+        const newLevel = calculateLevel(next.xp);
+        if (newLevel > next.level) {
+          next.level = newLevel;
+          setLeveledUp(true);
+          setTimeout(() => onLevelUp(), 300);
+        }
+
+        onCorrectSound();
+      } else {
+        next.streak = 0;
+        onWrongSound();
+      }
+
+      // Track explored countries
+      if (selectedCountry && !next.countriesExplored.includes(selectedCountry)) {
+        next.countriesExplored = [...next.countriesExplored, selectedCountry];
+      }
+
+      next.lastPlayedAt = Date.now();
+      saveGameState(next);
+      return next;
+    });
+
+    // Auto-advance after showing result
+    setTimeout(() => {
+      setPhase('result');
+    }, 800);
+  }, [currentQuestion, selectedAnswer, timer, selectedCountry, onCorrectSound, onWrongSound, onLevelUp]);
+
+  /** Continue to next question or go back to category select */
+  const handleContinue = useCallback(() => {
+    onPlaySound();
+    setPhase('category-select');
+  }, [onPlaySound]);
+
+  /** Try another country */
+  const handleExploreMore = useCallback(() => {
+    onPlaySound();
+    setPhase('intro');
+  }, [onPlaySound]);
+
+  if (!isActive) return null;
+
+  const countryMeta = selectedCountry ? findCountryMeta(selectedCountry) : null;
+  const timerUrgent = timer <= 5;
+  const timerCritical = timer <= 3;
+  const accuracy = gameState.totalAnswered > 0
+    ? Math.round((gameState.totalCorrect / gameState.totalAnswered) * 100)
+    : 0;
+
+  return (
+    <div className="fixed inset-0 z-[45] pointer-events-none" id="play-earth-overlay">
+      {/* Top HUD Bar — Always visible */}
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-20 left-1/2 -translate-x-1/2 z-[46] pointer-events-auto"
+      >
+        <div className="glass px-5 py-2.5 rounded-full border border-emerald-500/30 flex items-center gap-3
+                        shadow-[0_0_25px_rgba(0,255,136,0.15)]">
+          <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shrink-0" />
+          <span className="text-[10px] text-emerald-400 uppercase tracking-[0.25em] font-black">
+            PLAY EARTH MODE
+          </span>
+          <span className="text-white/20">|</span>
+          <span className="text-xs text-white/80 font-bold">
+            ⭐ {gameState.xp.toLocaleString()} XP
+          </span>
+          <span className="text-white/20">|</span>
+          <span className="text-xs text-white/80 font-bold">
+            Lv.{gameState.level}
+          </span>
+          {gameState.streak > 0 && (
+            <>
+              <span className="text-white/20">|</span>
+              <span className="text-xs text-orange-400 font-black">
+                🔥 {gameState.streak} Streak
+              </span>
+            </>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Close button */}
+      <motion.button
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={onClose}
+        className="fixed top-24 right-6 z-[47] w-10 h-10 rounded-full glass border border-white/10
+                   flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10
+                   transition-all pointer-events-auto cursor-pointer"
+      >
+        ✕
+      </motion.button>
+
+      {/* ═══════════════ INTRO PHASE ═══════════════ */}
+      <AnimatePresence mode="wait">
+        {isLoadingQuestion && (
+          <motion.div
+            key="loading-challenge"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto"
+          >
+            <div className="glass rounded-3xl border border-cyan-500/30 p-8 text-center shadow-[0_0_60px_rgba(0,163,255,0.2)]">
+              <div className="relative w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+                <span className="absolute inset-0 rounded-full border-2 border-cyan-500/10 border-t-cyan-400 animate-spin" />
+                <span className="absolute inset-1.5 rounded-full border-2 border-emerald-500/10 border-b-emerald-400 animate-spin [animation-duration:1.5s] [animation-direction:reverse]" />
+                <span className="text-2xl animate-pulse">🛰️</span>
+              </div>
+              <h3 className="text-lg font-black text-white tracking-wider mb-2">
+                LOADING EARTH CHALLENGE
+              </h3>
+              <p className="text-xs text-cyan-400/80 uppercase tracking-widest font-black animate-pulse">
+                Establishing uplink to {selectedCountry}...
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {!isLoadingQuestion && phase === 'intro' && (
+          <motion.div
+            key="intro"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 z-[46] flex items-center justify-center pointer-events-none"
+          >
+            <div className="text-center pointer-events-auto">
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="text-7xl mb-6"
+              >
+                🌍
+              </motion.div>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mb-3
+                             bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500">
+                TAP ANY COUNTRY
+              </h2>
+              <p className="text-sm text-white/50 max-w-xs mx-auto">
+                Click on any country on the globe to begin your quiz adventure
+              </p>
+
+              {/* Stats ribbon */}
+              <div className="mt-8 flex items-center justify-center gap-4 flex-wrap">
+                <div className="glass px-4 py-2 rounded-xl border border-white/10 text-center">
+                  <div className="text-lg font-black text-white">{gameState.countriesExplored.length}</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Countries</div>
+                </div>
+                <div className="glass px-4 py-2 rounded-xl border border-white/10 text-center">
+                  <div className="text-lg font-black text-white">{gameState.totalCorrect}</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Correct</div>
+                </div>
+                <div className="glass px-4 py-2 rounded-xl border border-white/10 text-center">
+                  <div className="text-lg font-black text-white">{accuracy}%</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Accuracy</div>
+                </div>
+                <div className="glass px-4 py-2 rounded-xl border border-white/10 text-center">
+                  <div className="text-lg font-black text-orange-400">🔥 {gameState.bestStreak}</div>
+                  <div className="text-[9px] text-white/40 uppercase tracking-wider font-bold">Best Streak</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══════════════ CATEGORY SELECT ═══════════════ */}
+        {!isLoadingQuestion && phase === 'category-select' && selectedCountry && (
+          <motion.div
+            key="category"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.4 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto"
+          >
+            <div className="glass rounded-3xl border border-white/10 p-6
+                            shadow-[0_0_60px_rgba(0,0,0,0.5)]">
+              {/* Country header */}
+              <div className="flex items-center gap-3 mb-5">
+                <span className="text-3xl">{countryMeta?.flag || '🌍'}</span>
+                <div>
+                  <h3 className="text-lg font-black text-white">{selectedCountry}</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+                    {countryMeta?.continent || 'Choose a category'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Category Grid */}
+              <div className="grid grid-cols-3 gap-2.5">
+                {QUIZ_CATEGORIES.map((cat, i) => (
+                  <motion.button
+                    key={cat.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.06 }}
+                    onClick={() => startQuestion(cat.id)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-2xl
+                               bg-white/5 border border-white/5 hover:bg-white/10
+                               hover:border-white/15 transition-all cursor-pointer group"
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">{cat.emoji}</span>
+                    <span className="text-[10px] font-bold text-white/70 group-hover:text-white transition-colors">
+                      {cat.label}
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Back to explore */}
+              <button
+                onClick={handleExploreMore}
+                className="mt-4 w-full py-2 text-[10px] text-white/30 uppercase tracking-widest
+                           font-bold hover:text-white/60 transition-colors cursor-pointer"
+              >
+                ← Choose another country
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══════════════ QUESTION PHASE ═══════════════ */}
+        {!isLoadingQuestion && phase === 'question' && currentQuestion && (
+          <motion.div
+            key="question"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto"
+          >
+            <div className={`glass rounded-3xl border p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)]
+                            ${selectedAnswer !== null
+                              ? isCorrect
+                                ? 'border-emerald-500/40'
+                                : 'border-red-500/40 animate-[card-shake_0.5s_ease-in-out]'
+                              : 'border-white/10'
+                            }`}>
+
+              {/* Timer + Country header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{countryMeta?.flag || '🌍'}</span>
+                  <div>
+                    <span className="text-xs font-bold text-white/80">{selectedCountry}</span>
+                    <span className="text-[9px] text-white/30 ml-2 uppercase tracking-wider">
+                      {currentQuestion.category}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Timer */}
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border
+                                ${timerCritical
+                                  ? 'border-red-500/60 bg-red-500/15 animate-[timer-heartbeat_0.6s_ease-in-out_infinite]'
+                                  : timerUrgent
+                                    ? 'border-amber-500/40 bg-amber-500/10'
+                                    : 'border-white/10 bg-white/5'
+                                }`}>
+                  <span className={`text-lg font-black tabular-nums
+                                   ${timerCritical ? 'text-red-400' : timerUrgent ? 'text-amber-400' : 'text-white'}`}>
+                    {timer}
+                  </span>
+                  <span className="text-[9px] text-white/40 uppercase font-bold">sec</span>
+                </div>
+              </div>
+
+              {/* Difficulty badge */}
+              <div className="mb-3">
+                <span className={`text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-full
+                                 ${currentQuestion.difficulty === 'easy' ? 'bg-emerald-500/15 text-emerald-400' :
+                                   currentQuestion.difficulty === 'medium' ? 'bg-amber-500/15 text-amber-400' :
+                                   'bg-red-500/15 text-red-400'}`}>
+                  {currentQuestion.difficulty} • +{XP_REWARDS[currentQuestion.difficulty]} XP
+                </span>
+              </div>
+
+              {/* Question */}
+              <h3 className="text-base sm:text-lg font-bold text-white mb-5 leading-snug">
+                {currentQuestion.question}
+              </h3>
+
+              {/* Answer Choices */}
+              <div className="space-y-2.5">
+                {currentQuestion.choices.map((choice, i) => {
+                  const isSelected = selectedAnswer === i;
+                  const isCorrectChoice = i === currentQuestion.correctIndex;
+                  const showResult = selectedAnswer !== null;
+
+                  let choiceStyle = 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20';
+                  if (showResult) {
+                    if (isCorrectChoice) {
+                      choiceStyle = 'bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_15px_rgba(0,255,136,0.1)]';
+                    } else if (isSelected && !isCorrect) {
+                      choiceStyle = 'bg-red-500/15 border-red-500/40 shadow-[0_0_15px_rgba(255,60,60,0.1)]';
+                    } else {
+                      choiceStyle = 'bg-white/[0.02] border-white/5 opacity-50';
+                    }
+                  }
+
+                  return (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.08 }}
+                      onClick={() => selectedAnswer === null && handleAnswer(i)}
+                      disabled={selectedAnswer !== null}
+                      className={`w-full text-left px-4 py-3 rounded-2xl border transition-all duration-200
+                                 flex items-center gap-3 cursor-pointer ${choiceStyle}
+                                 ${selectedAnswer === null ? 'active:scale-[0.98]' : ''}`}
+                    >
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0
+                                       ${showResult && isCorrectChoice ? 'bg-emerald-500/30 text-emerald-300' :
+                                         showResult && isSelected && !isCorrect ? 'bg-red-500/30 text-red-300' :
+                                         'bg-white/10 text-white/50'}`}>
+                        {showResult && isCorrectChoice ? '✓' :
+                         showResult && isSelected && !isCorrect ? '✗' :
+                         String.fromCharCode(65 + i)}
+                      </span>
+                      <span className={`text-sm font-medium
+                                       ${showResult && isCorrectChoice ? 'text-emerald-300' :
+                                         showResult && isSelected && !isCorrect ? 'text-red-300' :
+                                         'text-white/80'}`}>
+                        {choice}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* XP Float Animation */}
+              <AnimatePresence>
+                {showXpFloat && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, y: -40, scale: 1.2 }}
+                    exit={{ opacity: 0, y: -80, scale: 0.8 }}
+                    transition={{ duration: 1 }}
+                    className="absolute top-0 right-8 text-emerald-400 font-black text-xl pointer-events-none"
+                  >
+                    +{xpGained} XP
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══════════════ RESULT PHASE ═══════════════ */}
+        {!isLoadingQuestion && phase === 'result' && currentQuestion && (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.4 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto"
+          >
+            <div className={`glass rounded-3xl border p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)]
+                            ${isCorrect ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+
+              {/* Result Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl
+                                ${isCorrect
+                                  ? 'bg-emerald-500/15 shadow-[0_0_20px_rgba(0,255,136,0.15)]'
+                                  : 'bg-red-500/15 shadow-[0_0_20px_rgba(255,60,60,0.15)]'
+                                }`}>
+                  {isCorrect ? '🎉' : '💡'}
+                </div>
+                <div>
+                  <h3 className={`text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {isCorrect ? 'Correct!' : 'Not Quite!'}
+                  </h3>
+                  {isCorrect && xpGained > 0 && (
+                    <p className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">
+                      +{xpGained} XP earned {gameState.streak >= 3 ? '(🔥 Streak Bonus!)' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Correct answer display */}
+              {!isCorrect && (
+                <div className="mb-4 px-4 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                  <p className="text-[10px] text-emerald-400/60 uppercase tracking-widest font-bold mb-1">
+                    Correct Answer
+                  </p>
+                  <p className="text-sm text-emerald-300 font-bold">
+                    {currentQuestion.choices[currentQuestion.correctIndex]}
+                  </p>
+                </div>
+              )}
+
+              {/* Fun Fact */}
+              {currentQuestion.funFact && (
+                <div className="mb-5 px-4 py-3 rounded-2xl bg-cyan-500/5 border border-cyan-500/10">
+                  <p className="text-[10px] text-cyan-400/60 uppercase tracking-widest font-bold mb-1">
+                    💡 Fun Fact
+                  </p>
+                  <p className="text-xs text-white/70 leading-relaxed">{currentQuestion.funFact}</p>
+                </div>
+              )}
+
+              {/* Level Up Celebration */}
+              <AnimatePresence>
+                {leveledUp && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    className="mb-4 px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500/15 to-orange-500/15
+                               border border-amber-500/30 text-center"
+                    style={{ animation: 'float-badge 0.6s ease-out' }}
+                  >
+                    <span className="text-2xl">🏆</span>
+                    <p className="text-amber-400 font-black text-sm">LEVEL UP!</p>
+                    <p className="text-[10px] text-white/50">You reached Level {gameState.level}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleContinue}
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600
+                             text-white font-bold text-sm tracking-wider
+                             shadow-[0_0_20px_rgba(0,255,136,0.2)]
+                             hover:shadow-[0_0_30px_rgba(0,255,136,0.4)]
+                             hover:scale-[1.02] transition-all cursor-pointer"
+                >
+                  Next Question →
+                </button>
+                <button
+                  onClick={handleExploreMore}
+                  className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10
+                             text-white/60 font-bold text-sm hover:text-white hover:bg-white/10
+                             transition-all cursor-pointer"
+                >
+                  🌍
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══════════════ SUMMARY PHASE ═══════════════ */}
+        {!isLoadingQuestion && phase === 'summary' && (
+          <motion.div
+            key="summary"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto"
+          >
+            <div className="glass rounded-3xl border border-white/10 p-6
+                            shadow-[0_0_60px_rgba(0,0,0,0.5)]">
+              <div className="text-center mb-5">
+                <span className="text-4xl">🌟</span>
+                <h3 className="text-xl font-black text-white mt-2">
+                  {selectedCountry} Mastered!
+                </h3>
+                <p className="text-xs text-white/40 mt-1">
+                  No more questions available for this category. Try another!
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleContinue}
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600
+                             text-white font-bold text-sm tracking-wider cursor-pointer
+                             hover:scale-[1.02] transition-all"
+                >
+                  Try Another Category
+                </button>
+                <button
+                  onClick={handleExploreMore}
+                  className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10
+                             text-white/60 font-bold text-sm cursor-pointer
+                             hover:text-white hover:bg-white/10 transition-all"
+                >
+                  🌍 New Country
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

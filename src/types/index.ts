@@ -10,7 +10,8 @@ export type EventCategory =
   | 'technology'
   | 'business'
   | 'weather'
-  | 'entertainment';
+  | 'entertainment'
+  | 'worldcup';
 
 export interface FootballMatchData {
   homeTeam: string;
@@ -36,6 +37,7 @@ export interface WorldEvent {
   source: string;
   publishedAt: string; // ISO 8601
   footballData?: FootballMatchData; // For V2 Football Engine
+  stadium?: string; // Venue stadium name
 }
 
 /** Visual configuration for a category */
@@ -86,4 +88,69 @@ export interface ReactionEvent {
   socialPosts: { id: string; user: string; text: string; time: string; likes: number }[];
   trendingHashtags: string[];
   sentiment: SentimentData;
+}
+
+// ============================================================
+// Play Earth — Game Mode Types
+// ============================================================
+
+/** Quiz question categories */
+export type QuizCategory =
+  | 'geography'
+  | 'sports'
+  | 'weather'
+  | 'technology'
+  | 'space'
+  | 'history'
+  | 'science'
+  | 'nature'
+  | 'politics'
+  | 'culture'
+  | 'trivia';
+
+/** Difficulty tiers */
+export type QuizDifficulty = 'easy' | 'medium' | 'hard';
+
+/** A single trivia question */
+export interface EarthQuestion {
+  id: string;
+  country: string;           // Country this question relates to
+  category: QuizCategory;
+  difficulty: QuizDifficulty;
+  question: string;
+  choices: string[];          // 4 multiple-choice options
+  correctIndex: number;       // Index of the correct answer in choices[]
+  funFact?: string;           // Educational tidbit shown after answering
+}
+
+/** Badge definition */
+export interface GameBadge {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  unlockedAt?: number;        // Timestamp when unlocked
+}
+
+/** Phase of the Play Earth game flow */
+export type PlayEarthPhase =
+  | 'intro'             // Initial landing — "Tap any country"
+  | 'category-select'   // Choose a quiz category
+  | 'question'          // Active timed question
+  | 'result'            // Showing answer result
+  | 'summary';          // Post-round summary
+
+/** Persistent player game state (stored in localStorage) */
+export interface PlayerGameState {
+  username: string;
+  xp: number;
+  level: number;
+  streak: number;              // Current consecutive correct answers
+  bestStreak: number;
+  totalCorrect: number;
+  totalAnswered: number;
+  answeredIds: string[];       // IDs of answered questions (anti-repeat)
+  countriesExplored: string[]; // Countries the player has quizzed on
+  badges: GameBadge[];
+  lastPlayedAt?: number;       // Timestamp
 }

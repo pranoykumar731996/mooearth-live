@@ -23,6 +23,8 @@ interface NavbarProps {
   onToggleMute: () => void;
   isCinematicModeActive: boolean;
   onToggleCinematicMode: () => void;
+  isPlayEarthActive: boolean;
+  onTogglePlayEarth: () => void;
 }
 
 export default function Navbar({
@@ -38,8 +40,21 @@ export default function Navbar({
   onToggleMute,
   isCinematicModeActive,
   onToggleCinematicMode,
+  isPlayEarthActive,
+  onTogglePlayEarth,
 }: NavbarProps) {
   const isSystemActive = apiStatus?.newsActive && apiStatus?.footballActive && apiStatus?.earthCastActive;
+  const isSystemDegraded = !isSystemActive && (apiStatus?.newsActive || apiStatus?.footballActive);
+
+  const badgeClass = isSystemActive
+    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+    : isSystemDegraded
+    ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.1)]'
+    : 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]';
+
+  const dotPingClass = isSystemActive ? 'bg-emerald-400' : isSystemDegraded ? 'bg-amber-400' : 'bg-red-400';
+  const dotColorClass = isSystemActive ? 'bg-emerald-500' : isSystemDegraded ? 'bg-amber-500' : 'bg-red-500';
+  const badgeLabel = isSystemActive ? 'LIVE DATA ACTIVE' : isSystemDegraded ? 'PARTIAL LIVE DATA' : 'LIVE DATA OFFLINE';
 
   return (
     <nav
@@ -71,20 +86,12 @@ export default function Navbar({
 
         {/* Live Data Production Badge */}
         <div className="relative group pointer-events-auto cursor-help">
-          <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${
-            isSystemActive 
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-              : 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
-          }`}>
+          <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${badgeClass}`}>
             <span className="w-1.5 h-1.5 rounded-full relative flex">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isSystemActive ? 'bg-emerald-400' : 'bg-red-400'
-              }`} />
-              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                isSystemActive ? 'bg-emerald-500' : 'bg-red-500'
-              }`} />
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotPingClass}`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColorClass}`} />
             </span>
-            <span>{isSystemActive ? 'LIVE DATA ACTIVE' : 'LIVE DATA OFFLINE'}</span>
+            <span>{badgeLabel}</span>
           </div>
 
           {/* Tooltip */}
@@ -121,6 +128,23 @@ export default function Navbar({
 
       {/* Right Section */}
       <div className="flex items-center gap-3 shrink-0">
+        {/* Play Earth Game Mode Toggle */}
+        <button
+          onClick={onTogglePlayEarth}
+          title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
+          className={`relative h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer ${
+            isPlayEarthActive
+              ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-400 shadow-[0_0_18px_rgba(0,255,136,0.3)] animate-[neon-pulse_2s_ease-in-out_infinite]'
+              : 'bg-white/5 border-white/10 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)]'
+          }`}
+        >
+          {isPlayEarthActive && (
+            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
+          )}
+          <span>🎮</span>
+          <span className="hidden sm:inline">PLAY EARTH</span>
+        </button>
+
         {/* Phase 3: Cinematic Mode Toggle */}
         <button
           onClick={onToggleCinematicMode}

@@ -28,7 +28,7 @@ export default function CountryReactionPanel({ country, onClose, onReactionLoade
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/reactions?country=${encodeURIComponent(country)}`)
+    fetch(`/api/reactions?country=${encodeURIComponent(country)}&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         if (data.reaction) {

@@ -31,6 +31,10 @@ export async function GET(request: NextRequest) {
         footballActive: status.footballActive,
         earthCastActive,
       }
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      }
     });
   } catch (error) {
     console.error('API /events error:', error);

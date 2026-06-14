@@ -23,7 +23,12 @@ export function useEventFilter({
 
     // Filter by category
     if (activeCategory) {
-      filtered = filtered.filter((e) => e.category === activeCategory);
+      filtered = filtered.filter((e) => {
+        if (activeCategory === 'worldcup') {
+          return e.category === 'worldcup' || e.category === 'football';
+        }
+        return e.category === activeCategory;
+      });
     }
 
     // Filter by search query

@@ -4,15 +4,19 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
+import WorldCupSchedule from './WorldCupSchedule';
 
 interface LiveFeedProps {
   events: WorldEvent[];
   onSelectEvent: (event: WorldEvent) => void;
   activeCategory?: EventCategory | null;
+  onSelectCountry?: (country: string | null) => void;
+  onPlaySound?: () => void;
+  footballActive?: boolean;
 }
 
 type FootballTab = 'matches' | 'knockout' | 'players' | 'stats' | 'table';
@@ -60,8 +64,13 @@ function formatRelativeTime(dateStr: string | undefined): string {
   return `${days}d ago`;
 }
 
-export default function LiveFeed({ events, onSelectEvent, activeCategory }: LiveFeedProps) {
+export default function LiveFeed({ events, onSelectEvent, activeCategory, onSelectCountry, onPlaySound, footballActive = true }: LiveFeedProps) {
   const [footballTab, setFootballTab] = useState<FootballTab>('matches');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const sortedEvents = useMemo(() => {
     return [...events].sort(
@@ -81,46 +90,62 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
     return counts;
   }, [events]);
 
-  // Grouped matches for matches tab
+  // Grouped matches for matches tab — dynamic date labels
   const groupedMatches = useMemo(() => {
     const live: WorldEvent[] = [];
-    const finished: WorldEvent[] = [];
-    const upcomingTomorrow: WorldEvent[] = [];
-    const upcomingLater: WorldEvent[] = [];
+    const dateGroups: Record<string, WorldEvent[]> = {};
+
+    // Helper: get local YYYY-MM-DD key from a Date
+    const toLocalKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const now = new Date();
+    const todayKey = toLocalKey(now);
+    const tomorrowDate = new Date(now.getTime() + 86400000);
+    const tomorrowKey = toLocalKey(tomorrowDate);
+    const yesterdayDate = new Date(now.getTime() - 86400000);
+    const yesterdayKey = toLocalKey(yesterdayDate);
 
     sortedEvents.forEach(e => {
       if (e.category !== 'football') return;
-      
       const fd = e.footballData;
       if (!fd) return;
 
-      if (fd.status === 'FT') {
-        finished.push(e);
-      } else if (fd.status === 'NS') {
-        const isTomorrow = e.title.includes('Canada') || e.title.includes('USA') || e.title.includes('Bosnia') || e.title.includes('Paraguay');
-        if (isTomorrow) {
-          upcomingTomorrow.push(e);
-        } else {
-          upcomingLater.push(e);
-        }
-      } else {
+      // Live matches get their own bucket
+      if (fd.status !== 'NS' && fd.status !== 'FT') {
         live.push(e);
+        return;
       }
+
+      // Group by local kickoff date
+      const kickoff = new Date(e.publishedAt);
+      const key = toLocalKey(kickoff);
+      if (!dateGroups[key]) dateGroups[key] = [];
+      dateGroups[key].push(e);
     });
 
-    const groups = [];
+    const groups: { title: string; matches: WorldEvent[] }[] = [];
+
     if (live.length > 0) {
       groups.push({ title: 'Group Stage · Live Now', matches: live });
     }
-    if (finished.length > 0) {
-      groups.push({ title: 'Group Stage · Today', matches: finished });
-    }
-    if (upcomingTomorrow.length > 0) {
-      groups.push({ title: 'Group Stage · Tomorrow', matches: upcomingTomorrow });
-    }
-    if (upcomingLater.length > 0) {
-      groups.push({ title: 'Group Stage · Sun, 14 Jun', matches: upcomingLater });
-    }
+
+    // Sort date keys chronologically and label them
+    Object.keys(dateGroups).sort().forEach(key => {
+      let label: string;
+      if (key === todayKey) {
+        label = 'Today';
+      } else if (key === tomorrowKey) {
+        label = 'Tomorrow';
+      } else if (key === yesterdayKey) {
+        label = 'Yesterday';
+      } else {
+        const d = new Date(key + 'T12:00:00');
+        label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+      }
+      groups.push({ title: `Group Stage · ${label}`, matches: dateGroups[key] });
+    });
+
     return groups;
   }, [sortedEvents]);
 
@@ -153,10 +178,29 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
   );
 
   const renderMatchesTab = () => {
+    if (!mounted) {
+      return (
+        <div className="flex items-center justify-center py-12 text-white/20">
+          <div className="w-6 h-6 rounded-full border border-cyan-500/20 border-t-cyan-400 animate-spin" />
+        </div>
+      );
+    }
+
+    if (!footballActive) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+          <span className="text-2xl mb-2">⚠️</span>
+          <span>Live football data temporarily unavailable</span>
+        </div>
+      );
+    }
+
     if (groupedMatches.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs">
-          <span>No football matches found.</span>
+        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+          <span className="text-2xl mb-2">📡</span>
+          <span>Connecting to live football feeds...</span>
+          <p className="text-[10px] text-white/20 mt-1 lowercase normal-case">No active matches found at this moment</p>
         </div>
       );
     }
@@ -187,11 +231,24 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
                 ? 'Group C'
                 : 'Group D';
 
-              let timeStr = '12:30 am';
-              if (event.title.includes('Paraguay') || event.title.includes('USA')) timeStr = '6:30 am';
-              if (event.title.includes('Morocco')) timeStr = '3:30 am';
-              if (event.title.includes('Scotland')) timeStr = '6:30 am';
-              if (event.title.includes('Türkiye') || event.title.includes('Australia')) timeStr = '9:30 am';
+              const matchDate = new Date(event.publishedAt);
+              const toLocalKey = (d: Date) =>
+                `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const matchDateKey = toLocalKey(matchDate);
+              const nowLocalKey = toLocalKey(new Date());
+              const tomorrowLocalKey = toLocalKey(new Date(Date.now() + 86400000));
+              const yesterdayLocalKey = toLocalKey(new Date(Date.now() - 86400000));
+
+              const dayLabel = matchDateKey === nowLocalKey ? 'Today'
+                : matchDateKey === tomorrowLocalKey ? 'Tomorrow'
+                : matchDateKey === yesterdayLocalKey ? 'Yesterday'
+                : matchDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+              const timeStr = matchDate.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              }).toLowerCase();
 
               return (
                 <div
@@ -251,7 +308,7 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
                     {fd.status === 'FT' ? (
                       <>
                         <span className="text-xs font-black text-white tracking-wide">FT</span>
-                        <span className="text-[9px] text-white/30 font-medium uppercase mt-0.5 tracking-wider">Today</span>
+                        <span className="text-[9px] text-white/30 font-medium uppercase mt-0.5 tracking-wider">{dayLabel}</span>
                       </>
                     ) : fd.status === 'LIVE' ? (
                       <>
@@ -260,7 +317,7 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
                       </>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <span className="text-[8px] font-bold text-white/40 uppercase">Tomorrow</span>
+                        <span className="text-[8px] font-bold text-white/40 uppercase">{dayLabel}</span>
                         <span className="text-[10px] font-black text-cyan-400/80 mt-0.5 tabular-nums">{timeStr}</span>
                         {/* Highlights Thumbnail Match Story Box */}
                         {fd.homeTeam === 'Canada' || fd.homeTeam === 'USA' ? (
@@ -288,134 +345,62 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
   };
 
   const renderKnockoutTab = () => {
-    const rounds = [
-      {
-        stage: 'Round of 16',
-        matches: [
-          { home: 'Germany', away: 'Croatia', homeScore: 3, awayScore: 1 },
-          { home: 'Argentina', away: 'Australia', homeScore: 2, awayScore: 0 },
-          { home: 'Brazil', away: 'Japan', homeScore: 2, awayScore: 1 },
-          { home: 'France', away: 'USA', homeScore: 3, awayScore: 2 },
-        ]
-      },
-      {
-        stage: 'Quarter-Finals',
-        matches: [
-          { home: 'Germany', away: 'Argentina', homeScore: 1, awayScore: 2 },
-          { home: 'Brazil', away: 'France', homeScore: 0, awayScore: 1 },
-        ]
-      },
-      {
-        stage: 'Semi-Finals',
-        matches: [
-          { home: 'Argentina', away: 'France', homeScore: 3, awayScore: 2 }
-        ]
-      }
-    ];
-
     return (
-      <div className="space-y-4">
-        {rounds.map((round) => (
-          <div key={round.stage} className="space-y-2.5">
-            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 py-1 bg-white/[0.02] rounded-md">
-              {round.stage}
-            </div>
-            <div className="space-y-2">
-              {round.matches.map((m, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between text-xs">
-                  <div className="space-y-1.5 flex-1 min-w-0 pr-4">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-medium text-white/90">
-                        <span>{getTeamFlag(m.home)}</span>
-                        <span>{m.home}</span>
-                      </span>
-                      <span className="font-bold text-white tabular-nums">{m.homeScore}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 font-medium text-white/90">
-                        <span>{getTeamFlag(m.away)}</span>
-                        <span>{m.away}</span>
-                      </span>
-                      <span className="font-bold text-white/60 tabular-nums">{m.awayScore}</span>
-                    </div>
-                  </div>
-                  <div className="text-[9px] font-black text-cyan-400 uppercase tracking-wider pl-3 border-l border-white/5 select-none">
-                    FT
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+        <span className="text-2xl mb-2">🏆</span>
+        <span>Knockout stages only appear when officially active in the API</span>
       </div>
     );
   };
 
   const renderPlayersTab = () => {
-    const scorers = [
-      { rank: 1, name: 'Lionel Messi', team: 'Argentina', value: 5, flag: '🇦🇷' },
-      { rank: 2, name: 'Kylian Mbappé', team: 'France', value: 4, flag: '🇫🇷' },
-      { rank: 3, name: 'Harry Kane', team: 'England', value: 3, flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-      { rank: 4, name: 'Neymar Jr', team: 'Brazil', value: 3, flag: '🇧🇷' },
-      { rank: 5, name: 'Santiago Giménez', team: 'Mexico', value: 3, flag: '🇲🇽' },
-    ];
-    
-    const assists = [
-      { rank: 1, name: 'Kevin De Bruyne', team: 'Belgium', value: 4, flag: '🇧🇪' },
-      { rank: 2, name: 'Antoine Griezmann', team: 'France', value: 3, flag: '🇫🇷' },
-      { rank: 3, name: 'Bruno Fernandes', team: 'Portugal', value: 3, flag: '🇵🇹' },
-    ];
-
     return (
-      <div className="space-y-4">
-        {/* Goals */}
-        <div className="space-y-2.5">
-          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 py-1 bg-white/[0.02] rounded-md">
-            Top Scorers
-          </div>
-          <div className="space-y-2">
-            {scorers.map((s) => (
-              <div key={s.rank} className="flex items-center justify-between p-2.5 rounded-xl bg-black/20 border border-white/5 text-xs hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-cyan-400/80 w-4">{s.rank}</span>
-                  <span className="font-semibold text-white/90">{s.name}</span>
-                  <span className="text-[10px] text-white/30 font-medium">{s.flag} {s.team}</span>
-                </div>
-                <span className="font-bold text-white text-sm tabular-nums">{s.value} <span className="text-[9px] text-white/40 font-bold uppercase">G</span></span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Assists */}
-        <div className="space-y-2.5">
-          <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 py-1 bg-white/[0.02] rounded-md">
-            Top Assists
-          </div>
-          <div className="space-y-2">
-            {assists.map((a) => (
-              <div key={a.rank} className="flex items-center justify-between p-2.5 rounded-xl bg-black/20 border border-white/5 text-xs hover:bg-white/[0.02] transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-cyan-400/80 w-4">{a.rank}</span>
-                  <span className="font-semibold text-white/90">{a.name}</span>
-                  <span className="text-[10px] text-white/30 font-medium">{a.flag} {a.team}</span>
-                </div>
-                <span className="font-bold text-white text-sm tabular-nums">{a.value} <span className="text-[9px] text-white/40 font-bold uppercase">A</span></span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+        <span className="text-2xl mb-2">⚽</span>
+        <span>Player statistics are only active when officially available from the API</span>
       </div>
     );
   };
 
   const renderStatsTab = () => {
+    const footballMatches = events.filter(e => e.category === 'football');
+    if (!footballActive) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+          <span className="text-2xl mb-2">⚠️</span>
+          <span>Live football data temporarily unavailable</span>
+        </div>
+      );
+    }
+    if (footballMatches.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+          <span className="text-2xl mb-2">📊</span>
+          <span>Real-time stats are calculated dynamically during live matches. No matches currently active.</span>
+        </div>
+      );
+    }
+
+    let totalGoals = 0;
+    let totalCards = 0;
+    let yellowCards = 0;
+    let redCards = 0;
+
+    footballMatches.forEach(m => {
+      if (m.footballData) {
+        totalGoals += (m.footballData.homeScore || 0) + (m.footballData.awayScore || 0);
+        const cards = m.footballData.cards || [];
+        totalCards += cards.length;
+        yellowCards += cards.filter((c: any) => c.type === 'Yellow').length;
+        redCards += cards.filter((c: any) => c.type === 'Red').length;
+      }
+    });
+
     const stats = [
-      { label: 'Matches Played', value: '48', desc: 'Group & Knockout stages', color: 'text-cyan-400' },
-      { label: 'Total Goals', value: '124', desc: 'Average 2.58 per match', color: 'text-emerald-400' },
-      { label: 'Yellow Cards', value: '156', desc: 'Average 3.25 per match', color: 'text-yellow-400' },
-      { label: 'Red Cards', value: '8', desc: 'Average 0.17 per match', color: 'text-red-400' },
-      { label: 'Clean Sheets', value: '18', desc: '37.5% clean sheet ratio', color: 'text-blue-400' },
+      { label: 'Active Matches', value: footballMatches.length.toString(), desc: 'Live/Finished matches', color: 'text-cyan-400' },
+      { label: 'Total Goals', value: totalGoals.toString(), desc: `Average ${(totalGoals / footballMatches.length).toFixed(2)} per match`, color: 'text-emerald-400' },
+      { label: 'Yellow Cards', value: yellowCards.toString(), desc: 'From official events', color: 'text-yellow-400' },
+      { label: 'Red Cards', value: redCards.toString(), desc: 'From official events', color: 'text-red-400' },
     ];
 
     return (
@@ -429,84 +414,15 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
             <span className="text-[9px] text-white/30 font-medium">{s.desc}</span>
           </div>
         ))}
-        {/* Team Highlights */}
-        <div className="col-span-2 p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/20 to-indigo-950/20 border border-white/5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Top Attacking Team</span>
-            <div className="text-sm font-bold text-white">Brazil 🇧🇷</div>
-            <span className="text-[9px] text-white/30">12 goals scored in the tournament</span>
-          </div>
-          <div className="h-8 w-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-400/20 text-sm">
-            ⚽
-          </div>
-        </div>
       </div>
     );
   };
 
   const renderTableTab = () => {
-    const groups = [
-      {
-        name: 'Group A',
-        teams: [
-          { name: 'Mexico', flag: '🇲🇽', p: 2, w: 2, d: 0, l: 0, gd: '+4', pts: 6 },
-          { name: 'South Korea', flag: '🇰🇷', p: 2, w: 1, d: 1, l: 0, gd: '+1', pts: 4 },
-          { name: 'South Africa', flag: '🇿🇦', p: 2, w: 0, d: 1, l: 1, gd: '-2', pts: 1 },
-          { name: 'Czechia', flag: '🇨🇿', p: 2, w: 0, d: 0, l: 2, gd: '-3', pts: 0 },
-        ]
-      },
-      {
-        name: 'Group B',
-        teams: [
-          { name: 'Canada', flag: '🇨🇦', p: 2, w: 1, d: 1, l: 0, gd: '+2', pts: 4 },
-          { name: 'Switzerland', flag: '🇨🇭', p: 2, w: 1, d: 1, l: 0, gd: '+1', pts: 4 },
-          { name: 'Bosnia and Herz.', flag: '🇧🇦', p: 2, w: 0, d: 2, l: 0, gd: '0', pts: 2 },
-          { name: 'Qatar', flag: '🇶🇦', p: 2, w: 0, d: 0, l: 2, gd: '-3', pts: 0 },
-        ]
-      }
-    ];
-
     return (
-      <div className="space-y-4">
-        {groups.map((group) => (
-          <div key={group.name} className="space-y-2">
-            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 py-1 bg-white/[0.02] rounded-md">
-              {group.name}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[10px] text-white/70">
-                <thead>
-                  <tr className="border-b border-white/5 text-left text-white/30 font-bold uppercase tracking-wider">
-                    <th className="py-1.5 pl-2">Pos</th>
-                    <th className="py-1.5">Team</th>
-                    <th className="py-1.5 text-center">P</th>
-                    <th className="py-1.5 text-center">W</th>
-                    <th className="py-1.5 text-center">D</th>
-                    <th className="py-1.5 text-center">L</th>
-                    <th className="py-1.5 text-center">GD</th>
-                    <th className="py-1.5 text-right pr-2">Pts</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.03]">
-                  {group.teams.map((t, idx) => (
-                    <tr key={t.name} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-2 pl-2 font-bold text-cyan-400">{idx + 1}</td>
-                      <td className="py-2 font-semibold text-white/90">
-                        <span className="mr-1">{t.flag}</span> {t.name}
-                      </td>
-                      <td className="py-2 text-center font-medium tabular-nums">{t.p}</td>
-                      <td className="py-2 text-center font-medium tabular-nums">{t.w}</td>
-                      <td className="py-2 text-center font-medium tabular-nums">{t.d}</td>
-                      <td className="py-2 text-center font-medium tabular-nums">{t.l}</td>
-                      <td className="py-2 text-center font-bold text-white/55 tabular-nums">{t.gd}</td>
-                      <td className="py-2 text-right font-black text-white pr-2 tabular-nums">{t.pts}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+        <span className="text-2xl mb-2">📋</span>
+        <span>Standings are only active when officially available from the API</span>
       </div>
     );
   };
@@ -524,7 +440,14 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
                    hidden lg:flex flex-col
                    rounded-3xl glass overflow-hidden"
       >
-        {activeCategory === 'football' ? (
+        {activeCategory === 'worldcup' ? (
+          <WorldCupSchedule
+            onSelectEvent={onSelectEvent}
+            onSelectCountry={onSelectCountry}
+            onPlaySound={onPlaySound}
+            footballActive={footballActive}
+          />
+        ) : activeCategory === 'football' ? (
           <>
             {/* Scorecard Dashboard Tab Selector */}
             {renderTabSelector()}
@@ -635,7 +558,16 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory }: Live
           <div className="w-12 h-1.5 rounded-full bg-white/20" />
         </div>
 
-        {activeCategory === 'football' ? (
+        {activeCategory === 'worldcup' ? (
+          <div className="flex flex-col h-[calc(55vh-30px)] overflow-hidden">
+            <WorldCupSchedule
+              onSelectEvent={onSelectEvent}
+              onSelectCountry={onSelectCountry}
+              onPlaySound={onPlaySound}
+              footballActive={footballActive}
+            />
+          </div>
+        ) : activeCategory === 'football' ? (
           <div className="flex flex-col h-[calc(55vh-30px)] overflow-hidden">
             {renderTabSelector()}
             <div className="flex-1 overflow-y-auto px-4 py-4 pb-8">

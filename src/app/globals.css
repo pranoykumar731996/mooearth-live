@@ -170,3 +170,96 @@ body {
   100% { box-shadow: 0 0 10px currentColor; }
 }
 
+/* ---------- Play Earth Game Mode Animations ---------- */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.4),
+                0 0 18px rgba(0, 255, 136, 0.2),
+                0 0 35px rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.7),
+                0 0 28px rgba(0, 255, 136, 0.4),
+                0 0 55px rgba(0, 255, 136, 0.2);
+    border-color: rgba(0, 255, 136, 0.9);
+  }
+}
+
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-8px) rotate(-1deg); }
+  20% { transform: translateX(8px) rotate(1deg); }
+  30% { transform: translateX(-6px) rotate(-0.5deg); }
+  40% { transform: translateX(6px) rotate(0.5deg); }
+  50% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+@keyframes timer-heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.18); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  60% { transform: scale(1); }
+}
+
+@keyframes float-badge {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.15);
+  }
+  60% {
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes quiz-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes xp-fly {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-40px) scale(1.3);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80px) scale(0.8);
+  }
+}
+
+@keyframes correct-flash {
+  0% { background-color: rgba(0, 255, 136, 0); }
+  20% { background-color: rgba(0, 255, 136, 0.25); }
+  100% { background-color: rgba(0, 255, 136, 0); }
+}
+
+@keyframes wrong-flash {
+  0% { background-color: rgba(255, 60, 60, 0); }
+  20% { background-color: rgba(255, 60, 60, 0.25); }
+  100% { background-color: rgba(255, 60, 60, 0); }
+}
+

@@ -7,11 +7,10 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { WorldEvent, EventArc } from '@/types';
-import { CATEGORY_MAP, GLOBE_CONFIG } from '@/lib/constants';
+import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES } from '@/lib/constants';
 import { useGlobeControls } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
-import EventPopup from './EventPopup';
 import * as THREE from 'three';
 
 // Dynamic import — react-globe.gl requires window/WebGL
@@ -76,6 +75,28 @@ export default function GlobeScene({
   const atmosphereMeshRef = useRef<any>(null);
   const celebrationProcessedRef = useRef<string | null>(null);
   const cloudsMeshRef = useRef<THREE.Mesh | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // 1-second clock timer for performance-optimized WebGL visual breathing oscillations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const adjustOpacity = useCallback((rgbaStr: string, multiplier: number) => {
+    const match = rgbaStr.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
+    if (match) {
+      const r = match[1];
+      const g = match[2];
+      const b = match[3];
+      const a = parseFloat(match[4]);
+      const newAlpha = Math.min(Math.max(a * multiplier, 0), 1);
+      return `rgba(${r}, ${g}, ${b}, ${newAlpha.toFixed(3)})`;
+    }
+    return rgbaStr;
+  }, []);
 
   // Mobile state detection
   const [isMobile, setIsMobile] = useState(false);
@@ -138,7 +159,7 @@ export default function GlobeScene({
       })
       .catch((err) => console.error('Failed to load geojson', err));
 
-    fetch('/api/global-mood')
+    fetch(`/api/global-mood?t=${Date.now()}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.globalMood) setGlobalMood(data.globalMood);
@@ -403,16 +424,55 @@ export default function GlobeScene({
         flyTo({ lat: selectedEvent.lat, lng: selectedEvent.lng, altitude: 1.2 });
         recordInteraction();
       } else if (selectedCountry) {
-        // Find country roughly
-        const countryFeature = countries?.find((f: any) => f.properties?.NAME === selectedCountry);
-        if (countryFeature) {
-          // Simplistic bounding box or center calculation would be better, but we can rely on a dummy center or use d3-geo
-          // Alternatively we don't zoom tightly for countries without knowing bounds easily, or we do.
+        // Find coordinates for the country
+        const normCountry = selectedCountry.toLowerCase().trim();
+        const geoKeys = Object.keys(COUNTRY_COORDINATES);
+        const matchedKey = geoKeys.find(k => normCountry.includes(k) || k.includes(normCountry));
+
+        if (matchedKey) {
+          const coords = COUNTRY_COORDINATES[matchedKey];
+          flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.8 });
+        } else {
+          // Fallback: Find country center from GeoJSON features
+          const countryFeature = countries?.find((f: any) => matchCountryNames(f.properties?.NAME, selectedCountry));
+          if (countryFeature && countryFeature.geometry) {
+            let lat = 0;
+            let lng = 0;
+            const geom = countryFeature.geometry;
+            if (geom.type === 'Polygon' && geom.coordinates?.[0]) {
+              const ring = geom.coordinates[0];
+              ring.forEach((pt: number[]) => {
+                lng += pt[0];
+                lat += pt[1];
+              });
+              lat /= ring.length;
+              lng /= ring.length;
+              flyTo({ lat, lng, altitude: 1.8 });
+            } else if (geom.type === 'MultiPolygon' && geom.coordinates?.[0]?.[0]) {
+              const ring = geom.coordinates[0][0];
+              ring.forEach((pt: number[]) => {
+                lng += pt[0];
+                lat += pt[1];
+              });
+              lat /= ring.length;
+              lng /= ring.length;
+              flyTo({ lat, lng, altitude: 1.8 });
+            }
+          }
         }
         recordInteraction();
       }
     }
   }, [selectedEvent, selectedCountry, introDone, flyTo, recordInteraction, countries]);
+
+  // Pause/resume rotation based on selected event state reactively
+  useEffect(() => {
+    if (selectedEvent) {
+      pauseRotation();
+    } else {
+      resumeRotation();
+    }
+  }, [selectedEvent, pauseRotation, resumeRotation]);
 
   // Auto focus loop — only when idle
   useEffect(() => {
@@ -694,60 +754,115 @@ export default function GlobeScene({
     [onSelectEvent, pauseRotation, recordInteraction, onSelectCelebration, flyTo]
   );
 
+  const getEmotionColorForCountry = useCallback((name: string) => {
+    if (!name) return undefined;
+    if (emotionMap[name]) return emotionMap[name];
+    const matchKey = Object.keys(emotionMap).find(key => matchCountryNames(key, name));
+    return matchKey ? emotionMap[matchKey] : undefined;
+  }, [emotionMap]);
+
   // Polygon Colors (Global Mood Map + Celebration Override)
   const getPolygonColor = useCallback((feat: any) => {
     const name = feat.properties.NAME;
     const isSelected = selectedCountry === name;
     
+    // Check if it's a live match country
+    const isLiveMatchCountry = events.some(e => 
+      e.category === 'football' &&
+      e.footballData &&
+      (e.footballData.status === 'LIVE' || e.footballData.status === 'HT' || e.footballData.status === 'PEN') &&
+      (matchCountryNames(e.footballData.homeTeam, name) || matchCountryNames(e.footballData.awayTeam, name))
+    );
+
+    const pulse = 1 + Math.sin(now / 600) * 0.15;
+    const isPulsing = isSelected || isLiveMatchCountry;
+
     // During celebration, make the scoring country GLOW brightly
     if (celebration?.active && matchCountryNames(celebration.country, name)) {
       return `${celebration.colors.primary}cc`; // Very bright
     }
     
     if (isSelected) {
-      return 'rgba(0, 229, 255, 0.6)';
+      const alpha = isPulsing ? 0.6 * pulse : 0.6;
+      return `rgba(0, 229, 255, ${alpha.toFixed(3)})`;
     }
 
-    if (emotionMap[name]) {
-      return emotionMap[name];
+    const emotionColor = getEmotionColorForCountry(name);
+    if (emotionColor) {
+      if (isPulsing) {
+        return adjustOpacity(emotionColor, pulse);
+      }
+      return emotionColor;
     }
     
     const intensity = globalMood[name] || 0;
-    if (intensity > 0.7) return `rgba(255, 100, 0, ${0.2 + intensity * 0.3})`;
-    if (intensity > 0.4) return `rgba(16, 185, 129, ${0.15 + intensity * 0.3})`;
-    if (intensity > 0) return `rgba(59, 130, 246, ${0.1 + intensity * 0.2})`;
+    let baseColor = 'rgba(255, 255, 255, 0.015)';
+    if (intensity > 0.7) baseColor = `rgba(255, 100, 0, ${0.2 + intensity * 0.3})`;
+    else if (intensity > 0.4) baseColor = `rgba(16, 185, 129, ${0.15 + intensity * 0.3})`;
+    else if (intensity > 0) baseColor = `rgba(59, 130, 246, ${0.1 + intensity * 0.2})`;
     
-    return 'rgba(255, 255, 255, 0.015)';
-  }, [globalMood, selectedCountry, emotionMap, celebration]);
+    if (isPulsing && baseColor !== 'rgba(255, 255, 255, 0.015)') {
+      return adjustOpacity(baseColor, pulse);
+    }
+    return baseColor;
+  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, events, now, adjustOpacity]);
 
   // Polygon Altitude (3D Emotional Heatmap + Celebration)
   const getPolygonAltitude = useCallback((feat: any) => {
     const name = feat.properties.NAME;
     const isSelected = selectedCountry === name;
     
+    // Check if it's a live match country
+    const isLiveMatchCountry = events.some(e => 
+      e.category === 'football' &&
+      e.footballData &&
+      (e.footballData.status === 'LIVE' || e.footballData.status === 'HT' || e.footballData.status === 'PEN') &&
+      (matchCountryNames(e.footballData.homeTeam, name) || matchCountryNames(e.footballData.awayTeam, name))
+    );
+
+    const pulse = 1 + Math.sin(now / 600) * 0.15;
+    const isPulsing = isSelected || isLiveMatchCountry;
+    const multiplier = isPulsing ? pulse : 1.0;
+
     // During celebration, the scoring country RISES dramatically
     if (celebration?.active && matchCountryNames(celebration.country, name)) {
       return 0.15; // Highest possible extrusion
     }
     
     if (isSelected) {
-      return 0.12;
+      return 0.12 * multiplier;
     }
 
-    if (emotionMap[name]) {
-      if (emotionMap[name].includes('255, 215, 0')) return 0.08;
-      if (emotionMap[name].includes('255, 50, 50')) return 0.06;
-      if (emotionMap[name].includes('255, 140, 0')) return 0.05;
-      return 0.03;
+    const emotionColor = getEmotionColorForCountry(name);
+    if (emotionColor) {
+      let baseAlt = 0.03;
+      if (emotionColor.includes('255, 215, 0')) baseAlt = 0.08; // Gold
+      else if (emotionColor.includes('239, 68, 68')) baseAlt = 0.06; // Red
+      else if (emotionColor.includes('128, 0, 128')) baseAlt = 0.04; // Purple
+      else if (emotionColor.includes('249, 115, 22')) baseAlt = 0.05; // Orange
+      else if (emotionColor.includes('16, 185, 129')) baseAlt = 0.06; // Green
+      return baseAlt * multiplier;
     }
     
     const intensity = globalMood[name] || 0;
-    return 0.01 + (intensity * 0.03);
-  }, [globalMood, selectedCountry, emotionMap, celebration]);
+    return (0.01 + (intensity * 0.03)) * multiplier;
+  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, events, now]);
 
   // Polygon Side Glow (Matching Cap Color)
   const getPolygonSideColor = useCallback((feat: any) => {
     const name = feat.properties.NAME;
+    const isSelected = selectedCountry === name;
+    
+    const isLiveMatchCountry = events.some(e => 
+      e.category === 'football' &&
+      e.footballData &&
+      (e.footballData.status === 'LIVE' || e.footballData.status === 'HT' || e.footballData.status === 'PEN') &&
+      (matchCountryNames(e.footballData.homeTeam, name) || matchCountryNames(e.footballData.awayTeam, name))
+    );
+
+    const pulse = 1 + Math.sin(now / 600) * 0.15;
+    const isPulsing = isSelected || isLiveMatchCountry;
+    const sideOpacity = isPulsing ? 0.5 * pulse : 0.5;
     
     // During celebration, sides glow with the country's color
     if (celebration?.active && matchCountryNames(celebration.country, name)) {
@@ -755,8 +870,8 @@ export default function GlobeScene({
     }
     
     const capColor = getPolygonColor(feat);
-    return capColor.replace(/0\.[0-9]+\)/, '0.5)').replace(/15\)/, '5)'); 
-  }, [getPolygonColor, celebration]);
+    return capColor.replace(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/, `rgba($1, $2, $3, ${sideOpacity.toFixed(3)})`);
+  }, [getPolygonColor, celebration, selectedCountry, events, now]);
 
   // Stable Globe Callbacks & Memoized Configs
   const getPolygonStrokeColor = useCallback(() => 'rgba(255,255,255,0.05)', []);
@@ -850,15 +965,6 @@ export default function GlobeScene({
           rendererConfig={rendererConfig}
         />
       )}
-
-      {/* Event popup overlay */}
-      <EventPopup
-        event={selectedEvent}
-        onClose={() => {
-          onSelectEvent(null);
-          resumeRotation();
-        }}
-      />
     </div>
   );
 }

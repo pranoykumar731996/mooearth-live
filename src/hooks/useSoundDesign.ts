@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 
-export function useSoundDesign(isMuted: boolean = true) {
+export function useSoundDesign(isMuted: boolean = true, globalEnergyScore: number = 30) {
   const audioCtx = useRef<AudioContext | null>(null);
   const droneNode = useRef<{
     osc1: OscillatorNode;
@@ -15,6 +15,14 @@ export function useSoundDesign(isMuted: boolean = true) {
     lfo: OscillatorNode;
     gainNode: GainNode;
     filter: BiquadFilterNode;
+  } | null>(null);
+
+  const stadiumNode = useRef<{
+    noiseSource: AudioBufferSourceNode;
+    bandpassFilter: BiquadFilterNode;
+    lowpassFilter: BiquadFilterNode;
+    gainNode: GainNode;
+    drumInterval?: ReturnType<typeof setInterval>;
   } | null>(null);
 
   // Initialize Audio Context on demand
@@ -117,10 +125,181 @@ export function useSoundDesign(isMuted: boolean = true) {
     droneNode.current = null;
   }, []);
 
+  // Modulate stadium crowd ambient noise and rhythmic drum beats based on energy score
+  const updateStadiumEnergy = useCallback((energy: number) => {
+    const node = stadiumNode.current;
+    const ctx = audioCtx.current;
+    if (!node || !ctx) return;
+
+    const now = ctx.currentTime;
+    const normalizedEnergy = Math.min(Math.max(energy / 100, 0), 1); // 0.0 to 1.0
+
+    // Volume curves: very quiet (0.005) at low energy, noticeable (0.07) at high energy
+    const targetVolume = 0.005 + normalizedEnergy * 0.065;
+    node.gainNode.gain.cancelScheduledValues(now);
+    node.gainNode.gain.linearRampToValueAtTime(targetVolume, now + 1.0); // 1s smooth ramp
+
+    // Filter frequencies: expand frequency spectrum to sound brighter/more energetic
+    const targetBandpass = 1000 + normalizedEnergy * 350; // 1000Hz to 1350Hz
+    const targetLowpass = 700 + normalizedEnergy * 450;   // 700Hz to 1150Hz
+    
+    node.bandpassFilter.frequency.cancelScheduledValues(now);
+    node.bandpassFilter.frequency.linearRampToValueAtTime(targetBandpass, now + 1.0);
+    
+    node.lowpassFilter.frequency.cancelScheduledValues(now);
+    node.lowpassFilter.frequency.linearRampToValueAtTime(targetLowpass, now + 1.0);
+
+    // Rhythmic Clapping Drums Synthesizer for high energy (>70%)
+    if (energy >= 70) {
+      if (!node.drumInterval) {
+        // Start rhythmic stadium drums: "Boom, Boom, Clap" pattern
+        let beat = 0;
+        node.drumInterval = setInterval(() => {
+          const innerCtx = audioCtx.current;
+          if (!innerCtx || isMuted || innerCtx.state !== 'running') return;
+          
+          const t = innerCtx.currentTime;
+          try {
+            if (beat === 0 || beat === 1) {
+              // "Boom" — Detuned Low Sub Bass Beat (60Hz)
+              const osc = innerCtx.createOscillator();
+              const oscGain = innerCtx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(60, t);
+              osc.frequency.exponentialRampToValueAtTime(30, t + 0.15);
+              oscGain.gain.setValueAtTime(0.12, t);
+              oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+              osc.connect(oscGain);
+              oscGain.connect(innerCtx.destination);
+              osc.start(t);
+              osc.stop(t + 0.15);
+            } else if (beat === 2) {
+              // "Clap" — Filtered Crowd noise burst (1200Hz)
+              const osc = innerCtx.createOscillator();
+              const oscGain = innerCtx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(1000, t);
+              osc.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+              oscGain.gain.setValueAtTime(0.07, t);
+              oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+              osc.connect(oscGain);
+              oscGain.connect(innerCtx.destination);
+              osc.start(t);
+              osc.stop(t + 0.12);
+            }
+            beat = (beat + 1) % 4; // 4-beat cycle
+          } catch (err) {}
+        }, 500); // 120 bpm (500ms per beat)
+      }
+    } else {
+      if (node.drumInterval) {
+        clearInterval(node.drumInterval);
+        delete node.drumInterval;
+      }
+    }
+  }, [isMuted]);
+
+  // Start continuous stadium crowd ambience loop
+  const startStadiumAmbient = useCallback(() => {
+    const ctx = getAudioContext();
+    if (!ctx || isMuted) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    if (stadiumNode.current) return; // Already running
+
+    try {
+      const now = ctx.currentTime;
+
+      // Generate White Noise Buffer
+      const bufferSize = ctx.sampleRate * 2; // 2 seconds loop
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = buffer;
+      noiseSource.loop = true;
+
+      // Bandpass filter centered around crowd shouting frequencies (1100Hz)
+      const bandpassFilter = ctx.createBiquadFilter();
+      bandpassFilter.type = 'bandpass';
+      bandpassFilter.frequency.setValueAtTime(1100, now);
+      bandpassFilter.Q.setValueAtTime(0.7, now);
+
+      // Lowpass filter to smooth the noise (simulating distance and crowd rumble)
+      const lowpassFilter = ctx.createBiquadFilter();
+      lowpassFilter.type = 'lowpass';
+      lowpassFilter.frequency.setValueAtTime(800, now);
+
+      // Main stadium volume node
+      const gainNode = ctx.createGain();
+      gainNode.gain.setValueAtTime(0, now);
+
+      // Connect nodes
+      noiseSource.connect(bandpassFilter);
+      bandpassFilter.connect(lowpassFilter);
+      lowpassFilter.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      noiseSource.start(now);
+
+      stadiumNode.current = {
+        noiseSource,
+        bandpassFilter,
+        lowpassFilter,
+        gainNode,
+      };
+
+      // Set initial values based on current energy
+      updateStadiumEnergy(globalEnergyScore);
+
+    } catch (e) {
+      console.warn('Failed to start stadium ambience synth:', e);
+    }
+  }, [isMuted, globalEnergyScore, updateStadiumEnergy]);
+
+  // Stop stadium crowd ambient loop
+  const stopStadiumAmbient = useCallback(() => {
+    if (!stadiumNode.current) return;
+
+    const ctx = audioCtx.current;
+    const node = stadiumNode.current;
+
+    if (node.drumInterval) {
+      clearInterval(node.drumInterval);
+    }
+
+    if (ctx && node) {
+      const now = ctx.currentTime;
+      try {
+        node.gainNode.gain.cancelScheduledValues(now);
+        node.gainNode.gain.setValueAtTime(node.gainNode.gain.value, now);
+        node.gainNode.gain.linearRampToValueAtTime(0, now + 0.5); // Quick fade-out
+
+        setTimeout(() => {
+          try {
+            node.noiseSource.stop();
+            node.noiseSource.disconnect();
+            node.bandpassFilter.disconnect();
+            node.lowpassFilter.disconnect();
+            node.gainNode.disconnect();
+          } catch (err) {}
+        }, 600);
+      } catch (err) {}
+    }
+    stadiumNode.current = null;
+  }, []);
+
   // Manage mute state transitions
   useEffect(() => {
     if (isMuted) {
       stopDrone();
+      stopStadiumAmbient();
       if (audioCtx.current && audioCtx.current.state === 'running') {
         audioCtx.current.suspend();
       }
@@ -129,20 +308,29 @@ export function useSoundDesign(isMuted: boolean = true) {
       if (ctx) {
         ctx.resume().then(() => {
           startDrone();
+          startStadiumAmbient();
         });
       }
     }
-  }, [isMuted, startDrone, stopDrone]);
+  }, [isMuted, startDrone, stopDrone, startStadiumAmbient, stopStadiumAmbient]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopDrone();
+      stopStadiumAmbient();
       if (audioCtx.current && audioCtx.current.state !== 'closed') {
         audioCtx.current.close();
       }
     };
-  }, [stopDrone]);
+  }, [stopDrone, stopStadiumAmbient]);
+
+  // Update stadium sound profile when global energy score changes
+  useEffect(() => {
+    if (!isMuted && stadiumNode.current) {
+      updateStadiumEnergy(globalEnergyScore);
+    }
+  }, [globalEnergyScore, isMuted, updateStadiumEnergy]);
 
   // Phase 7 Hover Sounds: short high-pitched Blips
   const playHoverBlip = useCallback(() => {
@@ -440,6 +628,126 @@ export function useSoundDesign(isMuted: boolean = true) {
     } catch (e) {}
   }, [isMuted]);
 
+  // ====== PLAY EARTH: Quiz Game Sounds ======
+
+  // Correct answer: bright upward arpeggio chime
+  const playCorrectSound = useCallback(() => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        gain.gain.setValueAtTime(0, now + i * 0.08);
+        gain.gain.linearRampToValueAtTime(0.12, now + i * 0.08 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.35);
+      });
+    } catch (e) {}
+  }, [isMuted]);
+
+  // Wrong answer: descending dissonant buzz
+  const playWrongSound = useCallback(() => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(220, now);
+      osc1.frequency.exponentialRampToValueAtTime(110, now + 0.5);
+
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(233, now); // Slightly detuned for dissonance
+      osc2.frequency.exponentialRampToValueAtTime(105, now + 0.5);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(800, now);
+      filter.frequency.linearRampToValueAtTime(200, now + 0.5);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.5);
+      osc2.start(now);
+      osc2.stop(now + 0.5);
+    } catch (e) {}
+  }, [isMuted]);
+
+  // Timer tick: short percussive beep (increases pitch as urgency rises)
+  const playTimerTick = useCallback((urgency: number = 0) => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      const baseFreq = 600 + urgency * 800; // 600Hz at low urgency, 1400Hz at max
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq, now);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.06 + urgency * 0.04, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.06);
+    } catch (e) {}
+  }, [isMuted]);
+
+  // Level up: celebratory ascending fanfare
+  const playLevelUp = useCallback(() => {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [392, 523.25, 659.25, 783.99, 1046.5, 1318.5]; // G4 → E6
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = i < 3 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+        gain.gain.setValueAtTime(0, now + i * 0.1);
+        gain.gain.linearRampToValueAtTime(0.1, now + i * 0.1 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.6);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.1);
+        osc.stop(now + i * 0.1 + 0.6);
+      });
+    } catch (e) {}
+  }, [isMuted]);
+
   return {
     playHoverBlip,
     playDeepPulse,
@@ -448,5 +756,11 @@ export function useSoundDesign(isMuted: boolean = true) {
     playGoalCelebration,
     playNarrationIntro,
     playTensionDrone,
+    // Play Earth game sounds
+    playCorrectSound,
+    playWrongSound,
+    playTimerTick,
+    playLevelUp,
   };
 }
+

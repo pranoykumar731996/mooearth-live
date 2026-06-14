@@ -55,6 +55,13 @@ export const CATEGORY_MAP: Record<EventCategory, CategoryConfig> = {
     glowColor: 'rgba(168, 85, 247, 0.5)',
     bgColor: 'rgba(168, 85, 247, 0.15)',
   },
+  worldcup: {
+    label: 'FIFA World Cup 2026',
+    emoji: '⚽',
+    color: '#00e5ff',
+    glowColor: 'rgba(0, 229, 255, 0.5)',
+    bgColor: 'rgba(0, 229, 255, 0.15)',
+  },
 };
 
 /** Globe rendering configuration */
@@ -90,7 +97,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'breaking', label: 'News', icon: '📰', category: 'breaking' },
   { id: 'football', label: 'Football', icon: '⚽', category: 'football' },
-  { id: 'sports', label: 'Sports', icon: '🏅', category: 'sports' },
+  { id: 'sports', label: 'FIFA World Cup 2026', icon: '🏆', category: 'worldcup' },
   { id: 'technology', label: 'Technology', icon: '💻', category: 'technology' },
   { id: 'weather', label: 'Weather', icon: '🌤️', category: 'weather' },
   { id: 'business', label: 'Business', icon: '📈', category: 'business' },

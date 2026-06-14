@@ -40,82 +40,95 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
   return (
     <AnimatePresence>
       {event && (
-        <motion.div
-          id="event-popup"
-          initial={{ opacity: 0, scale: 0.9, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                     w-[90vw] max-w-[460px] z-50
-                     rounded-3xl p-6
-                     glass"
-          style={{
-            background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.85) 100%)',
-            boxShadow: `0 0 80px ${CATEGORY_MAP[event.category].glowColor}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
-          }}
-        >
-          {/* Close button */}
-          <button
-            id="event-popup-close"
-            onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full
-                       flex items-center justify-center
-                       bg-white/5 hover:bg-white/10 text-white/60 hover:text-white
-                       transition-all duration-200 cursor-pointer"
-            aria-label="Close popup"
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+          <motion.div
+            id="event-popup"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="w-[90vw] max-w-[460px] rounded-3xl p-6 glass pointer-events-auto"
+            style={{
+              background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.85) 100%)',
+              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category].glowColor}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
+              maxHeight: '70vh',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+            {/* Close button */}
+            <button
+              id="event-popup-close"
+              onClick={onClose}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full
+                         flex items-center justify-center
+                         bg-white/5 hover:bg-white/10 text-white/60 hover:text-white
+                         transition-all duration-200 cursor-pointer z-[60]"
+              aria-label="Close popup"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
 
-          {/* Category & Time */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: CATEGORY_MAP[event.category].bgColor }}>
-              <span className="text-sm">{CATEGORY_MAP[event.category].emoji}</span>
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: CATEGORY_MAP[event.category].color }}>
-                {CATEGORY_MAP[event.category].label}
-              </span>
+            {/* Category & Time */}
+            <div className="flex items-center gap-3 mb-4 shrink-0">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: CATEGORY_MAP[event.category].bgColor }}>
+                <span className="text-sm">{CATEGORY_MAP[event.category].emoji}</span>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: CATEGORY_MAP[event.category].color }}>
+                  {CATEGORY_MAP[event.category].label}
+                </span>
+              </div>
+              <span className="text-xs text-white/40 font-medium" suppressHydrationWarning>{formatRelativeTime(event.publishedAt)}</span>
             </div>
-            <span className="text-xs text-white/40 font-medium" suppressHydrationWarning>{formatRelativeTime(event.publishedAt)}</span>
-          </div>
 
-          {/* Content Body */}
-          {event.category === 'football' ? (
-            <FootballMatchCenter event={event} />
-          ) : (
-            <>
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-white mb-3 leading-tight pr-8 tracking-tight">
-                {event.title}
-              </h2>
+            {/* Scrollable Container */}
+            <div 
+              className="pr-1 mb-5 scrollbar-thin space-y-4"
+              style={{
+                flex: '1 1 auto',
+                overflowY: 'auto',
+                minHeight: 0
+              }}
+            >
+              {event.category === 'football' ? (
+                <FootballMatchCenter event={event} />
+              ) : (
+                <>
+                  {/* Title */}
+                  <h2 className="text-2xl font-bold text-white leading-tight pr-8 tracking-tight">
+                    {event.title}
+                  </h2>
 
-              {/* Location */}
-              <div className="flex items-center gap-2 text-sm text-white/50 mb-6">
-                <span className="text-base">{getFlag(event.country)}</span>
-                <span className="font-medium text-white/70">{event.city}, {event.country}</span>
-              </div>
+                  {/* Location */}
+                  <div className="flex items-center gap-2 text-sm text-white/50">
+                    <span className="text-base">{getFlag(event.country)}</span>
+                    <span className="font-medium text-white/70">{event.city}, {event.country}</span>
+                  </div>
 
-              {/* AI Summary */}
-              <div className="rounded-2xl p-5 mb-6 border border-white/5 relative overflow-hidden"
-                style={{ background: 'rgba(0,229,255,0.03)' }}
-              >
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-blue-600" />
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
-                    AI Summary
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                </div>
-                <p className="text-sm text-white/80 leading-relaxed font-medium">
-                  {event.summary}
-                </p>
-              </div>
+                  {/* AI Summary */}
+                  <div className="rounded-2xl p-5 border border-white/5 relative overflow-hidden"
+                    style={{ background: 'rgba(0,229,255,0.03)' }}
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-blue-600" />
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
+                        AI Summary
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    </div>
+                    <p className="text-sm text-white/80 leading-relaxed font-medium">
+                      {event.summary}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-3">
+            {/* Actions - Locked at the bottom */}
+            {event.category !== 'football' && (
+              <div className="flex items-center gap-3 shrink-0 pt-1">
                 <a
                   id="event-popup-source"
                   href={event.source}
@@ -151,9 +164,9 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                   </svg>
                 </button>
               </div>
-            </>
-          )}
-        </motion.div>
+            )}
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

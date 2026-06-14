@@ -63,7 +63,8 @@ export function useEmotionMap(
   events: WorldEvent[],
   celebrations: any[],
   selectedCountry: string | null,
-  activeReaction: ReactionEvent | null
+  activeReaction: ReactionEvent | null,
+  selectedEvent?: WorldEvent | null
 ) {
   return useMemo(() => {
     const countryData: Record<string, {
@@ -74,6 +75,14 @@ export function useEmotionMap(
       mood: string;
       commentCount: number;
       flicker: boolean;
+      lastMatch?: {
+        opponent: string;
+        score: string;
+        status: string;
+        isHome: boolean;
+        won: boolean;
+        drew: boolean;
+      };
     }> = {};
 
     // Helper to get or create country entry
@@ -114,6 +123,27 @@ export function useEmotionMap(
           awayEntry.flicker = true;
         }
 
+        const scoreStr = `${event.footballData.homeScore} - ${event.footballData.awayScore}`;
+        const status = event.footballData.status;
+
+        homeEntry.lastMatch = {
+          opponent: awayCountry,
+          score: scoreStr,
+          status: status,
+          isHome: true,
+          won: event.footballData.homeScore > event.footballData.awayScore,
+          drew: event.footballData.homeScore === event.footballData.awayScore,
+        };
+
+        awayEntry.lastMatch = {
+          opponent: homeCountry,
+          score: scoreStr,
+          status: status,
+          isHome: false,
+          won: event.footballData.awayScore > event.footballData.homeScore,
+          drew: event.footballData.homeScore === event.footballData.awayScore,
+        };
+
         // Set baseline match mood
         if (event.footballData.homeScore > event.footballData.awayScore) {
           homeEntry.mood = 'celebration';
@@ -127,7 +157,6 @@ export function useEmotionMap(
         }
       } else if (event.country) {
         const entry = getEntry(event.country);
-        entry.isLive = true;
         entry.mood = 'hype';
       }
     });
@@ -196,7 +225,7 @@ export function useEmotionMap(
           moodLabel = '🔥 Celebration';
           break;
         case 'sadness':
-          color = 'rgba(239, 68, 68, '; // Red (defeat/sadness)
+          color = 'rgba(128, 0, 128, '; // Dark Purple
           moodLabel = '😢 Defeat';
           break;
         case 'anger':
@@ -229,6 +258,19 @@ export function useEmotionMap(
       let activityText = 'Preparing for upcoming match';
       if (data.isLive) {
         activityText = data.goals > 0 ? `Scored ${data.goals} goal(s) in live match!` : 'Locked in live match drama';
+      } else if (data.lastMatch) {
+        const lm = data.lastMatch;
+        if (lm.status === 'FT') {
+          if (lm.won) {
+            activityText = `Won ${lm.score} vs ${lm.opponent}!`;
+          } else if (lm.drew) {
+            activityText = `Drew ${lm.score} vs ${lm.opponent}`;
+          } else {
+            activityText = `Lost ${lm.score} vs ${lm.opponent}`;
+          }
+        } else if (lm.status === 'NS') {
+          activityText = `Upcoming vs ${lm.opponent}`;
+        }
       } else if (data.uploads > 0) {
         activityText = `${data.uploads} fan reaction uploads live`;
       }
@@ -259,10 +301,36 @@ export function useEmotionMap(
     const activityModifier = Math.min(celebrations.length * 5 + events.length * 2, 40);
     const finalEnergyScore = Math.round(Math.min((avgEnergy * 60) + activityModifier, 100));
 
+    // 7. Override colors for selected match participating countries
+    if (selectedEvent && selectedEvent.footballData) {
+      const fd = selectedEvent.footballData;
+      const homeCountry = getCountryName(fd.homeTeam);
+      const awayCountry = getCountryName(fd.awayTeam);
+
+      let homeColor = 'rgba(0, 229, 255, 0.85)'; // Default Cyan
+      let awayColor = 'rgba(0, 229, 255, 0.85)';
+
+      if (fd.status === 'FT' || fd.status === 'LIVE') {
+        if (fd.homeScore > fd.awayScore) {
+          homeColor = 'rgba(255, 215, 0, 0.85)'; // Winner Gold
+          awayColor = 'rgba(128, 0, 128, 0.85)';  // Loser Dark Purple
+        } else if (fd.awayScore > fd.homeScore) {
+          awayColor = 'rgba(255, 215, 0, 0.85)'; // Winner Gold
+          homeColor = 'rgba(128, 0, 128, 0.85)';  // Loser Dark Purple
+        } else {
+          homeColor = 'rgba(249, 115, 22, 0.85)'; // Draw Orange
+          awayColor = 'rgba(249, 115, 22, 0.85)';
+        }
+      }
+
+      newMap[homeCountry] = homeColor;
+      newMap[awayCountry] = awayColor;
+    }
+
     return {
       emotionMap: newMap,
       trendingCountries: sortedTrending,
       globalEnergyScore: finalEnergyScore
     };
-  }, [events, celebrations, selectedCountry, activeReaction]);
+  }, [events, celebrations, selectedCountry, activeReaction, selectedEvent]);
 }

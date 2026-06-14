@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
               input: narrationText,
               voice: 'onyx',
               response_format: 'mp3',
-              speed: 0.95,
+              speed: context.eventType === 'goal' || context.eventType === 'penalty' ? 1.15 : 1.08,
             }),
           });
 

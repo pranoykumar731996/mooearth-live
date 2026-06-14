@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const dbPath = path.join(process.cwd(), 'src/data/celebrations.json');
 
 function readDb() {
@@ -35,7 +37,11 @@ export async function GET() {
   const db = readDb();
   // Filter out flagged posts (reports >= 3)
   const active = db.filter((c: any) => !c.reports || c.reports < 3);
-  return NextResponse.json({ celebrations: active });
+  return NextResponse.json({ celebrations: active }, {
+    headers: {
+      'Cache-Control': 'no-store, max-age=0, must-revalidate',
+    }
+  });
 }
 
 export async function POST(request: Request) {
