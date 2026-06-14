@@ -33,7 +33,13 @@ function loadGameState(username: string): PlayerGameState {
   if (typeof window === 'undefined') return createDefaultState(username);
   try {
     const raw = localStorage.getItem(`mooearth_quiz_progress_${username}`);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.answeredIds || !Array.isArray(parsed.answeredIds)) {
+        parsed.answeredIds = [];
+      }
+      return parsed;
+    }
   } catch (e) {}
   return createDefaultState(username);
 }
