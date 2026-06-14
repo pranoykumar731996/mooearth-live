@@ -85,6 +85,7 @@ export default function PlayEarthOverlay({
   const [showXpFloat, setShowXpFloat] = useState(false);
   const [leveledUp, setLeveledUp] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  const [mixedWrongCount, setMixedWrongCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -122,6 +123,7 @@ export default function PlayEarthOverlay({
     setXpGained(0);
     setShowXpFloat(false);
     setLeveledUp(false);
+    setMixedWrongCount(0);
   }, [isActive, selectedCountry, onPlaySound]);
 
   const handleAnswerRef = useRef<(index: number) => void>(() => {});
@@ -247,6 +249,10 @@ export default function PlayEarthOverlay({
     setSelectedAnswer(index);
     setIsCorrect(correct);
 
+    if (selectedCategory === 'mixed' && !correct) {
+      setMixedWrongCount(prev => prev + 1);
+    }
+
     setGameState(prev => {
       const next = { ...prev };
       next.totalAnswered++;
@@ -314,7 +320,7 @@ export default function PlayEarthOverlay({
     setTimeout(() => {
       setPhase('result');
     }, 800);
-  }, [currentQuestion, selectedAnswer, timer, selectedCountry, onCorrectSound, onWrongSound, onLevelUp]);
+  }, [currentQuestion, selectedAnswer, timer, selectedCountry, selectedCategory, onCorrectSound, onWrongSound, onLevelUp]);
 
   useEffect(() => {
     handleAnswerRef.current = handleAnswer;
@@ -323,12 +329,22 @@ export default function PlayEarthOverlay({
   /** Continue to next question or go back to category select */
   const handleContinue = useCallback(() => {
     onPlaySound();
-    setPhase('category-select');
-  }, [onPlaySound]);
+    if (selectedCategory === 'mixed') {
+      if (mixedWrongCount >= 3) {
+        setMixedWrongCount(0);
+        setPhase('category-select');
+      } else {
+        startQuestion('mixed');
+      }
+    } else {
+      setPhase('category-select');
+    }
+  }, [onPlaySound, selectedCategory, mixedWrongCount, startQuestion]);
 
   /** Try another country */
   const handleExploreMore = useCallback(() => {
     onPlaySound();
+    setMixedWrongCount(0);
     setPhase('intro');
   }, [onPlaySound]);
 
@@ -564,14 +580,24 @@ export default function PlayEarthOverlay({
                 </div>
               </div>
 
-              {/* Difficulty badge */}
-              <div className="mb-3">
+              {/* Difficulty badge + Mixed Challenge Lives */}
+              <div className="mb-3 flex items-center justify-between">
                 <span className={`text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-full
                                  ${currentQuestion.difficulty === 'easy' ? 'bg-emerald-500/15 text-emerald-400' :
                                    currentQuestion.difficulty === 'medium' ? 'bg-amber-500/15 text-amber-400' :
                                    'bg-red-500/15 text-red-400'}`}>
                   {currentQuestion.difficulty} • +{XP_REWARDS[currentQuestion.difficulty]} XP
                 </span>
+                {selectedCategory === 'mixed' && (
+                  <div className="flex gap-1 items-center bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                    <span className="text-[8px] text-white/40 uppercase tracking-widest font-black mr-1">LIVES:</span>
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <span key={idx} className="text-xs">
+                        {idx < (3 - mixedWrongCount) ? '❤️' : '🖤'}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Question */}
@@ -660,24 +686,42 @@ export default function PlayEarthOverlay({
                             ${isCorrect ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
 
               {/* Result Header */}
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl
-                                ${isCorrect
-                                  ? 'bg-emerald-500/15 shadow-[0_0_20px_rgba(0,255,136,0.15)]'
-                                  : 'bg-red-500/15 shadow-[0_0_20px_rgba(255,60,60,0.15)]'
-                                }`}>
-                  {isCorrect ? '🎉' : '💡'}
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl
+                                  ${isCorrect
+                                    ? 'bg-emerald-500/15 shadow-[0_0_20px_rgba(0,255,136,0.15)]'
+                                    : 'bg-red-500/15 shadow-[0_0_20px_rgba(255,60,60,0.15)]'
+                                  }`}>
+                    {isCorrect ? '🎉' : '💡'}
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {isCorrect ? 'Correct!' : 'Not Quite!'}
+                    </h3>
+                    {isCorrect && xpGained > 0 ? (
+                      <p className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">
+                        +{xpGained} XP earned {gameState.streak >= 3 ? '(🔥 Streak Bonus!)' : ''}
+                      </p>
+                    ) : (
+                      !isCorrect && (
+                        <p className="text-[10px] text-red-400/80 font-bold uppercase tracking-wider">
+                          {selectedCategory === 'mixed' && mixedWrongCount >= 3 ? 'Challenge Failed' : 'Incorrect Answer'}
+                        </p>
+                      )
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {isCorrect ? 'Correct!' : 'Not Quite!'}
-                  </h3>
-                  {isCorrect && xpGained > 0 && (
-                    <p className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">
-                      +{xpGained} XP earned {gameState.streak >= 3 ? '(🔥 Streak Bonus!)' : ''}
-                    </p>
-                  )}
-                </div>
+                {selectedCategory === 'mixed' && (
+                  <div className="flex gap-1 items-center bg-white/5 px-2.5 py-1 rounded-full border border-white/5 self-start">
+                    <span className="text-[8px] text-white/40 uppercase tracking-widest font-black mr-1">LIVES:</span>
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                      <span key={idx} className="text-xs">
+                        {idx < (3 - mixedWrongCount) ? '❤️' : '🖤'}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Correct answer display */}
@@ -724,13 +768,13 @@ export default function PlayEarthOverlay({
               <div className="flex gap-3">
                 <button
                   onClick={handleContinue}
-                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600
-                             text-white font-bold text-sm tracking-wider
-                             shadow-[0_0_20px_rgba(0,255,136,0.2)]
-                             hover:shadow-[0_0_30px_rgba(0,255,136,0.4)]
-                             hover:scale-[1.02] transition-all cursor-pointer"
+                  className={`flex-1 py-3 rounded-2xl text-white font-bold text-sm tracking-wider transition-all cursor-pointer
+                             ${selectedCategory === 'mixed' && mixedWrongCount >= 3
+                               ? 'bg-gradient-to-r from-red-600 to-amber-600 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)]'
+                               : 'bg-gradient-to-r from-emerald-600 to-cyan-600 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]'
+                             } hover:scale-[1.02]`}
                 >
-                  Next Question →
+                  {selectedCategory === 'mixed' && mixedWrongCount >= 3 ? 'Back to Categories →' : 'Next Question →'}
                 </button>
                 <button
                   onClick={handleExploreMore}
