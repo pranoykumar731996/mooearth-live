@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase } from '@/types';
-import { getNextQuestion, QUIZ_CATEGORIES, XP_REWARDS, calculateLevel } from '@/data/questions';
+import { QUIZ_CATEGORIES, XP_REWARDS, calculateLevel } from '@/data/questions';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 
 const TIMER_SECONDS = 15;
@@ -148,19 +148,41 @@ export default function PlayEarthOverlay({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selectedAnswer]);
 
-  /** Start a new question for the selected country/category */
-  const startQuestion = useCallback((category: QuizCategory) => {
+  /** Start a new question for the selected country/category from our hybrid API */
+  const startQuestion = useCallback(async (category: QuizCategory) => {
     if (!selectedCountry) return;
     setSelectedCategory(category);
     setIsLoadingQuestion(true);
     onPlaySound();
 
-    if (loadTimeoutRef.current) {
-      clearTimeout(loadTimeoutRef.current);
-    }
+    const startTime = Date.now();
+    try {
+      const res = await fetch('/api/quiz/next', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          country: selectedCountry,
+          category,
+          username,
+          answeredIds: gameState.answeredIds
+        })
+      });
 
-    loadTimeoutRef.current = setTimeout(() => {
-      const q = getNextQuestion(selectedCountry, category, gameState.answeredIds);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch next question. Status: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const q = data.question;
+
+      // Enforce minimum display time for the cinematic loader (800ms)
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 800) {
+        await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
+      }
+
       if (q) {
         setCurrentQuestion(q);
         setSelectedAnswer(null);
@@ -172,9 +194,18 @@ export default function PlayEarthOverlay({
       } else {
         setPhase('summary');
       }
+    } catch (err) {
+      console.error('Error fetching question:', err);
+      // Wait out remaining loader duration on error
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 800) {
+        await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
+      }
+      setPhase('summary');
+    } finally {
       setIsLoadingQuestion(false);
-    }, 800);
-  }, [selectedCountry, gameState.answeredIds, onPlaySound]);
+    }
+  }, [selectedCountry, gameState.answeredIds, username, onPlaySound]);
 
   /** Handle answer selection */
   const handleAnswer = useCallback((index: number) => {

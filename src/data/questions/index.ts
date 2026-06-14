@@ -8,7 +8,7 @@ import { EarthQuestion, QuizCategory } from '@/types';
 import { CURATED_QUESTIONS } from './curated';
 import { GENERATED_QUESTIONS } from './generatedPool';
 import { generateQuestions } from './generator';
-import { findCountryMeta } from './countryMetadata';
+import { COUNTRY_METADATA, findCountryMeta } from './countryMetadata';
 
 /** Shuffle helper (Fisher-Yates) */
 function shuffle<T>(arr: T[]): T[] {
@@ -20,8 +20,78 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/** Complete mapping of country aliases to their canonical forms */
+export const COUNTRY_MAPPINGS: Record<string, string> = {
+  'usa': 'United States',
+  'united states of america': 'United States',
+  'united states': 'United States',
+  'us': 'United States',
+  'uk': 'United Kingdom',
+  'united kingdom': 'United Kingdom',
+  'great britain': 'United Kingdom',
+  'england': 'United Kingdom',
+  'uae': 'United Arab Emirates',
+  'united arab emirates': 'United Arab Emirates',
+  'russia': 'Russia',
+  'russian federation': 'Russia',
+  'south korea': 'South Korea',
+  'republic of korea': 'South Korea',
+  'korea': 'South Korea',
+  'north korea': 'North Korea',
+  'dprk': 'North Korea',
+  'viet nam': 'Vietnam',
+  'vietnam': 'Vietnam',
+  'iran': 'Iran',
+  'islamic republic of iran': 'Iran',
+  'syria': 'Syria',
+  'syrian arab republic': 'Syria',
+  'laos': 'Laos',
+  'lao pdr': 'Laos',
+  'brunei': 'Brunei',
+  'brunei darussalam': 'Brunei',
+  'taiwan': 'Taiwan',
+  'republic of china': 'Taiwan',
+  'venezuela': 'Venezuela',
+  'bolivarian republic of venezuela': 'Venezuela',
+  'bolivia': 'Bolivia',
+  'plurinational state of bolivia': 'Bolivia',
+  'tanzania': 'Tanzania',
+  'united republic of tanzania': 'Tanzania',
+  'congo': 'Congo',
+  'republic of the congo': 'Congo',
+  'dr congo': 'Democratic Republic of the Congo',
+  'democratic republic of the congo': 'Democratic Republic of the Congo',
+  'drc': 'Democratic Republic of the Congo',
+  'cote d\'ivoire': 'Ivory Coast',
+  'cote divoire': 'Ivory Coast',
+  'ivory coast': 'Ivory Coast',
+  'eswatini': 'Eswatini',
+  'swaziland': 'Eswatini',
+  'palestine': 'Palestine',
+  'west bank': 'Palestine',
+  'gaza': 'Palestine',
+  'czechia': 'Czech Republic',
+  'czech republic': 'Czech Republic',
+  'bahamas': 'Bahamas',
+  'the bahamas': 'Bahamas'
+};
+
+export function getCanonicalCountryName(country: string): string {
+  const normalized = country.trim().toLowerCase();
+  
+  if (COUNTRY_MAPPINGS[normalized]) return COUNTRY_MAPPINGS[normalized];
+
+  const metaMatch = Object.keys(COUNTRY_METADATA).find(
+    k => k.toLowerCase() === normalized
+  );
+  if (metaMatch) return metaMatch;
+
+  // Capitalize first letter of each word as fallback
+  return country.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
 /** Fuzzy match country names */
-function matchCountry(q: string, target: string): boolean {
+export function matchCountry(q: string, target: string): boolean {
   const n1 = q.toLowerCase().replace(/[^a-z]/g, '');
   const n2 = target.toLowerCase().replace(/[^a-z]/g, '');
   if (n1 === n2) return true;
@@ -115,7 +185,7 @@ export function getContinentForCountry(country: string): string | null {
 
 // Deduplicate questions from curated and generated databases
 const seenIds = new Set<string>();
-const DEDUPLICATED_STATIC_QUESTIONS: EarthQuestion[] = [];
+export const DEDUPLICATED_STATIC_QUESTIONS: EarthQuestion[] = [];
 for (const q of [...CURATED_QUESTIONS, ...GENERATED_QUESTIONS]) {
   if (!seenIds.has(q.id)) {
     seenIds.add(q.id);
@@ -206,96 +276,66 @@ export function getQuestionsForCountry(
   count: number = 1
 ): EarthQuestion[] {
   const excludeSet = new Set(answeredIds);
-  const continent = getContinentForCountry(country);
-  const results: EarthQuestion[] = [];
+  const canonicalCountry = getCanonicalCountryName(country);
 
-  const steps: { target: string; category: QuizCategory | 'any'; matchType: 'country' | 'continent' | 'global' }[] = [
-    { target: country, category, matchType: 'country' },
-    { target: country, category: 'any', matchType: 'country' },
-  ];
+  // Filter local static questions strictly matching this country
+  let matches = DEDUPLICATED_STATIC_QUESTIONS.filter(q => {
+    if (!matchCountry(q.country, canonicalCountry)) return false;
+    return category === 'trivia' || q.category === category;
+  });
 
-  if (continent) {
-    steps.push({ target: continent, category, matchType: 'continent' });
-    steps.push({ target: continent, category: 'any', matchType: 'continent' });
+  // Also include procedurally generated questions if it's a metadata country
+  const catsToGen: QuizCategory[] = category === 'trivia'
+    ? ['geography', 'trivia', 'sports', 'history']
+    : [category];
+
+  const proceduralMatches: EarthQuestion[] = [];
+  for (const cat of catsToGen) {
+    const gen = generateQuestions(canonicalCountry, cat, 5);
+    proceduralMatches.push(...gen);
   }
 
-  steps.push({ target: 'Global', category, matchType: 'global' });
-  steps.push({ target: 'Global', category: 'any', matchType: 'global' });
+  // Combine static and procedural
+  const combined = [...matches, ...proceduralMatches];
 
-  // 1. Gather unseen questions
-  for (const step of steps) {
-    if (results.length >= count) break;
-    const pool = getQuestionsForTarget(step.target, step.category, step.matchType);
-    const unseen = pool.filter(q => !excludeSet.has(q.id) && !results.some(r => r.id === q.id));
-    results.push(...unseen);
-  }
-
-  // 2. Allow repeats if count not met
-  if (results.length < count) {
-    for (const step of steps) {
-      if (results.length >= count) break;
-      const pool = getQuestionsForTarget(step.target, step.category, step.matchType);
-      const remaining = pool.filter(q => !results.some(r => r.id === q.id));
-      const sorted = [...remaining].sort((a, b) => {
-        const idxA = answeredIds.indexOf(a.id);
-        const idxB = answeredIds.indexOf(b.id);
-        return idxA - idxB;
-      });
-      results.push(...sorted);
+  // Deduplicate by question text
+  const seenText = new Set<string>();
+  const uniqueMatches: EarthQuestion[] = [];
+  for (const q of combined) {
+    const textKey = q.question.toLowerCase().trim();
+    if (!seenText.has(textKey)) {
+      seenText.add(textKey);
+      uniqueMatches.push(q);
     }
   }
 
-  return results.slice(0, count);
+  const unseen = uniqueMatches.filter(q => !excludeSet.has(q.id));
+
+  // If there are unseen questions, return them shuffled
+  if (unseen.length >= count) {
+    return shuffle(unseen).slice(0, count);
+  }
+
+  // If we run out of unseen, pad with already-answered (oldest first) to avoid empty states in sync mode
+  const answered = uniqueMatches.filter(q => excludeSet.has(q.id));
+  const sortedAnswered = [...answered].sort((a, b) => {
+    return answeredIds.indexOf(a.id) - answeredIds.indexOf(b.id);
+  });
+
+  const finalCombined = [...shuffle(unseen), ...sortedAnswered];
+  return finalCombined.slice(0, count);
 }
 
 /**
- * Get a single random question for a country with dynamic fallback and repeat system.
+ * Get a single random question strictly for a country.
  */
 export function getNextQuestion(
   country: string,
   category: QuizCategory,
   answeredIds: string[] = []
 ): EarthQuestion | null {
-  const excludeSet = new Set(answeredIds);
-  const continent = getContinentForCountry(country);
-
-  const steps: { target: string; category: QuizCategory | 'any'; matchType: 'country' | 'continent' | 'global' }[] = [
-    { target: country, category, matchType: 'country' },
-    { target: country, category: 'any', matchType: 'country' },
-  ];
-
-  if (continent) {
-    steps.push({ target: continent, category, matchType: 'continent' });
-    steps.push({ target: continent, category: 'any', matchType: 'continent' });
-  }
-
-  steps.push({ target: 'Global', category, matchType: 'global' });
-  steps.push({ target: 'Global', category: 'any', matchType: 'global' });
-
-  // Phase 1: Try to find an unseen question in the hierarchy
-  for (const step of steps) {
-    const pool = getQuestionsForTarget(step.target, step.category, step.matchType);
-    const unseen = pool.filter(q => !excludeSet.has(q.id));
-    if (unseen.length > 0) {
-      return unseen[0];
-    }
-  }
-
-  // Phase 2: If everything is answered, allow controlled repeats
-  for (const step of steps) {
-    const pool = getQuestionsForTarget(step.target, step.category, step.matchType);
-    if (pool.length > 0) {
-      const bestRepeat = getBestRepeatQuestion(pool, answeredIds);
-      if (bestRepeat) return bestRepeat;
-    }
-  }
-
-  // Ultimate fallback
-  if (DEDUPLICATED_STATIC_QUESTIONS.length > 0) {
-    return DEDUPLICATED_STATIC_QUESTIONS[Math.floor(Math.random() * DEDUPLICATED_STATIC_QUESTIONS.length)];
-  }
-
-  return null;
+  const questions = getQuestionsForCountry(country, category, answeredIds, 1);
+  return questions.length > 0 ? questions[0] : null;
 }
 
 /**
