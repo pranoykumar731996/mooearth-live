@@ -251,11 +251,11 @@ function getBestRepeatQuestion(questions: EarthQuestion[], answeredIds: string[]
 
   // Find the one answered longest ago (lowest index in answeredIds)
   let oldestQ = questions[0];
-  let oldestIdx = answeredIds.indexOf(oldestQ.id);
+  let oldestIdx = answeredIds.lastIndexOf(oldestQ.id);
 
   for (let i = 1; i < questions.length; i++) {
     const q = questions[i];
-    const idx = answeredIds.indexOf(q.id);
+    const idx = answeredIds.lastIndexOf(q.id);
     if (idx < oldestIdx) {
       oldestIdx = idx;
       oldestQ = q;
@@ -319,7 +319,7 @@ export function getQuestionsForCountry(
   // If we run out of unseen, pad with already-answered (oldest first) to avoid empty states in sync mode
   const answered = uniqueMatches.filter(q => excludeSet.has(q.id));
   const sortedAnswered = [...answered].sort((a, b) => {
-    return answeredIds.indexOf(a.id) - answeredIds.indexOf(b.id);
+    return answeredIds.lastIndexOf(a.id) - answeredIds.lastIndexOf(b.id);
   });
 
   const finalCombined = [...shuffle(unseen), ...sortedAnswered];

@@ -375,8 +375,8 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       // Sort the pool by when it was answered by comparing its index in clientAnsweredIds.
       // Unseen or older questions will appear first.
       const oldestAnswered = [...countryCategoryPool].sort((a, b) => {
-        const idxA = clientAnsweredIds.indexOf(a.id);
-        const idxB = clientAnsweredIds.indexOf(b.id);
+        const idxA = clientAnsweredIds.lastIndexOf(a.id);
+        const idxB = clientAnsweredIds.lastIndexOf(b.id);
         
         if (idxA === -1 && idxB === -1) return 0;
         if (idxA === -1) return -1;
