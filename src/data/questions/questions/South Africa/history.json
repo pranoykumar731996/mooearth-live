@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-hist-89",
+    "country": "South Africa",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"End of Apartheid\" take place in South Africa?",
+    "choices": [
+      "1917",
+      "1871",
+      "1994",
+      "1989"
+    ],
+    "correctIndex": 2,
+    "funFact": "Mandela spent 27 years in prison before leading the country's transition to multiracial democracy and winning the presidency."
+  }
+]

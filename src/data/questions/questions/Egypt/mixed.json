@@ -1,0 +1,32 @@
+[
+  {
+    "id": "eg-geo-1",
+    "country": "Egypt",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which river flows through Egypt and is the longest in Africa?",
+    "choices": [
+      "Congo",
+      "Niger",
+      "Zambezi",
+      "Nile"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Nile River is approximately 6,650 km long."
+  },
+  {
+    "id": "eg-history-1",
+    "country": "Egypt",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "What are the ancient monumental structures built as tombs for pharaohs?",
+    "choices": [
+      "Ziggurats",
+      "Pyramids",
+      "Colosseum",
+      "Temples"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Great Pyramid of Giza was the tallest man-made structure for over 3,800 years."
+  }
+]

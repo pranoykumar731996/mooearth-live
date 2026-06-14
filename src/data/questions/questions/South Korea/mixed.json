@@ -1,0 +1,47 @@
+[
+  {
+    "id": "kr-tech-1",
+    "country": "South Korea",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "Which South Korean company manufactures the Galaxy smartphone series?",
+    "choices": [
+      "LG",
+      "Samsung",
+      "Hyundai",
+      "SK Hynix"
+    ],
+    "correctIndex": 1,
+    "funFact": "Samsung is the largest technology company by revenue in South Korea."
+  },
+  {
+    "id": "kr-trivia-1",
+    "country": "South Korea",
+    "category": "trivia",
+    "difficulty": "medium",
+    "question": "What is the traditional fermented cabbage dish of Korea?",
+    "choices": [
+      "Sushi",
+      "Kimchi",
+      "Bibimbap",
+      "Ramen"
+    ],
+    "correctIndex": 1,
+    "funFact": "Kimchi has been part of Korean culture for over 2,000 years and was added to UNESCO's cultural heritage list."
+  },
+  {
+    "id": "gen-cult-99",
+    "country": "South Korea",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which country is the cultural home or origin of the famous dish \"Kimchi\"?",
+    "choices": [
+      "Germany",
+      "South Korea",
+      "Brazil",
+      "Spain"
+    ],
+    "correctIndex": 1,
+    "funFact": "Kimchi is a traditional side dish of salted, fermented vegetables, usually napa cabbage and radishes, seasoned with chili powder."
+  }
+]

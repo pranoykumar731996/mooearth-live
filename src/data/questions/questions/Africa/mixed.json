@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-geo-6",
+    "country": "Africa",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which is the largest island nation off the eastern coast of Africa?",
+    "choices": [
+      "Seychelles",
+      "Mauritius",
+      "Madagascar",
+      "Comoros"
+    ],
+    "correctIndex": 2,
+    "funFact": "Madagascar is the fourth largest island in the world and separated from Africa 88 million years ago."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-geo-70",
+    "country": "Jordan",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Dead Sea\" located?",
+    "choices": [
+      "Africa",
+      "Asia",
+      "Oceania",
+      "South America"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Dead Sea shores are the lowest land elevation on Earth, sitting at 430 meters below sea level."
+  }
+]

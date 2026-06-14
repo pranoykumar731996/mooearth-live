@@ -1,0 +1,32 @@
+[
+  {
+    "id": "fr-history-1",
+    "country": "France",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the French Revolution begin?",
+    "choices": [
+      "1776",
+      "1789",
+      "1804",
+      "1815"
+    ],
+    "correctIndex": 1,
+    "funFact": "The storming of the Bastille on July 14, 1789 is celebrated as France's national day."
+  },
+  {
+    "id": "gen-hist-77",
+    "country": "France",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Beginning of the French Revolution\" take place in France?",
+    "choices": [
+      "1917",
+      "1789",
+      "1989",
+      "1215"
+    ],
+    "correctIndex": 1,
+    "funFact": "The revolution began with the Storming of the Bastille on July 14, 1789, which is now celebrated as Bastille Day."
+  }
+]

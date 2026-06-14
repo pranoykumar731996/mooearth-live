@@ -1,0 +1,167 @@
+[
+  {
+    "id": "ru-geo-1",
+    "country": "Russia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Russia is the largest country by what measure?",
+    "choices": [
+      "Population",
+      "GDP",
+      "Land area",
+      "Coastline"
+    ],
+    "correctIndex": 2,
+    "funFact": "Russia covers more than 17 million square kilometers — spanning 11 time zones."
+  },
+  {
+    "id": "gen-geo-60",
+    "country": "Russia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Lake Baikal\" located?",
+    "choices": [
+      "South America",
+      "Oceania",
+      "Africa",
+      "Asia"
+    ],
+    "correctIndex": 3,
+    "funFact": "Baikal is the deepest and oldest lake in the world, containing roughly 20% of the planet's unfrozen surface fresh water."
+  },
+  {
+    "id": "gen-hist-79",
+    "country": "Russia",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"October Revolution\" take place in Russia?",
+    "choices": [
+      "1215",
+      "1861",
+      "1917",
+      "1776"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Bolshevik uprising led to the collapse of the provisional government and the birth of the Soviet Union."
+  },
+  {
+    "id": "gen-sci-13",
+    "country": "Russia",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Periodic Table in the year 1869?",
+    "choices": [
+      "Nikola Tesla",
+      "Dmitri Mendeleev",
+      "Alexander Graham Bell",
+      "Jonas Salk"
+    ],
+    "correctIndex": 1,
+    "funFact": "Mendeleev organized elements by atomic weight and accurately predicted elements that hadn't been discovered yet."
+  },
+  {
+    "id": "gen-tech-14",
+    "country": "Russia",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Periodic Table invented or pioneered?",
+    "choices": [
+      "Sweden",
+      "Italy",
+      "Russia",
+      "Germany"
+    ],
+    "correctIndex": 2,
+    "funFact": "Mendeleev organized elements by atomic weight and accurately predicted elements that hadn't been discovered yet."
+  },
+  {
+    "id": "gen-space-31",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first artificial satellite launch in 1957?",
+    "choices": [
+      "Sputnik 1",
+      "Rosetta",
+      "Vostok 1",
+      "Hubble Space Telescope"
+    ],
+    "correctIndex": 0,
+    "funFact": "Sputnik 1 was a polished metal sphere with four external radio antennas that broadcast beep signals."
+  },
+  {
+    "id": "gen-space-32",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Sputnik 1\"?",
+    "choices": [
+      "Germany",
+      "United States",
+      "India",
+      "Russia"
+    ],
+    "correctIndex": 3,
+    "funFact": "Sputnik 1 was a polished metal sphere with four external radio antennas that broadcast beep signals."
+  },
+  {
+    "id": "gen-space-33",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first human spaceflight in 1961?",
+    "choices": [
+      "Rosetta",
+      "Vostok 1",
+      "Apollo 11",
+      "Voyager 1"
+    ],
+    "correctIndex": 1,
+    "funFact": "Yuri Gagarin orbited the Earth for 108 minutes and successfully ejected to parachute safely back to land."
+  },
+  {
+    "id": "gen-space-34",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Vostok 1\"?",
+    "choices": [
+      "China",
+      "Russia",
+      "Germany",
+      "United States"
+    ],
+    "correctIndex": 1,
+    "funFact": "Yuri Gagarin orbited the Earth for 108 minutes and successfully ejected to parachute safely back to land."
+  },
+  {
+    "id": "gen-pol-80",
+    "country": "Russia",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"October Revolution\"?",
+    "choices": [
+      "King John",
+      "Nelson Mandela",
+      "Vladimir Lenin",
+      "Giuseppe Garibaldi"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Bolshevik uprising led to the collapse of the provisional government and the birth of the Soviet Union."
+  },
+  {
+    "id": "gen-nat-59",
+    "country": "Russia",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous freshwater lake \"Lake Baikal\" is located in which country?",
+    "choices": [
+      "Jordan",
+      "Brazil",
+      "Russia",
+      "South Africa"
+    ],
+    "correctIndex": 2,
+    "funFact": "Baikal is the deepest and oldest lake in the world, containing roughly 20% of the planet's unfrozen surface fresh water."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-76",
+    "country": "United Kingdom",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Signing of the Magna Carta\"?",
+    "choices": [
+      "Mikhail Gorbachev",
+      "King John",
+      "Nelson Mandela",
+      "Otto von Bismarck"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Magna Carta established the principle that everyone, including the king, is subject to the law."
+  }
+]

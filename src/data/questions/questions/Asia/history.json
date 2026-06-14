@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-his-3",
+    "country": "Asia",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which famous historical leader founded the Mongol Empire in 1206?",
+    "choices": [
+      "Kublai Khan",
+      "Genghis Khan",
+      "Tamerlane",
+      "Attila the Hun"
+    ],
+    "correctIndex": 1,
+    "funFact": "Genghis Khan created the largest contiguous land empire in history."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "kr-tech-1",
+    "country": "South Korea",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "Which South Korean company manufactures the Galaxy smartphone series?",
+    "choices": [
+      "LG",
+      "Samsung",
+      "Hyundai",
+      "SK Hynix"
+    ],
+    "correctIndex": 1,
+    "funFact": "Samsung is the largest technology company by revenue in South Korea."
+  }
+]

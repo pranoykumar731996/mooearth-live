@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ca-geo-1",
+    "country": "Canada",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which leaf appears on the Canadian flag?",
+    "choices": [
+      "Oak Leaf",
+      "Maple Leaf",
+      "Pine Leaf",
+      "Birch Leaf"
+    ],
+    "correctIndex": 1,
+    "funFact": "The maple leaf has been a symbol of Canada since the 18th century."
+  }
+]

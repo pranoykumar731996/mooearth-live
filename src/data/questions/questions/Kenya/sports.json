@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ke-sports-1",
+    "country": "Kenya",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Kenya is world-renowned for producing champions in which athletic discipline?",
+    "choices": [
+      "Sprinting",
+      "Long-Distance Running",
+      "Swimming",
+      "Weightlifting"
+    ],
+    "correctIndex": 1,
+    "funFact": "Eliud Kipchoge from Kenya was the first person to run a marathon in under 2 hours."
+  }
+]

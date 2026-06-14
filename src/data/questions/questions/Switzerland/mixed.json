@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ch-trivia-1",
+    "country": "Switzerland",
+    "category": "trivia",
+    "difficulty": "medium",
+    "question": "How many official languages does Switzerland have?",
+    "choices": [
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "correctIndex": 2,
+    "funFact": "Switzerland's four official languages are German, French, Italian, and Romansh."
+  }
+]

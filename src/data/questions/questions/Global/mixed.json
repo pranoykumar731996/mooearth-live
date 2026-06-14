@@ -1,0 +1,272 @@
+[
+  {
+    "id": "glb-geo-1",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which is the largest ocean on Earth?",
+    "choices": [
+      "Atlantic Ocean",
+      "Indian Ocean",
+      "Arctic Ocean",
+      "Pacific Ocean"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Pacific Ocean is larger than all of Earth's land area combined."
+  },
+  {
+    "id": "glb-geo-2",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which line of latitude divides the Earth into the Northern and Southern Hemispheres?",
+    "choices": [
+      "Prime Meridian",
+      "Tropic of Cancer",
+      "Equator",
+      "Tropic of Capricorn"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Equator passes through 13 countries."
+  },
+  {
+    "id": "glb-geo-3",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which country has the most natural lakes in the world?",
+    "choices": [
+      "Canada",
+      "Russia",
+      "Brazil",
+      "United States"
+    ],
+    "correctIndex": 0,
+    "funFact": "Canada has more than 60% of all the lakes in the world."
+  },
+  {
+    "id": "glb-spo-1",
+    "country": "Global",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "How often are the modern Olympic Games held?",
+    "choices": [
+      "Every 2 years",
+      "Every 4 years",
+      "Every 5 years",
+      "Every 6 years"
+    ],
+    "correctIndex": 1,
+    "funFact": "The first modern Olympics were held in Athens in 1896."
+  },
+  {
+    "id": "glb-spo-2",
+    "country": "Global",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which sport uses a shuttlecock instead of a ball?",
+    "choices": [
+      "Tennis",
+      "Squash",
+      "Badminton",
+      "Table Tennis"
+    ],
+    "correctIndex": 2,
+    "funFact": "Shuttlecocks are traditionally made from the left-wing feathers of a goose."
+  },
+  {
+    "id": "glb-his-1",
+    "country": "Global",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who was the first president of the United States?",
+    "choices": [
+      "Thomas Jefferson",
+      "Abraham Lincoln",
+      "John Adams",
+      "George Washington"
+    ],
+    "correctIndex": 3,
+    "funFact": "George Washington is the only president ever to receive 100% of the electoral votes."
+  },
+  {
+    "id": "glb-his-2",
+    "country": "Global",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which century did the Black Death plague devastate Europe?",
+    "choices": [
+      "12th Century",
+      "13th Century",
+      "14th Century",
+      "15th Century"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Black Death killed an estimated 30% to 60% of Europe's population."
+  },
+  {
+    "id": "glb-sci-1",
+    "country": "Global",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which planet in our solar system is known as the Red Planet?",
+    "choices": [
+      "Venus",
+      "Mars",
+      "Jupiter",
+      "Saturn"
+    ],
+    "correctIndex": 1,
+    "funFact": "Mars is red because of the iron oxide (rust) on its surface."
+  },
+  {
+    "id": "glb-sci-2",
+    "country": "Global",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is the chemical symbol for water?",
+    "choices": [
+      "O2",
+      "CO2",
+      "H2O",
+      "HO"
+    ],
+    "correctIndex": 2,
+    "funFact": "A water molecule is composed of two hydrogen atoms and one oxygen atom."
+  },
+  {
+    "id": "glb-sci-3",
+    "country": "Global",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the hardest natural substance on Earth?",
+    "choices": [
+      "Gold",
+      "Iron",
+      "Quartz",
+      "Diamond"
+    ],
+    "correctIndex": 3,
+    "funFact": "Diamonds are made of pure carbon atoms organized in a crystal structure."
+  },
+  {
+    "id": "glb-sci-4",
+    "country": "Global",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which gas do plants absorb during photosynthesis?",
+    "choices": [
+      "Oxygen",
+      "Nitrogen",
+      "Carbon Dioxide",
+      "Hydrogen"
+    ],
+    "correctIndex": 2,
+    "funFact": "Photosynthesis converts carbon dioxide and water into oxygen and glucose."
+  },
+  {
+    "id": "glb-pol-1",
+    "country": "Global",
+    "category": "politics",
+    "difficulty": "easy",
+    "question": "Where is the headquarters of the United Nations located?",
+    "choices": [
+      "Geneva, Switzerland",
+      "London, UK",
+      "New York City, USA",
+      "Paris, France"
+    ],
+    "correctIndex": 2,
+    "funFact": "The land on which the UN headquarters sits is international territory."
+  },
+  {
+    "id": "glb-pol-2",
+    "country": "Global",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "What form of government is defined as \"rule by the people\"?",
+    "choices": [
+      "Monarchy",
+      "Oligarchy",
+      "Democracy",
+      "Autocracy"
+    ],
+    "correctIndex": 2,
+    "funFact": "The word democracy comes from the Greek \"demos\" (people) and \"kratos\" (power)."
+  },
+  {
+    "id": "glb-nat-1",
+    "country": "Global",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which is the largest mammal in the world?",
+    "choices": [
+      "African Elephant",
+      "Blue Whale",
+      "Fin Whale",
+      "Colossal Squid"
+    ],
+    "correctIndex": 1,
+    "funFact": "A blue whale's tongue can weigh as much as an entire adult elephant."
+  },
+  {
+    "id": "glb-nat-2",
+    "country": "Global",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which type of tree is famous for losing its leaves in autumn?",
+    "choices": [
+      "Coniferous",
+      "Deciduous",
+      "Evergreen",
+      "Boreal"
+    ],
+    "correctIndex": 1,
+    "funFact": "Deciduous trees shed leaves to conserve water during cold or dry seasons."
+  },
+  {
+    "id": "glb-nat-3",
+    "country": "Global",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What is the primary food source of Giant Pandas?",
+    "choices": [
+      "Bamboo",
+      "Eucalyptus",
+      "Insects",
+      "Fish"
+    ],
+    "correctIndex": 0,
+    "funFact": "Pandas must eat up to 38 kilograms of bamboo daily to meet their nutritional needs."
+  },
+  {
+    "id": "glb-cul-1",
+    "country": "Global",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Who is the famous author of the play \"Romeo and Juliet\"?",
+    "choices": [
+      "Charles Dickens",
+      "William Shakespeare",
+      "Jane Austen",
+      "Mark Twain"
+    ],
+    "correctIndex": 1,
+    "funFact": "Shakespeare introduced over 1,700 new words to the English language."
+  },
+  {
+    "id": "glb-cul-2",
+    "country": "Global",
+    "category": "culture",
+    "difficulty": "medium",
+    "question": "Which musical instrument has 88 keys?",
+    "choices": [
+      "Violin",
+      "Guitar",
+      "Piano",
+      "Flute"
+    ],
+    "correctIndex": 2,
+    "funFact": "A standard piano has 52 white keys and 36 black keys."
+  }
+]

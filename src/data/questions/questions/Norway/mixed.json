@@ -1,0 +1,17 @@
+[
+  {
+    "id": "no-geo-1",
+    "country": "Norway",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What are the deep, narrow inlets carved by glaciers along Norway's coast called?",
+    "choices": [
+      "Atolls",
+      "Fjords",
+      "Deltas",
+      "Estuaries"
+    ],
+    "correctIndex": 1,
+    "funFact": "Norway has over 1,000 fjords, with the longest being Sognefjorden at 204 km."
+  }
+]

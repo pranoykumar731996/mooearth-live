@@ -1,0 +1,452 @@
+[
+  {
+    "id": "us-geo-1",
+    "country": "United States",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "How many states are in the United States?",
+    "choices": [
+      "48",
+      "50",
+      "51",
+      "52"
+    ],
+    "correctIndex": 1,
+    "funFact": "Hawaii and Alaska were the last two states to be admitted in 1959."
+  },
+  {
+    "id": "us-history-1",
+    "country": "United States",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the United States declare independence?",
+    "choices": [
+      "1765",
+      "1776",
+      "1789",
+      "1801"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Declaration of Independence was primarily authored by Thomas Jefferson."
+  },
+  {
+    "id": "gen-hist-85",
+    "country": "United States",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Declaration of Independence signing\" take place in United States?",
+    "choices": [
+      "1789",
+      "1215",
+      "1776",
+      "1994"
+    ],
+    "correctIndex": 2,
+    "funFact": "The declaration was signed by 56 delegates, with John Hancock writing his name large so King George III could read it without glasses."
+  },
+  {
+    "id": "us-space-1",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which US space agency landed humans on the Moon?",
+    "choices": [
+      "SpaceX",
+      "NASA",
+      "ESA",
+      "DARPA"
+    ],
+    "correctIndex": 1,
+    "funFact": "Neil Armstrong was the first person to walk on the Moon on July 20, 1969."
+  },
+  {
+    "id": "us-tech-1",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "medium",
+    "question": "In which city is Silicon Valley located?",
+    "choices": [
+      "Los Angeles",
+      "San Francisco Bay Area",
+      "Seattle",
+      "Austin"
+    ],
+    "correctIndex": 1,
+    "funFact": "Silicon Valley got its name from the silicon used in computer chips manufactured there."
+  },
+  {
+    "id": "gen-sci-1",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Telephone in the year 1876?",
+    "choices": [
+      "Mark Humayun",
+      "Dmitri Mendeleev",
+      "Guglielmo Marconi",
+      "Alexander Graham Bell"
+    ],
+    "correctIndex": 3,
+    "funFact": "The first successful telephone call was Bell saying, \"Mr. Watson, come here, I want to see you.\""
+  },
+  {
+    "id": "gen-tech-2",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Telephone invented or pioneered?",
+    "choices": [
+      "United States",
+      "Poland",
+      "Italy",
+      "Germany"
+    ],
+    "correctIndex": 0,
+    "funFact": "The first successful telephone call was Bell saying, \"Mr. Watson, come here, I want to see you.\""
+  },
+  {
+    "id": "gen-sci-9",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Light Bulb in the year 1879?",
+    "choices": [
+      "Jonas Salk",
+      "Nikola Tesla",
+      "Marie Curie",
+      "Thomas Edison"
+    ],
+    "correctIndex": 3,
+    "funFact": "Edison tested over 6,000 materials before finding carbonized bamboo filament that burned for 1,200 hours."
+  },
+  {
+    "id": "gen-tech-10",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Light Bulb invented or pioneered?",
+    "choices": [
+      "Italy",
+      "Germany",
+      "United Kingdom",
+      "United States"
+    ],
+    "correctIndex": 3,
+    "funFact": "Edison tested over 6,000 materials before finding carbonized bamboo filament that burned for 1,200 hours."
+  },
+  {
+    "id": "gen-sci-15",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Polio Vaccine in the year 1953?",
+    "choices": [
+      "Jonas Salk",
+      "Dmitri Mendeleev",
+      "Robert Dennard",
+      "Alfred Nobel"
+    ],
+    "correctIndex": 0,
+    "funFact": "Salk chose not to patent the vaccine, making it freely available to maximize global distribution."
+  },
+  {
+    "id": "gen-tech-16",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Polio Vaccine invented or pioneered?",
+    "choices": [
+      "Sweden",
+      "United States",
+      "Poland",
+      "United Kingdom"
+    ],
+    "correctIndex": 1,
+    "funFact": "Salk chose not to patent the vaccine, making it freely available to maximize global distribution."
+  },
+  {
+    "id": "gen-sci-23",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Dynamic RAM (DRAM) in the year 1968?",
+    "choices": [
+      "Alfred Nobel",
+      "James Watt",
+      "Thomas Edison",
+      "Robert Dennard"
+    ],
+    "correctIndex": 3,
+    "funFact": "DRAM allowed computers to store binary data in a single transistor and capacitor, revolutionizing memory density."
+  },
+  {
+    "id": "gen-tech-24",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Dynamic RAM (DRAM) invented or pioneered?",
+    "choices": [
+      "Russia",
+      "Sweden",
+      "United Kingdom",
+      "United States"
+    ],
+    "correctIndex": 3,
+    "funFact": "DRAM allowed computers to store binary data in a single transistor and capacitor, revolutionizing memory density."
+  },
+  {
+    "id": "gen-sci-25",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Bionic Eye in the year 2009?",
+    "choices": [
+      "Alfred Nobel",
+      "Mark Humayun",
+      "Alexander Graham Bell",
+      "Wilhelm Röntgen"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Argus II implant stimulates the retina directly with visual data captured by a glasses-mounted camera."
+  },
+  {
+    "id": "gen-tech-26",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Bionic Eye invented or pioneered?",
+    "choices": [
+      "United States",
+      "Sweden",
+      "Russia",
+      "United Kingdom"
+    ],
+    "correctIndex": 0,
+    "funFact": "The Argus II implant stimulates the retina directly with visual data captured by a glasses-mounted camera."
+  },
+  {
+    "id": "gen-sci-29",
+    "country": "United States",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Tesla Coil in the year 1891?",
+    "choices": [
+      "Robert Dennard",
+      "Nikola Tesla",
+      "Johannes Gutenberg",
+      "Marie Curie"
+    ],
+    "correctIndex": 1,
+    "funFact": "Tesla designed the high-frequency resonant transformer to explore wireless electrical lighting and power distribution."
+  },
+  {
+    "id": "gen-tech-30",
+    "country": "United States",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Tesla Coil invented or pioneered?",
+    "choices": [
+      "United States",
+      "Sweden",
+      "United Kingdom",
+      "Germany"
+    ],
+    "correctIndex": 0,
+    "funFact": "Tesla designed the high-frequency resonant transformer to explore wireless electrical lighting and power distribution."
+  },
+  {
+    "id": "gen-space-35",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first manned Moon landing in 1969?",
+    "choices": [
+      "Apollo 11",
+      "Sputnik 1",
+      "Rosetta",
+      "Ingenuity"
+    ],
+    "correctIndex": 0,
+    "funFact": "Apollo 11's lunar module eagle landed with less than 30 seconds of fuel remaining in the tanks."
+  },
+  {
+    "id": "gen-space-36",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Apollo 11\"?",
+    "choices": [
+      "Russia",
+      "India",
+      "China",
+      "United States"
+    ],
+    "correctIndex": 3,
+    "funFact": "Apollo 11's lunar module eagle landed with less than 30 seconds of fuel remaining in the tanks."
+  },
+  {
+    "id": "gen-space-37",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the launch of the first deep space probe to reach interstellar space in 1977?",
+    "choices": [
+      "Curiosity",
+      "Apollo 11",
+      "Voyager 1",
+      "Mangalyaan"
+    ],
+    "correctIndex": 2,
+    "funFact": "Voyager 1 carries a Golden Record containing sounds, music, and images representing life on Earth."
+  },
+  {
+    "id": "gen-space-38",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Voyager 1\"?",
+    "choices": [
+      "United States",
+      "Russia",
+      "Germany",
+      "China"
+    ],
+    "correctIndex": 0,
+    "funFact": "Voyager 1 carries a Golden Record containing sounds, music, and images representing life on Earth."
+  },
+  {
+    "id": "gen-space-39",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the successful launch of the Hubble Space Telescope in 1990?",
+    "choices": [
+      "Rosetta",
+      "James Webb Space Telescope",
+      "Hubble Space Telescope",
+      "Vostok 1"
+    ],
+    "correctIndex": 2,
+    "funFact": "Hubble was launched with a flawed mirror, requiring a space shuttle repair mission in 1993 to fix its vision."
+  },
+  {
+    "id": "gen-space-40",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Hubble Space Telescope\"?",
+    "choices": [
+      "India",
+      "United States",
+      "China",
+      "Russia"
+    ],
+    "correctIndex": 1,
+    "funFact": "Hubble was launched with a flawed mirror, requiring a space shuttle repair mission in 1993 to fix its vision."
+  },
+  {
+    "id": "gen-space-41",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the landing of the Curiosity Rover on Mars in 2012?",
+    "choices": [
+      "Curiosity",
+      "James Webb Space Telescope",
+      "Voyager 1",
+      "Hubble Space Telescope"
+    ],
+    "correctIndex": 0,
+    "funFact": "Curiosity was lowered to the Martian surface using an innovative \"sky crane\" tether system."
+  },
+  {
+    "id": "gen-space-42",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Curiosity\"?",
+    "choices": [
+      "United States",
+      "China",
+      "India",
+      "Germany"
+    ],
+    "correctIndex": 0,
+    "funFact": "Curiosity was lowered to the Martian surface using an innovative \"sky crane\" tether system."
+  },
+  {
+    "id": "gen-space-49",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the successful launch of the James Webb Space Telescope in 2021?",
+    "choices": [
+      "Chang'e 4",
+      "Curiosity",
+      "Voyager 1",
+      "James Webb Space Telescope"
+    ],
+    "correctIndex": 3,
+    "funFact": "James Webb features a segmented 6.5-meter gold-coated beryllium mirror designed to capture infrared light."
+  },
+  {
+    "id": "gen-space-50",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"James Webb Space Telescope\"?",
+    "choices": [
+      "China",
+      "Germany",
+      "Russia",
+      "United States"
+    ],
+    "correctIndex": 3,
+    "funFact": "James Webb features a segmented 6.5-meter gold-coated beryllium mirror designed to capture infrared light."
+  },
+  {
+    "id": "gen-space-51",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first helicopter flight on Mars in 2021?",
+    "choices": [
+      "Chang'e 4",
+      "Mangalyaan",
+      "Ingenuity",
+      "Sputnik 1"
+    ],
+    "correctIndex": 2,
+    "funFact": "Ingenuity's blades spin at over 2,400 RPM to generate lift in the thin Martian atmosphere, which is 1% of Earth's density."
+  },
+  {
+    "id": "gen-space-52",
+    "country": "United States",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Ingenuity\"?",
+    "choices": [
+      "China",
+      "India",
+      "Russia",
+      "United States"
+    ],
+    "correctIndex": 3,
+    "funFact": "Ingenuity's blades spin at over 2,400 RPM to generate lift in the thin Martian atmosphere, which is 1% of Earth's density."
+  },
+  {
+    "id": "gen-pol-86",
+    "country": "United States",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Declaration of Independence signing\"?",
+    "choices": [
+      "George Washington",
+      "Vladimir Lenin",
+      "King John",
+      "Nelson Mandela"
+    ],
+    "correctIndex": 0,
+    "funFact": "The declaration was signed by 56 delegates, with John Hancock writing his name large so King George III could read it without glasses."
+  }
+]

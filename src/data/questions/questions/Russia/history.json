@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-hist-79",
+    "country": "Russia",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"October Revolution\" take place in Russia?",
+    "choices": [
+      "1215",
+      "1861",
+      "1917",
+      "1776"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Bolshevik uprising led to the collapse of the provisional government and the birth of the Soviet Union."
+  }
+]

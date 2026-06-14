@@ -1,0 +1,17 @@
+[
+  {
+    "id": "eg-geo-1",
+    "country": "Egypt",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which river flows through Egypt and is the longest in Africa?",
+    "choices": [
+      "Congo",
+      "Niger",
+      "Zambezi",
+      "Nile"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Nile River is approximately 6,650 km long."
+  }
+]

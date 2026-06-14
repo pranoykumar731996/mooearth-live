@@ -1,0 +1,17 @@
+[
+  {
+    "id": "uk-geo-1",
+    "country": "United Kingdom",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of the United Kingdom?",
+    "choices": [
+      "Edinburgh",
+      "Manchester",
+      "London",
+      "Birmingham"
+    ],
+    "correctIndex": 2,
+    "funFact": "London is one of the most diverse cities in the world, with over 300 languages spoken."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "pe-geo-1",
+    "country": "Peru",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which famous Inca citadel sits high in the Andes mountains of Peru?",
+    "choices": [
+      "Teotihuacan",
+      "Angkor Wat",
+      "Machu Picchu",
+      "Petra"
+    ],
+    "correctIndex": 2,
+    "funFact": "Machu Picchu sits at 2,430 meters above sea level and was built around 1450."
+  }
+]

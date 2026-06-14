@@ -1,0 +1,32 @@
+[
+  {
+    "id": "it-history-1",
+    "country": "Italy",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which famous artist painted the ceiling of the Sistine Chapel?",
+    "choices": [
+      "Leonardo da Vinci",
+      "Michelangelo",
+      "Raphael",
+      "Donatello"
+    ],
+    "correctIndex": 1,
+    "funFact": "Michelangelo painted the Sistine Chapel ceiling between 1508 and 1512, mostly lying on his back."
+  },
+  {
+    "id": "gen-hist-83",
+    "country": "Italy",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Unification of Italy\" take place in Italy?",
+    "choices": [
+      "1994",
+      "1871",
+      "1861",
+      "1789"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Risorgimento movement unified independent states into the Kingdom of Italy under King Victor Emmanuel II."
+  }
+]

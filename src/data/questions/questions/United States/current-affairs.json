@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-86",
+    "country": "United States",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Declaration of Independence signing\"?",
+    "choices": [
+      "George Washington",
+      "Vladimir Lenin",
+      "King John",
+      "Nelson Mandela"
+    ],
+    "correctIndex": 0,
+    "funFact": "The declaration was signed by 56 delegates, with John Hancock writing his name large so King George III could read it without glasses."
+  }
+]

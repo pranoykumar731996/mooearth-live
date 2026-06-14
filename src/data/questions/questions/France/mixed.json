@@ -1,0 +1,77 @@
+[
+  {
+    "id": "fr-geo-1",
+    "country": "France",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What famous tower stands in Paris?",
+    "choices": [
+      "Big Ben",
+      "Leaning Tower",
+      "Eiffel Tower",
+      "CN Tower"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Eiffel Tower was built in 1889 and was supposed to be temporary!"
+  },
+  {
+    "id": "fr-history-1",
+    "country": "France",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the French Revolution begin?",
+    "choices": [
+      "1776",
+      "1789",
+      "1804",
+      "1815"
+    ],
+    "correctIndex": 1,
+    "funFact": "The storming of the Bastille on July 14, 1789 is celebrated as France's national day."
+  },
+  {
+    "id": "gen-hist-77",
+    "country": "France",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Beginning of the French Revolution\" take place in France?",
+    "choices": [
+      "1917",
+      "1789",
+      "1989",
+      "1215"
+    ],
+    "correctIndex": 1,
+    "funFact": "The revolution began with the Storming of the Bastille on July 14, 1789, which is now celebrated as Bastille Day."
+  },
+  {
+    "id": "gen-pol-78",
+    "country": "France",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Beginning of the French Revolution\"?",
+    "choices": [
+      "King John",
+      "Louis XVI",
+      "Giuseppe Garibaldi",
+      "Vladimir Lenin"
+    ],
+    "correctIndex": 1,
+    "funFact": "The revolution began with the Storming of the Bastille on July 14, 1789, which is now celebrated as Bastille Day."
+  },
+  {
+    "id": "fr-trivia-1",
+    "country": "France",
+    "category": "trivia",
+    "difficulty": "medium",
+    "question": "Which French dish is made from snails?",
+    "choices": [
+      "Ratatouille",
+      "Escargot",
+      "Bouillabaisse",
+      "Crêpe"
+    ],
+    "correctIndex": 1,
+    "funFact": "France consumes approximately 30,000 tonnes of snails per year."
+  }
+]

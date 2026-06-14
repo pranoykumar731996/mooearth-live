@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gr-history-1",
+    "country": "Greece",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Where did the ancient Olympic Games originate?",
+    "choices": [
+      "Rome",
+      "Athens",
+      "Olympia, Greece",
+      "Sparta"
+    ],
+    "correctIndex": 2,
+    "funFact": "The first recorded Olympic Games were held in Olympia in 776 BC."
+  }
+]

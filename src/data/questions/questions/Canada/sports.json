@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ca-sports-1",
+    "country": "Canada",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which sport is considered Canada's national winter sport?",
+    "choices": [
+      "Curling",
+      "Figure Skating",
+      "Ice Hockey",
+      "Skiing"
+    ],
+    "correctIndex": 2,
+    "funFact": "Ice hockey was invented in Canada in the 19th century."
+  }
+]

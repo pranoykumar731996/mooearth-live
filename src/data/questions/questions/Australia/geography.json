@@ -1,0 +1,47 @@
+[
+  {
+    "id": "au-geo-1",
+    "country": "Australia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Australia?",
+    "choices": [
+      "Sydney",
+      "Melbourne",
+      "Canberra",
+      "Brisbane"
+    ],
+    "correctIndex": 2,
+    "funFact": "Canberra was chosen as the capital as a compromise between rivals Sydney and Melbourne."
+  },
+  {
+    "id": "au-geo-2",
+    "country": "Australia",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the world's largest coral reef system, located off Australia?",
+    "choices": [
+      "Belize Barrier Reef",
+      "Great Barrier Reef",
+      "Red Sea Coral Reef",
+      "Ningaloo Reef"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Great Barrier Reef is so large it can be seen from outer space."
+  },
+  {
+    "id": "gen-geo-62",
+    "country": "Australia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Great Barrier Reef\" located?",
+    "choices": [
+      "Oceania",
+      "Africa",
+      "South America",
+      "Asia"
+    ],
+    "correctIndex": 0,
+    "funFact": "The Great Barrier Reef is the largest living structure on Earth, composed of over 2,900 individual reefs."
+  }
+]

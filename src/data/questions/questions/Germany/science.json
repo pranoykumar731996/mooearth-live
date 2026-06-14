@@ -1,0 +1,107 @@
+[
+  {
+    "id": "de-tech-1",
+    "country": "Germany",
+    "category": "technology",
+    "difficulty": "medium",
+    "question": "Which German invented the printing press?",
+    "choices": [
+      "Albert Einstein",
+      "Johannes Gutenberg",
+      "Karl Benz",
+      "Werner Heisenberg"
+    ],
+    "correctIndex": 1,
+    "funFact": "Gutenberg's printing press, invented around 1440, revolutionized the spread of knowledge."
+  },
+  {
+    "id": "gen-sci-11",
+    "country": "Germany",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Printing Press in the year 1440?",
+    "choices": [
+      "Johannes Gutenberg",
+      "Wilhelm Röntgen",
+      "Alexander Graham Bell",
+      "Marie Curie"
+    ],
+    "correctIndex": 0,
+    "funFact": "The Gutenberg Bible was the first major book printed in the West using movable metal type."
+  },
+  {
+    "id": "gen-tech-12",
+    "country": "Germany",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Printing Press invented or pioneered?",
+    "choices": [
+      "Germany",
+      "Russia",
+      "United States",
+      "Italy"
+    ],
+    "correctIndex": 0,
+    "funFact": "The Gutenberg Bible was the first major book printed in the West using movable metal type."
+  },
+  {
+    "id": "gen-sci-17",
+    "country": "Germany",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the X-ray in the year 1895?",
+    "choices": [
+      "Mark Humayun",
+      "Tim Berners-Lee",
+      "Robert Dennard",
+      "Wilhelm Röntgen"
+    ],
+    "correctIndex": 3,
+    "funFact": "Röntgen took the first X-ray image of his wife's hand; upon seeing her bones she exclaimed, \"I have seen my death!\""
+  },
+  {
+    "id": "gen-tech-18",
+    "country": "Germany",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the X-ray invented or pioneered?",
+    "choices": [
+      "Russia",
+      "United States",
+      "Germany",
+      "Sweden"
+    ],
+    "correctIndex": 2,
+    "funFact": "Röntgen took the first X-ray image of his wife's hand; upon seeing her bones she exclaimed, \"I have seen my death!\""
+  },
+  {
+    "id": "gen-space-45",
+    "country": "Germany",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first landing of a probe on a comet in 2014?",
+    "choices": [
+      "Ingenuity",
+      "Mangalyaan",
+      "Rosetta",
+      "Sputnik 1"
+    ],
+    "correctIndex": 2,
+    "funFact": "Rosetta's Philae lander bounced twice on the comet's surface before settling in the shadow of a cliff."
+  },
+  {
+    "id": "gen-space-46",
+    "country": "Germany",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Rosetta\"?",
+    "choices": [
+      "Germany",
+      "Russia",
+      "United States",
+      "China"
+    ],
+    "correctIndex": 0,
+    "funFact": "Rosetta's Philae lander bounced twice on the comet's surface before settling in the shadow of a cliff."
+  }
+]

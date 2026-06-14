@@ -1,0 +1,17 @@
+[
+  {
+    "id": "es-sports-1",
+    "country": "Spain",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "How many UEFA Champions League titles has Real Madrid won (as of 2024)?",
+    "choices": [
+      "10",
+      "12",
+      "15",
+      "18"
+    ],
+    "correctIndex": 2,
+    "funFact": "Real Madrid is the most successful club in Champions League history."
+  }
+]

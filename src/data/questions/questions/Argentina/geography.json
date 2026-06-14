@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ar-geo-1",
+    "country": "Argentina",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Argentina?",
+    "choices": [
+      "Córdoba",
+      "Mendoza",
+      "Rosario",
+      "Buenos Aires"
+    ],
+    "correctIndex": 3,
+    "funFact": "Buenos Aires means \"Good Winds\" or \"Fair Winds\" in Spanish."
+  },
+  {
+    "id": "ar-geo-2",
+    "country": "Argentina",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which famous waterfall system is located on the Argentina-Brazil border?",
+    "choices": [
+      "Angel Falls",
+      "Niagara Falls",
+      "Iguazu Falls",
+      "Victoria Falls"
+    ],
+    "correctIndex": 2,
+    "funFact": "Iguazu Falls consists of 275 individual waterfalls spanning nearly 3 kilometers."
+  }
+]

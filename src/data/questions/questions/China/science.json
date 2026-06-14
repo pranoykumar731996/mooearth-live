@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-space-47",
+    "country": "China",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the landing on the far side of the Moon in 2019?",
+    "choices": [
+      "James Webb Space Telescope",
+      "Sputnik 1",
+      "Chang'e 4",
+      "Voyager 1"
+    ],
+    "correctIndex": 2,
+    "funFact": "Because the far side of the Moon blocks radio signals, Chang'e 4 communicates via the Queqiao relay satellite."
+  },
+  {
+    "id": "gen-space-48",
+    "country": "China",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Chang'e 4\"?",
+    "choices": [
+      "India",
+      "United States",
+      "Germany",
+      "China"
+    ],
+    "correctIndex": 3,
+    "funFact": "Because the far side of the Moon blocks radio signals, Chang'e 4 communicates via the Queqiao relay satellite."
+  }
+]

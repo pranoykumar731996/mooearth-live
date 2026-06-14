@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-geo-54",
+    "country": "Nepal",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Mount Everest\" located?",
+    "choices": [
+      "Oceania",
+      "Asia",
+      "Africa",
+      "South America"
+    ],
+    "correctIndex": 1,
+    "funFact": "Everest stands at 8,848 meters and rises by about 4 millimeters every year due to tectonic plate collisions."
+  },
+  {
+    "id": "gen-nat-53",
+    "country": "Nepal",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous mountain peak \"Mount Everest\" is located in which country?",
+    "choices": [
+      "Russia",
+      "Nepal",
+      "Tanzania",
+      "Brazil"
+    ],
+    "correctIndex": 1,
+    "funFact": "Everest stands at 8,848 meters and rises by about 4 millimeters every year due to tectonic plate collisions."
+  }
+]

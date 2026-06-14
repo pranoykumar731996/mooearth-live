@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-sci-27",
+    "country": "Sweden",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Dynamite in the year 1867?",
+    "choices": [
+      "Alfred Nobel",
+      "Tim Berners-Lee",
+      "Guglielmo Marconi",
+      "Nikola Tesla"
+    ],
+    "correctIndex": 0,
+    "funFact": "Nobel created dynamite as a safer alternative to volatile nitroglycerin, and later used his fortune to fund the Nobel Prizes."
+  },
+  {
+    "id": "gen-tech-28",
+    "country": "Sweden",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Dynamite invented or pioneered?",
+    "choices": [
+      "United States",
+      "Sweden",
+      "Italy",
+      "Russia"
+    ],
+    "correctIndex": 1,
+    "funFact": "Nobel created dynamite as a safer alternative to volatile nitroglycerin, and later used his fortune to fund the Nobel Prizes."
+  }
+]

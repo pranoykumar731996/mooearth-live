@@ -1,0 +1,32 @@
+[
+  {
+    "id": "us-history-1",
+    "country": "United States",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the United States declare independence?",
+    "choices": [
+      "1765",
+      "1776",
+      "1789",
+      "1801"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Declaration of Independence was primarily authored by Thomas Jefferson."
+  },
+  {
+    "id": "gen-hist-85",
+    "country": "United States",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Declaration of Independence signing\" take place in United States?",
+    "choices": [
+      "1789",
+      "1215",
+      "1776",
+      "1994"
+    ],
+    "correctIndex": 2,
+    "funFact": "The declaration was signed by 56 delegates, with John Hancock writing his name large so King George III could read it without glasses."
+  }
+]

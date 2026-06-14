@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-nat-4",
+    "country": "Oceania",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which unique mammal is native to Australia and is venomous?",
+    "choices": [
+      "Kangaroo",
+      "Koala",
+      "Wombat",
+      "Platypus"
+    ],
+    "correctIndex": 3,
+    "funFact": "Male platypuses have a venomous spur on their hind feet capable of causing severe pain."
+  }
+]

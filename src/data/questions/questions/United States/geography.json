@@ -1,0 +1,17 @@
+[
+  {
+    "id": "us-geo-1",
+    "country": "United States",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "How many states are in the United States?",
+    "choices": [
+      "48",
+      "50",
+      "51",
+      "52"
+    ],
+    "correctIndex": 1,
+    "funFact": "Hawaii and Alaska were the last two states to be admitted in 1959."
+  }
+]

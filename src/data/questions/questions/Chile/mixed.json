@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-geo-74",
+    "country": "Chile",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Atacama Desert\" located?",
+    "choices": [
+      "Oceania",
+      "Asia",
+      "Africa",
+      "South America"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Atacama is the driest non-polar desert on Earth, with some weather stations never recording a drop of rain."
+  },
+  {
+    "id": "gen-nat-73",
+    "country": "Chile",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous desert \"Atacama Desert\" is located in which country?",
+    "choices": [
+      "Nepal",
+      "Chile",
+      "Venezuela",
+      "Tanzania"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Atacama is the driest non-polar desert on Earth, with some weather stations never recording a drop of rain."
+  }
+]

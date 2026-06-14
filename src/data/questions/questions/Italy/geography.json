@@ -1,0 +1,17 @@
+[
+  {
+    "id": "it-geo-1",
+    "country": "Italy",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Italy?",
+    "choices": [
+      "Milan",
+      "Venice",
+      "Florence",
+      "Rome"
+    ],
+    "correctIndex": 3,
+    "funFact": "Rome was founded in 753 BC and is known as the \"Eternal City\"."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-spo-3",
+    "country": "Europe",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which football club has won the most UEFA Champions League titles?",
+    "choices": [
+      "FC Barcelona",
+      "AC Milan",
+      "Liverpool FC",
+      "Real Madrid"
+    ],
+    "correctIndex": 3,
+    "funFact": "Real Madrid won the first five consecutive Champions League tournaments."
+  }
+]

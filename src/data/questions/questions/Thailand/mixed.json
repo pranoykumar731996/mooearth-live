@@ -1,0 +1,17 @@
+[
+  {
+    "id": "th-trivia-1",
+    "country": "Thailand",
+    "category": "trivia",
+    "difficulty": "easy",
+    "question": "What is the former name of Thailand?",
+    "choices": [
+      "Burma",
+      "Siam",
+      "Ceylon",
+      "Formosa"
+    ],
+    "correctIndex": 1,
+    "funFact": "Thailand changed its name from Siam to Thailand in 1939, meaning \"Land of the Free\"."
+  }
+]

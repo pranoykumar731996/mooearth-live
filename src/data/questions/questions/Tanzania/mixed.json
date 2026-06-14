@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-geo-68",
+    "country": "Tanzania",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Mount Kilimanjaro\" located?",
+    "choices": [
+      "Africa",
+      "Oceania",
+      "South America",
+      "Asia"
+    ],
+    "correctIndex": 0,
+    "funFact": "Kilimanjaro is the tallest free-standing mountain in the world, rising 5,895 meters above sea level."
+  },
+  {
+    "id": "gen-nat-67",
+    "country": "Tanzania",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous mountain peak \"Mount Kilimanjaro\" is located in which country?",
+    "choices": [
+      "Nepal",
+      "Tanzania",
+      "Jordan",
+      "South Africa"
+    ],
+    "correctIndex": 1,
+    "funFact": "Kilimanjaro is the tallest free-standing mountain in the world, rising 5,895 meters above sea level."
+  }
+]

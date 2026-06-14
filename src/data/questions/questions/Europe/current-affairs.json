@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-pol-3",
+    "country": "Europe",
+    "category": "politics",
+    "difficulty": "easy",
+    "question": "How many countries are currently member states of the European Union?",
+    "choices": [
+      "15",
+      "22",
+      "27",
+      "30"
+    ],
+    "correctIndex": 2,
+    "funFact": "The UK became the first nation to leave the European Union in 2020."
+  }
+]

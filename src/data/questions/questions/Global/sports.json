@@ -1,0 +1,32 @@
+[
+  {
+    "id": "glb-spo-1",
+    "country": "Global",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "How often are the modern Olympic Games held?",
+    "choices": [
+      "Every 2 years",
+      "Every 4 years",
+      "Every 5 years",
+      "Every 6 years"
+    ],
+    "correctIndex": 1,
+    "funFact": "The first modern Olympics were held in Athens in 1896."
+  },
+  {
+    "id": "glb-spo-2",
+    "country": "Global",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which sport uses a shuttlecock instead of a ball?",
+    "choices": [
+      "Tennis",
+      "Squash",
+      "Badminton",
+      "Table Tennis"
+    ],
+    "correctIndex": 2,
+    "funFact": "Shuttlecocks are traditionally made from the left-wing feathers of a goose."
+  }
+]

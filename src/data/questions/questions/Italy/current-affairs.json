@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-84",
+    "country": "Italy",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Unification of Italy\"?",
+    "choices": [
+      "Nelson Mandela",
+      "Otto von Bismarck",
+      "Mikhail Gorbachev",
+      "Giuseppe Garibaldi"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Risorgimento movement unified independent states into the Kingdom of Italy under King Victor Emmanuel II."
+  }
+]

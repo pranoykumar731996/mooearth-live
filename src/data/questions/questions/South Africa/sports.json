@@ -1,0 +1,17 @@
+[
+  {
+    "id": "za-sports-1",
+    "country": "South Africa",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "What sport is most associated with the South African Springboks?",
+    "choices": [
+      "Football",
+      "Cricket",
+      "Rugby",
+      "Hockey"
+    ],
+    "correctIndex": 2,
+    "funFact": "South Africa's 1995 Rugby World Cup win was immortalized in the film \"Invictus\"."
+  }
+]

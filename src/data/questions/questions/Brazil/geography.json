@@ -1,0 +1,47 @@
+[
+  {
+    "id": "br-geo-1",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Brazil?",
+    "choices": [
+      "Rio de Janeiro",
+      "São Paulo",
+      "Brasília",
+      "Salvador"
+    ],
+    "correctIndex": 2,
+    "funFact": "Brasília was purpose-built as the capital in the 1960s and designed in the shape of an airplane."
+  },
+  {
+    "id": "br-geo-2",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which is the longest river flowing through Brazil?",
+    "choices": [
+      "Paraná",
+      "Amazon",
+      "São Francisco",
+      "Tocantins"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Amazon River is the largest by volume and second longest river in the world."
+  },
+  {
+    "id": "gen-geo-56",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Amazon River\" located?",
+    "choices": [
+      "Africa",
+      "South America",
+      "Asia",
+      "Oceania"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Amazon River accounts for approximately 20% of the world's total river flow into the oceans."
+  }
+]

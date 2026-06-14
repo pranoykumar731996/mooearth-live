@@ -1,0 +1,62 @@
+[
+  {
+    "id": "glb-geo-5",
+    "country": "Europe",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which is the smallest independent country in Europe?",
+    "choices": [
+      "Monaco",
+      "San Marino",
+      "Liechtenstein",
+      "Vatican City"
+    ],
+    "correctIndex": 3,
+    "funFact": "Vatican City is the smallest country in the world, measuring just 0.49 square kilometers."
+  },
+  {
+    "id": "glb-spo-3",
+    "country": "Europe",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which football club has won the most UEFA Champions League titles?",
+    "choices": [
+      "FC Barcelona",
+      "AC Milan",
+      "Liverpool FC",
+      "Real Madrid"
+    ],
+    "correctIndex": 3,
+    "funFact": "Real Madrid won the first five consecutive Champions League tournaments."
+  },
+  {
+    "id": "glb-his-4",
+    "country": "Europe",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which historical period, meaning \"rebirth\" in French, began in Italy in the 14th century?",
+    "choices": [
+      "The Enlightenment",
+      "The Middle Ages",
+      "The Renaissance",
+      "The Industrial Revolution"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Renaissance marked a transition from medieval values to humanism and classical learning."
+  },
+  {
+    "id": "glb-pol-3",
+    "country": "Europe",
+    "category": "politics",
+    "difficulty": "easy",
+    "question": "How many countries are currently member states of the European Union?",
+    "choices": [
+      "15",
+      "22",
+      "27",
+      "30"
+    ],
+    "correctIndex": 2,
+    "funFact": "The UK became the first nation to leave the European Union in 2020."
+  }
+]

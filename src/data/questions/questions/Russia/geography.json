@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ru-geo-1",
+    "country": "Russia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Russia is the largest country by what measure?",
+    "choices": [
+      "Population",
+      "GDP",
+      "Land area",
+      "Coastline"
+    ],
+    "correctIndex": 2,
+    "funFact": "Russia covers more than 17 million square kilometers — spanning 11 time zones."
+  },
+  {
+    "id": "gen-geo-60",
+    "country": "Russia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Lake Baikal\" located?",
+    "choices": [
+      "South America",
+      "Oceania",
+      "Africa",
+      "Asia"
+    ],
+    "correctIndex": 3,
+    "funFact": "Baikal is the deepest and oldest lake in the world, containing roughly 20% of the planet's unfrozen surface fresh water."
+  }
+]

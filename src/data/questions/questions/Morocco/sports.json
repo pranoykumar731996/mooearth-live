@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ma-sports-1",
+    "country": "Morocco",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "In which FIFA World Cup did Morocco reach the semi-finals for the first time?",
+    "choices": [
+      "2018 Russia",
+      "2022 Qatar",
+      "2014 Brazil",
+      "2010 South Africa"
+    ],
+    "correctIndex": 1,
+    "funFact": "Morocco became the first African and Arab nation to reach a World Cup semi-final."
+  }
+]

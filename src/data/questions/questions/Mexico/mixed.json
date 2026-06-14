@@ -1,0 +1,47 @@
+[
+  {
+    "id": "mx-geo-1",
+    "country": "Mexico",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Mexico?",
+    "choices": [
+      "Cancún",
+      "Guadalajara",
+      "Monterrey",
+      "Mexico City"
+    ],
+    "correctIndex": 3,
+    "funFact": "Mexico City is one of the largest cities in the world with over 21 million in the metro area."
+  },
+  {
+    "id": "mx-history-1",
+    "country": "Mexico",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which ancient civilization built the pyramid at Chichén Itzá?",
+    "choices": [
+      "Aztecs",
+      "Incas",
+      "Maya",
+      "Olmecs"
+    ],
+    "correctIndex": 2,
+    "funFact": "Chichén Itzá is one of the New Seven Wonders of the World."
+  },
+  {
+    "id": "gen-cult-97",
+    "country": "Mexico",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which country is the cultural home or origin of the famous festival \"Day of the Dead\"?",
+    "choices": [
+      "Mexico",
+      "India",
+      "Japan",
+      "Brazil"
+    ],
+    "correctIndex": 0,
+    "funFact": "Día de los Muertos is a multi-day holiday where families gather to remember and pray for friends and relatives who have died."
+  }
+]

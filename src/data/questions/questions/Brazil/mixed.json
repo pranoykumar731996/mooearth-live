@@ -1,0 +1,122 @@
+[
+  {
+    "id": "br-geo-1",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Brazil?",
+    "choices": [
+      "Rio de Janeiro",
+      "São Paulo",
+      "Brasília",
+      "Salvador"
+    ],
+    "correctIndex": 2,
+    "funFact": "Brasília was purpose-built as the capital in the 1960s and designed in the shape of an airplane."
+  },
+  {
+    "id": "br-geo-2",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which is the longest river flowing through Brazil?",
+    "choices": [
+      "Paraná",
+      "Amazon",
+      "São Francisco",
+      "Tocantins"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Amazon River is the largest by volume and second longest river in the world."
+  },
+  {
+    "id": "gen-geo-56",
+    "country": "Brazil",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Amazon River\" located?",
+    "choices": [
+      "Africa",
+      "South America",
+      "Asia",
+      "Oceania"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Amazon River accounts for approximately 20% of the world's total river flow into the oceans."
+  },
+  {
+    "id": "br-sports-1",
+    "country": "Brazil",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "How many FIFA World Cups has Brazil won?",
+    "choices": [
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "correctIndex": 2,
+    "funFact": "Brazil is the most successful nation in World Cup history with 5 titles."
+  },
+  {
+    "id": "br-history-1",
+    "country": "Brazil",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "From which country did Brazil gain independence in 1822?",
+    "choices": [
+      "Spain",
+      "France",
+      "Portugal",
+      "Netherlands"
+    ],
+    "correctIndex": 2,
+    "funFact": "Prince Pedro declared independence with the famous \"Cry of Ipiranga\" on September 7, 1822."
+  },
+  {
+    "id": "br-trivia-1",
+    "country": "Brazil",
+    "category": "trivia",
+    "difficulty": "hard",
+    "question": "What unique feature does Brazil's flag show that changes with new states?",
+    "choices": [
+      "The number of stripes",
+      "The stars representing states",
+      "The color of the diamond",
+      "The motto text"
+    ],
+    "correctIndex": 1,
+    "funFact": "Each star on the Brazilian flag represents a state, and the pattern shows the sky over Rio de Janeiro."
+  },
+  {
+    "id": "gen-nat-55",
+    "country": "Brazil",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous river system \"Amazon River\" is located in which country?",
+    "choices": [
+      "Venezuela",
+      "Brazil",
+      "South Africa",
+      "Chile"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Amazon River accounts for approximately 20% of the world's total river flow into the oceans."
+  },
+  {
+    "id": "gen-cult-93",
+    "country": "Brazil",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which country is the cultural home or origin of the famous dance \"Samba\"?",
+    "choices": [
+      "Mexico",
+      "India",
+      "Brazil",
+      "Japan"
+    ],
+    "correctIndex": 2,
+    "funFact": "Samba is the musical genre and dance style synonymous with the massive annual Rio de Janeiro Carnival."
+  }
+]

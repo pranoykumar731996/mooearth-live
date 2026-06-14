@@ -1,0 +1,62 @@
+[
+  {
+    "id": "in-space-1",
+    "country": "India",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "What is the name of India's space agency?",
+    "choices": [
+      "NASA India",
+      "ISRO",
+      "DRDO",
+      "CSIR"
+    ],
+    "correctIndex": 1,
+    "funFact": "ISRO successfully sent a mission to Mars on its very first attempt in 2014."
+  },
+  {
+    "id": "in-tech-1",
+    "country": "India",
+    "category": "technology",
+    "difficulty": "medium",
+    "question": "Which Indian city is known as the \"Silicon Valley of India\"?",
+    "choices": [
+      "Mumbai",
+      "Hyderabad",
+      "Bengaluru",
+      "Pune"
+    ],
+    "correctIndex": 2,
+    "funFact": "Bengaluru hosts offices of over 400 Fortune 500 companies."
+  },
+  {
+    "id": "gen-space-43",
+    "country": "India",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the Mars Orbiter Mission (Mangalyaan) launch in 2013?",
+    "choices": [
+      "Voyager 1",
+      "Ingenuity",
+      "Vostok 1",
+      "Mangalyaan"
+    ],
+    "correctIndex": 3,
+    "funFact": "India became the first nation to reach Mars orbit on its maiden attempt, doing so for a fraction of NASA's budget."
+  },
+  {
+    "id": "gen-space-44",
+    "country": "India",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Mangalyaan\"?",
+    "choices": [
+      "India",
+      "United States",
+      "China",
+      "Russia"
+    ],
+    "correctIndex": 0,
+    "funFact": "India became the first nation to reach Mars orbit on its maiden attempt, doing so for a fraction of NASA's budget."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-his-4",
+    "country": "Europe",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which historical period, meaning \"rebirth\" in French, began in Italy in the 14th century?",
+    "choices": [
+      "The Enlightenment",
+      "The Middle Ages",
+      "The Renaissance",
+      "The Industrial Revolution"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Renaissance marked a transition from medieval values to humanism and classical learning."
+  }
+]

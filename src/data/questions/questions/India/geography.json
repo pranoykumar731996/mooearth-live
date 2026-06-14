@@ -1,0 +1,17 @@
+[
+  {
+    "id": "in-geo-1",
+    "country": "India",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which famous white marble building is located in Agra, India?",
+    "choices": [
+      "Red Fort",
+      "Taj Mahal",
+      "Gateway of India",
+      "Lotus Temple"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Taj Mahal was built by Mughal emperor Shah Jahan as a memorial for his wife Mumtaz Mahal."
+  }
+]

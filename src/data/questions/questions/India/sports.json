@@ -1,0 +1,17 @@
+[
+  {
+    "id": "in-sports-1",
+    "country": "India",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which sport is the most popular in India?",
+    "choices": [
+      "Football",
+      "Hockey",
+      "Cricket",
+      "Tennis"
+    ],
+    "correctIndex": 2,
+    "funFact": "India has won the Cricket World Cup twice — in 1983 and 2011."
+  }
+]

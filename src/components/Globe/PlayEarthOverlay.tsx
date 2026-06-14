@@ -38,6 +38,15 @@ function loadGameState(username: string): PlayerGameState {
       if (!parsed.answeredIds || !Array.isArray(parsed.answeredIds)) {
         parsed.answeredIds = [];
       }
+      if (!parsed.answeredQuestionIds || !Array.isArray(parsed.answeredQuestionIds)) {
+        parsed.answeredQuestionIds = [...parsed.answeredIds];
+      }
+      if (!parsed.recentQuestions || !Array.isArray(parsed.recentQuestions)) {
+        parsed.recentQuestions = [];
+      }
+      if (!parsed.recentCountryQuestions || !Array.isArray(parsed.recentCountryQuestions)) {
+        parsed.recentCountryQuestions = [];
+      }
       return parsed;
     }
   } catch (e) {}
@@ -48,6 +57,7 @@ function createDefaultState(username: string): PlayerGameState {
   return {
     username, xp: 0, level: 1, streak: 0, bestStreak: 0,
     totalCorrect: 0, totalAnswered: 0, answeredIds: [],
+    answeredQuestionIds: [], recentQuestions: [], recentCountryQuestions: [],
     countriesExplored: [], badges: [],
   };
 }
@@ -114,6 +124,13 @@ export default function PlayEarthOverlay({
     setLeveledUp(false);
   }, [isActive, selectedCountry, onPlaySound]);
 
+  const handleAnswerRef = useRef<(index: number) => void>(() => {});
+
+  const onTimerTickRef = useRef<(urgency: number) => void>(onTimerTick);
+  useEffect(() => {
+    onTimerTickRef.current = onTimerTick;
+  }, [onTimerTick]);
+
   // Timer countdown during question phase
   useEffect(() => {
     if (phase !== 'question' || selectedAnswer !== null) {
@@ -125,21 +142,23 @@ export default function PlayEarthOverlay({
     }
 
     setTimer(TIMER_SECONDS);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
     timerRef.current = setInterval(() => {
       setTimer(prev => {
         if (prev <= 1) {
-          // Time's up — treat as wrong answer
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
-          handleAnswer(-1); // -1 = no answer selected
+          handleAnswerRef.current(-1); // Time's up
           return 0;
         }
-        // Play tick sound with increasing urgency in last 5 seconds
         if (prev <= 6) {
-          const urgency = (6 - prev) / 5; // 0 → 1
-          onTimerTick(urgency);
+          const urgency = (6 - prev) / 5;
+          onTimerTickRef.current(urgency);
         }
         return prev - 1;
       });
@@ -151,7 +170,6 @@ export default function PlayEarthOverlay({
         timerRef.current = null;
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, selectedAnswer]);
 
   /** Start a new question for the selected country/category from our hybrid API */
@@ -172,7 +190,14 @@ export default function PlayEarthOverlay({
           country: selectedCountry,
           category,
           username,
-          answeredIds: gameState.answeredIds
+          answeredIds: [
+            ...new Set([
+              ...(gameState.answeredIds || []),
+              ...(gameState.answeredQuestionIds || []),
+              ...(gameState.recentQuestions || []),
+              ...(gameState.recentCountryQuestions || [])
+            ])
+          ]
         })
       });
 
@@ -211,7 +236,7 @@ export default function PlayEarthOverlay({
     } finally {
       setIsLoadingQuestion(false);
     }
-  }, [selectedCountry, gameState.answeredIds, username, onPlaySound]);
+  }, [selectedCountry, gameState, username, onPlaySound]);
 
   /** Handle answer selection */
   const handleAnswer = useCallback((index: number) => {
@@ -226,6 +251,25 @@ export default function PlayEarthOverlay({
       const next = { ...prev };
       next.totalAnswered++;
       next.answeredIds = [...prev.answeredIds, currentQuestion.id];
+      next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+
+      const recent = [...(prev.recentQuestions || [])];
+      if (!recent.includes(currentQuestion.id)) {
+        recent.push(currentQuestion.id);
+      }
+      if (recent.length > 15) {
+        recent.shift();
+      }
+      next.recentQuestions = recent;
+
+      const recentCountry = [...(prev.recentCountryQuestions || [])];
+      if (!recentCountry.includes(currentQuestion.id)) {
+        recentCountry.push(currentQuestion.id);
+      }
+      if (recentCountry.length > 10) {
+        recentCountry.shift();
+      }
+      next.recentCountryQuestions = recentCountry;
 
       if (correct) {
         next.totalCorrect++;
@@ -271,6 +315,10 @@ export default function PlayEarthOverlay({
       setPhase('result');
     }, 800);
   }, [currentQuestion, selectedAnswer, timer, selectedCountry, onCorrectSound, onWrongSound, onLevelUp]);
+
+  useEffect(() => {
+    handleAnswerRef.current = handleAnswer;
+  }, [handleAnswer]);
 
   /** Continue to next question or go back to category select */
   const handleContinue = useCallback(() => {

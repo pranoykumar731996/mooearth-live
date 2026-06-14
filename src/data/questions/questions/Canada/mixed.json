@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ca-geo-1",
+    "country": "Canada",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which leaf appears on the Canadian flag?",
+    "choices": [
+      "Oak Leaf",
+      "Maple Leaf",
+      "Pine Leaf",
+      "Birch Leaf"
+    ],
+    "correctIndex": 1,
+    "funFact": "The maple leaf has been a symbol of Canada since the 18th century."
+  },
+  {
+    "id": "ca-sports-1",
+    "country": "Canada",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which sport is considered Canada's national winter sport?",
+    "choices": [
+      "Curling",
+      "Figure Skating",
+      "Ice Hockey",
+      "Skiing"
+    ],
+    "correctIndex": 2,
+    "funFact": "Ice hockey was invented in Canada in the 19th century."
+  },
+  {
+    "id": "gen-cult-98",
+    "country": "Canada",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which country is the cultural home or origin of the famous dish \"Poutine\"?",
+    "choices": [
+      "Germany",
+      "Canada",
+      "Brazil",
+      "South Korea"
+    ],
+    "correctIndex": 1,
+    "funFact": "Poutine originated in Quebec in the 1950s and consists of French fries, fresh cheese curds, and brown gravy."
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-sci-19",
+    "country": "Poland",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Radium in the year 1898?",
+    "choices": [
+      "Dmitri Mendeleev",
+      "Alexander Fleming",
+      "Marie Curie",
+      "Wilhelm Röntgen"
+    ],
+    "correctIndex": 2,
+    "funFact": "Marie Curie remains the only person to win Nobel Prizes in two different scientific fields (Physics and Chemistry)."
+  },
+  {
+    "id": "gen-tech-20",
+    "country": "Poland",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Radium invented or pioneered?",
+    "choices": [
+      "Italy",
+      "Poland",
+      "United Kingdom",
+      "United States"
+    ],
+    "correctIndex": 1,
+    "funFact": "Marie Curie remains the only person to win Nobel Prizes in two different scientific fields (Physics and Chemistry)."
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "gen-sci-5",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Penicillin in the year 1928?",
+    "choices": [
+      "Alfred Nobel",
+      "Marie Curie",
+      "Wilhelm Röntgen",
+      "Alexander Fleming"
+    ],
+    "correctIndex": 3,
+    "funFact": "Fleming discovered penicillin by accident when mould grew on a forgotten petri dish of bacteria."
+  },
+  {
+    "id": "gen-tech-6",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Penicillin invented or pioneered?",
+    "choices": [
+      "United Kingdom",
+      "Germany",
+      "Italy",
+      "Sweden"
+    ],
+    "correctIndex": 0,
+    "funFact": "Fleming discovered penicillin by accident when mould grew on a forgotten petri dish of bacteria."
+  },
+  {
+    "id": "gen-sci-7",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Steam Engine in the year 1776?",
+    "choices": [
+      "Dmitri Mendeleev",
+      "Alfred Nobel",
+      "Nikola Tesla",
+      "James Watt"
+    ],
+    "correctIndex": 3,
+    "funFact": "James Watt's steam engine design introduced the term \"horsepower\" to compare output to draft horses."
+  },
+  {
+    "id": "gen-tech-8",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Steam Engine invented or pioneered?",
+    "choices": [
+      "Germany",
+      "United Kingdom",
+      "United States",
+      "Sweden"
+    ],
+    "correctIndex": 1,
+    "funFact": "James Watt's steam engine design introduced the term \"horsepower\" to compare output to draft horses."
+  },
+  {
+    "id": "gen-sci-21",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the World Wide Web in the year 1989?",
+    "choices": [
+      "Tim Berners-Lee",
+      "James Watt",
+      "Alexander Graham Bell",
+      "Mark Humayun"
+    ],
+    "correctIndex": 0,
+    "funFact": "Berners-Lee wrote the first web server, browser, and editor while working at CERN in Switzerland."
+  },
+  {
+    "id": "gen-tech-22",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the World Wide Web invented or pioneered?",
+    "choices": [
+      "Sweden",
+      "United Kingdom",
+      "Russia",
+      "United States"
+    ],
+    "correctIndex": 1,
+    "funFact": "Berners-Lee wrote the first web server, browser, and editor while working at CERN in Switzerland."
+  }
+]

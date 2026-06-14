@@ -1,0 +1,17 @@
+[
+  {
+    "id": "nz-trivia-1",
+    "country": "New Zealand",
+    "category": "trivia",
+    "difficulty": "medium",
+    "question": "Which famous film trilogy was shot entirely in New Zealand?",
+    "choices": [
+      "Harry Potter",
+      "Star Wars",
+      "The Lord of the Rings",
+      "The Matrix"
+    ],
+    "correctIndex": 2,
+    "funFact": "Peter Jackson filmed all three Lord of the Rings movies in his home country of New Zealand."
+  }
+]

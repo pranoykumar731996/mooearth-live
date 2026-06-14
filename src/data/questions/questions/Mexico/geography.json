@@ -1,0 +1,17 @@
+[
+  {
+    "id": "mx-geo-1",
+    "country": "Mexico",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Mexico?",
+    "choices": [
+      "Cancún",
+      "Guadalajara",
+      "Monterrey",
+      "Mexico City"
+    ],
+    "correctIndex": 3,
+    "funFact": "Mexico City is one of the largest cities in the world with over 21 million in the metro area."
+  }
+]

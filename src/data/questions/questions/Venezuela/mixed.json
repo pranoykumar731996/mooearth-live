@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-geo-66",
+    "country": "Venezuela",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Angel Falls\" located?",
+    "choices": [
+      "Africa",
+      "Oceania",
+      "South America",
+      "Asia"
+    ],
+    "correctIndex": 2,
+    "funFact": "Angel Falls is the tallest waterfall in the world, dropping water from a height of 979 meters."
+  },
+  {
+    "id": "gen-nat-65",
+    "country": "Venezuela",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous waterfall \"Angel Falls\" is located in which country?",
+    "choices": [
+      "Morocco",
+      "Japan",
+      "Australia",
+      "Venezuela"
+    ],
+    "correctIndex": 3,
+    "funFact": "Angel Falls is the tallest waterfall in the world, dropping water from a height of 979 meters."
+  }
+]

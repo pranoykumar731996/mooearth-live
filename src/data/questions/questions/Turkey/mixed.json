@@ -1,0 +1,17 @@
+[
+  {
+    "id": "tr-geo-1",
+    "country": "Turkey",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which Turkish city straddles two continents?",
+    "choices": [
+      "Ankara",
+      "Izmir",
+      "Istanbul",
+      "Antalya"
+    ],
+    "correctIndex": 2,
+    "funFact": "Istanbul is the only major city in the world that sits on two continents: Europe and Asia."
+  }
+]

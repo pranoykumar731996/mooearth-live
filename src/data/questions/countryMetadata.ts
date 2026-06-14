@@ -302,6 +302,13 @@ export const COUNTRY_METADATA: Record<string, CountryMeta> = {
     famousPerson: 'Arturo Vidal', famousDish: 'Empanada', sport: 'Football',
     climate: 'Arid to Subpolar', independence: '1818', neighbours: ['Argentina', 'Peru', 'Bolivia'],
   },
+  'Libya': {
+    name: 'Libya', capital: 'Tripoli', continent: 'Africa', currency: 'Libyan Dinar',
+    language: 'Arabic', population: '7 million', landmark: 'Leptis Magna',
+    flag: '🇱🇾', funFact: 'Libya has the largest proven oil reserves in Africa and is home to the stunning ancient Roman city of Leptis Magna.',
+    famousPerson: 'Omar Mukhtar', famousDish: 'Couscous', sport: 'Football',
+    climate: 'Desert', independence: '1951', neighbours: ['Egypt', 'Tunisia', 'Algeria', 'Chad', 'Niger', 'Sudan'],
+  },
 };
 
 /** Get all country names with metadata */

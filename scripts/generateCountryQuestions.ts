@@ -2,10 +2,11 @@
 // Play Earth — CLI Country Question Pre-Generation System
 // ============================================================
 // Run with: npx tsx scripts/generateCountryQuestions.ts [CountryName]
-// Auto-generates high-quality questions for countries and caches them in quizDb.json.
+// Auto-generates high-quality questions for countries and writes them to folder-based JSON database.
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getCanonicalCountryName } from '../src/data/questions/index';
 
 // Custom lightweight environment loader for .env.local (removes dotenv dependency)
 function loadEnvLocal() {
@@ -28,7 +29,7 @@ function loadEnvLocal() {
 // Load environment variables
 loadEnvLocal();
 
-const DB_PATH = path.resolve(process.cwd(), 'src/data/questions/quizDb.json');
+const QUESTIONS_DIR = path.resolve(process.cwd(), 'src/data/questions/questions');
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 
 const PRESET_COUNTRIES = [
@@ -40,8 +41,7 @@ const PRESET_COUNTRIES = [
 ];
 
 const CATEGORIES = [
-  'geography', 'sports', 'history', 'science', 'technology',
-  'nature', 'politics', 'space', 'culture'
+  'geography', 'sports', 'history', 'science', 'current-affairs'
 ];
 
 function getQuestionHash(text: string): string {
@@ -52,23 +52,6 @@ function getQuestionHash(text: string): string {
     hash |= 0;
   }
   return hash.toString(16);
-}
-
-// Read/write helpers for the JSON DB
-function readDb(): any {
-  if (!fs.existsSync(DB_PATH)) {
-    return { users: {}, cachedAiQuestions: [] };
-  }
-  try {
-    const raw = fs.readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch (e) {
-    return { users: {}, cachedAiQuestions: [] };
-  }
-}
-
-function writeDb(db: any) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
 }
 
 async function generateQuestionForCountry(country: string, category: string, apiKey: string): Promise<any> {
@@ -142,36 +125,59 @@ async function main() {
   console.log(`Target countries: ${targetCountries.join(', ')}`);
   console.log(`Categories: ${CATEGORIES.join(', ')}\n`);
 
-  const db = readDb();
   let generatedCount = 0;
 
   for (const country of targetCountries) {
+    const canonicalCountry = getCanonicalCountryName(country);
     console.log(`--------------------------------------------------`);
-    console.log(`🌍 Generating questions for country: ${country}`);
+    console.log(`🌍 Generating questions for country: ${canonicalCountry}`);
     console.log(`--------------------------------------------------`);
+
+    const countryDir = path.join(QUESTIONS_DIR, canonicalCountry);
+    if (!fs.existsSync(countryDir)) {
+      fs.mkdirSync(countryDir, { recursive: true });
+    }
 
     for (const category of CATEGORIES) {
       console.log(`🛰️ Generating: Category [${category}]...`);
       try {
-        const questionData = await generateQuestionForCountry(country, category, apiKey);
+        const questionData = await generateQuestionForCountry(canonicalCountry, category, apiKey);
         
         const qHash = getQuestionHash(questionData.question);
-        const questionId = `ai-${country.toLowerCase().replace(/[^a-z]/g, '')}-${category}-${qHash}`;
+        const questionId = `ai-${canonicalCountry.toLowerCase().replace(/[^a-z]/g, '')}-${category}-${qHash}`;
 
-        // Check if it already exists in the cache
-        const exists = db.cachedAiQuestions.some(
+        // Map to folder files
+        let targetCategory = category;
+        if (category === 'technology' || category === 'space' || category === 'science') {
+          targetCategory = 'science';
+        } else if (category === 'politics' || category === 'current-affairs') {
+          targetCategory = 'current-affairs';
+        } else if (category !== 'geography' && category !== 'sports' && category !== 'history') {
+          targetCategory = 'mixed';
+        }
+
+        const filePath = path.join(countryDir, `${targetCategory}.json`);
+        let questionsList: any[] = [];
+        if (fs.existsSync(filePath)) {
+          try {
+            questionsList = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          } catch (e) {}
+        }
+
+        // Check if it already exists
+        const exists = questionsList.some(
           (q: any) => q.question.toLowerCase().trim() === questionData.question.toLowerCase().trim()
         );
 
         if (exists) {
-          console.log(`⚠️ Question already exists in database cache. Skipping.`);
+          console.log(`⚠️ Question already exists in database file. Skipping.`);
           continue;
         }
 
         const newQuestion = {
           id: questionId,
-          country: country,
-          category: category,
+          country: canonicalCountry,
+          category: targetCategory,
           difficulty: questionData.difficulty || 'medium',
           question: questionData.question,
           choices: questionData.options,
@@ -179,8 +185,23 @@ async function main() {
           funFact: questionData.fact || ''
         };
 
-        db.cachedAiQuestions.push(newQuestion);
-        writeDb(db);
+        questionsList.push(newQuestion);
+        fs.writeFileSync(filePath, JSON.stringify(questionsList, null, 2), 'utf-8');
+
+        // Also update mixed.json
+        if (targetCategory !== 'mixed') {
+          const mixedPath = path.join(countryDir, 'mixed.json');
+          let mixedList: any[] = [];
+          if (fs.existsSync(mixedPath)) {
+            try {
+              mixedList = JSON.parse(fs.readFileSync(mixedPath, 'utf-8'));
+            } catch (e) {}
+          }
+          if (!mixedList.some((q: any) => q.question.toLowerCase().trim() === newQuestion.question.toLowerCase().trim())) {
+            mixedList.push(newQuestion);
+            fs.writeFileSync(mixedPath, JSON.stringify(mixedList, null, 2), 'utf-8');
+          }
+        }
         
         console.log(`✅ Success: "${newQuestion.question.substring(0, 50)}..."`);
         generatedCount++;
@@ -189,14 +210,13 @@ async function main() {
         await new Promise(resolve => setTimeout(resolve, 500));
 
       } catch (err: any) {
-        console.error(`❌ Failed to generate for ${country} - ${category}:`, err.message);
+        console.error(`❌ Failed to generate for ${canonicalCountry} - ${category}:`, err.message);
       }
     }
   }
 
   console.log(`\n==================================================`);
   console.log(`Pipeline complete. Generated and cached ${generatedCount} new questions.`);
-  console.log(`Total questions in cached pool: ${db.cachedAiQuestions.length}`);
   console.log(`==================================================`);
 }
 

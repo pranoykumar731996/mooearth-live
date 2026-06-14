@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-sci-3",
+    "country": "Italy",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Radio in the year 1895?",
+    "choices": [
+      "Guglielmo Marconi",
+      "Johannes Gutenberg",
+      "Marie Curie",
+      "Wilhelm Röntgen"
+    ],
+    "correctIndex": 0,
+    "funFact": "Marconi was awarded the Nobel Prize in Physics in 1909 for his contributions to wireless telegraphy."
+  },
+  {
+    "id": "gen-tech-4",
+    "country": "Italy",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Radio invented or pioneered?",
+    "choices": [
+      "Poland",
+      "Germany",
+      "United Kingdom",
+      "Italy"
+    ],
+    "correctIndex": 3,
+    "funFact": "Marconi was awarded the Nobel Prize in Physics in 1909 for his contributions to wireless telegraphy."
+  }
+]

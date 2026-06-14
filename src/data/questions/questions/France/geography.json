@@ -1,0 +1,17 @@
+[
+  {
+    "id": "fr-geo-1",
+    "country": "France",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What famous tower stands in Paris?",
+    "choices": [
+      "Big Ben",
+      "Leaning Tower",
+      "Eiffel Tower",
+      "CN Tower"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Eiffel Tower was built in 1889 and was supposed to be temporary!"
+  }
+]

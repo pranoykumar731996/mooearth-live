@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-pol-82",
+    "country": "Germany",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Fall of the Berlin Wall\"?",
+    "choices": [
+      "Louis XVI",
+      "Nelson Mandela",
+      "Vladimir Lenin",
+      "Mikhail Gorbachev"
+    ],
+    "correctIndex": 3,
+    "funFact": "The dismantling of the wall symbolized the collapse of the Iron Curtain and the reunification of East and West Germany."
+  },
+  {
+    "id": "gen-pol-88",
+    "country": "Germany",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Unification of Germany\"?",
+    "choices": [
+      "Nelson Mandela",
+      "George Washington",
+      "Otto von Bismarck",
+      "Giuseppe Garibaldi"
+    ],
+    "correctIndex": 2,
+    "funFact": "Bismarck used a series of strategic wars to unify independent German kingdoms under Prussian leadership."
+  }
+]

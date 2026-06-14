@@ -1,0 +1,32 @@
+[
+  {
+    "id": "glb-his-1",
+    "country": "Global",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who was the first president of the United States?",
+    "choices": [
+      "Thomas Jefferson",
+      "Abraham Lincoln",
+      "John Adams",
+      "George Washington"
+    ],
+    "correctIndex": 3,
+    "funFact": "George Washington is the only president ever to receive 100% of the electoral votes."
+  },
+  {
+    "id": "glb-his-2",
+    "country": "Global",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which century did the Black Death plague devastate Europe?",
+    "choices": [
+      "12th Century",
+      "13th Century",
+      "14th Century",
+      "15th Century"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Black Death killed an estimated 30% to 60% of Europe's population."
+  }
+]

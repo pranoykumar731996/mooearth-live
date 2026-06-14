@@ -1,0 +1,17 @@
+[
+  {
+    "id": "jp-tech-1",
+    "country": "Japan",
+    "category": "technology",
+    "difficulty": "medium",
+    "question": "Which Japanese company created the PlayStation?",
+    "choices": [
+      "Nintendo",
+      "Sega",
+      "Sony",
+      "Panasonic"
+    ],
+    "correctIndex": 2,
+    "funFact": "The original PlayStation launched in Japan in December 1994."
+  }
+]

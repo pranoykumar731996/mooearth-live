@@ -373,9 +373,6 @@ export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; 
   { id: 'sports', label: 'Sports', emoji: '⚽', color: '#4ade80' },
   { id: 'history', label: 'History', emoji: '📜', color: '#f59e0b' },
   { id: 'science', label: 'Science', emoji: '🔬', color: '#3b82f6' },
-  { id: 'technology', label: 'Technology', emoji: '💻', color: '#a78bfa' },
-  { id: 'nature', label: 'Nature', emoji: '🌿', color: '#10b981' },
-  { id: 'politics', label: 'Politics', emoji: '⚖️', color: '#ef4444' },
-  { id: 'space', label: 'Space', emoji: '🚀', color: '#818cf8' },
-  { id: 'culture', label: 'Culture', emoji: '🎨', color: '#ec4899' },
+  { id: 'current-affairs', label: 'Current Affairs', emoji: '📰', color: '#a78bfa' },
+  { id: 'mixed', label: 'Mixed Challenge', emoji: '🌍', color: '#ec4899' },
 ];

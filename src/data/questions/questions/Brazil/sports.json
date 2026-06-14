@@ -1,0 +1,17 @@
+[
+  {
+    "id": "br-sports-1",
+    "country": "Brazil",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "How many FIFA World Cups has Brazil won?",
+    "choices": [
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "correctIndex": 2,
+    "funFact": "Brazil is the most successful nation in World Cup history with 5 titles."
+  }
+]

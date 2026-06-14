@@ -106,7 +106,9 @@ export type QuizCategory =
   | 'nature'
   | 'politics'
   | 'culture'
-  | 'trivia';
+  | 'trivia'
+  | 'current-affairs'
+  | 'mixed';
 
 /** Difficulty tiers */
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
@@ -150,6 +152,9 @@ export interface PlayerGameState {
   totalCorrect: number;
   totalAnswered: number;
   answeredIds: string[];       // IDs of answered questions (anti-repeat)
+  answeredQuestionIds: string[]; // Tracked answered IDs specifically
+  recentQuestions: string[];    // Recently seen question IDs
+  recentCountryQuestions: string[]; // Recently seen country-specific question IDs
   countriesExplored: string[]; // Countries the player has quizzed on
   badges: GameBadge[];
   lastPlayedAt?: number;       // Timestamp

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ng-trivia-1",
+    "country": "Nigeria",
+    "category": "trivia",
+    "difficulty": "medium",
+    "question": "What is Nigeria's film industry commonly called?",
+    "choices": [
+      "Bollywood",
+      "Hollywood",
+      "Nollywood",
+      "Tollywood"
+    ],
+    "correctIndex": 2,
+    "funFact": "Nollywood is the second largest film industry in the world by number of films produced."
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gen-hist-81",
+    "country": "Germany",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Fall of the Berlin Wall\" take place in Germany?",
+    "choices": [
+      "1789",
+      "1776",
+      "1994",
+      "1989"
+    ],
+    "correctIndex": 3,
+    "funFact": "The dismantling of the wall symbolized the collapse of the Iron Curtain and the reunification of East and West Germany."
+  },
+  {
+    "id": "gen-hist-87",
+    "country": "Germany",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Unification of Germany\" take place in Germany?",
+    "choices": [
+      "1871",
+      "1861",
+      "1994",
+      "1917"
+    ],
+    "correctIndex": 0,
+    "funFact": "Bismarck used a series of strategic wars to unify independent German kingdoms under Prussian leadership."
+  }
+]

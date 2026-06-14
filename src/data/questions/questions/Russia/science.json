@@ -1,0 +1,92 @@
+[
+  {
+    "id": "gen-sci-13",
+    "country": "Russia",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Periodic Table in the year 1869?",
+    "choices": [
+      "Nikola Tesla",
+      "Dmitri Mendeleev",
+      "Alexander Graham Bell",
+      "Jonas Salk"
+    ],
+    "correctIndex": 1,
+    "funFact": "Mendeleev organized elements by atomic weight and accurately predicted elements that hadn't been discovered yet."
+  },
+  {
+    "id": "gen-tech-14",
+    "country": "Russia",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Periodic Table invented or pioneered?",
+    "choices": [
+      "Sweden",
+      "Italy",
+      "Russia",
+      "Germany"
+    ],
+    "correctIndex": 2,
+    "funFact": "Mendeleev organized elements by atomic weight and accurately predicted elements that hadn't been discovered yet."
+  },
+  {
+    "id": "gen-space-31",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first artificial satellite launch in 1957?",
+    "choices": [
+      "Sputnik 1",
+      "Rosetta",
+      "Vostok 1",
+      "Hubble Space Telescope"
+    ],
+    "correctIndex": 0,
+    "funFact": "Sputnik 1 was a polished metal sphere with four external radio antennas that broadcast beep signals."
+  },
+  {
+    "id": "gen-space-32",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Sputnik 1\"?",
+    "choices": [
+      "Germany",
+      "United States",
+      "India",
+      "Russia"
+    ],
+    "correctIndex": 3,
+    "funFact": "Sputnik 1 was a polished metal sphere with four external radio antennas that broadcast beep signals."
+  },
+  {
+    "id": "gen-space-33",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the first human spaceflight in 1961?",
+    "choices": [
+      "Rosetta",
+      "Vostok 1",
+      "Apollo 11",
+      "Voyager 1"
+    ],
+    "correctIndex": 1,
+    "funFact": "Yuri Gagarin orbited the Earth for 108 minutes and successfully ejected to parachute safely back to land."
+  },
+  {
+    "id": "gen-space-34",
+    "country": "Russia",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Vostok 1\"?",
+    "choices": [
+      "China",
+      "Russia",
+      "Germany",
+      "United States"
+    ],
+    "correctIndex": 1,
+    "funFact": "Yuri Gagarin orbited the Earth for 108 minutes and successfully ejected to parachute safely back to land."
+  }
+]

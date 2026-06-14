@@ -1,0 +1,32 @@
+[
+  {
+    "id": "jp-geo-1",
+    "country": "Japan",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the highest mountain in Japan?",
+    "choices": [
+      "Mount Kita",
+      "Mount Fuji",
+      "Mount Tate",
+      "Mount Hotaka"
+    ],
+    "correctIndex": 1,
+    "funFact": "Mount Fuji last erupted in 1707 and is considered an active volcano."
+  },
+  {
+    "id": "gen-geo-72",
+    "country": "Japan",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Mariana Trench\" located?",
+    "choices": [
+      "South America",
+      "Oceania",
+      "Asia",
+      "Africa"
+    ],
+    "correctIndex": 2,
+    "funFact": "The deepest point in the Mariana Trench, Challenger Deep, descends nearly 11,000 meters into the Pacific Ocean."
+  }
+]

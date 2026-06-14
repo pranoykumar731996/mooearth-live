@@ -1,0 +1,32 @@
+[
+  {
+    "id": "glb-pol-1",
+    "country": "Global",
+    "category": "politics",
+    "difficulty": "easy",
+    "question": "Where is the headquarters of the United Nations located?",
+    "choices": [
+      "Geneva, Switzerland",
+      "London, UK",
+      "New York City, USA",
+      "Paris, France"
+    ],
+    "correctIndex": 2,
+    "funFact": "The land on which the UN headquarters sits is international territory."
+  },
+  {
+    "id": "glb-pol-2",
+    "country": "Global",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "What form of government is defined as \"rule by the people\"?",
+    "choices": [
+      "Monarchy",
+      "Oligarchy",
+      "Democracy",
+      "Autocracy"
+    ],
+    "correctIndex": 2,
+    "funFact": "The word democracy comes from the Greek \"demos\" (people) and \"kratos\" (power)."
+  }
+]

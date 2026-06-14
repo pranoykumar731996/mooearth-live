@@ -1,0 +1,17 @@
+[
+  {
+    "id": "de-geo-1",
+    "country": "Germany",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Germany?",
+    "choices": [
+      "Munich",
+      "Hamburg",
+      "Frankfurt",
+      "Berlin"
+    ],
+    "correctIndex": 3,
+    "funFact": "Berlin is 9 times bigger than Paris and has more bridges than Venice."
+  }
+]

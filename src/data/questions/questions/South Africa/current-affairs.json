@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-90",
+    "country": "South Africa",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"End of Apartheid\"?",
+    "choices": [
+      "Nelson Mandela",
+      "Louis XVI",
+      "Giuseppe Garibaldi",
+      "Vladimir Lenin"
+    ],
+    "correctIndex": 0,
+    "funFact": "Mandela spent 27 years in prison before leading the country's transition to multiracial democracy and winning the presidency."
+  }
+]

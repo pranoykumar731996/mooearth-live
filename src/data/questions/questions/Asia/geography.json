@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-geo-4",
+    "country": "Asia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which Asian country is known as the \"Land of the Rising Sun\"?",
+    "choices": [
+      "China",
+      "Japan",
+      "South Korea",
+      "Vietnam"
+    ],
+    "correctIndex": 1,
+    "funFact": "The name Japan (Nihon) translates literally to \"origin of the sun.\""
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "jp-geo-1",
+    "country": "Japan",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the highest mountain in Japan?",
+    "choices": [
+      "Mount Kita",
+      "Mount Fuji",
+      "Mount Tate",
+      "Mount Hotaka"
+    ],
+    "correctIndex": 1,
+    "funFact": "Mount Fuji last erupted in 1707 and is considered an active volcano."
+  },
+  {
+    "id": "gen-geo-72",
+    "country": "Japan",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Mariana Trench\" located?",
+    "choices": [
+      "South America",
+      "Oceania",
+      "Asia",
+      "Africa"
+    ],
+    "correctIndex": 2,
+    "funFact": "The deepest point in the Mariana Trench, Challenger Deep, descends nearly 11,000 meters into the Pacific Ocean."
+  },
+  {
+    "id": "jp-tech-1",
+    "country": "Japan",
+    "category": "technology",
+    "difficulty": "medium",
+    "question": "Which Japanese company created the PlayStation?",
+    "choices": [
+      "Nintendo",
+      "Sega",
+      "Sony",
+      "Panasonic"
+    ],
+    "correctIndex": 2,
+    "funFact": "The original PlayStation launched in Japan in December 1994."
+  },
+  {
+    "id": "jp-trivia-1",
+    "country": "Japan",
+    "category": "trivia",
+    "difficulty": "hard",
+    "question": "What does \"sakura\" mean in Japanese?",
+    "choices": [
+      "Sunset",
+      "Mountain",
+      "Cherry Blossom",
+      "Ocean"
+    ],
+    "correctIndex": 2,
+    "funFact": "Cherry blossom season (hanami) is celebrated every spring and symbolizes renewal."
+  },
+  {
+    "id": "gen-nat-71",
+    "country": "Japan",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous ocean trench \"Mariana Trench\" is located in which country?",
+    "choices": [
+      "Brazil",
+      "Japan",
+      "Nepal",
+      "Tanzania"
+    ],
+    "correctIndex": 1,
+    "funFact": "The deepest point in the Mariana Trench, Challenger Deep, descends nearly 11,000 meters into the Pacific Ocean."
+  },
+  {
+    "id": "gen-cult-94",
+    "country": "Japan",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which country is the cultural home or origin of the famous dance drama \"Kabuki\"?",
+    "choices": [
+      "Canada",
+      "Japan",
+      "India",
+      "South Korea"
+    ],
+    "correctIndex": 1,
+    "funFact": "Kabuki theatre is known for its stylized drama, elaborate makeup, and actors performing on a rotating stage."
+  }
+]

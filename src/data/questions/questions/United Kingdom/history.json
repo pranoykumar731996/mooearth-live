@@ -1,0 +1,32 @@
+[
+  {
+    "id": "uk-history-1",
+    "country": "United Kingdom",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which monarch saw the longest reign in British history before Queen Elizabeth II?",
+    "choices": [
+      "Queen Victoria",
+      "King George III",
+      "King Henry VIII",
+      "King Edward VII"
+    ],
+    "correctIndex": 0,
+    "funFact": "Queen Victoria reigned for 63 years from 1837 to 1901, before Elizabeth II broke the record."
+  },
+  {
+    "id": "gen-hist-75",
+    "country": "United Kingdom",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Signing of the Magna Carta\" take place in United Kingdom?",
+    "choices": [
+      "1776",
+      "1917",
+      "1789",
+      "1215"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Magna Carta established the principle that everyone, including the king, is subject to the law."
+  }
+]

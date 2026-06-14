@@ -1,0 +1,17 @@
+[
+  {
+    "id": "ar-sports-1",
+    "country": "Argentina",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Who is Argentina's all-time leading goal scorer?",
+    "choices": [
+      "Diego Maradona",
+      "Lionel Messi",
+      "Gabriel Batistuta",
+      "Sergio Agüero"
+    ],
+    "correctIndex": 1,
+    "funFact": "Lionel Messi surpassed 100 international goals and won the 2022 World Cup with Argentina."
+  }
+]

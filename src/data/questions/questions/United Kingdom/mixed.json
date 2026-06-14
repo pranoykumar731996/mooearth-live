@@ -1,0 +1,167 @@
+[
+  {
+    "id": "uk-geo-1",
+    "country": "United Kingdom",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of the United Kingdom?",
+    "choices": [
+      "Edinburgh",
+      "Manchester",
+      "London",
+      "Birmingham"
+    ],
+    "correctIndex": 2,
+    "funFact": "London is one of the most diverse cities in the world, with over 300 languages spoken."
+  },
+  {
+    "id": "uk-sports-1",
+    "country": "United Kingdom",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "In which year was the first FIFA World Cup held in England?",
+    "choices": [
+      "1958",
+      "1962",
+      "1966",
+      "1970"
+    ],
+    "correctIndex": 2,
+    "funFact": "England won their only World Cup in 1966, beating West Germany 4-2 in the final at Wembley."
+  },
+  {
+    "id": "uk-history-1",
+    "country": "United Kingdom",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which monarch saw the longest reign in British history before Queen Elizabeth II?",
+    "choices": [
+      "Queen Victoria",
+      "King George III",
+      "King Henry VIII",
+      "King Edward VII"
+    ],
+    "correctIndex": 0,
+    "funFact": "Queen Victoria reigned for 63 years from 1837 to 1901, before Elizabeth II broke the record."
+  },
+  {
+    "id": "gen-hist-75",
+    "country": "United Kingdom",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Signing of the Magna Carta\" take place in United Kingdom?",
+    "choices": [
+      "1776",
+      "1917",
+      "1789",
+      "1215"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Magna Carta established the principle that everyone, including the king, is subject to the law."
+  },
+  {
+    "id": "gen-sci-5",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Penicillin in the year 1928?",
+    "choices": [
+      "Alfred Nobel",
+      "Marie Curie",
+      "Wilhelm Röntgen",
+      "Alexander Fleming"
+    ],
+    "correctIndex": 3,
+    "funFact": "Fleming discovered penicillin by accident when mould grew on a forgotten petri dish of bacteria."
+  },
+  {
+    "id": "gen-tech-6",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Penicillin invented or pioneered?",
+    "choices": [
+      "United Kingdom",
+      "Germany",
+      "Italy",
+      "Sweden"
+    ],
+    "correctIndex": 0,
+    "funFact": "Fleming discovered penicillin by accident when mould grew on a forgotten petri dish of bacteria."
+  },
+  {
+    "id": "gen-sci-7",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Steam Engine in the year 1776?",
+    "choices": [
+      "Dmitri Mendeleev",
+      "Alfred Nobel",
+      "Nikola Tesla",
+      "James Watt"
+    ],
+    "correctIndex": 3,
+    "funFact": "James Watt's steam engine design introduced the term \"horsepower\" to compare output to draft horses."
+  },
+  {
+    "id": "gen-tech-8",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Steam Engine invented or pioneered?",
+    "choices": [
+      "Germany",
+      "United Kingdom",
+      "United States",
+      "Sweden"
+    ],
+    "correctIndex": 1,
+    "funFact": "James Watt's steam engine design introduced the term \"horsepower\" to compare output to draft horses."
+  },
+  {
+    "id": "gen-sci-21",
+    "country": "United Kingdom",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the World Wide Web in the year 1989?",
+    "choices": [
+      "Tim Berners-Lee",
+      "James Watt",
+      "Alexander Graham Bell",
+      "Mark Humayun"
+    ],
+    "correctIndex": 0,
+    "funFact": "Berners-Lee wrote the first web server, browser, and editor while working at CERN in Switzerland."
+  },
+  {
+    "id": "gen-tech-22",
+    "country": "United Kingdom",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the World Wide Web invented or pioneered?",
+    "choices": [
+      "Sweden",
+      "United Kingdom",
+      "Russia",
+      "United States"
+    ],
+    "correctIndex": 1,
+    "funFact": "Berners-Lee wrote the first web server, browser, and editor while working at CERN in Switzerland."
+  },
+  {
+    "id": "gen-pol-76",
+    "country": "United Kingdom",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Signing of the Magna Carta\"?",
+    "choices": [
+      "Mikhail Gorbachev",
+      "King John",
+      "Nelson Mandela",
+      "Otto von Bismarck"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Magna Carta established the principle that everyone, including the king, is subject to the law."
+  }
+]

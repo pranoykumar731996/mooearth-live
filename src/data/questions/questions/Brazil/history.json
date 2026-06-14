@@ -1,0 +1,17 @@
+[
+  {
+    "id": "br-history-1",
+    "country": "Brazil",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "From which country did Brazil gain independence in 1822?",
+    "choices": [
+      "Spain",
+      "France",
+      "Portugal",
+      "Netherlands"
+    ],
+    "correctIndex": 2,
+    "funFact": "Prince Pedro declared independence with the famous \"Cry of Ipiranga\" on September 7, 1822."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "cn-history-1",
+    "country": "China",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which dynasty built the Terracotta Army?",
+    "choices": [
+      "Han Dynasty",
+      "Qin Dynasty",
+      "Ming Dynasty",
+      "Tang Dynasty"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Terracotta Army consists of approximately 8,000 life-sized soldiers buried with Emperor Qin Shi Huang."
+  }
+]

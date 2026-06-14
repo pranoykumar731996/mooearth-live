@@ -1,0 +1,17 @@
+[
+  {
+    "id": "cn-geo-1",
+    "country": "China",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "How long is the Great Wall of China approximately?",
+    "choices": [
+      "5,000 km",
+      "10,000 km",
+      "21,000 km",
+      "50,000 km"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Great Wall was built over many centuries and is NOT visible from space with the naked eye."
+  }
+]

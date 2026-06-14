@@ -1,0 +1,47 @@
+[
+  {
+    "id": "glb-geo-1",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which is the largest ocean on Earth?",
+    "choices": [
+      "Atlantic Ocean",
+      "Indian Ocean",
+      "Arctic Ocean",
+      "Pacific Ocean"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Pacific Ocean is larger than all of Earth's land area combined."
+  },
+  {
+    "id": "glb-geo-2",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which line of latitude divides the Earth into the Northern and Southern Hemispheres?",
+    "choices": [
+      "Prime Meridian",
+      "Tropic of Cancer",
+      "Equator",
+      "Tropic of Capricorn"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Equator passes through 13 countries."
+  },
+  {
+    "id": "glb-geo-3",
+    "country": "Global",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which country has the most natural lakes in the world?",
+    "choices": [
+      "Canada",
+      "Russia",
+      "Brazil",
+      "United States"
+    ],
+    "correctIndex": 0,
+    "funFact": "Canada has more than 60% of all the lakes in the world."
+  }
+]

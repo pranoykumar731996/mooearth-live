@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-78",
+    "country": "France",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Beginning of the French Revolution\"?",
+    "choices": [
+      "King John",
+      "Louis XVI",
+      "Giuseppe Garibaldi",
+      "Vladimir Lenin"
+    ],
+    "correctIndex": 1,
+    "funFact": "The revolution began with the Storming of the Bastille on July 14, 1789, which is now celebrated as Bastille Day."
+  }
+]

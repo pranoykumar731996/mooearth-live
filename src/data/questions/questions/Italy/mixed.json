@@ -1,0 +1,92 @@
+[
+  {
+    "id": "it-geo-1",
+    "country": "Italy",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Italy?",
+    "choices": [
+      "Milan",
+      "Venice",
+      "Florence",
+      "Rome"
+    ],
+    "correctIndex": 3,
+    "funFact": "Rome was founded in 753 BC and is known as the \"Eternal City\"."
+  },
+  {
+    "id": "it-history-1",
+    "country": "Italy",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which famous artist painted the ceiling of the Sistine Chapel?",
+    "choices": [
+      "Leonardo da Vinci",
+      "Michelangelo",
+      "Raphael",
+      "Donatello"
+    ],
+    "correctIndex": 1,
+    "funFact": "Michelangelo painted the Sistine Chapel ceiling between 1508 and 1512, mostly lying on his back."
+  },
+  {
+    "id": "gen-hist-83",
+    "country": "Italy",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "In which year did the historical event \"Unification of Italy\" take place in Italy?",
+    "choices": [
+      "1994",
+      "1871",
+      "1861",
+      "1789"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Risorgimento movement unified independent states into the Kingdom of Italy under King Victor Emmanuel II."
+  },
+  {
+    "id": "gen-sci-3",
+    "country": "Italy",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the Radio in the year 1895?",
+    "choices": [
+      "Guglielmo Marconi",
+      "Johannes Gutenberg",
+      "Marie Curie",
+      "Wilhelm Röntgen"
+    ],
+    "correctIndex": 0,
+    "funFact": "Marconi was awarded the Nobel Prize in Physics in 1909 for his contributions to wireless telegraphy."
+  },
+  {
+    "id": "gen-tech-4",
+    "country": "Italy",
+    "category": "technology",
+    "difficulty": "easy",
+    "question": "In which country was the Radio invented or pioneered?",
+    "choices": [
+      "Poland",
+      "Germany",
+      "United Kingdom",
+      "Italy"
+    ],
+    "correctIndex": 3,
+    "funFact": "Marconi was awarded the Nobel Prize in Physics in 1909 for his contributions to wireless telegraphy."
+  },
+  {
+    "id": "gen-pol-84",
+    "country": "Italy",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"Unification of Italy\"?",
+    "choices": [
+      "Nelson Mandela",
+      "Otto von Bismarck",
+      "Mikhail Gorbachev",
+      "Giuseppe Garibaldi"
+    ],
+    "correctIndex": 3,
+    "funFact": "The Risorgimento movement unified independent states into the Kingdom of Italy under King Victor Emmanuel II."
+  }
+]

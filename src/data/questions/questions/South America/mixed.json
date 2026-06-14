@@ -1,0 +1,17 @@
+[
+  {
+    "id": "glb-spo-4",
+    "country": "South America",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which South American country won the first-ever FIFA World Cup in 1930?",
+    "choices": [
+      "Brazil",
+      "Argentina",
+      "Uruguay",
+      "Chile"
+    ],
+    "correctIndex": 2,
+    "funFact": "Uruguay defeated Argentina 4-2 in the final at Estadio Centenario."
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ma-geo-1",
+    "country": "Morocco",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is Morocco located?",
+    "choices": [
+      "Asia",
+      "South America",
+      "Africa",
+      "Europe"
+    ],
+    "correctIndex": 2,
+    "funFact": "Morocco is only 14 km from Spain across the Strait of Gibraltar."
+  },
+  {
+    "id": "gen-geo-58",
+    "country": "Morocco",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Sahara Desert\" located?",
+    "choices": [
+      "South America",
+      "Africa",
+      "Oceania",
+      "Asia"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Sahara is the largest hot desert on Earth, covering over 9 million square kilometers — similar in size to the United States."
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "uk-sports-1",
+    "country": "United Kingdom",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "In which year was the first FIFA World Cup held in England?",
+    "choices": [
+      "1958",
+      "1962",
+      "1966",
+      "1970"
+    ],
+    "correctIndex": 2,
+    "funFact": "England won their only World Cup in 1966, beating West Germany 4-2 in the final at Wembley."
+  }
+]

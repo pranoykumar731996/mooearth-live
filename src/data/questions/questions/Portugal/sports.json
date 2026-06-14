@@ -1,0 +1,17 @@
+[
+  {
+    "id": "pt-sports-1",
+    "country": "Portugal",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which Portuguese footballer is considered one of the greatest of all time?",
+    "choices": [
+      "Eusébio",
+      "Cristiano Ronaldo",
+      "Luís Figo",
+      "Bernardo Silva"
+    ],
+    "correctIndex": 1,
+    "funFact": "Cristiano Ronaldo is the all-time top scorer in men's international football."
+  }
+]

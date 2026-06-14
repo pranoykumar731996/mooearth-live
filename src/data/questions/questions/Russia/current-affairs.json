@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-pol-80",
+    "country": "Russia",
+    "category": "politics",
+    "difficulty": "medium",
+    "question": "Which leader is most associated with the event \"October Revolution\"?",
+    "choices": [
+      "King John",
+      "Nelson Mandela",
+      "Vladimir Lenin",
+      "Giuseppe Garibaldi"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Bolshevik uprising led to the collapse of the provisional government and the birth of the Soviet Union."
+  }
+]

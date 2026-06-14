@@ -1,0 +1,62 @@
+[
+  {
+    "id": "cn-geo-1",
+    "country": "China",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "How long is the Great Wall of China approximately?",
+    "choices": [
+      "5,000 km",
+      "10,000 km",
+      "21,000 km",
+      "50,000 km"
+    ],
+    "correctIndex": 2,
+    "funFact": "The Great Wall was built over many centuries and is NOT visible from space with the naked eye."
+  },
+  {
+    "id": "cn-history-1",
+    "country": "China",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which dynasty built the Terracotta Army?",
+    "choices": [
+      "Han Dynasty",
+      "Qin Dynasty",
+      "Ming Dynasty",
+      "Tang Dynasty"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Terracotta Army consists of approximately 8,000 life-sized soldiers buried with Emperor Qin Shi Huang."
+  },
+  {
+    "id": "gen-space-47",
+    "country": "China",
+    "category": "space",
+    "difficulty": "medium",
+    "question": "Which space mission is famous for the landing on the far side of the Moon in 2019?",
+    "choices": [
+      "James Webb Space Telescope",
+      "Sputnik 1",
+      "Chang'e 4",
+      "Voyager 1"
+    ],
+    "correctIndex": 2,
+    "funFact": "Because the far side of the Moon blocks radio signals, Chang'e 4 communicates via the Queqiao relay satellite."
+  },
+  {
+    "id": "gen-space-48",
+    "country": "China",
+    "category": "space",
+    "difficulty": "easy",
+    "question": "Which country launched the historical space mission \"Chang'e 4\"?",
+    "choices": [
+      "India",
+      "United States",
+      "Germany",
+      "China"
+    ],
+    "correctIndex": 3,
+    "funFact": "Because the far side of the Moon blocks radio signals, Chang'e 4 communicates via the Queqiao relay satellite."
+  }
+]

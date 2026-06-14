@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-geo-64",
+    "country": "South Africa",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Victoria Falls\" located?",
+    "choices": [
+      "Africa",
+      "Asia",
+      "South America",
+      "Oceania"
+    ],
+    "correctIndex": 0,
+    "funFact": "Victoria Falls is known locally as Mosi-oa-Tunya, meaning \"The Smoke that Thunders,\" due to its massive spray."
+  }
+]

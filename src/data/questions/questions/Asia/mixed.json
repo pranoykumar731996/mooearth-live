@@ -1,0 +1,47 @@
+[
+  {
+    "id": "glb-geo-4",
+    "country": "Asia",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which Asian country is known as the \"Land of the Rising Sun\"?",
+    "choices": [
+      "China",
+      "Japan",
+      "South Korea",
+      "Vietnam"
+    ],
+    "correctIndex": 1,
+    "funFact": "The name Japan (Nihon) translates literally to \"origin of the sun.\""
+  },
+  {
+    "id": "glb-his-3",
+    "country": "Asia",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which famous historical leader founded the Mongol Empire in 1206?",
+    "choices": [
+      "Kublai Khan",
+      "Genghis Khan",
+      "Tamerlane",
+      "Attila the Hun"
+    ],
+    "correctIndex": 1,
+    "funFact": "Genghis Khan created the largest contiguous land empire in history."
+  },
+  {
+    "id": "glb-cul-3",
+    "country": "Asia",
+    "category": "culture",
+    "difficulty": "easy",
+    "question": "Which traditional martial art originated in Okinawa, Japan?",
+    "choices": [
+      "Taekwondo",
+      "Karate",
+      "Judo",
+      "Kung Fu"
+    ],
+    "correctIndex": 1,
+    "funFact": "Karate translates to \"empty hand\" in Japanese, referring to fighting without weapons."
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "ma-geo-1",
+    "country": "Morocco",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is Morocco located?",
+    "choices": [
+      "Asia",
+      "South America",
+      "Africa",
+      "Europe"
+    ],
+    "correctIndex": 2,
+    "funFact": "Morocco is only 14 km from Spain across the Strait of Gibraltar."
+  },
+  {
+    "id": "gen-geo-58",
+    "country": "Morocco",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is the natural feature \"Sahara Desert\" located?",
+    "choices": [
+      "South America",
+      "Africa",
+      "Oceania",
+      "Asia"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Sahara is the largest hot desert on Earth, covering over 9 million square kilometers — similar in size to the United States."
+  },
+  {
+    "id": "ma-sports-1",
+    "country": "Morocco",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "In which FIFA World Cup did Morocco reach the semi-finals for the first time?",
+    "choices": [
+      "2018 Russia",
+      "2022 Qatar",
+      "2014 Brazil",
+      "2010 South Africa"
+    ],
+    "correctIndex": 1,
+    "funFact": "Morocco became the first African and Arab nation to reach a World Cup semi-final."
+  },
+  {
+    "id": "gen-nat-57",
+    "country": "Morocco",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "The famous desert \"Sahara Desert\" is located in which country?",
+    "choices": [
+      "Brazil",
+      "Morocco",
+      "Nepal",
+      "Jordan"
+    ],
+    "correctIndex": 1,
+    "funFact": "The Sahara is the largest hot desert on Earth, covering over 9 million square kilometers — similar in size to the United States."
+  }
+]
