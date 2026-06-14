@@ -370,10 +370,32 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       }
     }
 
-    // ------ LAYER 3: SAME-COUNTRY REUSE (ROUND-ROBIN CYCLING) ------
+    // ------ LAYER 3: LOCAL PROCEDURAL TEMPLATES (FALLBACK) ------
+    // Generate up to 5 questions, excluding any already answered.
+    const procedural = generateQuestions(
+      canonicalCountry, 
+      getCanonicalCategory(category) as QuizCategory, 
+      5, 
+      clientAnsweredIds
+    );
+    if (procedural.length > 0) {
+      const selected = shuffle(procedural)[0];
+      // Save it locally / cache so it is persistent and added to the pool
+      saveGeneratedQuestion(selected);
+      return NextResponse.json({ question: selected, source: 'procedural' });
+    }
+
+    // ------ LAYER 4: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
+    const universalQ = generateUniversalFallback(canonicalCountry, category);
+    // If the universal question itself hasn't been answered in this session yet, return it
+    if (!excludeSet.has(universalQ.id)) {
+      saveGeneratedQuestion(universalQ);
+      return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
+    }
+
+    // ------ LAYER 5: SAME-COUNTRY REUSE (ROUND-ROBIN CYCLING) ------
+    // Only reuse older questions if all unseen database, procedural, and universal fallback questions have been exhausted.
     if (countryCategoryPool.length > 0) {
-      // Sort the pool by when it was answered by comparing its index in clientAnsweredIds.
-      // Unseen or older questions will appear first.
       const oldestAnswered = [...countryCategoryPool].sort((a, b) => {
         const idxA = clientAnsweredIds.lastIndexOf(a.id);
         const idxB = clientAnsweredIds.lastIndexOf(b.id);
@@ -388,20 +410,9 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       return NextResponse.json({ question: oldestAnswered, source: 'local-recycle' });
     }
 
-    // ------ LAYER 4: LOCAL PROCEDURAL TEMPLATES (FALLBACK) ------
-    const procedural = generateQuestions(canonicalCountry, getCanonicalCategory(category) as QuizCategory, 5);
-    if (procedural.length > 0) {
-      const selected = shuffle(procedural)[0];
-      // Save it locally / cache so it is persistent
-      saveGeneratedQuestion(selected);
-      return NextResponse.json({ question: selected, source: 'procedural' });
-    }
-
-    // ------ LAYER 5: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
-    const universalQ = generateUniversalFallback(canonicalCountry, category);
-    // Cache it
+    // Ultimate fallback if pool is somehow completely empty and everything failed
     saveGeneratedQuestion(universalQ);
-    return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
+    return NextResponse.json({ question: universalQ, source: 'emergency-fallback' });
 
   } catch (err: any) {
     console.error('CRITICAL /api/quiz/next error:', err);

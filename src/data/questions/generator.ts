@@ -224,7 +224,7 @@ const templatesByCategory: Record<QuizCategory, TemplateGenerator[]> = {
   politics: historyTemplates,  // Fallback to history for politics
   culture: triviaTemplates,     // Fallback to trivia for culture
   'current-affairs': historyTemplates, // Fallback to history for current affairs
-  mixed: geoTemplates, // Fallback to geography for mixed
+  mixed: [...geoTemplates, ...sportsTemplates, ...triviaTemplates, ...historyTemplates],
 };
 
 /**
