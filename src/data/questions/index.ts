@@ -185,11 +185,15 @@ export function getCanonicalCountryName(country: string): string {
 
 /** Fuzzy match country names */
 export function matchCountry(q: string, target: string): boolean {
+  const c1 = getCanonicalCountryName(q);
+  const c2 = getCanonicalCountryName(target);
+  if (c1.toLowerCase() === c2.toLowerCase()) return true;
+
   const n1 = q.toLowerCase().replace(/[^a-z]/g, '');
   const n2 = target.toLowerCase().replace(/[^a-z]/g, '');
   if (n1 === n2) return true;
-  if (n1.includes(n2) || n2.includes(n1)) return true;
-  // Alias check
+  
+  // Specific alias checks (prevent general partial includes)
   if ((n1 === 'usa' || n1 === 'us' || n1 === 'unitedstatesofamerica') &&
       (n2 === 'unitedstates' || n2 === 'unitedstatesofamerica' || n2 === 'usa')) return true;
   if ((n1 === 'uk' || n1 === 'england' || n1 === 'greatbritain') &&

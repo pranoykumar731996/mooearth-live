@@ -53,6 +53,7 @@ function getQuestionsFromFolderDb(country: string, category: string): EarthQuest
   const canonical = getCanonicalCountryName(country);
   const cat = getCanonicalCategory(category);
   const countryDir = path.resolve(process.cwd(), 'src/data/questions/questions', canonical);
+  console.log(`[PLAY EARTH DEBUG] getQuestionsFromFolderDb: checking path: "${countryDir}" for file: "${cat}.json"`);
 
   if (cat === 'mixed') {
     const mixedFile = path.join(countryDir, 'mixed.json');
@@ -269,24 +270,35 @@ function generateUniversalFallback(country: string, category: string): EarthQues
 }
 
 export async function POST(request: NextRequest) {
+  let requestCountry = 'Global';
+  let requestCategory = 'geography';
   try {
     const body = await request.json();
     const { country, category, username, answeredIds = [] } = body;
+    requestCountry = country || 'Global';
+    requestCategory = category || 'geography';
+
+    console.log(`[PLAY EARTH DEBUG] POST /api/quiz/next: Clicked Country="${country}", Category="${category}", Username="${username}"`);
+    console.log(`[PLAY EARTH DEBUG] clientAnsweredIds count: ${answeredIds.length}`);
 
     if (!country || !category || !username) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
     const canonicalCountry = getCanonicalCountryName(country);
+    console.log(`[PLAY EARTH DEBUG] Resolved Canonical Country Name: "${canonicalCountry}"`);
+
     const clientAnsweredIds = Array.isArray(answeredIds) ? answeredIds : [];
     const excludeSet = new Set<string>(clientAnsweredIds);
 
     // ------ LAYER 1: COMBINED LOCAL DATABASE (FILES + SERVERLESS MEMORY) ------
     const countryCategoryPool = getMergedQuestions(canonicalCountry, category);
     const unseenPool = countryCategoryPool.filter(q => !excludeSet.has(q.id));
+    console.log(`[PLAY EARTH DEBUG] Layer 1: CountryCategoryPool size: ${countryCategoryPool.length}, UnseenPool size: ${unseenPool.length}`);
 
     if (unseenPool.length > 0) {
       const selected = shuffle(unseenPool)[0];
+      console.log(`[PLAY EARTH DEBUG] Layer 1 Match Found: ID="${selected.id}" for Country="${selected.country}"`);
       return NextResponse.json({ question: selected, source: 'local-db' });
     }
 
@@ -362,8 +374,11 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
             // Write to files / cache
             saveGeneratedQuestion(newQuestion);
 
+            console.log(`[PLAY EARTH DEBUG] Layer 2 OpenAI success: ID="${newQuestion.id}"`);
             return NextResponse.json({ question: newQuestion, source: 'ai-generated' });
           }
+        } else {
+          console.warn(`[PLAY EARTH DEBUG] Layer 2 OpenAI failed with status: ${apiResponse.status}`);
         }
       } catch (err) {
         console.warn('OpenAI dynamic generation call failed. Transitioning to local same-country fallback.', err);
@@ -378,19 +393,49 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       5, 
       clientAnsweredIds
     );
+    console.log(`[PLAY EARTH DEBUG] Layer 3: Procedural generated count: ${procedural.length}`);
     if (procedural.length > 0) {
       const selected = shuffle(procedural)[0];
       // Save it locally / cache so it is persistent and added to the pool
       saveGeneratedQuestion(selected);
+      console.log(`[PLAY EARTH DEBUG] Layer 3 Match Found: ID="${selected.id}" for Country="${selected.country}"`);
       return NextResponse.json({ question: selected, source: 'procedural' });
     }
 
     // ------ LAYER 4: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
     const universalQ = generateUniversalFallback(canonicalCountry, category);
+    console.log(`[PLAY EARTH DEBUG] Layer 4: Universal fallback ID="${universalQ.id}" (ExcludeSet has it? ${excludeSet.has(universalQ.id)})`);
     // If the universal question itself hasn't been answered in this session yet, return it
     if (!excludeSet.has(universalQ.id)) {
       saveGeneratedQuestion(universalQ);
+      console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${universalQ.id}" for Country="${universalQ.country}"`);
       return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
+    }
+
+    // ------ LAYER 4.5: SAME-COUNTRY MIXED FALLBACK (TASK 6) ------
+    // If we have no questions for this category (e.g. Current Affairs empty), fallback to same country's Mixed pool
+    if (category !== 'mixed') {
+      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Category "${category}" empty, falling back to same-country "mixed" pool`);
+      
+      const mixedPool = getMergedQuestions(canonicalCountry, 'mixed');
+      const unseenMixed = mixedPool.filter(q => !excludeSet.has(q.id));
+      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Unseen mixed pool size: ${unseenMixed.length}`);
+
+      if (unseenMixed.length > 0) {
+        const selected = shuffle(unseenMixed)[0];
+        console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${selected.id}" (Mixed category fallback)`);
+        return NextResponse.json({ question: selected, source: 'same-country-mixed-fallback' });
+      }
+
+      // If mixed folder is also empty/exhausted, try generating procedural questions from any category
+      const proceduralMixed = generateQuestions(canonicalCountry, 'mixed', 5, clientAnsweredIds);
+      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Procedural mixed generated count: ${proceduralMixed.length}`);
+      if (proceduralMixed.length > 0) {
+        const selected = shuffle(proceduralMixed)[0];
+        saveGeneratedQuestion(selected);
+        console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${selected.id}" (Procedural mixed category fallback)`);
+        return NextResponse.json({ question: selected, source: 'same-country-procedural-mixed-fallback' });
+      }
     }
 
     // ------ LAYER 5: SAME-COUNTRY REUSE (ROUND-ROBIN CYCLING) ------
@@ -407,23 +452,21 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
         return idxA - idxB;
       })[0];
 
+      console.log(`[PLAY EARTH DEBUG] Layer 5 Match Found: ID="${oldestAnswered.id}" (Recycled fallback)`);
       return NextResponse.json({ question: oldestAnswered, source: 'local-recycle' });
     }
 
     // Ultimate fallback if pool is somehow completely empty and everything failed
     saveGeneratedQuestion(universalQ);
+    console.log(`[PLAY EARTH DEBUG] Ultimate Emergency Match Found: ID="${universalQ.id}"`);
     return NextResponse.json({ question: universalQ, source: 'emergency-fallback' });
 
   } catch (err: any) {
     console.error('CRITICAL /api/quiz/next error:', err);
-    // Ultimate absolute fallback to avoid HTTP 500 error
     try {
-      const body = await request.json().catch(() => ({}));
-      const fallbackCountry = body.country || 'Global';
-      const fallbackCategory = body.category || 'geography';
-      const universalQ = generateUniversalFallback(fallbackCountry, fallbackCategory);
+      const universalQ = generateUniversalFallback(requestCountry, requestCategory);
       return NextResponse.json({ question: universalQ, source: 'error-safe-fallback' });
-    } catch (inner) {
+    } catch (inner: any) {
       return NextResponse.json({ error: 'Critical server error', details: err.message }, { status: 500 });
     }
   }

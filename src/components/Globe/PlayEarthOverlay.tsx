@@ -181,6 +181,8 @@ export default function PlayEarthOverlay({
     setIsLoadingQuestion(true);
     onPlaySound();
 
+    console.log(`[PLAY EARTH DEBUG] startQuestion: Selected Country="${selectedCountry}", Category="${category}"`);
+
     const startTime = Date.now();
     try {
       const res = await fetch('/api/quiz/next', {
@@ -209,6 +211,7 @@ export default function PlayEarthOverlay({
 
       const data = await res.json();
       const q = data.question;
+      console.log(`[PLAY EARTH DEBUG] startQuestion success. Loaded Question:`, q);
 
       // Enforce minimum display time for the cinematic loader (800ms)
       const elapsed = Date.now() - startTime;
@@ -551,6 +554,13 @@ export default function PlayEarthOverlay({
                                 : 'border-red-500/40 animate-[card-shake_0.5s_ease-in-out]'
                               : 'border-white/10'
                             }`}>
+
+              {/* Temporary Audit Diagnostics (Task 4) */}
+              <div className="mb-4 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-[9px] text-white/40">
+                <span>🔍 Question Found: <strong className={currentQuestion ? 'text-emerald-400' : 'text-red-400'}>{currentQuestion ? 'TRUE' : 'FALSE'}</strong></span>
+                <span>🆔 ID: <strong className="text-cyan-400 font-mono">{currentQuestion?.id || 'none'}</strong></span>
+                <span>✨ Rendered: <strong className="text-emerald-400">TRUE</strong></span>
+              </div>
 
               {/* Timer + Country header */}
               <div className="flex items-center justify-between mb-4">
