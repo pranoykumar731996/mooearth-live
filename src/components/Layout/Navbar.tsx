@@ -4,7 +4,7 @@
 
 'use client';
 
-import { WorldEvent } from '@/types';
+import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
 import { BRANDING } from '@/config/branding';
@@ -12,6 +12,7 @@ import { ApiStatus } from '@/hooks/useLiveEvents';
 
 interface NavbarProps {
   events: WorldEvent[];
+  activeCategory?: EventCategory | null;
   apiStatus: ApiStatus;
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
@@ -29,6 +30,7 @@ interface NavbarProps {
 
 export default function Navbar({
   events,
+  activeCategory,
   apiStatus,
   onSearch,
   onSelectEvent,
@@ -123,7 +125,7 @@ export default function Navbar({
 
       {/* Search */}
       <div className="flex-1 max-w-md mx-4 sm:mx-8">
-        <SearchBar events={events} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} />
+        <SearchBar events={events} activeCategory={activeCategory} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} />
       </div>
 
       {/* Right Section */}

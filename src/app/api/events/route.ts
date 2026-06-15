@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
     const query = searchParams.get('q') || '';
+    const category = searchParams.get('category') || '';
 
     const { events, status } = query.trim()
-      ? await searchAllEvents(query.trim())
+      ? await searchAllEvents(query.trim(), category)
       : await fetchAllEvents();
     
     // Process summaries concurrently (up to a limit, but Promise.all is fine for a small batch)

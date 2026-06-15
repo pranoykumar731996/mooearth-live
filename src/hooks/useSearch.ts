@@ -1,12 +1,13 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { WorldEvent } from '@/types';
+import { WorldEvent, EventCategory } from '@/types';
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
 
 interface UseSearchProps {
   events: WorldEvent[];
+  activeCategory?: EventCategory | null;
 }
 
-export function useSearch({ events }: UseSearchProps) {
+export function useSearch({ events, activeCategory }: UseSearchProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [serverResults, setServerResults] = useState<WorldEvent[]>([]);
@@ -42,7 +43,8 @@ export function useSearch({ events }: UseSearchProps) {
 
     async function fetchSearchResults() {
       try {
-        const res = await fetch(`/api/events?q=${encodeURIComponent(q)}`);
+        const catParam = activeCategory ? `&category=${activeCategory}` : '';
+        const res = await fetch(`/api/events?q=${encodeURIComponent(q)}${catParam}`);
         if (!res.ok) throw new Error('Search request failed');
         const data = await res.json();
         
@@ -59,7 +61,7 @@ export function useSearch({ events }: UseSearchProps) {
     return () => {
       isMounted = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, activeCategory]);
 
   // Calculate countryResult dynamically
   const countryResult = useMemo(() => {

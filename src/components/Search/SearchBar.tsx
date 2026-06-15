@@ -6,12 +6,13 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { WorldEvent } from '@/types';
+import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { useSearch } from '@/hooks/useSearch';
 
 interface SearchBarProps {
   events: WorldEvent[];
+  activeCategory?: EventCategory | null;
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
   onSelectCountry?: (country: string | null) => void;
@@ -25,12 +26,12 @@ const PLACEHOLDER_TEXTS = [
   "Business news in London..."
 ];
 
-export default function SearchBar({ events, onSearch, onSelectEvent, onSelectCountry }: SearchBarProps) {
+export default function SearchBar({ events, activeCategory, onSearch, onSelectEvent, onSelectCountry }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { query, debouncedQuery, setQuery, results, countryResult, clearSearch } = useSearch({ events });
+  const { query, debouncedQuery, setQuery, results, countryResult, clearSearch } = useSearch({ events, activeCategory });
 
   // Sync debounced query to parent for external effects (prevents page-wide rerenders on every keystroke)
   useEffect(() => {

@@ -72,15 +72,19 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
               </svg>
             </button>
 
-            {/* Category & Time */}
-            <div className="flex items-center gap-3 mb-4 shrink-0">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ backgroundColor: CATEGORY_MAP[event.category].bgColor }}>
-                <span className="text-sm">{CATEGORY_MAP[event.category].emoji}</span>
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: CATEGORY_MAP[event.category].color }}>
-                  {CATEGORY_MAP[event.category].label}
+            {/* Country & Category */}
+            <div className="flex flex-col gap-1 mb-4 shrink-0 pr-8">
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                <span>Country:</span>
+                <span className="text-white font-extrabold mr-1.5">{event.country}</span>
+                <span className="text-white/20">|</span>
+                <span className="ml-1.5">Category:</span>
+                <span className="text-white font-extrabold flex items-center gap-1">
+                  <span>{CATEGORY_MAP[event.category].emoji}</span>
+                  <span>{CATEGORY_MAP[event.category].label}</span>
                 </span>
               </div>
-              <span className="text-xs text-white/40 font-medium" suppressHydrationWarning>{formatRelativeTime(event.publishedAt)}</span>
+              <span className="text-[10px] text-white/40 font-medium" suppressHydrationWarning>{formatRelativeTime(event.publishedAt)}</span>
             </div>
 
             {/* Scrollable Container */}

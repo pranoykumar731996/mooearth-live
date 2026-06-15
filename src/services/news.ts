@@ -19,7 +19,7 @@ function assignCoordinates(title: string, content: string) {
 }
 
 // Generate realistic mock events based on the search query when GNews is rate-limited
-function generateLocalFallbackEvents(query: string): WorldEvent[] {
+function generateLocalFallbackEvents(query: string, category?: EventCategory | null): WorldEvent[] {
   const normalizedQuery = query.trim().toLowerCase();
   
   // Try to find if query matches any country in our map
@@ -34,91 +34,165 @@ function generateLocalFallbackEvents(query: string): WorldEvent[] {
   const baseEvents: WorldEvent[] = [];
   const now = Date.now();
 
-  if (matchedKey) {
-    const geo = COUNTRY_COORDINATES[matchedKey];
-    
-    const title1 = `${geo.country} Welcomes Millions of Fans for Global Festivities`;
+  const geo = matchedKey ? COUNTRY_COORDINATES[matchedKey] : {
+    country: query.charAt(0).toUpperCase() + query.slice(1),
+    city: 'Capital City',
+    lat: 0,
+    lng: 0
+  };
+
+  const cat = category || 'breaking';
+
+  if (cat === 'technology') {
+    baseEvents.push({
+      id: `fallback-tech-1-${now}`,
+      title: `${geo.country} Unveils Breakthrough AI Research Initiative`,
+      summary: `Tech leaders in ${geo.city} have announced a major breakthrough in machine learning optimization and semiconductor architecture. The initiative is backed by local research institutions and startups aiming to push the boundaries of neural computing.`,
+      category: 'technology',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' technology')}`,
+      publishedAt: new Date(now - 10 * 60000).toISOString(),
+    });
+    baseEvents.push({
+      id: `fallback-tech-2-${now}`,
+      title: `Next-Gen Green Tech Startups Rise in ${geo.country}`,
+      summary: `A new wave of clean energy and space tech startups are securing significant venture funding in ${geo.city}. The government has pledged tax incentives for clean tech research and hardware prototyping.`,
+      category: 'technology',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' tech startups')}`,
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
+    });
+  } else if (cat === 'weather') {
+    baseEvents.push({
+      id: `fallback-weather-1-${now}`,
+      title: `Unusual Climate Patterns Observed Across ${geo.country}`,
+      summary: `Meteorologists are tracking a unique atmospheric system over ${geo.city}. Temperatures are fluctuating from seasonal averages, bringing mild winds and clear skies across the region.`,
+      category: 'weather',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' weather')}`,
+      publishedAt: new Date(now - 10 * 60000).toISOString(),
+    });
+    baseEvents.push({
+      id: `fallback-weather-2-${now}`,
+      title: `Climate Smart Grid Upgrades Completed in ${geo.city}`,
+      summary: `Municipal leaders in ${geo.country} have completed installation of climate-resilient sensor arrays to monitor temperature, rainfall, and potential storms in real-time.`,
+      category: 'weather',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' climate')}`,
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
+    });
+  } else if (cat === 'business') {
+    baseEvents.push({
+      id: `fallback-business-1-${now}`,
+      title: `${geo.country} Markets Rally Amid Strong Trade Reports`,
+      summary: `The main stock index in ${geo.city} registered strong gains today as trade data surpassed analyst expectations. Economists point to increased industrial output and growing tech exports.`,
+      category: 'business',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' markets')}`,
+      publishedAt: new Date(now - 10 * 60000).toISOString(),
+    });
+    baseEvents.push({
+      id: `fallback-business-2-${now}`,
+      title: `New Economic Zone Boosts Investment in ${geo.city}`,
+      summary: `Local authorities in ${geo.country} have designated a new commercial hub to attract foreign investment. Global corporations have already signed agreements to build offices in the district.`,
+      category: 'business',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' investment')}`,
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
+    });
+  } else if (cat === 'entertainment') {
+    baseEvents.push({
+      id: `fallback-ent-1-${now}`,
+      title: `International Film Festival Showcases ${geo.country} Cinema`,
+      summary: `A celebrated lineup of films and pop culture events debuted in ${geo.city} this week. Directors, musicians, and artists from across ${geo.country} gathered to celebrate local storytelling and visual media.`,
+      category: 'entertainment',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' cinema')}`,
+      publishedAt: new Date(now - 10 * 60000).toISOString(),
+    });
+    baseEvents.push({
+      id: `fallback-ent-2-${now}`,
+      title: `Streaming Platforms Sign Major Talent from ${geo.city}`,
+      summary: `A major entertainment conglomerate has announced exclusive partnerships with top music and television producers in ${geo.country}, aiming to bring local pop culture content to millions of global subscribers.`,
+      category: 'entertainment',
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' pop culture')}`,
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
+    });
+  } else if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
+    baseEvents.push({
+      id: `fallback-sports-1-${now}`,
+      title: `${geo.country} National Teams Prepare for Major Championships`,
+      summary: `Athletes in ${geo.city} are ramping up their training sessions. Public parks and stadiums are seeing record attendance as fan enthusiasm for upcoming matches and local teams reaches new heights.`,
+      category: cat,
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' sports')}`,
+      publishedAt: new Date(now - 10 * 60000).toISOString(),
+    });
+    baseEvents.push({
+      id: `fallback-sports-2-${now}`,
+      title: `Youth Sports Development Infrastructure Expands in ${geo.city}`,
+      summary: `A nationwide program to support sports facilities, coaching staff, and school athletics has been launched in ${geo.country}, with local clubs hosting football matches and track events.`,
+      category: cat,
+      country: geo.country,
+      city: geo.city,
+      lat: geo.lat,
+      lng: geo.lng,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' athletic infrastructure')}`,
+      publishedAt: new Date(now - 35 * 60000).toISOString(),
+    });
+  } else {
+    // breaking / default
     baseEvents.push({
       id: `fallback-news-1-${now}`,
-      title: title1,
+      title: `${geo.country} Welcomes Millions of Fans for Global Festivities`,
       summary: `Cities across ${geo.country}, especially ${geo.city}, are buzzing with excitement as international visitors arrive. Local fan zones and street parades have reached capacity, creating a colorful and electric atmosphere.`,
       category: 'breaking',
       country: geo.country,
       city: geo.city,
       lat: geo.lat,
       lng: geo.lng,
-      source: `https://news.google.com/search?q=${encodeURIComponent(title1)}`,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' news')}`,
       publishedAt: new Date(now - 10 * 60000).toISOString(),
     });
-
-    const title2 = `Athletic Training Centers Expand in ${geo.city}`;
     baseEvents.push({
-      id: `fallback-sports-2-${now}`,
-      title: title2,
-      summary: `Cities across ${geo.country} report a significant rise in public sports participation. New facilities are opening to support youth development and community wellness programs.`,
+      id: `fallback-news-2-${now}`,
+      title: `Global Discussion Surges for ${geo.country} Developments`,
+      summary: `Interest and active discussions around ${geo.country} have spiked globally today, with social media trends registering high engagement. Online forums are sharing live updates as users react.`,
       category: 'breaking',
       country: geo.country,
       city: geo.city,
       lat: geo.lat,
       lng: geo.lng,
-      source: `https://news.google.com/search?q=${encodeURIComponent(title2)}`,
+      source: `https://news.google.com/search?q=${encodeURIComponent(geo.country + ' developments')}`,
       publishedAt: new Date(now - 35 * 60000).toISOString(),
-    });
-
-    const title3 = `Spectacular Atmospheric Conditions Reported Over ${geo.city}`;
-    baseEvents.push({
-      id: `fallback-weather-3-${now}`,
-      title: title3,
-      summary: `Meteorologists describe a rare atmospheric phenomenon displaying iridescent cloud formations over ${geo.country}. Thousands of residents took to social media sharing pictures of the glowing skies.`,
-      category: 'weather',
-      country: geo.country,
-      city: geo.city,
-      lat: geo.lat,
-      lng: geo.lng,
-      source: `https://news.google.com/search?q=${encodeURIComponent(title3)}`,
-      publishedAt: new Date(now - 80 * 60000).toISOString(),
-    });
-  } else {
-    // Generate generic matching events that incorporate the query string
-    const capitalizedQuery = query.charAt(0).toUpperCase() + query.slice(1);
-    
-    // Pick two random countries from the map to place the fallback events
-    const geoKeys = Object.keys(COUNTRY_COORDINATES);
-    const key1 = geoKeys[Math.floor(Math.random() * geoKeys.length)];
-    let key2 = geoKeys[Math.floor(Math.random() * geoKeys.length)];
-    if (key1 === key2) {
-      key2 = geoKeys[(geoKeys.indexOf(key1) + 1) % geoKeys.length];
-    }
-    
-    const geo1 = COUNTRY_COORDINATES[key1];
-    const geo2 = COUNTRY_COORDINATES[key2];
-
-    const title1 = `Global Discussion Surges for '${capitalizedQuery}'`;
-    baseEvents.push({
-      id: `fallback-general-1-${now}`,
-      title: title1,
-      summary: `Interest and active discussions around '${query}' have spiked globally today, with social media trends registering high engagement. Online forums are sharing live updates as users react.`,
-      category: 'breaking',
-      country: geo1.country,
-      city: geo1.city,
-      lat: geo1.lat,
-      lng: geo1.lng,
-      source: `https://news.google.com/search?q=${encodeURIComponent(title1)}`,
-      publishedAt: new Date(now - 15 * 60000).toISOString(),
-    });
-
-    const title2 = `New International Study Explores Impact of '${capitalizedQuery}'`;
-    baseEvents.push({
-      id: `fallback-general-2-${now}`,
-      title: title2,
-      summary: `Researchers in ${geo2.city} have published findings on how '${query}' is shaping lifestyle, tech, and cultural trends in the current digital landscape. The report is drawing praise from analysts.`,
-      category: 'technology',
-      country: geo2.country,
-      city: geo2.city,
-      lat: geo2.lat,
-      lng: geo2.lng,
-      source: `https://news.google.com/search?q=${encodeURIComponent(title2)}`,
-      publishedAt: new Date(now - 50 * 60000).toISOString(),
     });
   }
 
@@ -210,7 +284,7 @@ export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: b
   }
 }
 
-export async function searchLiveNews(query: string): Promise<{ events: WorldEvent[]; active: boolean }> {
+export async function searchLiveNews(query: string, category?: EventCategory | null): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
     const response = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`, {
       next: { revalidate: 60 }
@@ -225,7 +299,7 @@ export async function searchLiveNews(query: string): Promise<{ events: WorldEven
     
     if (articles.length === 0) {
       console.log(`Google News RSS returned 0 results for "${query}". Triggering local fallback.`);
-      const fallbackEvents = generateLocalFallbackEvents(query);
+      const fallbackEvents = generateLocalFallbackEvents(query, category);
       return { events: fallbackEvents, active: true };
     }
 
@@ -236,7 +310,7 @@ export async function searchLiveNews(query: string): Promise<{ events: WorldEven
         id: `news-search-${Date.now()}-${index}`,
         title: article.title,
         summary: article.summary,
-        category: 'breaking' as EventCategory,
+        category: (category || 'breaking') as EventCategory,
         country: geo.country,
         city: geo.city,
         lat: geo.lat,
@@ -249,7 +323,7 @@ export async function searchLiveNews(query: string): Promise<{ events: WorldEven
     return { events, active: true };
   } catch (error) {
     console.warn('Failed to search news via RSS, calling local fallback:', error);
-    const fallbackEvents = generateLocalFallbackEvents(query);
+    const fallbackEvents = generateLocalFallbackEvents(query, category);
     return { events: fallbackEvents, active: true };
   }
 }

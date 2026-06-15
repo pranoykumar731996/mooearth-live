@@ -1,4 +1,4 @@
-import { WorldEvent } from '@/types';
+import { WorldEvent, EventCategory } from '@/types';
 import { fetchLiveNews, searchLiveNews } from './news';
 import { fetchLiveFootball } from './football';
 
@@ -30,30 +30,72 @@ export async function fetchAllEvents(): Promise<EventsWithStatus> {
   };
 }
 
-export async function searchAllEvents(query: string): Promise<EventsWithStatus> {
-  const [newsResult, footballResult] = await Promise.all([
-    searchLiveNews(query),
-    fetchLiveFootball()
-  ]);
+export async function searchAllEvents(query: string, category?: string | null): Promise<EventsWithStatus> {
+  let newsEvents: WorldEvent[] = [];
+  let footballEvents: WorldEvent[] = [];
+  let newsActive = false;
+  let footballActive = false;
+
+  if (!category || category === 'home') {
+    // Search everything
+    const [newsResult, footballResult] = await Promise.all([
+      searchLiveNews(query),
+      fetchLiveFootball()
+    ]);
+    newsEvents = newsResult.events;
+    footballEvents = footballResult.events;
+    newsActive = newsResult.active;
+    footballActive = footballResult.active;
+  } else if (category === 'sports' || category === 'football' || category === 'worldcup') {
+    const searchTerm = category === 'worldcup' ? `${query} FIFA World Cup` : `${query} sports`;
+    const [newsResult, footballResult] = await Promise.all([
+      searchLiveNews(searchTerm, category as EventCategory),
+      fetchLiveFootball()
+    ]);
+    newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
+    footballEvents = footballResult.events;
+    newsActive = newsResult.active;
+    footballActive = footballResult.active;
+  } else {
+    // technology, business, weather, entertainment, breaking
+    const searchTerm = category === 'breaking' ? `${query} news` : `${query} ${category}`;
+    const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
+    newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
+    newsActive = newsResult.active;
+  }
 
   // Filter football matches locally by query
   const q = query.toLowerCase();
-  const matchedFootball = footballResult.events.filter(e => 
+  const matchedFootball = footballEvents.filter(e => 
     e.title.toLowerCase().includes(q) || 
     (e.country && e.country.toLowerCase().includes(q)) ||
     (e.city && e.city.toLowerCase().includes(q)) ||
     (e.summary && e.summary.toLowerCase().includes(q))
   );
 
-  const combined = [...newsResult.events, ...matchedFootball].sort((a, b) => {
+  // Filter combined results strictly by category to prevent leakage!
+  let combined = [...newsEvents, ...matchedFootball];
+  if (category && category !== 'home') {
+    combined = combined.filter(e => {
+      if (category === 'worldcup') {
+        return e.category === 'worldcup' || e.category === 'football';
+      }
+      if (category === 'sports') {
+        return e.category === 'sports' || e.category === 'football';
+      }
+      return e.category === category;
+    });
+  }
+
+  combined.sort((a, b) => {
     return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
   });
 
   return {
     events: combined,
     status: {
-      newsActive: newsResult.active,
-      footballActive: footballResult.active,
+      newsActive,
+      footballActive
     }
   };
 }

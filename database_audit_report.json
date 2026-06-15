@@ -1,0 +1,548 @@
+[
+  {
+    "country": "Africa",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Argentina",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 2,
+      "history": 0,
+      "mixed": 4,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 3,
+    "filesCount": 6
+  },
+  {
+    "country": "Asia",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 1,
+      "mixed": 3,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Australia",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 3,
+      "history": 0,
+      "mixed": 5,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 3,
+    "filesCount": 6
+  },
+  {
+    "country": "Brazil",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 3,
+      "history": 1,
+      "mixed": 8,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 5,
+    "filesCount": 6
+  },
+  {
+    "country": "Canada",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 3,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Chile",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "China",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 1,
+      "mixed": 4,
+      "science": 2,
+      "sports": 0
+    },
+    "totalQuestions": 4,
+    "filesCount": 6
+  },
+  {
+    "country": "Egypt",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 1,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Europe",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 1,
+      "mixed": 4,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 4,
+    "filesCount": 6
+  },
+  {
+    "country": "France",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 2,
+      "mixed": 5,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 4,
+    "filesCount": 6
+  },
+  {
+    "country": "Germany",
+    "categories": {
+      "current-affairs": 2,
+      "geography": 1,
+      "history": 2,
+      "mixed": 14,
+      "science": 7,
+      "sports": 1
+    },
+    "totalQuestions": 13,
+    "filesCount": 6
+  },
+  {
+    "country": "Global",
+    "categories": {
+      "current-affairs": 2,
+      "geography": 3,
+      "history": 2,
+      "mixed": 18,
+      "science": 4,
+      "sports": 2
+    },
+    "totalQuestions": 13,
+    "filesCount": 6
+  },
+  {
+    "country": "Greece",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 1,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "India",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 7,
+      "science": 4,
+      "sports": 1
+    },
+    "totalQuestions": 6,
+    "filesCount": 6
+  },
+  {
+    "country": "Italy",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 2,
+      "mixed": 6,
+      "science": 2,
+      "sports": 0
+    },
+    "totalQuestions": 6,
+    "filesCount": 6
+  },
+  {
+    "country": "Japan",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 2,
+      "history": 0,
+      "mixed": 6,
+      "science": 1,
+      "sports": 0
+    },
+    "totalQuestions": 3,
+    "filesCount": 6
+  },
+  {
+    "country": "Jordan",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Kenya",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Mexico",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 1,
+      "mixed": 3,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Morocco",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 2,
+      "history": 0,
+      "mixed": 4,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 3,
+    "filesCount": 6
+  },
+  {
+    "country": "Nepal",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "New Zealand",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 0,
+    "filesCount": 6
+  },
+  {
+    "country": "Nigeria",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 0,
+    "filesCount": 6
+  },
+  {
+    "country": "Norway",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Oceania",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 0,
+    "filesCount": 6
+  },
+  {
+    "country": "Peru",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Poland",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 2,
+      "science": 2,
+      "sports": 0
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Portugal",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Russia",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 2,
+      "history": 1,
+      "mixed": 11,
+      "science": 6,
+      "sports": 0
+    },
+    "totalQuestions": 10,
+    "filesCount": 6
+  },
+  {
+    "country": "South Africa",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 1,
+      "mixed": 6,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 4,
+    "filesCount": 6
+  },
+  {
+    "country": "South America",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "South Korea",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 3,
+      "science": 1,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Spain",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 3,
+      "science": 0,
+      "sports": 1
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Sweden",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 2,
+      "science": 2,
+      "sports": 0
+    },
+    "totalQuestions": 2,
+    "filesCount": 6
+  },
+  {
+    "country": "Switzerland",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 0,
+    "filesCount": 6
+  },
+  {
+    "country": "Tanzania",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "Thailand",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 0,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 0,
+    "filesCount": 6
+  },
+  {
+    "country": "Turkey",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 1,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  },
+  {
+    "country": "United Kingdom",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 2,
+      "mixed": 11,
+      "science": 6,
+      "sports": 1
+    },
+    "totalQuestions": 11,
+    "filesCount": 6
+  },
+  {
+    "country": "United States",
+    "categories": {
+      "current-affairs": 1,
+      "geography": 1,
+      "history": 2,
+      "mixed": 30,
+      "science": 26,
+      "sports": 0
+    },
+    "totalQuestions": 30,
+    "filesCount": 6
+  },
+  {
+    "country": "Venezuela",
+    "categories": {
+      "current-affairs": 0,
+      "geography": 1,
+      "history": 0,
+      "mixed": 2,
+      "science": 0,
+      "sports": 0
+    },
+    "totalQuestions": 1,
+    "filesCount": 6
+  }
+]

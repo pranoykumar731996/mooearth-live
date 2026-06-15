@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ReactionEvent } from '@/types';
+import { ReactionEvent, WorldEvent } from '@/types';
 import { fetchLiveFootball } from './football';
 import { fetchLiveNews } from './news';
 import { fetchSocialReactions } from './social';
@@ -38,51 +38,84 @@ function isSameCountry(c1?: string | null, c2?: string | null): boolean {
   return false;
 }
 
-export async function fetchCountryReactions(country: string): Promise<ReactionEvent> {
-  const cached = reactionCache.get(country);
+export async function fetchCountryReactions(country: string, category?: string | null): Promise<ReactionEvent> {
+  const cacheKey = `${country}_${category || 'home'}`;
+  const cached = reactionCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < 2000) {
     return cached.data;
   }
 
-  // 1. Fetch related headlines (Football + News)
-  const [footballResult, newsResult] = await Promise.all([
-    fetchLiveFootball(),
-    fetchLiveNews()
-  ]);
+  // 1. Fetch related headlines (Football + News) depending on category
+  let newsHeadlines: WorldEvent[] = [];
 
-  const football = footballResult.events;
-  const news = newsResult.events;
+  if (category && category !== 'home') {
+    if (category === 'sports' || category === 'football' || category === 'worldcup') {
+      const footballResult = await fetchLiveFootball();
+      const football = footballResult.events;
 
-  // Read local fan celebrations and filter for this country
-  const allCelebrations = readCelebrations();
-  const countryCelebrations = allCelebrations.filter(
-    (c: any) => isSameCountry(c.country, country) && (!c.reports || c.reports < 3)
-  );
+      const countryFootball = football.filter(
+        (e) =>
+          isSameCountry(e.country, country) ||
+          e.title.toLowerCase().includes(country.toLowerCase()) ||
+          e.summary.toLowerCase().includes(country.toLowerCase())
+      );
 
-  let newsHeadlines = [...football, ...news].filter(
-    (e) =>
-      isSameCountry(e.country, country) ||
-      e.title.toLowerCase().includes(country.toLowerCase()) ||
-      e.summary.toLowerCase().includes(country.toLowerCase())
-  );
-
-  // If no general headlines match this country, search specifically for this country
-  if (newsHeadlines.length === 0) {
-    try {
+      const searchTerm = category === 'worldcup' ? `${country} FIFA World Cup` : `${country} sports`;
       const { searchLiveNews } = require('./news');
-      const searchResult = await searchLiveNews(country);
-      if (searchResult.events && searchResult.events.length > 0) {
-        newsHeadlines = [...football, ...searchResult.events].filter(
-          (e) =>
-            isSameCountry(e.country, country) ||
-            e.title.toLowerCase().includes(country.toLowerCase()) ||
-            e.summary.toLowerCase().includes(country.toLowerCase())
-        );
+      const newsResult = await searchLiveNews(searchTerm, category);
+
+      newsHeadlines = [...countryFootball, ...(newsResult.events || [])];
+    } else {
+      // technology, business, weather, entertainment, breaking
+      const searchTerm = category === 'breaking' ? `${country} news` : `${country} ${category}`;
+      const { searchLiveNews } = require('./news');
+      const newsResult = await searchLiveNews(searchTerm, category);
+
+      newsHeadlines = newsResult.events || [];
+    }
+  } else {
+    // Home mode: fetch everything and combine
+    const [footballResult, newsResult] = await Promise.all([
+      fetchLiveFootball(),
+      fetchLiveNews()
+    ]);
+
+    const football = footballResult.events;
+    const news = newsResult.events;
+
+    newsHeadlines = [...football, ...news].filter(
+      (e) =>
+        isSameCountry(e.country, country) ||
+        e.title.toLowerCase().includes(country.toLowerCase()) ||
+        e.summary.toLowerCase().includes(country.toLowerCase())
+    );
+
+    // If no general headlines match this country, search specifically for this country
+    if (newsHeadlines.length === 0) {
+      try {
+        const { searchLiveNews } = require('./news');
+        const searchResult = await searchLiveNews(country);
+        if (searchResult.events && searchResult.events.length > 0) {
+          newsHeadlines = [...football, ...searchResult.events].filter(
+            (e) =>
+              isSameCountry(e.country, country) ||
+              e.title.toLowerCase().includes(country.toLowerCase()) ||
+              e.summary.toLowerCase().includes(country.toLowerCase())
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to perform dynamic country search for ${country}:`, err);
       }
-    } catch (err) {
-      console.error(`Failed to perform dynamic country search for ${country}:`, err);
     }
   }
+
+  // Read local fan celebrations and filter for this country (only for sports / football / worldcup / home)
+  const allCelebrations = readCelebrations();
+  const countryCelebrations = (!category || ['sports', 'football', 'worldcup'].includes(category))
+    ? allCelebrations.filter(
+        (c: any) => isSameCountry(c.country, country) && (!c.reports || c.reports < 3)
+      )
+    : [];
 
   // Convert celebrations to headlines so they render in the Reaction Feed
   const celebrationHeadlines = countryCelebrations.map((c: any) => ({
@@ -108,19 +141,19 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
 
   const allHeadlines = [...celebrationHeadlines, ...newsHeadlines];
   let contextText = allHeadlines.map(h => `${h.title}: ${h.summary}`).join('. ');
-  
+
   if (!contextText) {
     contextText = `No live events currently reported for ${country}`;
   }
 
-  const socialData = await fetchSocialReactions(country);
+  const socialData = await fetchSocialReactions(country, category);
 
   // 3. Analyze Sentiment (Use celebration sentiment if there are fan uploads)
   let sentiment;
   if (countryCelebrations.length > 0) {
     sentiment = await analyzeCelebrationSentiment(country, countryCelebrations);
   } else {
-    sentiment = await analyzeSentiment(country, contextText + ' ' + socialData.posts.map(p => p.text).join(' '));
+    sentiment = await analyzeSentiment(country, contextText + ' ' + socialData.posts.map(p => p.text).join(' '), category);
   }
 
   const reactionData: ReactionEvent = {
@@ -132,7 +165,7 @@ export async function fetchCountryReactions(country: string): Promise<ReactionEv
     sentiment
   };
 
-  reactionCache.set(country, { data: reactionData, timestamp: Date.now() });
+  reactionCache.set(cacheKey, { data: reactionData, timestamp: Date.now() });
 
   return reactionData;
 }

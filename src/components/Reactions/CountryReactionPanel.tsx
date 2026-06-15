@@ -2,21 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ReactionEvent } from '@/types';
+import { ReactionEvent, EventCategory } from '@/types';
+import { CATEGORY_MAP } from '@/lib/constants';
 import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
 
 interface CountryReactionPanelProps {
   country: string;
+  activeCategory: EventCategory | null;
   onClose: () => void;
   onReactionLoaded?: (data: ReactionEvent) => void;
 }
 
-export default function CountryReactionPanel({ country, onClose, onReactionLoaded }: CountryReactionPanelProps) {
+export default function CountryReactionPanel({ country, activeCategory, onClose, onReactionLoaded }: CountryReactionPanelProps) {
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+
+  const categoryConfig = activeCategory ? CATEGORY_MAP[activeCategory] : null;
+  const categoryLabel = categoryConfig ? categoryConfig.label : 'Home';
+  const categoryEmoji = categoryConfig ? categoryConfig.emoji : '🏠';
 
   // Detect Mobile Viewport (Phase 9 Mobile Experience)
   useEffect(() => {
@@ -28,7 +34,8 @@ export default function CountryReactionPanel({ country, onClose, onReactionLoade
 
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/reactions?country=${encodeURIComponent(country)}&t=${Date.now()}`)
+    const catParam = activeCategory ? `&category=${activeCategory}` : '';
+    fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
         if (data.reaction) {
@@ -40,7 +47,7 @@ export default function CountryReactionPanel({ country, onClose, onReactionLoade
       })
       .catch(err => console.error('Failed to load reactions:', err))
       .finally(() => setIsLoading(false));
-  }, [country, onReactionLoaded]);
+  }, [country, activeCategory, onReactionLoaded]);
 
   // Framer Motion mobile bottom sheet swipe-to-dismiss configurations
   const dragProps = isMobile ? {
@@ -88,8 +95,19 @@ export default function CountryReactionPanel({ country, onClose, onReactionLoade
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <h2 className="text-2xl font-bold text-white mb-0.5 tracking-tight">{country}</h2>
-        <p className="text-xs text-white/40 uppercase tracking-widest font-semibold">Live Reaction Dashboard</p>
+        <div className="flex flex-col pr-8">
+          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
+            <span>Country:</span>
+            <span className="text-white font-extrabold mr-1.5">{country}</span>
+            <span className="text-white/20">|</span>
+            <span className="ml-1.5">Category:</span>
+            <span className="text-white font-extrabold flex items-center gap-1">
+              <span>{categoryEmoji}</span>
+              <span>{categoryLabel}</span>
+            </span>
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight">{country} Dashboard</h2>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">

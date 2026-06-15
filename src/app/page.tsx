@@ -344,6 +344,7 @@ export default function HomePage() {
       <div className="relative z-30 pointer-events-none">
         <Navbar
           events={filteredEvents}
+          activeCategory={activeCategory}
           apiStatus={apiStatus}
           onSearch={handleSearch}
           onSelectEvent={handleEventNavigate}
@@ -663,6 +664,7 @@ export default function HomePage() {
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
+                activeCategory={activeCategory}
                 onClose={() => setSelectedCountry(null)}
                 onReactionLoaded={setActiveReaction}
               />
