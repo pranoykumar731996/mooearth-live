@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface ReactionFeedProps {
   headlines: WorldEvent[];
   posts: { id: string; user: string; text: string; time: string; likes: number }[];
+  onSelectArticle?: (news: WorldEvent) => void;
 }
 
-export default function ReactionFeed({ headlines, posts }: ReactionFeedProps) {
+export default function ReactionFeed({ headlines, posts, onSelectArticle }: ReactionFeedProps) {
   // Interleave posts and headlines for a dynamic feed look
   const combined: any[] = [];
   const maxLen = Math.max(headlines.length, posts.length);
@@ -63,12 +64,13 @@ export default function ReactionFeed({ headlines, posts }: ReactionFeedProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden"
+                    onClick={() => onSelectArticle?.(news)}
+                    className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-left focus:outline-none group"
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold uppercase tracking-wider">News</span>
                     </div>
-                    <h4 className="text-sm font-bold text-white leading-tight mb-1">{news.title}</h4>
+                    <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors leading-tight mb-1">{news.title}</h4>
                     <p className="text-xs text-white/50 line-clamp-2">{news.summary}</p>
                   </motion.div>
                 );

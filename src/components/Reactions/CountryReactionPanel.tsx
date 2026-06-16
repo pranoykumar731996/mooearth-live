@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ReactionEvent, EventCategory } from '@/types';
+import { ReactionEvent, EventCategory, WorldEvent } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
@@ -13,9 +13,16 @@ interface CountryReactionPanelProps {
   activeCategory: EventCategory | null;
   onClose: () => void;
   onReactionLoaded?: (data: ReactionEvent) => void;
+  onSelectArticle?: (news: WorldEvent) => void;
 }
 
-export default function CountryReactionPanel({ country, activeCategory, onClose, onReactionLoaded }: CountryReactionPanelProps) {
+export default function CountryReactionPanel({
+  country,
+  activeCategory,
+  onClose,
+  onReactionLoaded,
+  onSelectArticle,
+}: CountryReactionPanelProps) {
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -177,7 +184,11 @@ export default function CountryReactionPanel({ country, activeCategory, onClose,
             )}
 
             <TrendingHashtags hashtags={reactionData.trendingHashtags} />
-            <ReactionFeed headlines={reactionData.headlines} posts={reactionData.socialPosts} />
+            <ReactionFeed
+              headlines={reactionData.headlines}
+              posts={reactionData.socialPosts}
+              onSelectArticle={onSelectArticle}
+            />
           </div>
         ) : (
           <div className="p-6 text-center text-white/50">Failed to load reactions.</div>

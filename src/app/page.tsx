@@ -18,6 +18,7 @@ import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
 import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
+import ArticleViewer from '@/components/Reactions/ArticleViewer';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
@@ -73,6 +74,7 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeArticle, setActiveArticle] = useState<WorldEvent | null>(null);
 
   // Live Fan Celebration states
   const [currentUser, setCurrentUser] = useState<{ username: string; avatar: string; country: string } | null>(null);
@@ -276,12 +278,17 @@ export default function HomePage() {
 
   // Handle event selection
   const handleSelectEvent = useCallback((event: WorldEvent | null) => {
-    setSelectedEvent(event);
-    if (event && event.footballData) {
-      // Small timeout to let camera flight start first
-      setTimeout(() => {
-        earthCast.narrateMatch(event);
-      }, 500);
+    if (event && event.category !== 'football') {
+      setActiveArticle(event);
+      setSelectedEvent(null);
+    } else {
+      setSelectedEvent(event);
+      if (event && event.footballData) {
+        // Small timeout to let camera flight start first
+        setTimeout(() => {
+          earthCast.narrateMatch(event);
+        }, 500);
+      }
     }
   }, [earthCast]);
 
@@ -296,7 +303,11 @@ export default function HomePage() {
   }, []);
 
   const handleEventNavigate = useCallback((event: WorldEvent) => {
-    setSelectedEvent(event);
+    if (event.category !== 'football') {
+      setActiveArticle(event);
+    } else {
+      setSelectedEvent(event);
+    }
     setSearchQuery('');
   }, []);
 
@@ -591,6 +602,13 @@ export default function HomePage() {
         <EventPopup event={selectedEvent} onClose={() => handleSelectEvent(null)} />
       )}
 
+      {/* FULL ARTICLE READER SYSTEM */}
+      <ArticleViewer
+        event={activeArticle}
+        allEvents={filteredEvents}
+        onClose={() => setActiveArticle(null)}
+      />
+
       {/* PLAY EARTH GAME MODE OVERLAY */}
       <PlayEarthOverlay
         isActive={isPlayEarthActive}
@@ -667,6 +685,7 @@ export default function HomePage() {
                 activeCategory={activeCategory}
                 onClose={() => setSelectedCountry(null)}
                 onReactionLoaded={setActiveReaction}
+                onSelectArticle={setActiveArticle}
               />
             ) : (
               <motion.div
