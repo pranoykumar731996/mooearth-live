@@ -55,7 +55,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
 
-        // 2. Save custom profile attributes to Firestore
+        // 2. Save custom profile attributes to Firestore (wrapped in resilient try-catch)
         const profileData = {
           username: username.trim(),
           avatar: selectedAvatar,
@@ -64,7 +64,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           createdAt: Date.now()
         };
 
-        await setDoc(doc(db, 'users', uid), profileData);
+        try {
+          await setDoc(doc(db, 'users', uid), profileData);
+        } catch (firestoreErr) {
+          console.warn('Failed to save user profile to Firestore (database might be unconfigured/offline):', firestoreErr);
+        }
 
         // 3. Update client state and close
         onLoginSuccess({
@@ -78,24 +82,28 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
 
-        // 2. Fetch custom profile attributes from Firestore
-        const userDoc = await getDoc(doc(db, 'users', uid));
-        if (userDoc.exists()) {
-          const profile = userDoc.data();
-          onLoginSuccess({
-            username: profile.username || 'User',
-            avatar: profile.avatar || '⚽',
-            country: profile.country || 'Brazil'
-          });
-        } else {
-          // Fallback if user profile doc was somehow deleted/missing
-          const defaultProfile = {
-            username: userCredential.user.email?.split('@')[0] || 'User',
-            avatar: '⚽',
-            country: 'Brazil'
-          };
-          onLoginSuccess(defaultProfile);
+        // 2. Fetch custom profile attributes from Firestore (wrapped in resilient try-catch)
+        let profile = {
+          username: userCredential.user.email?.split('@')[0] || 'User',
+          avatar: '⚽',
+          country: 'Brazil'
+        };
+
+        try {
+          const userDoc = await getDoc(doc(db, 'users', uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            profile = {
+              username: data.username || profile.username,
+              avatar: data.avatar || profile.avatar,
+              country: data.country || profile.country
+            };
+          }
+        } catch (firestoreErr) {
+          console.warn('Failed to fetch user profile from Firestore (database might be unconfigured/offline):', firestoreErr);
         }
+
+        onLoginSuccess(profile);
       }
 
       onClose();

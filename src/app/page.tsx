@@ -103,25 +103,38 @@ export default function HomePage() {
       .then(async (result) => {
         if (result?.user) {
           const user = result.user;
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          let profile;
-          if (!userDoc.exists()) {
-            profile = {
-              username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
-              avatar: '👑',
-              country: 'United States',
-              email: user.email || '',
-              createdAt: Date.now()
-            };
-            await setDoc(doc(db, 'users', user.uid), profile);
-          } else {
-            profile = userDoc.data();
+          let profile = {
+            username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
+            avatar: '👑',
+            country: 'United States'
+          };
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (!userDoc.exists()) {
+              const defaultProfile = {
+                username: profile.username,
+                avatar: profile.avatar,
+                country: profile.country,
+                email: user.email || '',
+                createdAt: Date.now()
+              };
+              try {
+                await setDoc(doc(db, 'users', user.uid), defaultProfile);
+              } catch (writeErr) {
+                console.warn('Failed to write default profile to Firestore:', writeErr);
+              }
+            } else {
+              const data = userDoc.data();
+              profile = {
+                username: data.username || profile.username,
+                avatar: data.avatar || profile.avatar,
+                country: data.country || profile.country
+              };
+            }
+          } catch (readErr) {
+            console.warn('Failed to fetch user profile from Firestore:', readErr);
           }
-          setCurrentUser({
-            username: profile.username || 'Google_Fan',
-            avatar: profile.avatar || '👑',
-            country: profile.country || 'United States'
-          });
+          setCurrentUser(profile);
         }
       })
       .catch((error) => {
@@ -131,35 +144,45 @@ export default function HomePage() {
     // 2. Auth State subscription
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        let profile = {
+          username: user.displayName || user.email?.split('@')[0] || 'User',
+          avatar: '⚽',
+          country: 'Brazil'
+        };
         try {
           // Fetch custom profile attributes from Firestore
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            const profile = userDoc.data();
-            setCurrentUser({
-              username: profile.username || 'User',
-              avatar: profile.avatar || '⚽',
-              country: profile.country || 'Brazil'
-            });
+            const data = userDoc.data();
+            profile = {
+              username: data.username || profile.username,
+              avatar: data.avatar || profile.avatar,
+              country: data.country || profile.country
+            };
           } else {
             // Fallback for new social log-ins or incomplete registrations
             const defaultProfile = {
-              username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
+              username: profile.username,
               avatar: '👑',
               country: 'United States',
               email: user.email || '',
               createdAt: Date.now()
             };
-            await setDoc(doc(db, 'users', user.uid), defaultProfile);
-            setCurrentUser({
+            try {
+              await setDoc(doc(db, 'users', user.uid), defaultProfile);
+            } catch (writeErr) {
+              console.warn('Failed to write default profile to Firestore:', writeErr);
+            }
+            profile = {
               username: defaultProfile.username,
               avatar: defaultProfile.avatar,
               country: defaultProfile.country
-            });
+            };
           }
         } catch (e) {
-          console.error('Failed to fetch user profile document:', e);
+          console.warn('Failed to fetch user profile from Firestore, using Auth fallback:', e);
         }
+        setCurrentUser(profile);
       } else {
         setCurrentUser(null);
       }
