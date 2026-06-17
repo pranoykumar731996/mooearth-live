@@ -32,6 +32,9 @@ import AuthModal from '@/components/Layout/AuthModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -93,18 +96,36 @@ export default function HomePage() {
   const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures'>('emotional');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(false);
 
-  // Load session on mount
+  // Load session on mount with Firebase Auth
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedUser = localStorage.getItem('mooearth_user');
-      if (savedUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
         try {
-          setCurrentUser(JSON.parse(savedUser));
+          // Fetch custom profile attributes from Firestore
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const profile = userDoc.data();
+            setCurrentUser({
+              username: profile.username || 'User',
+              avatar: profile.avatar || '⚽',
+              country: profile.country || 'Brazil'
+            });
+          } else {
+            // Fallback for new social log-ins or incomplete registrations
+            setCurrentUser({
+              username: user.displayName || user.email?.split('@')[0] || 'User',
+              avatar: '⚽',
+              country: 'Brazil'
+            });
+          }
         } catch (e) {
-          console.error('Failed to parse saved user', e);
+          console.error('Failed to fetch user profile document:', e);
         }
+      } else {
+        setCurrentUser(null);
       }
-    }
+    });
+    return () => unsubscribe();
   }, []);
 
   // Splash screen timeout
@@ -124,25 +145,24 @@ export default function HomePage() {
     activeCategory,
   });
 
-  // Fetch celebrations from API
-  const fetchCelebrations = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/celebrations?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCelebrations(data.celebrations || []);
-      }
-    } catch (e) {
-      console.error('Failed to fetch user celebrations:', e);
-    }
-  }, []);
-
-  // Poll for new user uploads every 5 seconds
+  // Subscribe to celebrations in Firestore in real-time
   useEffect(() => {
-    fetchCelebrations();
-    const interval = setInterval(fetchCelebrations, 5000);
-    return () => clearInterval(interval);
-  }, [fetchCelebrations]);
+    const q = query(collection(db, 'celebrations'), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const celebsList: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        // Filter out flagged posts (reports >= 3)
+        if (!data.reports || data.reports < 3) {
+          celebsList.push({ id: doc.id, ...data });
+        }
+      });
+      setCelebrations(celebsList);
+    }, (error) => {
+      console.error("Firestore celebrations subscription error:", error);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Phase 10: Emotion Heatmap and Energy Level calculations
   const { emotionMap, trendingCountries, globalEnergyScore } = useEmotionMap(
@@ -241,7 +261,6 @@ export default function HomePage() {
   }, []);
 
   const handleUploadSuccess = useCallback((newCeleb: any) => {
-    fetchCelebrations();
     playUploadSuccess();
     
     // Trigger the global visual celebration for the upload
@@ -269,7 +288,7 @@ export default function HomePage() {
     setTimeout(() => {
       setCustomCelebration(null);
     }, 10000);
-  }, [fetchCelebrations]);
+  }, [playUploadSuccess]);
 
   const handleReportSuccess = useCallback((id: string) => {
     setCelebrations(prev => prev.filter(c => c.id !== id));
@@ -362,9 +381,12 @@ export default function HomePage() {
           onSelectCountry={setSelectedCountry}
           currentUser={currentUser}
           onAuthClick={() => setIsAuthModalOpen(true)}
-          onSignOut={() => {
-            localStorage.removeItem('mooearth_user');
-            setCurrentUser(null);
+          onSignOut={async () => {
+            try {
+              await signOut(auth);
+            } catch (e) {
+              console.error('Failed to sign out from Firebase:', e);
+            }
           }}
           isMuted={isMuted}
           onToggleMute={() => {

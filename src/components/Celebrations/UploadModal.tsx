@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
+import { storage, db } from '@/lib/firebase';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -158,26 +161,15 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     setError(null);
 
     try {
-      // 1. Upload file to media store
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadRes = await fetch('/api/celebrations/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const uErr = await uploadRes.json();
-        throw new Error(uErr.error || 'Failed to upload file.');
-      }
-
-      const { url } = await uploadRes.json();
+      // 1. Upload file directly to Firebase Storage
+      const storageRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
 
       // Get user's coordinates
       const coords = COUNTRY_COORDINATES[currentUser.country] || { lat: 0, lng: 0 };
 
-      // 2. Submit celebration details
+      // 2. Submit celebration details directly to Firestore
       const celebData = {
         username: currentUser.username,
         avatar: currentUser.avatar,
@@ -188,21 +180,14 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         comment: comment.trim(),
         lat: coords.lat,
         lng: coords.lng,
+        timestamp: Date.now(),
+        reports: 0
       };
 
-      const celebRes = await fetch('/api/celebrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(celebData),
-      });
-
-      if (!celebRes.ok) {
-        throw new Error('Failed to create celebration marker.');
-      }
-
-      const { celebration } = await celebRes.json();
+      const docRef = await addDoc(collection(db, 'celebrations'), celebData);
+      const newCeleb = { id: docRef.id, ...celebData };
       
-      onUploadSuccess(celebration);
+      onUploadSuccess(newCeleb);
       onClose();
       
       // Reset state
@@ -210,7 +195,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       setFile(null);
       setRecordedAudioUrl(null);
     } catch (err: any) {
-      console.error(err);
+      console.error('Upload error:', err);
       setError(err.message || 'An error occurred during upload.');
     } finally {
       setUploading(false);

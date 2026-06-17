@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface Celebration {
   id: string;
@@ -33,21 +35,36 @@ export default function MediaViewer({ celebration, onClose, onReportSuccess }: M
   const handleReport = async () => {
     setIsReporting(true);
     try {
-      const res = await fetch('/api/celebrations', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'report' }),
+      // Direct Firestore update for reports
+      const docRef = doc(db, 'celebrations', id);
+      await updateDoc(docRef, {
+        reports: increment(1)
       });
-      if (res.ok) {
-        setReported(true);
-        if (onReportSuccess) {
-          setTimeout(() => {
-            onReportSuccess(id);
-          }, 1500);
-        }
+      setReported(true);
+      if (onReportSuccess) {
+        setTimeout(() => {
+          onReportSuccess(id);
+        }, 1500);
       }
     } catch (error) {
-      console.error('Failed to report content:', error);
+      console.error('Failed to report content in Firestore, trying API fallback:', error);
+      try {
+        const res = await fetch('/api/celebrations', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'report' }),
+        });
+        if (res.ok) {
+          setReported(true);
+          if (onReportSuccess) {
+            setTimeout(() => {
+              onReportSuccess(id);
+            }, 1500);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to report content via legacy API:', err);
+      }
     } finally {
       setIsReporting(false);
     }
