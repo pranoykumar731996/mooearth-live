@@ -141,22 +141,39 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       const result = await signInWithPopup(auth, googleProvider);
       const uid = result.user.uid;
 
-      // Check if user document already exists in Firestore
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      let profile;
+      // Check if user document already exists in Firestore (wrapped in resilient try-catch)
+      let profile = {
+        username: result.user.displayName || result.user.email?.split('@')[0] || 'Google_Fan',
+        avatar: '👑',
+        country: 'United States'
+      };
 
-      if (!userDoc.exists()) {
-        // Create a default profile for new Google sign-ins
-        profile = {
-          username: result.user.displayName || result.user.email?.split('@')[0] || 'Google_Fan',
-          avatar: '👑',
-          country: 'United States', // default fallback
-          email: result.user.email || '',
-          createdAt: Date.now()
-        };
-        await setDoc(doc(db, 'users', uid), profile);
-      } else {
-        profile = userDoc.data();
+      try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (!userDoc.exists()) {
+          // Create a default profile for new Google sign-ins
+          const newProfile = {
+            username: profile.username,
+            avatar: profile.avatar,
+            country: profile.country,
+            email: result.user.email || '',
+            createdAt: Date.now()
+          };
+          try {
+            await setDoc(doc(db, 'users', uid), newProfile);
+          } catch (writeErr) {
+            console.warn('Failed to write Google user profile to Firestore:', writeErr);
+          }
+        } else {
+          const data = userDoc.data();
+          profile = {
+            username: data?.username || profile.username,
+            avatar: data?.avatar || profile.avatar,
+            country: data?.country || profile.country
+          };
+        }
+      } catch (firestoreErr) {
+        console.warn('Failed to fetch/save Google user profile from Firestore (database might be unconfigured/offline):', firestoreErr);
       }
 
       onLoginSuccess({
