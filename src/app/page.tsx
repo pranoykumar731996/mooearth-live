@@ -98,11 +98,14 @@ export default function HomePage() {
 
   // Load session on mount with Firebase Auth
   useEffect(() => {
+    console.log('[page.tsx] Diagnostic: Firebase Auth listener attaching...');
+    
     // 1. Process redirect result if returning from Google sign-in
     getRedirectResult(auth)
       .then(async (result) => {
         if (result?.user) {
           const user = result.user;
+          console.log('[page.tsx] Diagnostic: Google redirect login success. UID:', user.uid);
           let profile = {
             username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
             avatar: '👑',
@@ -121,7 +124,7 @@ export default function HomePage() {
               try {
                 await setDoc(doc(db, 'users', user.uid), defaultProfile);
               } catch (writeErr) {
-                console.warn('Failed to write default profile to Firestore:', writeErr);
+                console.warn('[page.tsx] Diagnostic: Failed to write default profile to Firestore:', writeErr);
               }
             } else {
               const data = userDoc.data();
@@ -132,17 +135,18 @@ export default function HomePage() {
               };
             }
           } catch (readErr) {
-            console.warn('Failed to fetch user profile from Firestore:', readErr);
+            console.warn('[page.tsx] Diagnostic: Failed to fetch user profile from Firestore:', readErr);
           }
           setCurrentUser(profile);
         }
       })
       .catch((error) => {
-        console.error('Firebase Auth Redirect Result Error:', error);
+        console.error('[page.tsx] Diagnostic: Firebase Auth Redirect Result Error:', error);
       });
-
+ 
     // 2. Auth State subscription
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('[page.tsx] Diagnostic: onAuthStateChanged triggered. User UID:', user ? user.uid : 'null');
       if (user) {
         let profile = {
           username: user.displayName || user.email?.split('@')[0] || 'User',
@@ -171,7 +175,7 @@ export default function HomePage() {
             try {
               await setDoc(doc(db, 'users', user.uid), defaultProfile);
             } catch (writeErr) {
-              console.warn('Failed to write default profile to Firestore:', writeErr);
+              console.warn('[page.tsx] Diagnostic: Failed to write default profile to Firestore:', writeErr);
             }
             profile = {
               username: defaultProfile.username,
@@ -180,14 +184,17 @@ export default function HomePage() {
             };
           }
         } catch (e) {
-          console.warn('Failed to fetch user profile from Firestore, using Auth fallback:', e);
+          console.warn('[page.tsx] Diagnostic: Failed to fetch user profile from Firestore, using Auth fallback:', e);
         }
         setCurrentUser(profile);
       } else {
         setCurrentUser(null);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      console.log('[page.tsx] Diagnostic: Firebase Auth listener detaching...');
+      unsubscribe();
+    };
   }, []);
 
   // Close auth modal when user is successfully authenticated
@@ -459,12 +466,19 @@ export default function HomePage() {
           onSelectEvent={handleEventNavigate}
           onSelectCountry={setSelectedCountry}
           currentUser={currentUser}
-          onAuthClick={() => setIsAuthModalOpen(true)}
-          onSignOut={async () => {
+          onAuthClick={() => {
+            console.log('[page.tsx] Diagnostic: User clicked SIGN IN (opening AuthModal)');
+            setIsAuthModalOpen(true);
+           }}
+           onSignOut={async () => {
+            console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
             try {
+              const beforeUser = auth.currentUser;
+              console.log('[page.tsx] Diagnostic: User state before signOut():', beforeUser ? beforeUser.uid : 'null');
               await signOut(auth);
+              console.log('[page.tsx] Diagnostic: signOut() completed successfully.');
             } catch (e) {
-              console.error('Failed to sign out from Firebase:', e);
+              console.error('[page.tsx] Diagnostic: Failed to sign out from Firebase:', e);
             }
           }}
           isMuted={isMuted}

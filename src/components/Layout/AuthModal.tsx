@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   signInWithEmailAndPassword, 
@@ -36,6 +36,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Diagnostics & state reset on open/close
+  useEffect(() => {
+    console.log('[AuthModal] Diagnostic: Modal isOpen changed to:', isOpen);
+    setIsLoading(false);
+    setError(null);
+    setEmail('');
+    setPassword('');
+    setUsername('');
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   // Handle email/password sign-in or sign-up
@@ -43,6 +53,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    console.log('[AuthModal] Diagnostic: Sign-in/up started. Mode:', isRegistering ? 'Register' : 'Sign-In', 'Email:', email.trim());
 
     try {
       if (isRegistering) {
@@ -52,8 +63,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         }
 
         // 1. Create authentication user in Firebase Auth
+        console.log('[AuthModal] Diagnostic: Creating Firebase user...');
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
+        console.log('[AuthModal] Diagnostic: Firebase user created successfully. UID:', uid);
 
         // 2. Save custom profile attributes to Firestore (wrapped in resilient try-catch with 1.5s timeout)
         const profileData = {
@@ -65,13 +78,15 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         };
 
         try {
+          console.log('[AuthModal] Diagnostic: Attempting to save user profile to Firestore...');
           const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
           await Promise.race([
             setDoc(doc(db, 'users', uid), profileData),
             timeoutPromise
           ]);
+          console.log('[AuthModal] Diagnostic: User profile saved successfully.');
         } catch (firestoreErr) {
-          console.warn('Failed to save user profile to Firestore (database might be unconfigured/offline/slow):', firestoreErr);
+          console.warn('[AuthModal] Diagnostic: Failed to save user profile to Firestore (database might be unconfigured/offline/slow):', firestoreErr);
         }
 
         // 3. Update client state and close
@@ -83,8 +98,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       } else {
         // Sign In Flow
         // 1. Authenticate with Firebase Auth
+        console.log('[AuthModal] Diagnostic: Signing in with Firebase Auth...');
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
+        console.log('[AuthModal] Diagnostic: Firebase sign-in successful. UID:', uid);
 
         // 2. Fetch custom profile attributes from Firestore (wrapped in resilient try-catch with 1.5s timeout)
         let profile = {
@@ -94,6 +111,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         };
 
         try {
+          console.log('[AuthModal] Diagnostic: Attempting to fetch user profile from Firestore...');
           const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
           const userDoc = await Promise.race([
             getDoc(doc(db, 'users', uid)),
@@ -107,9 +125,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
               avatar: data.avatar || profile.avatar,
               country: data.country || profile.country
             };
+            console.log('[AuthModal] Diagnostic: Fetched user profile successfully:', profile);
+          } else {
+            console.log('[AuthModal] Diagnostic: User profile document does not exist.');
           }
         } catch (firestoreErr) {
-          console.warn('Failed to fetch user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
+          console.warn('[AuthModal] Diagnostic: Failed to fetch user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
         }
 
         onLoginSuccess(profile);
@@ -121,7 +142,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       setPassword('');
       setUsername('');
     } catch (err: any) {
-      console.error('Authentication error:', err);
+      console.error('[AuthModal] Diagnostic: Authentication error:', err.code || err, err.message);
       let friendlyMessage = err.message || 'An error occurred during authentication.';
       
       // Clean up common Firebase error codes for cleaner UI presentation
@@ -145,10 +166,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const handleGoogleSignIn = async () => {
     setError(null);
     setIsLoading(true);
+    console.log('[AuthModal] Diagnostic: Google Sign-in popup flow initiated...');
 
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const uid = result.user.uid;
+      console.log('[AuthModal] Diagnostic: Google sign-in popup succeeded. UID:', uid);
 
       // Check if user document already exists in Firestore (wrapped in resilient try-catch with 1.5s timeout)
       let profile = {
@@ -158,6 +181,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       };
 
       try {
+        console.log('[AuthModal] Diagnostic: Fetching Google user profile from Firestore...');
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
         const userDoc = await Promise.race([
           getDoc(doc(db, 'users', uid)),
@@ -165,6 +189,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         ]) as any;
 
         if (!userDoc.exists()) {
+          console.log('[AuthModal] Diagnostic: No user profile document found. Creating default...');
           // Create a default profile for new Google sign-ins
           const newProfile = {
             username: profile.username,
@@ -179,8 +204,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
               setDoc(doc(db, 'users', uid), newProfile),
               writeTimeout
             ]);
+            console.log('[AuthModal] Diagnostic: Default Google user profile saved successfully.');
           } catch (writeErr) {
-            console.warn('Failed to write Google user profile to Firestore:', writeErr);
+            console.warn('[AuthModal] Diagnostic: Failed to write Google user profile to Firestore:', writeErr);
           }
         } else {
           const data = userDoc.data();
@@ -189,9 +215,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             avatar: data?.avatar || profile.avatar,
             country: data?.country || profile.country
           };
+          console.log('[AuthModal] Diagnostic: Loaded user profile from Firestore:', profile);
         }
       } catch (firestoreErr) {
-        console.warn('Failed to fetch/save Google user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
+        console.warn('[AuthModal] Diagnostic: Failed to fetch/save Google user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
       }
 
       onLoginSuccess({
@@ -202,7 +229,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
 
       onClose();
     } catch (err: any) {
-      console.warn('Google Sign-In popup failed, checking fallback...', err);
+      console.warn('[AuthModal] Diagnostic: Google Sign-In popup failed, checking fallback...', err.code || err, err.message);
       
       // If popup is blocked, closed, or cancelled, attempt redirect fallback
       if (
@@ -212,11 +239,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
       ) {
         try {
+          console.log('[AuthModal] Diagnostic: Attempting Google sign-in via redirect fallback...');
           await signInWithRedirect(auth, googleProvider);
         } catch (redirectErr: any) {
-          console.error('Google Sign-In redirect error:', redirectErr);
+          console.error('[AuthModal] Diagnostic: Google Sign-In redirect error:', redirectErr.code || redirectErr, redirectErr.message);
           setError(redirectErr.message || 'Failed to sign in with Google.');
-          setIsLoading(false);
         }
       } else {
         let friendlyMessage = err.message || 'Failed to sign in with Google.';
@@ -224,8 +251,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           friendlyMessage = 'This domain (mooearth.live) is not authorized in the Firebase console. Please add it to Authorized Domains under Authentication > Settings.';
         }
         setError(friendlyMessage);
-        setIsLoading(false);
       }
+    } finally {
+      setIsLoading(false);
+      console.log('[AuthModal] Diagnostic: Google Sign-in flow finalized. isLoading set to false.');
     }
   };
 
