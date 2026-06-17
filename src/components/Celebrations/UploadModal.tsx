@@ -161,10 +161,29 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     setError(null);
 
     try {
-      // 1. Upload file directly to Firebase Storage
-      const storageRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
+      let url;
+      try {
+        // 1. Upload file directly to Firebase Storage
+        const storageRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        url = await getDownloadURL(snapshot.ref);
+      } catch (storageErr) {
+        console.warn('Failed to upload to Firebase Storage, trying local upload API fallback:', storageErr);
+        // Local upload API fallback
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const uploadRes = await fetch('/api/celebrations/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          throw new Error(uploadErr.error || 'Failed to upload file to local network storage.');
+        }
+        const uploadData = await uploadRes.json();
+        url = uploadData.url;
+      }
 
       // Get user's coordinates
       const coords = COUNTRY_COORDINATES[currentUser.country] || { lat: 0, lng: 0 };
