@@ -184,8 +184,24 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         reports: 0
       };
 
-      const docRef = await addDoc(collection(db, 'celebrations'), celebData);
-      const newCeleb = { id: docRef.id, ...celebData };
+      let newCeleb;
+      try {
+        const docRef = await addDoc(collection(db, 'celebrations'), celebData);
+        newCeleb = { id: docRef.id, ...celebData };
+      } catch (firestoreErr) {
+        console.warn('Failed to add celebration to Firestore, trying local API fallback:', firestoreErr);
+        const res = await fetch('/api/celebrations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(celebData)
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Failed to submit celebration to local network.');
+        }
+        const data = await res.json();
+        newCeleb = data.celebration;
+      }
       
       onUploadSuccess(newCeleb);
       onClose();

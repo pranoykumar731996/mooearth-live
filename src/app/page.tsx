@@ -228,7 +228,17 @@ export default function HomePage() {
       });
       setCelebrations(celebsList);
     }, (error) => {
-      console.error("Firestore celebrations subscription error:", error);
+      console.error("Firestore celebrations subscription error, fetching local fallback:", error);
+      fetch('/api/celebrations')
+        .then(res => res.json())
+        .then(data => {
+          if (data.celebrations) {
+            setCelebrations(data.celebrations);
+          }
+        })
+        .catch(fetchErr => {
+          console.error("Failed to load local celebrations fallback:", fetchErr);
+        });
     });
     return () => unsubscribe();
   }, []);
