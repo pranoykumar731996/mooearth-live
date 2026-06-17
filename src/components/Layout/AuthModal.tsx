@@ -55,7 +55,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
 
-        // 2. Save custom profile attributes to Firestore (wrapped in resilient try-catch)
+        // 2. Save custom profile attributes to Firestore (wrapped in resilient try-catch with 1.5s timeout)
         const profileData = {
           username: username.trim(),
           avatar: selectedAvatar,
@@ -65,9 +65,13 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         };
 
         try {
-          await setDoc(doc(db, 'users', uid), profileData);
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+          await Promise.race([
+            setDoc(doc(db, 'users', uid), profileData),
+            timeoutPromise
+          ]);
         } catch (firestoreErr) {
-          console.warn('Failed to save user profile to Firestore (database might be unconfigured/offline):', firestoreErr);
+          console.warn('Failed to save user profile to Firestore (database might be unconfigured/offline/slow):', firestoreErr);
         }
 
         // 3. Update client state and close
@@ -82,7 +86,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const uid = userCredential.user.uid;
 
-        // 2. Fetch custom profile attributes from Firestore (wrapped in resilient try-catch)
+        // 2. Fetch custom profile attributes from Firestore (wrapped in resilient try-catch with 1.5s timeout)
         let profile = {
           username: userCredential.user.email?.split('@')[0] || 'User',
           avatar: '⚽',
@@ -90,7 +94,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         };
 
         try {
-          const userDoc = await getDoc(doc(db, 'users', uid));
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+          const userDoc = await Promise.race([
+            getDoc(doc(db, 'users', uid)),
+            timeoutPromise
+          ]) as any;
+
           if (userDoc.exists()) {
             const data = userDoc.data();
             profile = {
@@ -100,7 +109,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             };
           }
         } catch (firestoreErr) {
-          console.warn('Failed to fetch user profile from Firestore (database might be unconfigured/offline):', firestoreErr);
+          console.warn('Failed to fetch user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
         }
 
         onLoginSuccess(profile);
@@ -141,7 +150,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       const result = await signInWithPopup(auth, googleProvider);
       const uid = result.user.uid;
 
-      // Check if user document already exists in Firestore (wrapped in resilient try-catch)
+      // Check if user document already exists in Firestore (wrapped in resilient try-catch with 1.5s timeout)
       let profile = {
         username: result.user.displayName || result.user.email?.split('@')[0] || 'Google_Fan',
         avatar: '👑',
@@ -149,7 +158,12 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       };
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', uid));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+        const userDoc = await Promise.race([
+          getDoc(doc(db, 'users', uid)),
+          timeoutPromise
+        ]) as any;
+
         if (!userDoc.exists()) {
           // Create a default profile for new Google sign-ins
           const newProfile = {
@@ -160,7 +174,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             createdAt: Date.now()
           };
           try {
-            await setDoc(doc(db, 'users', uid), newProfile);
+            const writeTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+            await Promise.race([
+              setDoc(doc(db, 'users', uid), newProfile),
+              writeTimeout
+            ]);
           } catch (writeErr) {
             console.warn('Failed to write Google user profile to Firestore:', writeErr);
           }
@@ -173,7 +191,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           };
         }
       } catch (firestoreErr) {
-        console.warn('Failed to fetch/save Google user profile from Firestore (database might be unconfigured/offline):', firestoreErr);
+        console.warn('Failed to fetch/save Google user profile from Firestore (database might be unconfigured/offline/slow):', firestoreErr);
       }
 
       onLoginSuccess({
