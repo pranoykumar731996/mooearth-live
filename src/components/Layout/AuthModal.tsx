@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  signInWithPopup 
+  signInWithPopup,
+  signInWithRedirect
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
@@ -158,10 +159,30 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
 
       onClose();
     } catch (err: any) {
-      console.error('Google Sign-In error:', err);
-      setError(err.message || 'Failed to sign in with Google.');
-    } finally {
-      setIsLoading(false);
+      console.warn('Google Sign-In popup failed, checking fallback...', err);
+      
+      // If popup is blocked, closed, or cancelled, attempt redirect fallback
+      if (
+        err.code === 'auth/popup-blocked' || 
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr: any) {
+          console.error('Google Sign-In redirect error:', redirectErr);
+          setError(redirectErr.message || 'Failed to sign in with Google.');
+          setIsLoading(false);
+        }
+      } else {
+        let friendlyMessage = err.message || 'Failed to sign in with Google.';
+        if (err.code === 'auth/unauthorized-domain') {
+          friendlyMessage = 'This domain (mooearth.live) is not authorized in the Firebase console. Please add it to Authorized Domains under Authentication > Settings.';
+        }
+        setError(friendlyMessage);
+        setIsLoading(false);
+      }
     }
   };
 
@@ -207,6 +228,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           {/* Social Sign In (Only visible in Sign In mode or as quick start) */}
           {!isRegistering && (
             <button
+              type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
               className="w-full py-2.5 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-semibold flex items-center justify-center gap-3 hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

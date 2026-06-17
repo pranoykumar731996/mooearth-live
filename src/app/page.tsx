@@ -32,8 +32,8 @@ import AuthModal from '@/components/Layout/AuthModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
+import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 const TEAM_FLAGS: Record<string, string> = {
@@ -98,6 +98,37 @@ export default function HomePage() {
 
   // Load session on mount with Firebase Auth
   useEffect(() => {
+    // 1. Process redirect result if returning from Google sign-in
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          const user = result.user;
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          let profile;
+          if (!userDoc.exists()) {
+            profile = {
+              username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
+              avatar: '👑',
+              country: 'United States',
+              email: user.email || '',
+              createdAt: Date.now()
+            };
+            await setDoc(doc(db, 'users', user.uid), profile);
+          } else {
+            profile = userDoc.data();
+          }
+          setCurrentUser({
+            username: profile.username || 'Google_Fan',
+            avatar: profile.avatar || '👑',
+            country: profile.country || 'United States'
+          });
+        }
+      })
+      .catch((error) => {
+        console.error('Firebase Auth Redirect Result Error:', error);
+      });
+
+    // 2. Auth State subscription
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
@@ -112,10 +143,18 @@ export default function HomePage() {
             });
           } else {
             // Fallback for new social log-ins or incomplete registrations
+            const defaultProfile = {
+              username: user.displayName || user.email?.split('@')[0] || 'Google_Fan',
+              avatar: '👑',
+              country: 'United States',
+              email: user.email || '',
+              createdAt: Date.now()
+            };
+            await setDoc(doc(db, 'users', user.uid), defaultProfile);
             setCurrentUser({
-              username: user.displayName || user.email?.split('@')[0] || 'User',
-              avatar: '⚽',
-              country: 'Brazil'
+              username: defaultProfile.username,
+              avatar: defaultProfile.avatar,
+              country: defaultProfile.country
             });
           }
         } catch (e) {
@@ -127,6 +166,13 @@ export default function HomePage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Close auth modal when user is successfully authenticated
+  useEffect(() => {
+    if (currentUser) {
+      setIsAuthModalOpen(false);
+    }
+  }, [currentUser]);
 
   // Splash screen timeout
   useEffect(() => {
