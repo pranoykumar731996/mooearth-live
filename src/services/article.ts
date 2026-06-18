@@ -10,6 +10,35 @@ export interface ArticleDetails {
   aiSummary: string;
   fullContent: string;
   keyFacts: string[];
+  author?: string;
+  image?: string;
+  description?: string;
+}
+
+// Curated premium images for each category
+export const CATEGORY_IMAGES: Record<string, string> = {
+  breaking: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=800',
+  sports: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
+  football: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
+  worldcup: 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=800',
+  technology: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800',
+  weather: 'https://images.unsplash.com/photo-1592210454359-9043f067919b?q=80&w=800',
+  business: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800',
+  entertainment: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800'
+};
+
+const AUTHORS_LIST = [
+  'Elena Rostova', 'Marcus Vance', 'Sarah Jenkins', 'David Chen',
+  'Amara Diop', 'Kenji Sato', 'Sofia Gatti', 'Carlos Mendez'
+];
+
+function getDeterministicAuthor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % AUTHORS_LIST.length;
+  return AUTHORS_LIST[idx];
 }
 
 // Server-side in-memory cache for expanded articles
@@ -100,13 +129,13 @@ function generateProceduralArticle(
   // Generate customized content based on category
   switch (category) {
     case 'technology':
-      aiSummary = `In a major step forward, ${country} has announced new milestones in technology and infrastructure. Local developers and research hubs in ${city} are spearheading efforts to expand software capacities, artificial intelligence integrations, and network speeds.\n\nThe project is expected to draw substantial international collaborations and bolster local employment in the science and engineering sectors.`;
+      aiSummary = `In a major step forward, ${country} has announced new milestones in technology and infrastructure. Local developers and research hubs in ${city} are spearheading efforts to expand software capacities, artificial intelligence integrations, and network speeds.`;
       fullContent = `A major technological breakthrough has emerged from ${country}, centered around a new research and development initiative in ${city}. The program focuses on integrating state-of-the-art AI systems with local infrastructure grids, aiming to optimize power consumption, logistics, and database management across the nation.\n\nLocal startups have reported a significant surge in interest from global venture funds, marking a new chapter of economic growth. Tech leaders believe these advancements will position ${country} as a primary regional innovation hub, helping local universities and developers gain global recognition.\n\nIndustry experts suggest that if these trends continue, the technology sector's contribution to the national GDP could increase by up to fifteen percent over the next fiscal year. Future updates will focus on software deployments and hardware partnerships currently in final negotiations.`;
       keyFacts = [
-        `Tech leaders in ${city} report record investments in local artificial intelligence and startup projects.`,
-        `New collaborative projects aim to integrate green hardware solutions with cloud networking systems.`,
-        `Educational institutions in ${country} are launching specialized curriculums to prepare the next generation of engineers.`,
-        `International corporations are reportedly finalizing office space agreements in the capital district.`
+        `Main Event: Tech leaders in ${city} unveil a major artificial intelligence and startup integration project.`,
+        `Important Development: Government pledges tax incentives for clean hardware prototyping and software capacities.`,
+        `Why It Matters: Integrates state-of-the-art AI with municipal grids to optimize regional power consumption.`,
+        `Country Impact: Boosts ${country}'s position as an regional innovation hub, creating over five thousand engineering roles.`
       ];
       break;
 
@@ -114,10 +143,10 @@ function generateProceduralArticle(
       aiSummary = `Stock indices and trade reports in ${country} indicate a strong market rally today. Analysts point to increased industrial output and growing commercial partnerships centered in ${city} as key drivers of this positive economic momentum.`;
       fullContent = `${country}’s financial markets registered substantial gains today, following the release of favorable quarterly trade and export summaries. Business leaders in ${city} attribute the growth to streamlined logistics, decreased import tariffs, and strong domestic demand across retail and energy sectors.\n\nEconomists have raised their growth forecasts for the coming quarters, citing stabilizing inflation rates and robust consumer confidence. Additionally, new commercial zones are attracting foreign direct investment, with several multi-national brands announcing plans to build assembly and distribution centers.\n\nWhile some analysts advise caution regarding global supply chain variables, the prevailing market outlook remains highly optimistic. The central bank has announced supportive policies to sustain this positive growth trajectory.`;
       keyFacts = [
-        `Major market indices in ${country} hit multi-month highs following positive quarterly trade summaries.`,
-        `Export volumes from manufacturing hubs in ${city} saw a double-digit rise year-over-year.`,
-        `Foreign direct investment agreements are projected to create over ten thousand new employment opportunities.`,
-        `Analysts expect financial policies to remain accommodative to support long-term commercial growth.`
+        `Main Event: Major financial markets in ${country} hit multi-month highs following robust quarterly trade reports.`,
+        `Important Development: Export volumes from key manufacturing hubs in ${city} increase by double digits.`,
+        `Why It Matters: Stabilizing inflation rates and strong commercial growth bolster regional investor confidence.`,
+        `Country Impact: Promotes foreign direct investments and establishes key commercial assembly zones in ${country}.`
       ];
       break;
 
@@ -125,10 +154,10 @@ function generateProceduralArticle(
       aiSummary = `Meteorologists in ${country} are monitoring unique atmospheric developments over ${city}. Fluctuating temperatures and wind patterns have prompted localized notices, while regional infrastructure teams prepare safety measures.`;
       fullContent = `A unique weather system is currently tracking across ${country}, bringing atypical atmospheric conditions to ${city} and surrounding areas. Regional weather bureaus have advised citizens to monitor official channels as mild wind shifts and temperature fluctuations continue throughout the week.\n\nMunicipal services have deployed monitoring sensors to gather real-time data, hoping to optimize water reserves and agricultural planning. Early agricultural reports indicate that the mild conditions could actually benefit seasonal crops if the pattern stabilizes.\n\nEmergency management teams remain on standby, though major disturbances are not anticipated. Local authorities are using this event to test their new climate-smart utility grids.`;
       keyFacts = [
-        `Atmospheric agencies in ${country} advise caution and regular monitoring of temperature notices.`,
-        `Agricultural sectors in ${city} expect mild weather conditions to improve crop yields this season.`,
-        `Smart grids are actively monitoring utility loads to prevent localized service interruptions.`,
-        `Meteorology experts predict the current high-pressure system will clear by the weekend.`
+        `Main Event: Meteorologists monitor an unusual high-pressure system centering directly over ${city}.`,
+        `Important Development: Municipal services deploy smart grids and real-time environmental monitoring sensors.`,
+        `Why It Matters: Allows regional teams to study micro-climate shifts and prevent power grid overload.`,
+        `Country Impact: Benefits agricultural planning and crop yields across ${country}'s agricultural districts.`
       ];
       break;
 
@@ -136,10 +165,10 @@ function generateProceduralArticle(
       aiSummary = `A celebration of cultural arts and storytelling has kicked off in ${country}. The international community is converging on ${city} to preview local film premieres, musical showcases, and television deals.`;
       fullContent = `The cultural scene in ${country} is enjoying a vibrant showcase this week, with major festivals and artistic gatherings taking place in ${city}. Directors, writers, and musicians are presenting new works that explore the rich heritage and contemporary challenges of life in ${country}.\n\nStreaming platforms have signed landmark distribution deals with local production houses, reflecting the growing global appetite for diverse stories. Creative directors expect these partnerships to elevate the national entertainment industry to new heights.\n\nPublic interest has soared, with local fan zones reporting capacity attendance. Cultural ministries have expressed strong support for the creative arts, pledging further grants and event space.`;
       keyFacts = [
-        `Creative directors in ${city} secure international distribution rights for three major indie releases.`,
-        `Local musical showcases draw record attendance, highlighting traditional and modern fusion styles.`,
-        `Cultural grants from the government aim to establish new media production spaces next year.`,
-        `Streaming networks announce new multi-million dollar casting calls across the country.`
+        `Main Event: A vibrant international film and music festival begins showcases in ${city}.`,
+        `Important Development: Major streaming networks sign multi-million dollar distribution deals with local creators.`,
+        `Why It Matters: Pushes local storytelling, folk arts, and film media into the global spotlight.`,
+        `Country Impact: Promotes tourism and raises the profile of ${country}'s creative arts economy.`
       ];
       break;
 
@@ -149,10 +178,10 @@ function generateProceduralArticle(
       aiSummary = `Athletic enthusiasm is at an all-time high in ${country} as teams prepare for upcoming matches. Fan parks in ${city} are filled with spectators celebrating football updates and player statistics.`;
       fullContent = `The sporting world is focusing on ${country} this week as national teams ramp up training and match preparation in ${city}. Stadiums and public parks are hosting celebrations as fans rally behind local teams in anticipation of the upcoming tournament fixtures.\n\nCoaching staff have expressed confidence in the players' physical readiness, highlighting recent tactical updates designed to exploit defensive gaps. Sports analysts predict a highly competitive series of matches, with ticket sales breaking previous records.\n\nCommunity outreach programs are also holding youth clinics, encouraging active participation and healthy lifestyles among younger fans. The atmosphere is electric as matchday draws closer.`;
       keyFacts = [
-        `Training facilities in ${city} host open sessions, drawing thousands of enthusiastic supporters.`,
-        `Tactical analysts predict strong defensive lineups for the upcoming national matchups.`,
-        `Ticket sales for local tournaments surpass previous milestones, indicating massive public interest.`,
-        `Community football projects launch across ${country} to support grass-roots athletic programs.`
+        `Main Event: Training camps and fan parks in ${city} open to record numbers of sports supporters.`,
+        `Important Development: Coaching staff announce optimized tactical playbooks for upcoming tournament fixtures.`,
+        `Why It Matters: High public interest boosts youth sports enrollment and stadium ticket revenues.`,
+        `Country Impact: Fosters sports-related community clinics and athletic infrastructure across ${country}.`
       ];
       break;
 
@@ -160,10 +189,10 @@ function generateProceduralArticle(
       aiSummary = `A major domestic development in ${country} has captured international headlines. Public discussion and social media engagement in ${city} reflect high public interest as events unfold.`;
       fullContent = `Developments in ${country} continue to attract attention today, with active discussions taking place across municipal and digital forums in ${city}. The news has sparked widespread dialogue regarding policy adjustments, infrastructure investments, and local community reactions.\n\nSocial interest indicators have registered a significant spike, with users sharing updates and community perspectives. Local leaders have called for open dialogue and cooperative solutions to address the ongoing matters.\n\nAs the situation evolves, further reports are expected to clarify long-term impacts on public utilities and regional stability. Citizens are advised to follow official announcements for detailed guidelines.`;
       keyFacts = [
-        `Public interest indicators in ${country} spike following the latest regional news reports.`,
-        `Community forums in ${city} host open panels to discuss local infrastructure changes.`,
-        `Regional authorities release official statements outlining planned support measures.`,
-        `Further updates are expected as civic organizations analyze long-term community impacts.`
+        `Main Event: A significant infrastructure and community initiative launches in ${city}.`,
+        `Important Development: Local authorities release official statements outlining planned support measures.`,
+        `Why It Matters: Prompts active civic engagement and policy feedback regarding local municipal services.`,
+        `Country Impact: Stabilizes regional public utilities and strengthens municipal bonds in ${country}.`
       ];
   }
 
@@ -176,11 +205,15 @@ function generateProceduralArticle(
   }
   if (keyFacts.length === 0) {
     keyFacts = [
-      `Latest updates regarding the developments in ${country}.`,
-      `Official statements are expected in the coming hours.`,
-      `Readers can click the link below to access the full publisher source.`
+      `Main Event: A new regional development is occurring in ${country}.`,
+      `Important Development: Local agencies are monitoring changes and preparing reports.`,
+      `Why It Matters: Provides key context to understand regional activity trends.`,
+      `Country Impact: Keeps local communities and international partners well-informed.`
     ];
   }
+
+  const author = getDeterministicAuthor(id || title);
+  const image = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking;
 
   return {
     id,
@@ -191,7 +224,10 @@ function generateProceduralArticle(
     category,
     aiSummary,
     fullContent,
-    keyFacts
+    keyFacts,
+    author,
+    image,
+    description: cleanSummary
   };
 }
 
@@ -236,7 +272,12 @@ export async function fetchOrGenerateArticleDetails(
       Generate a JSON response containing:
       1. "aiSummary": 2-3 short, clean paragraphs summarizing the event. Fix any run-together words, double spaces, and punctuation mistakes.
       2. "fullContent": A 3-4 paragraph detailed article writeup detailing the news context, local impact, and expected future developments.
-      3. "keyFacts": An array of exactly 3-4 bullet points containing crucial developments.
+      3. "keyFacts": An array of exactly 4-6 concise bullet points containing crucial takeaways. Each bullet point MUST cover exactly one of the following aspects in order:
+         - Main event (e.g. "Main Event: [description]")
+         - Important development (e.g. "Important Development: [description]")
+         - Why it matters (e.g. "Why It Matters: [description]")
+         - Country impact (e.g. "Country Impact: [description]")
+      4. "author": A realistic reporter or editorial team name.
 
       OUTPUT FORMAT:
       You must respond with raw, valid JSON only. Do not wrap in markdown codeblocks.
@@ -244,7 +285,8 @@ export async function fetchOrGenerateArticleDetails(
       {
         "aiSummary": "paragraph 1\\n\\nparagraph 2",
         "fullContent": "paragraph 1\\n\\nparagraph 2\\n\\nparagraph 3",
-        "keyFacts": ["fact 1", "fact 2", "fact 3"]
+        "keyFacts": ["bullet 1", "bullet 2", "bullet 3", "bullet 4", "bullet 5"],
+        "author": "Reporter Name"
       }
     `;
 
@@ -297,7 +339,10 @@ export async function fetchOrGenerateArticleDetails(
         category,
         aiSummary: cleanText(parsed.aiSummary),
         fullContent: cleanText(parsed.fullContent),
-        keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact))
+        keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
+        author: parsed.author ? cleanText(parsed.author) : getDeterministicAuthor(id || title),
+        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+        description: cleanSummary
       };
 
       articleCache.set(cacheKey, details);
