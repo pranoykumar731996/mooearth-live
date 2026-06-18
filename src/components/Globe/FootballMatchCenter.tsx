@@ -7,6 +7,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
+import { shareContent } from '@/utils/share';
+import { BRANDING } from '@/config/branding';
 
 interface FootballMatchCenterProps {
   event: WorldEvent;
@@ -32,6 +34,7 @@ const COMMENTARY = [
 
 export default function FootballMatchCenter({ event }: FootballMatchCenterProps) {
   const [activeTab, setActiveTab] = useState<'hud' | 'ai' | 'fan'>('hud');
+  const [showShareToast, setShowShareToast] = useState(false);
   const match = event.footballData || {
     homeTeam: 'Home Team',
     awayTeam: 'Away Team',
@@ -41,6 +44,87 @@ export default function FootballMatchCenter({ event }: FootballMatchCenterProps)
     elapsed: 45,
     goals: [],
     cards: []
+  };
+
+  const handleShareMatch = async () => {
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const shareUrl = `/sports${refQuery}`;
+    const didShare = await shareContent({
+      title: `${match.homeTeam} vs ${match.awayTeam} Live — ${BRANDING.name}`,
+      text: `⚽ Live Score: ${match.homeTeam} ${match.homeScore} - ${match.awayScore} ${match.awayTeam}. Watch the live emotional fans react on MooEarth Live!`,
+      url: shareUrl
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
+
+  const handleShareWinProbability = async () => {
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const shareUrl = `/sports${refQuery}`;
+    const didShare = await shareContent({
+      title: `Match Prediction — ${BRANDING.name}`,
+      text: `🔮 AI Win Probability for ${match.homeTeam} vs ${match.awayTeam}: RM (45%), Draw (25%), BAR (30%). Predict with fans on MooEarth Live!`,
+      url: shareUrl
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
+
+  const handleShareScorerPrediction = async () => {
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const shareUrl = `/sports${refQuery}`;
+    const didShare = await shareContent({
+      title: `Scorer Prediction — ${BRANDING.name}`,
+      text: `🔮 Fans predict next scorer for ${match.homeTeam} vs ${match.awayTeam}: Vinícius Júnior (35%), Robert Lewandowski (28%), No More Goals (37%).`,
+      url: shareUrl
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
   };
 
   // Live Timer Simulation
@@ -106,15 +190,38 @@ export default function FootballMatchCenter({ event }: FootballMatchCenterProps)
 
   return (
     <div className="flex flex-col h-full text-white">
+      {/* Toast Alert */}
+      <AnimatePresence>
+        {showShareToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="py-1.5 px-3 rounded-lg bg-cyan-500/20 border border-cyan-500/35 text-center text-[10px] font-bold text-cyan-200 shadow-md mb-2"
+          >
+            📋 Link copied to clipboard!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mini Scoreboard */}
       <div className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-4 flex flex-col gap-3 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-12 h-12 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
         <div className="flex items-center justify-between text-xs text-white/40 uppercase tracking-widest font-black">
           <span>{event.city} • {event.country}</span>
-          <span className="flex items-center gap-1.5 bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full font-bold">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            {match.status === 'FT' ? 'Full Time' : match.status === 'HT' ? 'Half Time' : `${elapsedTime}'`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full font-bold">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+              {match.status === 'FT' ? 'Full Time' : match.status === 'HT' ? 'Half Time' : `${elapsedTime}'`}
+            </span>
+            <button
+              onClick={handleShareMatch}
+              className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer border border-white/5 text-[10px]"
+              title="Share Live Match Score"
+            >
+              📤
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-between py-1 px-4">
@@ -225,9 +332,19 @@ export default function FootballMatchCenter({ event }: FootballMatchCenterProps)
             >
               {/* Win Probability */}
               <div className="rounded-xl bg-white/5 border border-white/5 p-3.5">
-                <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block mb-2.5">
-                  AI Win Probability
-                </span>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                    AI Win Probability
+                  </span>
+                  <button
+                    onClick={handleShareWinProbability}
+                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer border border-white/5 text-[9px] flex items-center gap-1 font-bold"
+                    title="Share Prediction"
+                  >
+                    <span>Share</span>
+                    <span>📤</span>
+                  </button>
+                </div>
                 <div className="flex h-4 rounded-full overflow-hidden text-[9px] font-black text-center text-white select-none">
                   <div className="bg-purple-600 flex items-center justify-center" style={{ width: '45%' }}>RM (45%)</div>
                   <div className="bg-white/20 flex items-center justify-center" style={{ width: '25%' }}>Draw (25%)</div>
@@ -240,9 +357,19 @@ export default function FootballMatchCenter({ event }: FootballMatchCenterProps)
 
               {/* Next Scorer Prediction */}
               <div className="rounded-xl bg-white/5 border border-white/5 p-3.5">
-                <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block mb-2">
-                  Who Will Score Next?
-                </span>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                    Who Will Score Next?
+                  </span>
+                  <button
+                    onClick={handleShareScorerPrediction}
+                    className="p-1 rounded bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer border border-white/5 text-[9px] flex items-center gap-1 font-bold"
+                    title="Share Prediction"
+                  >
+                    <span>Share</span>
+                    <span>📤</span>
+                  </button>
+                </div>
                 <div className="space-y-1.5">
                   {[
                     { name: 'Vinícius Júnior', pct: 35, color: '#a855f7' },

@@ -157,7 +157,7 @@ export default function SearchBar({ events, activeCategory, onSearch, onSelectEv
 
       {/* Dropdown Results */}
       <AnimatePresence>
-        {isFocused && (results.length > 0 || countryResult) && (
+        {isFocused && (results.length > 0 || countryResult || !query) && (
           <motion.div
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -166,46 +166,87 @@ export default function SearchBar({ events, activeCategory, onSearch, onSelectEv
             className="absolute top-[calc(100%+12px)] w-full rounded-2xl overflow-hidden glass z-[100]"
             style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.5), 0 0 40px rgba(0,229,255,0.1)' }}
           >
-            <div className="p-2 border-b border-white/5 bg-black/40">
-              <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest px-2">AI Suggestions</span>
-            </div>
-            <div className="p-2 space-y-1">
-              {countryResult && (
-                <button
-                  onClick={() => handleSelectCountry(countryResult)}
-                  className="w-full flex items-center gap-4 px-3 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-left cursor-pointer group mb-2"
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-cyan-400/20 border border-cyan-400/30 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(0,229,255,0.3)]">
-                    <span className="text-sm">🌍</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-white group-hover:text-cyan-100 truncate transition-colors">
-                      View Reactions in {countryResult}
-                    </p>
-                    <p className="text-[11px] font-medium text-cyan-400 mt-0.5 tracking-wide">
-                      Live Emotion & Sentiment
-                    </p>
-                  </div>
-                </button>
-              )}
-              {results.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={() => handleSelect(event)}
-                  className="w-full flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
-                    <span className="text-sm">{(CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking).emoji}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white/90 group-hover:text-white truncate transition-colors">{event.title}</p>
-                    <p className="text-[11px] font-medium text-cyan-400/60 mt-0.5 tracking-wide">
-                      {event.city}, {event.country}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
+            {query ? (
+              <>
+                <div className="p-2 border-b border-white/5 bg-black/40">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest px-2">AI Suggestions</span>
+                </div>
+                <div className="p-2 space-y-1">
+                  {countryResult && (
+                    <button
+                      onClick={() => handleSelectCountry(countryResult)}
+                      className="w-full flex items-center gap-4 px-3 py-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-400/60 transition-all text-left cursor-pointer group mb-2"
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-cyan-400/20 border border-cyan-400/30 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                        <span className="text-sm">🌍</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white group-hover:text-cyan-100 truncate transition-colors">
+                          View Reactions in {countryResult}
+                        </p>
+                        <p className="text-[11px] font-medium text-cyan-400 mt-0.5 tracking-wide">
+                          Live Emotion & Sentiment
+                        </p>
+                      </div>
+                    </button>
+                  )}
+                  {results.map((event) => (
+                    <button
+                      key={event.id}
+                      onClick={() => handleSelect(event)}
+                      className="w-full flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
+                        <span className="text-sm">{(CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking).emoji}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white/90 group-hover:text-white truncate transition-colors">{event.title}</p>
+                        <p className="text-[11px] font-medium text-cyan-400/60 mt-0.5 tracking-wide">
+                          {event.city}, {event.country}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-2 border-b border-white/5 bg-black/40">
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-2">🔥 Trending Destinations</span>
+                </div>
+                <div className="p-2 space-y-1">
+                  {[
+                    { name: 'Brazil', emoji: '🇧🇷', matches: '2 Matches Active', views: '12k fans' },
+                    { name: 'Japan', emoji: '🇯🇵', matches: '1 Match Active', views: '8.5k fans' },
+                    { name: 'India', emoji: '🇮🇳', matches: '0 Matches Active', views: '23.4k fans' },
+                    { name: 'Morocco', emoji: '🇲🇦', matches: '1 Match Active', views: '9.1k fans' }
+                  ].map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => handleSelectCountry(c.name)}
+                      className="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
+                        <span className="text-base">{c.emoji}</span>
+                      </div>
+                      <div className="min-w-0 flex-1 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                            {c.name}
+                          </p>
+                          <p className="text-[10px] font-medium text-white/40 mt-0.5">
+                            {c.matches}
+                          </p>
+                        </div>
+                        <span className="text-[10px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20 font-bold shrink-0">
+                          📈 {c.views}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

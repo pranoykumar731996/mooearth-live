@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
 import { trackEvent } from '@/services/analytics';
+import { shareContent } from '@/utils/share';
+import { BRANDING } from '@/config/branding';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -67,6 +69,37 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadedCeleb, setUploadedCeleb] = useState<any | null>(null);
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const handleShareReaction = async () => {
+    if (!uploadedCeleb) return;
+
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `&ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const shareUrl = `/?reaction=${uploadedCeleb.id}${refQuery}`;
+    const didShare = await shareContent({
+      title: `Fan Reaction — ${BRANDING.name}`,
+      text: `🌍 Check out my live reaction for ${uploadedCeleb.country} on MooEarth Live!`,
+      url: shareUrl
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
 
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -227,12 +260,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       
       trackEvent('upload', 'success', activeTab);
       onUploadSuccess(newCeleb);
-      onClose();
-      
-      // Reset state
-      setComment('');
-      setFile(null);
-      setRecordedAudioUrl(null);
+      setUploadedCeleb(newCeleb);
     } catch (err: any) {
       trackEvent('upload', 'failure', activeTab, 1, { error: err.message || 'Unknown' });
       console.error('Upload error:', err);
@@ -256,18 +284,70 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         }}
       >
         {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        {!uploadedCeleb && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
 
-        <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">Upload Reaction</h2>
-        <p className="text-xs text-white/40 mb-5">Share your real-time emotions on the World Cup Globe.</p>
+        {uploadedCeleb ? (
+          <div className="text-center py-6 space-y-6">
+            {/* Toast Alert */}
+            <AnimatePresence>
+              {showShareToast && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="absolute top-16 left-4 right-4 z-[110] py-2.5 px-4 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-center text-xs font-bold text-cyan-200 shadow-lg"
+                >
+                  📋 Link copied to clipboard!
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+              🎉
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">Celebration Uploaded!</h2>
+              <p className="text-xs text-white/50 px-6 leading-relaxed">
+                Your live {uploadedCeleb.type} reaction has been pinned to {uploadedCeleb.country} on the global map.
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-2 pt-4">
+              <button
+                onClick={handleShareReaction}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm tracking-wider cursor-pointer hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5"
+              >
+                📤 Share Reaction Link
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setUploadedCeleb(null);
+                  setComment('');
+                  setFile(null);
+                  setRecordedAudioUrl(null);
+                  onClose();
+                }}
+                className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-bold text-sm tracking-wider cursor-pointer transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">Upload Reaction</h2>
+            <p className="text-xs text-white/40 mb-5">Share your real-time emotions on the World Cup Globe.</p>
 
         {/* Tab Buttons */}
         <div className="flex border-b border-white/5 mb-5">
@@ -445,6 +525,8 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
             )}
           </button>
         </form>
+          </>
+        )}
       </motion.div>
     </div>
   );

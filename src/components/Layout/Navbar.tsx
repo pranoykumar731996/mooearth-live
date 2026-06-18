@@ -21,6 +21,8 @@ interface NavbarProps {
   currentUser: { username: string; avatar: string; country: string } | null;
   onAuthClick: () => void;
   onSignOut: () => void;
+  onProfileClick: () => void;
+  onLeaderboardClick: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   isCinematicModeActive: boolean;
@@ -39,6 +41,8 @@ export default function Navbar({
   currentUser,
   onAuthClick,
   onSignOut,
+  onProfileClick,
+  onLeaderboardClick,
   isMuted,
   onToggleMute,
   isCinematicModeActive,
@@ -201,24 +205,33 @@ export default function Navbar({
           {isMuted ? '🔇' : '🔊'}
         </button>
 
+        {/* Global Leaderboard Button */}
+        <button
+          onClick={onLeaderboardClick}
+          title="View Leaderboards"
+          className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer flex items-center justify-center text-sm"
+        >
+          🏆
+        </button>
+
         <InstallButton />
         {currentUser ? (
           <div className="flex items-center gap-2 group relative">
-            <div
+            <button
               id="profile-avatar"
-              onClick={onSignOut}
+              onClick={onProfileClick}
               className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-500/25
                          border border-cyan-400/30 flex items-center justify-center
                          text-xl cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.2)]
                          hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 pointer-events-auto"
             >
               {currentUser.avatar}
-            </div>
+            </button>
             {/* Tooltip on hover */}
             <div className="absolute right-0 top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
               <div className="glass px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/5 flex flex-col items-center">
                 <span>@{currentUser.username} ({currentUser.country})</span>
-                <span className="text-red-400/70 text-[8px] mt-0.5 uppercase tracking-widest font-bold">Click to Sign Out</span>
+                <span className="text-cyan-400 text-[8px] mt-0.5 uppercase tracking-widest font-bold">View Profile & Stats</span>
               </div>
             </div>
           </div>

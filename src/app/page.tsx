@@ -12,6 +12,8 @@ import { useEventFilter } from '@/hooks/useEventFilter';
 import { useGoalCelebration } from '@/hooks/useGoalCelebration';
 import { useSoundDesign } from '@/hooks/useSoundDesign';
 import { useEarthCast } from '@/hooks/useEarthCast';
+import { useStreaks } from '@/hooks/useStreaks';
+import { requestNotificationPermission, sendLocalNotification } from '@/utils/notifications';
 import { EventCategory, WorldEvent } from '@/types';
 import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
@@ -29,6 +31,8 @@ import AIAssistantDrawer from '@/components/EarthCast/AIAssistantDrawer';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
 import TimelineSlider from '@/components/Timeline/TimelineSlider';
 import AuthModal from '@/components/Layout/AuthModal';
+import LeaderboardModal from '@/components/UI/LeaderboardModal';
+import ProfileModal from '@/components/UI/ProfileModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
@@ -98,7 +102,12 @@ export default function HomePage({
   const [celebrations, setCelebrations] = useState<any[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedCelebration, setSelectedCelebration] = useState<any>(null);
+
+  // Streak tracking
+  const { streak, showCelebration: showStreakCelebration, dismissCelebration: dismissStreakCelebration } = useStreaks(currentUser?.username || null);
 
   // Immersion Update States
   const [isMuted, setIsMuted] = useState(true);
@@ -126,6 +135,34 @@ export default function HomePage({
   // Initialize analytics session on client mount
   useEffect(() => {
     initAnalyticsSession();
+  }, []);
+
+  // Capture referral code on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get('ref');
+        if (ref) {
+          sessionStorage.setItem('mooearth_ref', ref);
+          console.log('[page.tsx] Captured referral code:', ref);
+        }
+      } catch (err) {
+        console.error('[page.tsx] Failed to parse referral parameter:', err);
+      }
+    }
+  }, []);
+
+  // Request notification permissions on mount
+  useEffect(() => {
+    requestNotificationPermission().then((perm) => {
+      console.log('[page.tsx] Browser Notification permission:', perm);
+      if (perm === 'granted') {
+        sendLocalNotification('Welcome to MooEarth Live! 🌍', {
+          body: 'Stay tuned for live World Cup goal alerts and trending country highlights.',
+        });
+      }
+    });
   }, []);
 
   // First-time user guide check
@@ -587,6 +624,8 @@ export default function HomePage({
             console.log('[page.tsx] Diagnostic: User clicked SIGN IN (opening AuthModal)');
             setIsAuthModalOpen(true);
            }}
+           onProfileClick={() => setIsProfileModalOpen(true)}
+           onLeaderboardClick={() => setIsLeaderboardModalOpen(true)}
            onSignOut={async () => {
             console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
             try {
@@ -1083,6 +1122,67 @@ export default function HomePage({
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
+
+      {/* LEADERBOARD MODAL */}
+      <LeaderboardModal
+        isOpen={isLeaderboardModalOpen}
+        onClose={() => setIsLeaderboardModalOpen(false)}
+        selectedCountry={selectedCountry}
+      />
+
+      {/* PROFILE MODAL */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onSignOut={async () => {
+          console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
+          try {
+            await signOut(auth);
+            console.log('[page.tsx] Diagnostic: signOut() completed successfully.');
+          } catch (e) {
+            console.error('[page.tsx] Diagnostic: Failed to sign out from Firebase:', e);
+          }
+        }}
+      />
+
+      {/* Streak Celebration Popup */}
+      <AnimatePresence>
+        {showStreakCelebration && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md pointer-events-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 30 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-[90vw] max-w-[360px] rounded-3xl p-6 glass border border-orange-500/30 text-center relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(25,12,5,0.98) 0%, rgba(5,5,10,0.98) 100%)',
+                boxShadow: '0 0 50px rgba(249,115,22,0.2)'
+              }}
+            >
+              <span className="text-6xl mb-4 block animate-bounce" role="img" aria-label="Fire Emoji">
+                🔥
+              </span>
+              <h2 className="text-xs font-black text-orange-400 uppercase tracking-[0.25em] mb-1">
+                Visit Streak!
+              </h2>
+              <h3 className="text-xl font-black text-white mb-2">
+                {streak} Day Streak
+              </h3>
+              <p className="text-xs text-white/60 leading-relaxed mb-6 px-4">
+                You are on fire! Keep exploring the world and viewing live fan reactions daily to keep your streak alive.
+              </p>
+              <button
+                onClick={dismissStreakCelebration}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold text-sm tracking-wider cursor-pointer hover:scale-[1.02] transition-all"
+              >
+                Let's Go!
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* UPLOAD REACTION MODAL */}
       <UploadModal

@@ -6,6 +6,8 @@ import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { CATEGORY_IMAGES, ArticleDetails } from '@/services/article';
 import { trackEvent } from '@/services/analytics';
+import { shareContent, getWhatsAppShareUrl, getXShareUrl, getFacebookShareUrl, getTelegramShareUrl } from '@/utils/share';
+import { BRANDING } from '@/config/branding';
 
 interface ArticleViewerProps {
   event: WorldEvent | null;
@@ -117,7 +119,67 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
   const [articleDetails, setArticleDetails] = useState<ArticleDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async () => {
+    if (!activeEvent) return;
+    
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const { title: cleanTitle } = parsePublisher(activeEvent.title, activeEvent.source);
+    const didShare = await shareContent({
+      title: `${cleanTitle} — ${BRANDING.name}`,
+      text: `Read this story on MooEarth Live: "${cleanTitle}"`,
+      url: `/article/${encodeURIComponent(activeEvent.id || '')}${refQuery}`
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
+
+  const getShareUrls = () => {
+    if (!activeEvent) return { whatsappUrl: '', xUrl: '', facebookUrl: '', telegramUrl: '' };
+    
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const { title: cleanTitle } = parsePublisher(activeEvent.title, activeEvent.source);
+    const relativeUrl = `/article/${encodeURIComponent(activeEvent.id || '')}${refQuery}`;
+    const shareText = `📰 Read "${cleanTitle}" on MooEarth Live!`;
+    
+    return {
+      whatsappUrl: getWhatsAppShareUrl(shareText, relativeUrl),
+      xUrl: getXShareUrl(shareText, relativeUrl),
+      facebookUrl: getFacebookShareUrl(relativeUrl),
+      telegramUrl: getTelegramShareUrl(shareText, relativeUrl)
+    };
+  };
+
+  const { whatsappUrl, xUrl, facebookUrl, telegramUrl } = getShareUrls();
 
   // Synchronise activeEvent with the prop event synchronously in render
   const [prevEvent, setPrevEvent] = useState<WorldEvent | null>(null);
@@ -330,6 +392,20 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
             boxShadow: `0 0 80px ${categoryConfig.glowColor}, 0 25px 50px rgba(0,0,0,0.6)`,
           }}
         >
+          {/* Toast Alert */}
+          <AnimatePresence>
+            {showShareToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-16 left-4 right-4 z-[110] py-2.5 px-4 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-center text-xs font-bold text-cyan-200 shadow-lg"
+              >
+                📋 Link copied to clipboard!
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Top Navbar */}
           <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 bg-black/40 z-20">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
@@ -492,6 +568,89 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
                       {articleBody.split('\n\n').map((para, idx) => (
                         <p key={idx}>{para}</p>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Share Action Bar */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Share this Story</span>
+                      <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                        Spread the word
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Native Share / Copy */}
+                      <button
+                        onClick={handleShare}
+                        className="px-3 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white transition-all cursor-pointer border border-cyan-500/20 text-xs font-bold flex items-center gap-1.5"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="18" cy="5" r="3" />
+                          <circle cx="6" cy="12" r="3" />
+                          <circle cx="18" cy="19" r="3" />
+                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                        </svg>
+                        <span>Share / Copy Link</span>
+                      </button>
+
+                      {/* WhatsApp */}
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] hover:text-white transition-all border border-[#25D366]/20 flex items-center justify-center"
+                        title="Share on WhatsApp"
+                      >
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.454L0 24zm6.59-4.846c1.6.95 3.473 1.453 5.4 1.454 5.922 0 10.743-4.821 10.746-10.743.002-2.869-1.113-5.567-3.141-7.597-2.029-2.029-4.723-3.14-7.587-3.14-5.925 0-10.747 4.822-10.75 10.744-.002 2.056.535 4.066 1.557 5.814l-.978 3.57 3.653-.958zm12.39-4.836c-.33-.165-1.951-.963-2.251-1.072-.3-.11-.518-.165-.736.165-.218.33-.84 1.072-1.03 1.285-.19.213-.38.24-.71.075-1.218-.606-2.028-1.008-2.84-2.396-.214-.36-.214-.674-.049-.838.15-.148.33-.35.495-.524.165-.175.22-.3.33-.5.11-.2.055-.375-.027-.54-.083-.165-.736-1.774-1.009-2.428-.266-.64-.539-.553-.736-.563-.19-.01-.409-.012-.627-.012-.218 0-.573.082-.873.41-.3.33-1.145 1.12-1.145 2.73s1.173 3.167 1.336 3.393c.164.225 2.307 3.523 5.59 4.946.78.338 1.39.54 1.86.69.784.248 1.498.213 2.062.128.628-.094 1.951-.798 2.224-1.57.272-.774.272-1.434.19-1.57-.081-.137-.3-.213-.63-.379z"/>
+                        </svg>
+                        <span className="text-[10px] font-bold ml-1.5">WhatsApp</span>
+                      </a>
+
+                      {/* X (Twitter) */}
+                      <a
+                        href={xUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 flex items-center justify-center"
+                        title="Share on X"
+                      >
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        <span className="text-[10px] font-bold ml-1.5">X</span>
+                      </a>
+
+                      {/* Facebook */}
+                      <a
+                        href={facebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] hover:text-white transition-all border border-[#1877F2]/20 flex items-center justify-center"
+                        title="Share on Facebook"
+                      >
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        <span className="text-[10px] font-bold ml-1.5">Facebook</span>
+                      </a>
+
+                      {/* Telegram */}
+                      <a
+                        href={telegramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] hover:text-white transition-all border border-[#0088cc]/20 flex items-center justify-center"
+                        title="Share on Telegram"
+                      >
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-1-.64-.35-1 .22-1.58.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.66-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-1.99-.47-.8-.26-1.43-.4-1.37-.85.03-.23.35-.47.96-.72 3.76-1.63 6.27-2.71 7.53-3.23 3.58-1.48 4.32-1.74 4.81-1.75.11 0 .35.03.5.16.13.12.17.29.19.41z"/>
+                        </svg>
+                        <span className="text-[10px] font-bold ml-1.5">Telegram</span>
+                      </a>
                     </div>
                   </div>
 

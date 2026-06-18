@@ -8,8 +8,30 @@ import {
   signInWithPopup,
   signInWithRedirect
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, increment } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
+
+const handleInviterReferral = async (referrerUsername: string) => {
+  if (!referrerUsername) return;
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('username', '==', referrerUsername));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const inviterDoc = querySnapshot.docs[0];
+      const inviterRef = doc(db, 'users', inviterDoc.id);
+      await updateDoc(inviterRef, {
+        invitesCount: increment(1),
+        signupsCount: increment(1)
+      });
+      console.log(`[AuthModal] Incremented referral stats for inviter: ${referrerUsername}`);
+    } else {
+      console.warn(`[AuthModal] Inviter with username "${referrerUsername}" not found.`);
+    }
+  } catch (err) {
+    console.error('[AuthModal] Failed to increment inviter referral stats:', err);
+  }
+};
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -74,12 +96,24 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         console.log('[AuthModal] Diagnostic: Firebase user created successfully. UID:', uid);
 
         // 2. Save custom profile attributes to Firestore (wrapped in resilient try-catch with 1.5s timeout)
+        let referredBy = '';
+        if (typeof window !== 'undefined') {
+          try {
+            referredBy = sessionStorage.getItem('mooearth_ref') || '';
+          } catch (err) {}
+        }
+
         const profileData = {
           username: username.trim(),
           avatar: selectedAvatar,
           country: selectedCountry,
           email: email.trim(),
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          referredBy: referredBy || null,
+          invitesCount: 0,
+          signupsCount: 0,
+          xp: 0,
+          level: 1
         };
 
         try {
@@ -90,6 +124,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             timeoutPromise
           ]);
           console.log('[AuthModal] Diagnostic: User profile saved successfully.');
+          
+          if (referredBy) {
+            handleInviterReferral(referredBy).catch(console.error);
+          }
         } catch (firestoreErr) {
           console.warn('[AuthModal] Diagnostic: Failed to save user profile to Firestore (database might be unconfigured/offline/slow):', firestoreErr);
         }
@@ -195,13 +233,26 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
 
         if (!userDoc.exists()) {
           console.log('[AuthModal] Diagnostic: No user profile document found. Creating default...');
+          
+          let referredBy = '';
+          if (typeof window !== 'undefined') {
+            try {
+              referredBy = sessionStorage.getItem('mooearth_ref') || '';
+            } catch (err) {}
+          }
+
           // Create a default profile for new Google sign-ins
           const newProfile = {
             username: profile.username,
             avatar: profile.avatar,
             country: profile.country,
             email: result.user.email || '',
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            referredBy: referredBy || null,
+            invitesCount: 0,
+            signupsCount: 0,
+            xp: 0,
+            level: 1
           };
           try {
             const writeTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
@@ -210,6 +261,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
               writeTimeout
             ]);
             console.log('[AuthModal] Diagnostic: Default Google user profile saved successfully.');
+
+            if (referredBy) {
+              handleInviterReferral(referredBy).catch(console.error);
+            }
           } catch (writeErr) {
             console.warn('[AuthModal] Diagnostic: Failed to write Google user profile to Firestore:', writeErr);
           }

@@ -8,6 +8,8 @@ import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
 import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
+import { shareContent } from '@/utils/share';
+import { BRANDING } from '@/config/branding';
 
 const CLIENT_REACTION_CACHE = new Map<string, { data: ReactionEvent; timestamp: number }>();
 const CACHE_TTL = 10000; // 10 seconds client-side cache
@@ -231,6 +233,36 @@ export default function CountryReactionPanel({
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const cleanCountry = country.charAt(0).toUpperCase() + country.slice(1);
+    
+    // Get username from localStorage for referrals if signed in
+    let refQuery = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const cachedUser = localStorage.getItem('mooearth_user');
+        if (cachedUser) {
+          const parsed = JSON.parse(cachedUser);
+          if (parsed && parsed.username) {
+            refQuery = `?ref=${encodeURIComponent(parsed.username)}`;
+          }
+        }
+      } catch (err) {}
+    }
+
+    const didShare = await shareContent({
+      title: `${cleanCountry} Dashboard — ${BRANDING.name}`,
+      text: ` Explore live updates, sports reactions, and trivia challenges for ${cleanCountry} on MooEarth Live!`,
+      url: `/country/${encodeURIComponent(cleanCountry.toLowerCase())}${refQuery}`
+    });
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
 
   // Synchronously set isLoading to true in render when country or category changes
   const [prevCountry, setPrevCountry] = useState(country);
@@ -340,6 +372,13 @@ export default function CountryReactionPanel({
       {/* Header */}
       <div className="relative px-6 py-4 border-b border-white/[0.05] shrink-0">
         <button
+          onClick={handleShare}
+          title="Share Country Dashboard"
+          className="absolute top-4 right-15 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-cyan-400 transition-colors z-10 cursor-pointer"
+        >
+          📤
+        </button>
+        <button
           onClick={onClose}
           className="absolute top-4 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors z-10 cursor-pointer"
         >
@@ -348,7 +387,7 @@ export default function CountryReactionPanel({
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
-        <div className="flex flex-col pr-8">
+        <div className="flex flex-col pr-20">
           <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
             <span>Country:</span>
             <span className="text-white font-extrabold mr-1.5">{country}</span>
@@ -360,7 +399,27 @@ export default function CountryReactionPanel({
             </span>
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">{country} Dashboard</h2>
+          {/* Social Proof Marker */}
+          <div className="flex items-center gap-2 mt-1.5 text-[9px] text-white/40 font-bold font-sans uppercase tracking-wider">
+            <span className="flex items-center gap-1 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5">
+              🌍 {Math.floor(Math.abs(Math.sin(country.charCodeAt(0))) * 12000 + 2300).toLocaleString()} fans explored this country
+            </span>
+          </div>
         </div>
+
+        {/* Toast Alert */}
+        <AnimatePresence>
+          {showShareToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-16 left-4 right-4 z-50 py-2 px-4 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-center text-xs font-bold text-cyan-200"
+            >
+              📋 Link copied to clipboard!
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">

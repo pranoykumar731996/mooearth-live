@@ -9,10 +9,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase } from '@/types';
+import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase, GameBadge } from '@/types';
 import { QUIZ_CATEGORIES, XP_REWARDS, calculateLevel } from '@/data/questions';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { trackEvent } from '@/services/analytics';
+import { shareContent } from '@/utils/share';
+import { BRANDING } from '@/config/branding';
+import { checkUnlockBadges } from '@/config/badges';
+import { auth, db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const TIMER_SECONDS = 15;
 const STREAK_BONUS_MULTIPLIER = 1.5; // 50% bonus XP at streak ≥3
@@ -87,8 +92,29 @@ export default function PlayEarthOverlay({
   const [leveledUp, setLeveledUp] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [mixedWrongCount, setMixedWrongCount] = useState(0);
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [unlockedBadgeToShow, setUnlockedBadgeToShow] = useState<GameBadge | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleShareChallenge = async () => {
+    if (!selectedCountry) return;
+    
+    const refQuery = username ? `?ref=${encodeURIComponent(username)}` : '';
+    const shareText = `🌍 I scored ${gameState.streak} correct in a row on the ${selectedCountry} Quiz! Can you beat me?`;
+    const playEarthUrl = `/play-earth${refQuery}`;
+    
+    const didShare = await shareContent({
+      title: `Play Earth Challenge — ${BRANDING.name}`,
+      text: shareText,
+      url: playEarthUrl
+    });
+
+    if (!didShare) {
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2000);
+    }
+  };
   const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const levelUpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -354,8 +380,30 @@ export default function PlayEarthOverlay({
         next.countriesExplored = [...next.countriesExplored, selectedCountry];
       }
 
+      // Check badges unlock
+      const checkedBadges = checkUnlockBadges(next, selectedCategory, selectedCountry || undefined);
+      if (checkedBadges.length > (next.badges || []).length) {
+        const newUnlocks = checkedBadges.filter(
+          cb => !(next.badges || []).some(nb => nb.id === cb.id)
+        );
+        if (newUnlocks.length > 0) {
+          setUnlockedBadgeToShow(newUnlocks[0]);
+        }
+        next.badges = checkedBadges;
+      }
+
       next.lastPlayedAt = Date.now();
       saveGameState(next);
+
+      // Sync XP/level updates to Firestore if authenticated
+      if (typeof window !== 'undefined' && auth.currentUser) {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        updateDoc(userRef, {
+          xp: next.xp,
+          level: next.level
+        }).catch(err => console.warn('[PlayEarthOverlay] Failed to sync XP to Firestore:', err));
+      }
+
       return next;
     });
 
@@ -405,6 +453,19 @@ export default function PlayEarthOverlay({
 
   return (
     <div className="fixed inset-0 z-[45] pointer-events-none" id="play-earth-overlay">
+      {/* Toast Alert */}
+      <AnimatePresence>
+        {showShareToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-32 left-1/2 -translate-x-1/2 z-[110] py-2.5 px-5 rounded-full bg-emerald-500/20 border border-emerald-500/35 text-center text-xs font-bold text-emerald-200 shadow-lg pointer-events-auto"
+          >
+            📋 Challenge link copied to clipboard!
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Click-blocking backdrop when quiz is active (phase !== 'intro') (Task 8 Mobile Audit) */}
       {phase !== 'intro' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-[1.5px] pointer-events-auto" onClick={(e) => {
@@ -824,6 +885,16 @@ export default function PlayEarthOverlay({
                 )}
               </AnimatePresence>
 
+              {/* Challenge Friends Button */}
+              {gameState.streak > 0 && (
+                <button
+                  onClick={handleShareChallenge}
+                  className="w-full mb-3 py-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.01]"
+                >
+                  ⚔️ Challenge Friends (Streak: {gameState.streak})
+                </button>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
@@ -870,6 +941,14 @@ export default function PlayEarthOverlay({
                 </p>
               </div>
 
+              {/* Challenge Friends Button */}
+              <button
+                onClick={handleShareChallenge}
+                className="w-full mb-4 py-3 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:scale-[1.01]"
+              >
+                ⚔️ Share Score & Challenge Friends
+              </button>
+
               <div className="flex gap-3">
                 <button
                   onClick={handleContinue}
@@ -890,6 +969,67 @@ export default function PlayEarthOverlay({
               </div>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Badge Unlock Celebration Modal */}
+      <AnimatePresence>
+        {unlockedBadgeToShow && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-md pointer-events-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 30 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-[90vw] max-w-[380px] rounded-3xl p-6 glass border border-amber-500/30 text-center relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(20,15,5,0.98) 0%, rgba(5,5,10,0.98) 100%)',
+                boxShadow: '0 0 50px rgba(245,158,11,0.25)'
+              }}
+            >
+              {/* Particle glow backdrops */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+              
+              <span className="text-6xl mb-4 block" role="img" aria-label="Badge Emoji">
+                {unlockedBadgeToShow.emoji}
+              </span>
+              
+              <h2 className="text-xs font-black text-amber-400 uppercase tracking-[0.25em] mb-1">
+                Badge Unlocked!
+              </h2>
+              
+              <h3 className="text-xl font-black text-white mb-2">
+                {unlockedBadgeToShow.label}
+              </h3>
+              
+              <p className="text-xs text-white/60 leading-relaxed mb-6 px-4">
+                {unlockedBadgeToShow.description}
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={async () => {
+                    const refQuery = username ? `?ref=${encodeURIComponent(username)}` : '';
+                    const shareText = `🏆 I unlocked the "${unlockedBadgeToShow.emoji} ${unlockedBadgeToShow.label}" badge on MooEarth Live!`;
+                    await shareContent({
+                      title: `Badge Unlocked — ${BRANDING.name}`,
+                      text: shareText,
+                      url: `/play-earth${refQuery}`
+                    });
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xs tracking-wider cursor-pointer hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5"
+                >
+                  📤 Share Achievement
+                </button>
+                <button
+                  onClick={() => setUnlockedBadgeToShow(null)}
+                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-bold text-xs tracking-wider cursor-pointer transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
