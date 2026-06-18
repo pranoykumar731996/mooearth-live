@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
+import Link from 'next/link';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -86,15 +87,17 @@ export default function ReactionFeed({
                   </div>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-1">
                     {getCountryRecommendations(country).map((rec) => (
-                      <button
-                        key={rec}
-                        onClick={() => {
-                          if (onSelectCountry) onSelectCountry(rec);
-                        }}
-                        className="px-2.5 py-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-[10px] font-bold text-white/90 cursor-pointer"
-                      >
-                        {rec}
-                      </button>
+                      <Link key={rec} href={`/country/${encodeURIComponent(rec.toLowerCase())}`} passHref legacyBehavior>
+                        <a
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (onSelectCountry) onSelectCountry(rec);
+                          }}
+                          className="px-2.5 py-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-[10px] font-bold text-white/90 cursor-pointer"
+                        >
+                          {rec}
+                        </a>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -138,40 +141,44 @@ export default function ReactionFeed({
                 const news = item.data as WorldEvent;
                 const cConfig = CATEGORY_MAP[news.category as EventCategory] || CATEGORY_MAP.breaking;
                 return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    onClick={() => onSelectArticle?.(news)}
-                    className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-left focus:outline-none group flex flex-col justify-between"
-                  >
-                    <div>
-                      <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors leading-tight mb-1">
-                        {news.title}
-                      </h4>
-                      <p className="text-xs text-white/50 line-clamp-2 leading-relaxed">
-                        {news.summary}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-white/[0.04] text-[9px] font-bold uppercase tracking-wider text-white/40">
-                      <span className="bg-white/5 px-1.5 py-0.5 rounded text-white font-extrabold">
-                        {news.country || country || 'Global'}
-                      </span>
-                      <span>•</span>
-                      <span style={{ color: cConfig.color }}>
-                        {cConfig.label}
-                      </span>
-                      <span>•</span>
-                      <span className="text-cyan-400/80">
-                        {getSourceDisplay(news.source)}
-                      </span>
-                      <span>•</span>
-                      <span>
-                        {getRelativeTime(news.publishedAt)}
-                      </span>
-                    </div>
-                  </motion.div>
+                  <Link key={item.id} href={`/article/${news.id}`} passHref legacyBehavior>
+                    <motion.a
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onSelectArticle?.(news);
+                      }}
+                      className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-left focus:outline-none group flex flex-col justify-between"
+                    >
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors leading-tight mb-1">
+                          {news.title}
+                        </h4>
+                        <p className="text-xs text-white/50 line-clamp-2 leading-relaxed">
+                          {news.summary}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-white/[0.04] text-[9px] font-bold uppercase tracking-wider text-white/40">
+                        <span className="bg-white/5 px-1.5 py-0.5 rounded text-white font-extrabold">
+                          {news.country || country || 'Global'}
+                        </span>
+                        <span>•</span>
+                        <span style={{ color: cConfig.color }}>
+                          {cConfig.label}
+                        </span>
+                        <span>•</span>
+                        <span className="text-cyan-400/80">
+                          {getSourceDisplay(news.source)}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          {getRelativeTime(news.publishedAt)}
+                        </span>
+                      </div>
+                    </motion.a>
+                  </Link>
                 );
               }
             })

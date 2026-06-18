@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import {
@@ -312,6 +313,7 @@ export default function WorldCupSchedule({
                       status={status}
                       isSelected={selectedId === match.id}
                       onClick={() => handleCardClick(match, status)}
+                      onSelectCountry={onSelectCountry}
                     />
                   ))}
                 </AnimatePresence>
@@ -330,11 +332,13 @@ function MatchCard({
   status,
   isSelected,
   onClick,
+  onSelectCountry,
 }: {
   match: WCMatchData;
   status: ComputedMatchStatus;
   isSelected: boolean;
   onClick: () => void;
+  onSelectCountry?: (country: string | null) => void;
 }) {
   const isLive = status.status === 'LIVE' || status.status === 'HT';
   const isFT = status.status === 'FT';
@@ -396,18 +400,26 @@ function MatchCard({
         {/* Teams + Score */}
         <div className="flex items-center gap-3">
           {/* Home */}
-          <div className="flex-1 flex items-center gap-2.5 min-w-0">
-            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-              {getFlag(match.homeTeam)}
-            </span>
-            <span className={`text-[11px] font-bold truncate ${
-              isFT && status.homeScore > status.awayScore ? 'text-white' :
-              isFT && status.homeScore < status.awayScore ? 'text-white/40' :
-              'text-white/85'
-            }`}>
-              {match.homeTeam}
-            </span>
-          </div>
+          <Link href={`/country/${encodeURIComponent(match.homeTeam.toLowerCase())}`} passHref legacyBehavior>
+            <a
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSelectCountry) onSelectCountry(match.homeTeam);
+              }}
+              className="flex-1 flex items-center gap-2.5 min-w-0 hover:text-cyan-400 transition-colors"
+            >
+              <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
+                {getFlag(match.homeTeam)}
+              </span>
+              <span className={`text-[11px] font-bold truncate ${
+                isFT && status.homeScore > status.awayScore ? 'text-white' :
+                isFT && status.homeScore < status.awayScore ? 'text-white/40' :
+                'text-white/85'
+              }`}>
+                {match.homeTeam}
+              </span>
+            </a>
+          </Link>
 
           {/* Score / VS */}
           <div className="shrink-0">
@@ -427,18 +439,26 @@ function MatchCard({
           </div>
 
           {/* Away */}
-          <div className="flex-1 flex items-center gap-2.5 min-w-0 justify-end">
-            <span className={`text-[11px] font-bold truncate text-right ${
-              isFT && status.awayScore > status.homeScore ? 'text-white' :
-              isFT && status.awayScore < status.homeScore ? 'text-white/40' :
-              'text-white/85'
-            }`}>
-              {match.awayTeam}
-            </span>
-            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-              {getFlag(match.awayTeam)}
-            </span>
-          </div>
+          <Link href={`/country/${encodeURIComponent(match.awayTeam.toLowerCase())}`} passHref legacyBehavior>
+            <a
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSelectCountry) onSelectCountry(match.awayTeam);
+              }}
+              className="flex-1 flex items-center gap-2.5 min-w-0 justify-end hover:text-cyan-400 transition-colors"
+            >
+              <span className={`text-[11px] font-bold truncate text-right ${
+                isFT && status.awayScore > status.homeScore ? 'text-white' :
+                isFT && status.awayScore < status.homeScore ? 'text-white/40' :
+                'text-white/85'
+              }`}>
+                {match.awayTeam}
+              </span>
+              <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
+                {getFlag(match.awayTeam)}
+              </span>
+            </a>
+          </Link>
         </div>
 
         {/* Goal Scorers (for live/finished) */}

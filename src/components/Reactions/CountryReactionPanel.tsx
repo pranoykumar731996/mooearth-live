@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactionEvent, EventCategory, WorldEvent } from '@/types';
 import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
@@ -452,16 +453,18 @@ export default function CountryReactionPanel({
               <div className="text-[10px] text-white/45 uppercase tracking-widest font-bold">Related Destinations</div>
               <div className="grid grid-cols-2 gap-2">
                 {getCountryRecommendations(country).map(rec => (
-                  <button
-                    key={rec}
-                    onClick={() => {
-                      if (onSelectCountry) onSelectCountry(rec);
-                    }}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-left text-xs font-semibold text-white/90 cursor-pointer"
-                  >
-                    <span>{rec}</span>
-                    <span className="text-cyan-400">→</span>
-                  </button>
+                  <Link key={rec} href={`/country/${encodeURIComponent(rec.toLowerCase())}`} passHref legacyBehavior>
+                    <a
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (onSelectCountry) onSelectCountry(rec);
+                      }}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-left text-xs font-semibold text-white/90 cursor-pointer"
+                    >
+                      <span>{rec}</span>
+                      <span className="text-cyan-400">→</span>
+                    </a>
+                  </Link>
                 ))}
               </div>
             </div>

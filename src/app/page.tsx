@@ -72,11 +72,23 @@ const GlobeScene = dynamic(() => import('@/components/Globe/GlobeScene'), {
   ssr: false,
 });
 
-export default function HomePage() {
+interface HomePageProps {
+  initialCountry?: string;
+  initialCategory?: EventCategory;
+  initialArticleId?: string;
+  initialPlayEarthActive?: boolean;
+}
+
+export default function HomePage({
+  initialCountry,
+  initialCategory,
+  initialArticleId,
+  initialPlayEarthActive
+}: HomePageProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<EventCategory | null>(null);
+  const [activeCategory, setActiveCategory] = useState<EventCategory | null>(initialCategory || null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(initialCountry || null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeArticle, setActiveArticle] = useState<WorldEvent | null>(null);
 
@@ -94,10 +106,10 @@ export default function HomePage() {
   const [isFullScreenGlobe, setIsFullScreenGlobe] = useState(false);
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures' | 'explore' | 'views'>('emotional');
+  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures' | 'explore' | 'views'>(initialCountry ? 'explore' : 'emotional');
   const [globeView, setGlobeView] = useState<'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
-  const [isPlayEarthActive, setIsPlayEarthActive] = useState(false);
-  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive || false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -243,6 +255,20 @@ export default function HomePage() {
     searchQuery,
     activeCategory,
   });
+
+  // Load initial article if provided (SEO URL parameters support)
+  useEffect(() => {
+    if (initialArticleId && liveEvents.length > 0) {
+      const match = liveEvents.find(e => e.id === initialArticleId);
+      if (match) {
+        setActiveArticle(match);
+        if (match.country) {
+          setSelectedCountry(match.country);
+          setIsDashboardOpen(true);
+        }
+      }
+    }
+  }, [initialArticleId, liveEvents]);
 
   // Subscribe to celebrations in Firestore in real-time
   useEffect(() => {
