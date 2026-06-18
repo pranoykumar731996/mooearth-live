@@ -40,6 +40,10 @@ function formatRelativeTime(dateStr: string | undefined): string {
 }
 
 function getFlagEmoji(country: string): string {
+  // On Windows, return a globe emoji to avoid broken/missing flag emojis in UI text rendering
+  if (typeof window !== 'undefined' && navigator.userAgent.toLowerCase().includes('windows')) {
+    return '🌍';
+  }
   const flags: Record<string, string> = {
     'Spain': '🇪🇸', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'United Kingdom': '🇬🇧',
     'Germany': '🇩🇪', 'France': '🇫🇷', 'Italy': '🇮🇹', 'Portugal': '🇵🇹',
@@ -88,15 +92,38 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
   const [error, setError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Synchronise activeEvent with the prop event initially
-  useEffect(() => {
+  // Synchronise activeEvent with the prop event synchronously in render
+  const [prevEvent, setPrevEvent] = useState<WorldEvent | null>(null);
+  if (event !== prevEvent) {
+    setPrevEvent(event);
     setActiveEvent(event);
-  }, [event]);
+  }
+
+  // Reset articleDetails and error synchronously in render when activeEvent changes (checking cache)
+  const [prevActiveEvent, setPrevActiveEvent] = useState<WorldEvent | null>(null);
+  if (activeEvent !== prevActiveEvent) {
+    setPrevActiveEvent(activeEvent);
+    if (activeEvent) {
+      const cacheKey = activeEvent.id || activeEvent.source || activeEvent.title;
+      if (localArticleCache[cacheKey]) {
+        setArticleDetails(localArticleCache[cacheKey]);
+        setError(null);
+        setLoading(false);
+      } else {
+        setArticleDetails(null);
+        setError(null);
+        setLoading(true);
+      }
+    } else {
+      setArticleDetails(null);
+      setError(null);
+      setLoading(false);
+    }
+  }
 
   // Load article details (with local caching check)
   useEffect(() => {
     if (!activeEvent) {
-      setArticleDetails(null);
       return;
     }
 
@@ -104,18 +131,12 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
     
     // Reuse locally cached article if available
     if (localArticleCache[cacheKey]) {
-      setArticleDetails(localArticleCache[cacheKey]);
-      setError(null);
-      setLoading(false);
-      // Scroll back to top on story transition
+      // Already populated synchronously in render phase. Scroll back to top.
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     const queryParams = new URLSearchParams({
       id: activeEvent.id || '',

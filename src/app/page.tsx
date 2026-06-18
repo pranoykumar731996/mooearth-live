@@ -32,6 +32,7 @@ import AuthModal from '@/components/Layout/AuthModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
+import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -93,8 +94,33 @@ export default function HomePage() {
   const [isFullScreenGlobe, setIsFullScreenGlobe] = useState(false);
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures'>('emotional');
+  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures' | 'explore' | 'views'>('emotional');
+  const [globeView, setGlobeView] = useState<'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
+  const [directorySearch, setDirectorySearch] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile viewport (Phase 9 Mobile Experience)
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // First-time user guide check
+  useEffect(() => {
+    const seen = localStorage.getItem('mooearth_guide_seen');
+    if (seen !== 'true') {
+      requestAnimationFrame(() => {
+        setShowFirstTimeGuide(true);
+      });
+    }
+  }, []);
+
+
 
   // Load session on mount with Firebase Auth
   useEffect(() => {
@@ -138,6 +164,7 @@ export default function HomePage() {
             console.warn('[page.tsx] Diagnostic: Failed to fetch user profile from Firestore:', readErr);
           }
           setCurrentUser(profile);
+          setIsAuthModalOpen(false);
         }
       })
       .catch((error) => {
@@ -187,6 +214,7 @@ export default function HomePage() {
           console.warn('[page.tsx] Diagnostic: Failed to fetch user profile from Firestore, using Auth fallback:', e);
         }
         setCurrentUser(profile);
+        setIsAuthModalOpen(false);
       } else {
         setCurrentUser(null);
       }
@@ -197,12 +225,7 @@ export default function HomePage() {
     };
   }, []);
 
-  // Close auth modal when user is successfully authenticated
-  useEffect(() => {
-    if (currentUser) {
-      setIsAuthModalOpen(false);
-    }
-  }, [currentUser]);
+
 
   // Splash screen timeout
   useEffect(() => {
@@ -268,6 +291,18 @@ export default function HomePage() {
   // Combined celebration state
   const activeCelebration = customCelebration || hookCelebration;
 
+  // Render-phase tracking of activeCelebration to select country synchronously
+  const [prevCelebrationId, setPrevCelebrationId] = useState<string | null>(null);
+  const currentCelebrationId = activeCelebration?.active ? activeCelebration.id || 'active' : null;
+  if (currentCelebrationId !== prevCelebrationId) {
+    setPrevCelebrationId(currentCelebrationId);
+    if (activeCelebration?.active && activeCelebration.country) {
+      setSelectedCountry(activeCelebration.country);
+      setSelectedEvent(null);
+      setIsDashboardOpen(true);
+    }
+  }
+
   const dismissCelebration = useCallback(() => {
     if (customCelebration) {
       setCustomCelebration(null);
@@ -279,11 +314,37 @@ export default function HomePage() {
   // Phase 7: Sound Design (Web Audio API Procedural Synth Engine)
   const { playHoverBlip, playDeepPulse, playUploadSuccess, playGoalCelebration, playNarrationIntro, playTensionDrone, playCorrectSound, playWrongSound, playTimerTick, playLevelUp } = useSoundDesign(isMuted, globalEnergyScore);
 
-  // EarthCast: Fly camera to a country by name
-  const handleEarthCastFlyTo = useCallback((country: string) => {
+  const handleSelectCountry = useCallback((country: string | null) => {
     setSelectedCountry(country);
     setSelectedEvent(null);
-  }, []);
+    if (!country) {
+      setIsDashboardOpen(false);
+      setActiveReaction(null);
+    } else {
+      setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
+    }
+  }, [isMobile]);
+
+  const handleGlobeSelectCountry = useCallback((country: string | null) => {
+    if (country === selectedCountry && country !== null) {
+      setIsDashboardOpen(true);
+      playDeepPulse();
+    } else {
+      setSelectedCountry(country);
+      setSelectedEvent(null);
+      if (country) {
+        setIsDashboardOpen(!isMobile);
+      } else {
+        setIsDashboardOpen(false);
+        setActiveReaction(null);
+      }
+    }
+  }, [selectedCountry, isMobile, playDeepPulse]);
+
+  // EarthCast: Fly camera to a country by name
+  const handleEarthCastFlyTo = useCallback((country: string) => {
+    handleSelectCountry(country);
+  }, [handleSelectCountry]);
 
   // EarthCast Mode: Cinematic AI Narration System
   const earthCast = useEarthCast({
@@ -298,52 +359,36 @@ export default function HomePage() {
     playTensionDrone,
   });
 
-  // Trigger sound and auto-select country when celebration activates
+  // Trigger sound when celebration activates
   useEffect(() => {
     if (activeCelebration?.active) {
       playGoalCelebration();
-      if (activeCelebration.country) {
-        setSelectedCountry(activeCelebration.country);
-        setSelectedEvent(null);
-      }
     }
-  }, [activeCelebration, playGoalCelebration]);
+  }, [activeCelebration?.active, playGoalCelebration]);
 
-  // Clean reaction state when country closed
-  useEffect(() => {
-    if (!selectedCountry) {
-      setActiveReaction(null);
-    }
-  }, [selectedCountry]);
+
 
   // Phase 3: Cinematic Broadcast cycle (watch the world react)
   useEffect(() => {
     if (!isCinematicMode || trendingCountries.length === 0) return;
 
     let index = 0;
-    // Highlight the first country immediately
-    const firstTarget = trendingCountries[0];
-    if (firstTarget) {
-      setSelectedCountry(firstTarget.country);
-      setSelectedEvent(null);
-      playDeepPulse();
-    }
 
     const interval = setInterval(() => {
       index = (index + 1) % trendingCountries.length;
       const target = trendingCountries[index];
       if (target) {
-        setSelectedCountry(target.country);
-        setSelectedEvent(null);
+        handleSelectCountry(target.country);
         playDeepPulse();
       }
     }, 12000); // Cycle every 12 seconds
 
     return () => clearInterval(interval);
-  }, [isCinematicMode, trendingCountries, playDeepPulse]);
+  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry]);
 
   const handleLoginSuccess = useCallback((user: { username: string; avatar: string; country: string }) => {
     setCurrentUser(user);
+    setIsAuthModalOpen(false);
   }, []);
 
   const handleUploadSuccess = useCallback((newCeleb: any) => {
@@ -416,6 +461,25 @@ export default function HomePage() {
     setSearchQuery('');
   }, []);
 
+  // Grouped countries for Explore directory
+  const allCountries = getMetadataCountries().sort((a, b) => a.localeCompare(b));
+  const filteredDirectory = allCountries.filter(c => {
+    const meta = findCountryMeta(c);
+    const searchLower = directorySearch.toLowerCase();
+    return c.toLowerCase().includes(searchLower) ||
+           meta?.capital.toLowerCase().includes(searchLower) ||
+           meta?.continent.toLowerCase().includes(searchLower);
+  });
+
+  const grouped: Record<string, string[]> = {};
+  filteredDirectory.forEach(c => {
+    const firstLetter = c.charAt(0).toUpperCase();
+    if (!grouped[firstLetter]) {
+      grouped[firstLetter] = [];
+    }
+    grouped[firstLetter].push(c);
+  });
+
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#030308]" id="main">
       {/* Splash Screen */}
@@ -464,7 +528,7 @@ export default function HomePage() {
           apiStatus={apiStatus}
           onSearch={handleSearch}
           onSelectEvent={handleEventNavigate}
-          onSelectCountry={setSelectedCountry}
+          onSelectCountry={handleSelectCountry}
           currentUser={currentUser}
           onAuthClick={() => {
             console.log('[page.tsx] Diagnostic: User clicked SIGN IN (opening AuthModal)');
@@ -488,19 +552,70 @@ export default function HomePage() {
           }}
           isCinematicModeActive={isCinematicMode}
           onToggleCinematicMode={() => {
-            setIsCinematicMode(!isCinematicMode);
+            const nextMode = !isCinematicMode;
+            setIsCinematicMode(nextMode);
+            if (nextMode && trendingCountries.length > 0) {
+              const firstTarget = trendingCountries[0];
+              if (firstTarget) {
+                handleSelectCountry(firstTarget.country);
+                playDeepPulse();
+              }
+            }
             playHoverBlip();
           }}
           isPlayEarthActive={isPlayEarthActive}
           onTogglePlayEarth={() => {
-            setIsPlayEarthActive(!isPlayEarthActive);
-            if (isPlayEarthActive) {
-              setSelectedCountry(null);
-              setSelectedEvent(null);
+            const nextActive = !isPlayEarthActive;
+            setIsPlayEarthActive(nextActive);
+            setGlobeView(nextActive ? 'discovery' : 'standard');
+            if (nextActive) {
+              handleSelectCountry(null);
             }
             playHoverBlip();
           }}
         />
+      </div>
+
+      {/* Living Earth Status Bar */}
+      <div 
+        className="fixed top-16 left-0 right-0 z-30 h-8 bg-[#090915]/85 border-b border-white/[0.04] backdrop-blur-md flex items-center justify-between px-6 pointer-events-auto text-[10px] font-semibold text-white/50 select-none"
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 text-cyan-400">
+            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shrink-0" />
+            <span className="uppercase tracking-widest font-black text-[9px]">Living Earth Network</span>
+          </div>
+          <span className="text-white/10">|</span>
+          <div className="flex items-center gap-1">
+            <span className="text-white/30">Users Online:</span>
+            <span className="text-white font-bold animate-[pulse_2s_infinite]">1,482</span>
+          </div>
+          <span className="text-white/10 hidden md:inline">|</span>
+          <div className="hidden md:flex items-center gap-1">
+            <span className="text-white/30">Tracked Countries:</span>
+            <span className="text-white font-bold">{getMetadataCountries().length}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
+            <span className="text-white/30">Active Stories:</span>
+            <span className="text-cyan-400 font-bold">{filteredEvents.length}</span>
+          </div>
+          <span className="text-white/10">|</span>
+          <div className="flex items-center gap-1">
+            <span className="text-white/30">Live Matches:</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
+              {liveEvents.filter(e => e.category === 'football' && e.footballData?.status === 'LIVE').length}
+            </span>
+          </div>
+          <span className="text-white/10 hidden sm:inline">|</span>
+          <div className="hidden sm:flex items-center gap-1">
+            <span className="text-white/30">Global Pulse:</span>
+            <span className="text-purple-400 font-bold">{globalEnergyScore}% Intensity</span>
+          </div>
+        </div>
       </div>
 
       {/* Phase 3: Cinematic Broadcast HUD Overlay */}
@@ -553,7 +668,7 @@ export default function HomePage() {
                 setLeftPanelTab('emotional');
                 playHoverBlip();
               }}
-              className={`flex-1 py-3 text-center text-[10px] font-black tracking-widest transition-all cursor-pointer border-b-2 ${
+              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
                 leftPanelTab === 'emotional'
                   ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
                   : 'text-white/40 border-transparent hover:text-white/70'
@@ -566,13 +681,39 @@ export default function HomePage() {
                 setLeftPanelTab('fixtures');
                 playHoverBlip();
               }}
-              className={`flex-1 py-3 text-center text-[10px] font-black tracking-widest transition-all cursor-pointer border-b-2 ${
+              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
                 leftPanelTab === 'fixtures'
                   ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
                   : 'text-white/40 border-transparent hover:text-white/70'
               }`}
             >
               ⚽ FIXTURES
+            </button>
+            <button
+              onClick={() => {
+                setLeftPanelTab('explore');
+                playHoverBlip();
+              }}
+              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
+                leftPanelTab === 'explore'
+                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
+                  : 'text-white/40 border-transparent hover:text-white/70'
+              }`}
+            >
+              🌍 EXPLORE
+            </button>
+            <button
+              onClick={() => {
+                setLeftPanelTab('views');
+                playHoverBlip();
+              }}
+              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
+                leftPanelTab === 'views'
+                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
+                  : 'text-white/40 border-transparent hover:text-white/70'
+              }`}
+            >
+              🌌 VIEWS
             </button>
           </div>
 
@@ -586,8 +727,7 @@ export default function HomePage() {
                   <motion.div
                     key={tc.country}
                     onClick={() => {
-                      setSelectedCountry(tc.country);
-                      setSelectedEvent(null);
+                      handleSelectCountry(tc.country);
                       playHoverBlip();
                     }}
                     whileHover={{ scale: 1.02 }}
@@ -609,7 +749,7 @@ export default function HomePage() {
                   </motion.div>
                 ))}
               </>
-            ) : (
+            ) : leftPanelTab === 'fixtures' ? (
               <>
                 <div className="px-1 pb-1">
                   <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h4>
@@ -624,7 +764,7 @@ export default function HomePage() {
                     <motion.div
                       key={event.id}
                       onClick={() => {
-                        setSelectedCountry(event.country);
+                        handleSelectCountry(event.country);
                         setSelectedEvent(event);
                         playHoverBlip();
                       }}
@@ -655,7 +795,7 @@ export default function HomePage() {
                         {isLive ? (
                           <span className="text-emerald-400 font-bold animate-pulse flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                            LIVE {fd.elapsed}'
+                            LIVE {fd.elapsed}{"'"}
                           </span>
                         ) : isFT ? (
                           <span className="text-white/35 font-bold uppercase tracking-wider">FT</span>
@@ -667,6 +807,122 @@ export default function HomePage() {
                     </motion.div>
                   );
                 })}
+              </>
+            ) : leftPanelTab === 'explore' ? (
+              <>
+                <div className="px-1 pb-1">
+                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Explore Countries</h4>
+                </div>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Search countries..."
+                    value={directorySearch}
+                    onChange={(e) => setDirectorySearch(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder-white/30 focus:outline-none focus:border-cyan-500/50"
+                  />
+                  
+                  {/* A-Z Jump Bar */}
+                  <div className="flex gap-1 overflow-x-auto py-1 px-0.5 scrollbar-none border-b border-white/[0.04]">
+                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
+                      const hasCountries = Object.keys(grouped).includes(letter);
+                      return (
+                        <button
+                          key={letter}
+                          disabled={!hasCountries}
+                          onClick={() => {
+                            const elem = document.getElementById(`explore-letter-${letter}`);
+                            if (elem) {
+                              elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                            playHoverBlip();
+                          }}
+                          className={`text-[9px] font-black w-4.5 h-4.5 rounded shrink-0 flex items-center justify-center transition-all ${
+                            hasCountries
+                              ? 'text-cyan-400 hover:bg-cyan-500/20 cursor-pointer'
+                              : 'text-white/10 cursor-not-allowed'
+                          }`}
+                        >
+                          {letter}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1 scrollbar-thin">
+                    {Object.keys(grouped).sort().map(letter => (
+                      <div key={letter} id={`explore-letter-${letter}`} className="space-y-1.5 scroll-mt-2">
+                        <div className="text-[9px] font-black text-cyan-400/50 uppercase tracking-widest px-1 py-0.5 border-b border-white/5">
+                          {letter} ({grouped[letter].length})
+                        </div>
+                        {grouped[letter].map(c => {
+                          const meta = findCountryMeta(c);
+                          return (
+                            <div
+                              key={c}
+                              onClick={() => {
+                                handleSelectCountry(c);
+                                playHoverBlip();
+                              }}
+                              className={`p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/[0.03] hover:border-white/10 cursor-pointer flex items-center justify-between transition-all ${
+                                selectedCountry === c ? 'border-cyan-500/40 bg-cyan-500/10' : ''
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm shrink-0">{meta?.flag || '🏳️'}</span>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-bold text-white truncate">{c}</div>
+                                  <div className="text-[9px] text-white/40 truncate">{meta?.capital} • {meta?.continent}</div>
+                                </div>
+                              </div>
+                              <span className="text-[8px] text-white/30 font-bold tracking-tight shrink-0">FOCUS ↗</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    {Object.keys(grouped).length === 0 && (
+                      <div className="text-center py-6 text-[10px] text-white/30">
+                        No countries match &quot;{directorySearch}&quot;
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-1 pb-1">
+                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Globe View Modes</h4>
+                </div>
+                <div className="space-y-3 pb-4">
+                  {[
+                    { id: 'standard', name: '🌍 Standard View', desc: 'Default night lights map with active news category glows.' },
+                    { id: 'fifa', name: '⚽ FIFA World Cup', desc: 'Tactical pitch-green map, golden borders, live match highlights.' },
+                    { id: 'night', name: '🌃 Night Lights', desc: 'Realistic city lights map showing raw night-side electricity.' },
+                    { id: 'weather', name: '🌦 Weather Radar', desc: 'Day satellite base, rotating clouds, and temperature heatmaps.' },
+                    { id: 'satellite', name: '🛰 Satellite View', desc: 'Pure satellite imagery with ultra-thin border mappings.' },
+                    { id: 'discovery', name: '🎮 Earth Discovery', desc: 'Holographic grid blueprint with quiz question counters.' },
+                  ].map((v) => (
+                    <motion.div
+                      key={v.id}
+                      onClick={() => {
+                        setGlobeView(v.id as any);
+                        setIsPlayEarthActive(v.id === 'discovery');
+                        if (v.id === 'discovery') {
+                          handleSelectCountry(null);
+                        }
+                        playHoverBlip();
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1 ${
+                        globeView === v.id ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
+                      }`}
+                    >
+                      <span className="font-bold text-white text-xs">{v.name}</span>
+                      <span className="text-[9px] text-white/40 leading-relaxed">{v.desc}</span>
+                    </motion.div>
+                  ))}
+                </div>
               </>
             )}
 
@@ -696,7 +952,7 @@ export default function HomePage() {
             selectedEvent={selectedEvent}
             onSelectEvent={handleSelectEvent}
             selectedCountry={selectedCountry}
-            onSelectCountry={setSelectedCountry}
+            onSelectCountry={handleGlobeSelectCountry}
             celebration={activeCelebration}
             celebrations={celebrations}
             onSelectCelebration={setSelectedCelebration}
@@ -705,6 +961,9 @@ export default function HomePage() {
             emotionMap={emotionMap}
             earthCastActive={earthCast.isEarthCastActive}
             earthCastAudioLevel={earthCast.audioLevel}
+            activeCategory={activeCategory}
+            isPlayEarthActive={isPlayEarthActive}
+            globeView={globeView}
           />
         </div>
       </div>
@@ -730,8 +989,7 @@ export default function HomePage() {
         selectedCountry={selectedCountry}
         onClose={() => {
           setIsPlayEarthActive(false);
-          setSelectedCountry(null);
-          setSelectedEvent(null);
+          handleSelectCountry(null);
           playHoverBlip();
         }}
         onPlaySound={playHoverBlip}
@@ -793,14 +1051,15 @@ export default function HomePage() {
       {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
-            {selectedCountry ? (
+            {selectedCountry && (!isMobile || isDashboardOpen) ? (
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
                 activeCategory={activeCategory}
-                onClose={() => setSelectedCountry(null)}
+                onClose={() => handleSelectCountry(null)}
                 onReactionLoaded={setActiveReaction}
                 onSelectArticle={setActiveArticle}
+                onSelectCountry={handleSelectCountry}
               />
             ) : (
               <motion.div
@@ -827,7 +1086,7 @@ export default function HomePage() {
                     playHoverBlip();
                   }}
                   activeCategory={activeCategory}
-                  onSelectCountry={setSelectedCountry}
+                  onSelectCountry={handleSelectCountry}
                   onPlaySound={playHoverBlip}
                   footballActive={apiStatus?.footballActive}
                 />
@@ -836,6 +1095,73 @@ export default function HomePage() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Mobile Country Preview Card (Bottom Drawer) */}
+      <AnimatePresence>
+        {isMobile && selectedCountry && !isDashboardOpen && (
+          <motion.div
+            initial={{ y: 150, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 150, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-24 left-4 right-4 z-40 glass border border-white/10 p-5 rounded-2xl flex flex-col gap-4 shadow-[0_-10px_35px_rgba(0,0,0,0.5)] pointer-events-auto"
+            style={{
+              background: 'linear-gradient(135deg, rgba(12,12,22,0.96) 0%, rgba(5,5,12,0.96) 100%)',
+            }}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl leading-none">{findCountryMeta(selectedCountry)?.flag || '🏳️'}</span>
+                <div>
+                  <h3 className="text-base font-black text-white leading-tight">{selectedCountry}</h3>
+                  <p className="text-[10px] text-white/40 font-medium">
+                    {findCountryMeta(selectedCountry)?.capital} • {findCountryMeta(selectedCountry)?.continent}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  handleSelectCountry(null);
+                  playHoverBlip();
+                }}
+                className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/55 hover:bg-white/10 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Category-aware mini stats inside mobile preview */}
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-white/50 border-t border-b border-white/5 py-3">
+              <div>
+                <span className="text-white/30 block uppercase tracking-wider text-[8px] mb-0.5">Active Stories</span>
+                <span className="text-white font-bold text-xs">
+                  {filteredEvents.filter(e => e.country === selectedCountry).length} Stories
+                </span>
+              </div>
+              <div>
+                <span className="text-white/30 block uppercase tracking-wider text-[8px] mb-0.5">Category Context</span>
+                <span className={`font-bold text-xs uppercase ${
+                  activeCategory === 'breaking' ? 'text-blue-400' :
+                  activeCategory === 'football' ? 'text-emerald-400' :
+                  activeCategory === 'weather' ? 'text-orange-400' : 'text-cyan-400'
+                }`}>
+                  {activeCategory ? activeCategory : 'Global Pulse'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setIsDashboardOpen(true);
+                playDeepPulse();
+              }}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs tracking-wider text-white uppercase hover:scale-[1.01] transition-transform cursor-pointer"
+            >
+              Open Reaction Dashboard 💬
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom gradient overlay */}
       <div
@@ -965,6 +1291,99 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* First-Time User Guide Overlay */}
+      <AnimatePresence>
+        {showFirstTimeGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[100] px-4 pointer-events-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="glass max-w-lg w-full p-6 sm:p-8 rounded-3xl border border-white/10 flex flex-col gap-6 shadow-[0_0_55px_rgba(6,182,212,0.15)] text-white relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(12,12,22,0.96) 0%, rgba(5,5,12,0.96) 100%)',
+              }}
+            >
+              {/* Radial glow */}
+              <div className="absolute -top-20 -left-20 w-48 h-48 bg-cyan-500/10 rounded-full blur-[80px]" />
+              <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-purple-500/10 rounded-full blur-[80px]" />
+
+              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-2xl shadow-lg shadow-cyan-500/20">
+                  🌍
+                </div>
+                <div>
+                  <h2 className="text-lg font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
+                    Welcome to MooEarth Live
+                  </h2>
+                  <p className="text-[10px] text-cyan-400/80 font-bold uppercase tracking-wider">
+                    Interactive Country Discovery Guide
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-xs text-white/70 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                <div className="flex gap-3">
+                  <span className="text-lg shrink-0">🔍</span>
+                  <div>
+                    <h4 className="font-bold text-white text-xs">Dynamic Country Labels</h4>
+                    <p className="mt-0.5 leading-relaxed">Zoom the 3D globe to reveal country names and flag emojis. Look for the A-Z directory tab in the sidebar to jump directly to any destination.</p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <span className="text-lg shrink-0">🚦</span>
+                  <div>
+                    <h4 className="font-bold text-white text-xs">Category-Aware Glows</h4>
+                    <p className="mt-0.5 leading-relaxed">Observe colored glows around countries indicating active news (blue), sports (green), weather alerts (orange), or tech (purple/cyan).</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-lg shrink-0">🏆</span>
+                  <div>
+                    <h4 className="font-bold text-white text-xs">FIFA World Cup Live Match Tracker</h4>
+                    <p className="mt-0.5 leading-relaxed">Countries playing in live World Cup matches will pulse with a gold glow. Check live scores and event cards next to the globe.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-lg shrink-0">🎮</span>
+                  <div>
+                    <h4 className="font-bold text-white text-xs">Play Earth Quiz Game</h4>
+                    <p className="mt-0.5 leading-relaxed">Toggle the game mode in the top navbar. Dynamic question counters will float above countries indicating challenge readiness.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="text-lg shrink-0">📣</span>
+                  <div>
+                    <h4 className="font-bold text-white text-xs">Interactive Community Fan Map</h4>
+                    <p className="mt-0.5 leading-relaxed">Click any country to open its reaction panel. Upload your own notes, images, or video celebrations to show how your community reacts.</p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  localStorage.setItem('mooearth_guide_seen', 'true');
+                  setShowFirstTimeGuide(false);
+                  playHoverBlip();
+                }}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs tracking-widest text-white uppercase shadow-[0_0_25px_rgba(6,182,212,0.35)] hover:shadow-[0_0_35px_rgba(6,182,212,0.55)] transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                Enter the Living Earth
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

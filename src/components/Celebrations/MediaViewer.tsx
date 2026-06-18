@@ -147,7 +147,7 @@ export default function MediaViewer({ celebration, onClose, onReportSuccess }: M
                     key={i}
                     animate={{ height: [8, 30, 8] }}
                     transition={{
-                      duration: 0.5 + Math.random() * 0.5,
+                      duration: 0.5 + ((i * 11) % 10) * 0.05,
                       repeat: Infinity,
                       delay: i * 0.04,
                     }}

@@ -519,12 +519,15 @@ export function useEarthCast({
 
   // Cleanup on unmount
   useEffect(() => {
+    const coolTimer = cooldownTimer.current;
+    const autoTimer = autoModeTimer.current;
+    const audioCtx = audioContextRef.current;
     return () => {
       stopAudio();
-      if (cooldownTimer.current) clearTimeout(cooldownTimer.current);
-      if (autoModeTimer.current) clearInterval(autoModeTimer.current);
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(() => {});
+      if (coolTimer) clearTimeout(coolTimer);
+      if (autoTimer) clearInterval(autoTimer);
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(() => {});
       }
     };
   }, [stopAudio]);

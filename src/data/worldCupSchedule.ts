@@ -64,11 +64,7 @@ export const GROUPS: Record<string, [string, string, string, string]> = {
 
 // ==================== SCHEDULE ====================
 // Standard fixture pattern (team indices within group)
-const FP: [number, number][][] = [
-  [[0, 1], [2, 3]], // Match Day 1
-  [[0, 2], [1, 3]], // Match Day 2
-  [[3, 0], [2, 1]], // Match Day 3
-];
+
 
 // Kickoff times per group (6 per group: MD1×2, MD2×2, MD3×2)
 const KO: Record<string, string[]> = {
@@ -106,7 +102,7 @@ interface MatchResult {
   cards: Card[];
 }
 
-const RESULTS: Record<string, MatchResult> = {};
+
 
 // ==================== MATCH DATA TYPE ====================
 export interface WCMatchData {
@@ -174,11 +170,166 @@ export function computeMatchStatus(match: WCMatchData, now: Date): ComputedMatch
 // ==================== GENERATORS ====================
 
 export function generateGroupStageMatches(): WCMatchData[] {
-  return [];
+  const matches: WCMatchData[] = [];
+  
+  const getGroupMatchResult = (matchId: string, home: string, away: string): MatchResult => {
+    const charSum = (home + away).split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
+    const hs = charSum % 4; // 0 to 3 goals
+    const as = (charSum >> 2) % 3; // 0 to 2 goals
+    
+    const goals: Goal[] = [];
+    const cards: Card[] = [];
+    
+    for (let i = 0; i < hs; i++) {
+      goals.push({
+        team: 'home',
+        player: `${home} Scorer ${i + 1}`,
+        time: 12 + (i * 25) + (charSum % 15)
+      });
+    }
+    for (let i = 0; i < as; i++) {
+      goals.push({
+        team: 'away',
+        player: `${away} Scorer ${i + 1}`,
+        time: 18 + (i * 28) + (charSum % 17)
+      });
+    }
+    goals.sort((a, b) => a.time - b.time);
+    
+    if (charSum % 2 === 0) {
+      cards.push({
+        team: 'home',
+        player: `${home} Defender`,
+        type: 'Yellow',
+        time: 30 + (charSum % 20)
+      });
+    }
+    if (charSum % 3 === 0) {
+      cards.push({
+        team: 'away',
+        player: `${away} Midfielder`,
+        type: 'Yellow',
+        time: 40 + (charSum % 15)
+      });
+    }
+    if (charSum % 7 === 0) {
+      cards.push({
+        team: 'home',
+        player: `${home} Hothead`,
+        type: 'Red',
+        time: 75 + (charSum % 10)
+      });
+    }
+    
+    return { hs, as, goals, cards };
+  };
+
+  Object.keys(GROUPS).forEach(group => {
+    const teams = GROUPS[group];
+    const times = KO[group];
+    const venues = GV[group];
+    
+    if (!teams || !times || !venues) return;
+    
+    const fixtures: [number, number][] = [
+      [0, 1], [2, 3], // MD1
+      [0, 2], [1, 3], // MD2
+      [3, 0], [2, 1], // MD3
+    ];
+    
+    fixtures.forEach((fix, idx) => {
+      const homeTeam = teams[fix[0]];
+      const awayTeam = teams[fix[1]];
+      const matchId = `wc26-group-${group}-m${idx + 1}`;
+      const venue = V[venues[idx]] || V[0];
+      const kickoff = times[idx];
+      const matchDay = Math.floor(idx / 2) + 1;
+      
+      const res = getGroupMatchResult(matchId, homeTeam, awayTeam);
+      
+      matches.push({
+        id: matchId,
+        homeTeam,
+        awayTeam,
+        kickoff,
+        venue,
+        group,
+        matchDay,
+        stage: 'group',
+        finalHomeScore: res.hs,
+        finalAwayScore: res.as,
+        goals: res.goals,
+        cards: res.cards,
+      });
+    });
+  });
+  
+  return matches;
 }
 
 export function generateKnockoutMatches(): WCMatchData[] {
-  return [];
+  const matches: WCMatchData[] = [];
+  
+  const stages: { stage: 'R32' | 'R16' | 'QF' | 'SF' | 'TPP' | 'F'; count: number; startDay: number }[] = [
+    { stage: 'R32', count: 16, startDay: 28 }, // June 28 - July 3
+    { stage: 'R16', count: 8, startDay: 4 },   // July 4 - July 7
+    { stage: 'QF', count: 4, startDay: 9 },    // July 9 - July 11
+    { stage: 'SF', count: 2, startDay: 14 },   // July 14 - July 15
+    { stage: 'TPP', count: 1, startDay: 18 },  // July 18
+    { stage: 'F', count: 1, startDay: 19 },    // July 19
+  ];
+
+  let overallMatchIdx = 1;
+  stages.forEach(({ stage, count, startDay }) => {
+    for (let i = 0; i < count; i++) {
+      const matchId = `wc26-ko-${stage.toLowerCase()}-m${i + 1}`;
+      
+      let day = startDay + Math.floor(i / 2);
+      let month = 6;
+      if (stage !== 'R32' || day > 30) {
+        month = 7;
+        if (stage === 'R32') {
+          day = day - 30;
+        } else if (stage === 'R16') {
+          day = 4 + Math.floor(i / 2);
+        } else if (stage === 'QF') {
+          day = 9 + Math.floor(i / 2);
+        } else if (stage === 'SF') {
+          day = 14 + i;
+        } else if (stage === 'TPP') {
+          day = 18;
+        } else {
+          day = 19;
+        }
+      }
+      
+      const monthStr = String(month).padStart(2, '0');
+      const dayStr = String(day).padStart(2, '0');
+      const kickoff = `2026-${monthStr}-${dayStr}T21:00:00+05:30`;
+      
+      const homeTeam = `${stage} Participant A`;
+      const awayTeam = `${stage} Participant B`;
+      const venue = V[overallMatchIdx % V.length];
+      overallMatchIdx++;
+      
+      matches.push({
+        id: matchId,
+        homeTeam,
+        awayTeam,
+        kickoff,
+        venue,
+        group: 'KO',
+        matchDay: 4 + overallMatchIdx / 10,
+        stage,
+        finalHomeScore: 0,
+        finalAwayScore: 0,
+        goals: [],
+        cards: [],
+      });
+    }
+  });
+
+  return matches;
 }
 
 /** Get ALL World Cup 2026 matches (group + knockout) */

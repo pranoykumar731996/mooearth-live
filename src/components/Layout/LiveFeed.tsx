@@ -69,7 +69,9 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
   }, []);
 
   const sortedEvents = useMemo(() => {
@@ -313,7 +315,7 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
                     ) : fd.status === 'LIVE' ? (
                       <>
                         <span className="text-xs font-black text-emerald-400 animate-pulse uppercase tracking-wide">Live</span>
-                        <span className="text-[9px] text-emerald-400/80 font-bold mt-0.5 tabular-nums">{fd.elapsed}'</span>
+                        <span className="text-[9px] text-emerald-400/80 font-bold mt-0.5 tabular-nums">{fd.elapsed}{"'"}</span>
                       </>
                     ) : (
                       <div className="flex flex-col items-center">

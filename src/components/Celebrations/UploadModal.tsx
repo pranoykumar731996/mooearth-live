@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
@@ -58,7 +58,10 @@ const FALLBACK_WORLD_CUP_MATCHES = [
 
 export default function UploadModal({ isOpen, onClose, matches, currentUser, onUploadSuccess }: UploadModalProps) {
   const [activeTab, setActiveTab] = useState<'video' | 'image' | 'audio'>('video');
-  const [selectedMatch, setSelectedMatch] = useState('');
+  const [selectedMatch, setSelectedMatch] = useState(() => {
+    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
+    return activeMatches.length > 0 ? activeMatches[0].title : '';
+  });
   const [comment, setComment] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -67,12 +70,12 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Initialize selected match
-  useEffect(() => {
+  const [prevMatches, setPrevMatches] = useState(matches);
+  if (matches !== prevMatches) {
+    setPrevMatches(matches);
     const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
     if (activeMatches.length > 0) {
       const exists = activeMatches.some(m => m.title === selectedMatch);
@@ -80,7 +83,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         setSelectedMatch(activeMatches[0].title);
       }
     }
-  }, [matches, selectedMatch]);
+  }
 
   const displayMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
 
@@ -91,7 +94,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     try {
       setError(null);
       setRecordedAudioUrl(null);
-      setRecordedChunks([]);
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -313,7 +315,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
                           key={i}
                           animate={{ height: [12, 36, 12] }}
                           transition={{
-                            duration: 0.6 + Math.random() * 0.4,
+                            duration: 0.6 + ((i * 13) % 10) * 0.04,
                             repeat: Infinity,
                             delay: i * 0.05,
                           }}

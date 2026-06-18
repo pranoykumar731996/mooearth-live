@@ -260,7 +260,7 @@ function main() {
   // 5. GENERATE CULTURE QUESTIONS (Culture)
   for (const cult of CULTURE_TRADITIONS) {
     const countries = CULTURE_TRADITIONS.map(c => c.country);
-    let choices = buildChoices(cult.country, countries);
+    const choices = buildChoices(cult.country, countries);
     generated.push({
       id: `gen-cult-${idCounter++}`,
       country: cult.country,

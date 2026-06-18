@@ -88,7 +88,9 @@ export default function WorldCupSchedule({
 
   // Client-side clock ticks every second for real-time updates
   useEffect(() => {
-    setMounted(true);
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
     const iv = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(iv);
   }, []);
@@ -447,7 +449,7 @@ function MatchCard({
                 <span className={`font-medium ${g.team === 'home' ? 'text-white/50' : 'text-white/30'}`}>
                   {g.team === 'home' ? `⚽ ${g.player}` : ''}
                 </span>
-                <span className="text-cyan-400/60 font-bold tabular-nums">{g.time}'</span>
+                <span className="text-cyan-400/60 font-bold tabular-nums">{g.time}{"'"}</span>
                 <span className={`font-medium text-right ${g.team === 'away' ? 'text-white/50' : 'text-white/30'}`}>
                   {g.team === 'away' ? `${g.player} ⚽` : ''}
                 </span>

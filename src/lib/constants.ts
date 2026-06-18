@@ -138,12 +138,111 @@ export const COUNTRY_COORDINATES: Record<string, { lat: number; lng: number; cou
 /** Helper to geocode a country string into coordinates */
 export function getCoordinatesForCountry(countryName: string): { lat: number; lng: number; country: string; city: string } | null {
   if (!countryName) return null;
-  const norm = countryName.toLowerCase().trim();
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+  const target = norm(countryName);
+  
   for (const [key, data] of Object.entries(COUNTRY_COORDINATES)) {
-    if (norm.includes(key) || key.includes(norm)) {
-      return data;
-    }
+    const k = norm(key);
+    if (target === k) return data;
+    
+    // United States matches
+    const isUS1 = target === 'usa' || target === 'us' || target === 'unitedstates' || target === 'unitedstatesofamerica';
+    const isUS2 = k === 'usa' || k === 'us' || k === 'unitedstates' || k === 'unitedstatesofamerica';
+    if (isUS1 && isUS2) return data;
+
+    // United Kingdom matches
+    const isUK1 = target === 'uk' || target === 'unitedkingdom' || target === 'england' || target === 'greatbritain';
+    const isUK2 = k === 'uk' || k === 'unitedkingdom' || k === 'england' || k === 'greatbritain';
+    if (isUK1 && isUK2) return data;
   }
   return null;
 }
+
+/** Country-specific color brandings for glow highlight system */
+export function getCountryGlowColors(countryName: string): { primary: string; secondary: string; stroke: string } {
+  if (!countryName) {
+    return {
+      primary: 'rgba(0, 229, 255, 0.4)',
+      secondary: 'rgba(0, 119, 255, 0.4)',
+      stroke: 'rgba(0, 229, 255, 0.8)',
+    };
+  }
+  const norm = countryName.toLowerCase().trim();
+  if (norm.includes('brazil')) {
+    return {
+      primary: 'rgba(0, 156, 59, 0.7)',     // Brazilian green
+      secondary: 'rgba(255, 223, 0, 0.7)',  // Yellow
+      stroke: 'rgba(255, 223, 0, 0.95)',
+    };
+  }
+  if (norm.includes('japan')) {
+    return {
+      primary: 'rgba(0, 45, 115, 0.7)',     // Deep blue
+      secondary: 'rgba(188, 0, 45, 0.7)',   // Red
+      stroke: 'rgba(0, 229, 255, 0.95)',
+    };
+  }
+  if (norm.includes('india')) {
+    return {
+      primary: 'rgba(255, 153, 51, 0.7)',   // Saffron
+      secondary: 'rgba(255, 255, 255, 0.7)', // White
+      stroke: 'rgba(255, 153, 51, 0.95)',
+    };
+  }
+  if (norm.includes('united states') || norm.includes('usa') || norm.includes('us')) {
+    return {
+      primary: 'rgba(10, 49, 97, 0.7)',     // Navy blue
+      secondary: 'rgba(179, 37, 56, 0.7)',  // Red
+      stroke: 'rgba(0, 229, 255, 0.95)',
+    };
+  }
+  if (norm.includes('france')) {
+    return {
+      primary: 'rgba(0, 85, 164, 0.7)',     // Royal blue
+      secondary: 'rgba(239, 65, 53, 0.7)',   // Red
+      stroke: 'rgba(255, 255, 255, 0.95)',
+    };
+  }
+  if (norm.includes('germany')) {
+    return {
+      primary: 'rgba(0, 0, 0, 0.7)',        // Black
+      secondary: 'rgba(221, 0, 0, 0.7)',    // Red
+      stroke: 'rgba(255, 204, 0, 0.95)',    // Gold
+    };
+  }
+  if (norm.includes('argentina')) {
+    return {
+      primary: 'rgba(117, 170, 219, 0.7)',  // Sky blue
+      secondary: 'rgba(246, 180, 14, 0.7)', // Sun gold
+      stroke: 'rgba(117, 170, 219, 0.95)',
+    };
+  }
+  
+  return {
+    primary: 'rgba(0, 229, 255, 0.4)',
+    secondary: 'rgba(0, 119, 255, 0.4)',
+    stroke: 'rgba(0, 229, 255, 0.8)',
+  };
+}
+
+/** Smart country recommendations map */
+export function getCountryRecommendations(countryName: string): string[] {
+  if (!countryName) return ['United States', 'Brazil', 'Germany', 'Japan'];
+  const norm = countryName.toLowerCase().trim();
+  if (norm.includes('brazil')) return ['Argentina', 'Uruguay', 'Spain', 'Portugal'];
+  if (norm.includes('argentina')) return ['Brazil', 'Uruguay', 'Spain', 'Italy'];
+  if (norm.includes('india')) return ['United Kingdom', 'Australia', 'Japan', 'Singapore'];
+  if (norm.includes('japan')) return ['South Korea', 'China', 'United States', 'India'];
+  if (norm.includes('united states') || norm.includes('usa') || norm.includes('us')) return ['Canada', 'Mexico', 'United Kingdom', 'Japan'];
+  if (norm.includes('united kingdom') || norm.includes('uk') || norm.includes('england')) return ['France', 'Germany', 'Ireland', 'Spain'];
+  if (norm.includes('france')) return ['Germany', 'United Kingdom', 'Spain', 'Italy'];
+  if (norm.includes('germany')) return ['France', 'Austria', 'Netherlands', 'Belgium'];
+  if (norm.includes('spain')) return ['Portugal', 'France', 'Argentina', 'Brazil'];
+  if (norm.includes('mexico')) return ['United States', 'Colombia', 'Argentina', 'Spain'];
+  if (norm.includes('canada')) return ['United States', 'United Kingdom', 'France', 'Australia'];
+  if (norm.includes('australia')) return ['New Zealand', 'United Kingdom', 'Japan', 'United States'];
+  
+  return ['United States', 'Brazil', 'Germany', 'Japan'];
+}
+
 

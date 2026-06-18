@@ -36,14 +36,19 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Diagnostics & state reset on open/close
-  useEffect(() => {
-    console.log('[AuthModal] Diagnostic: Modal isOpen changed to:', isOpen);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     setIsLoading(false);
     setError(null);
     setEmail('');
     setPassword('');
     setUsername('');
+  }
+
+  // Diagnostics on open/close
+  useEffect(() => {
+    console.log('[AuthModal] Diagnostic: Modal isOpen changed to:', isOpen);
   }, [isOpen]);
 
   if (!isOpen) return null;

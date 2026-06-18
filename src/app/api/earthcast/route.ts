@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Request Deduplication (Single Flight): Check if a request is already generating this event
-    let inFlightPromise = cacheEngine.getInFlight(cacheKey);
+    const inFlightPromise = cacheEngine.getInFlight(cacheKey);
     if (inFlightPromise) {
       // Await the existing in-flight generation
       const result = await inFlightPromise;

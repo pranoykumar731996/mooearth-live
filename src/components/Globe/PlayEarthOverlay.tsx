@@ -88,13 +88,39 @@ export default function PlayEarthOverlay({
   const [mixedWrongCount, setMixedWrongCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const levelUpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load game state when username changes
-  useEffect(() => {
+  // Load game state when username changes synchronously in render
+  const [prevUsername, setPrevUsername] = useState(username);
+  if (username !== prevUsername) {
+    setPrevUsername(username);
     setGameState(loadGameState(username));
-  }, [username]);
+  }
 
-  // Reset quiz state and manage phase transitions on active/country changes
+  // Reset quiz state on active/country changes synchronously in render
+  const [prevIsActive, setPrevIsActive] = useState(isActive);
+  const [prevSelectedCountry, setPrevSelectedCountry] = useState<string | null>(null);
+
+  if (isActive !== prevIsActive || selectedCountry !== prevSelectedCountry) {
+    setPrevIsActive(isActive);
+    setPrevSelectedCountry(selectedCountry);
+    
+    if (isActive) {
+      setPhase(selectedCountry ? 'category-select' : 'intro');
+      setIsLoadingQuestion(false);
+      setCurrentQuestion(null);
+      setSelectedAnswer(null);
+      setIsCorrect(null);
+      setTimer(TIMER_SECONDS);
+      setXpGained(0);
+      setShowXpFloat(false);
+      setLeveledUp(false);
+      setMixedWrongCount(0);
+    }
+  }
+
+  // Reset audio and clear timers on active/country changes
   useEffect(() => {
     if (!isActive) return;
 
@@ -109,22 +135,19 @@ export default function PlayEarthOverlay({
     }
 
     if (selectedCountry) {
-      setPhase('category-select');
       onPlaySound();
-    } else {
-      setPhase('intro');
     }
-
-    setIsLoadingQuestion(false);
-    setCurrentQuestion(null);
-    setSelectedAnswer(null);
-    setIsCorrect(null);
-    setTimer(TIMER_SECONDS);
-    setXpGained(0);
-    setShowXpFloat(false);
-    setLeveledUp(false);
-    setMixedWrongCount(0);
   }, [isActive, selectedCountry, onPlaySound]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (loadTimeoutRef.current) clearTimeout(loadTimeoutRef.current);
+      if (answerTimeoutRef.current) clearTimeout(answerTimeoutRef.current);
+      if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+    };
+  }, []);
 
   const handleAnswerRef = useRef<(index: number) => void>(() => {});
 
@@ -143,7 +166,6 @@ export default function PlayEarthOverlay({
       return;
     }
 
-    setTimer(TIMER_SECONDS);
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -226,6 +248,7 @@ export default function PlayEarthOverlay({
         setXpGained(0);
         setShowXpFloat(false);
         setLeveledUp(false);
+        setTimer(TIMER_SECONDS);
         setPhase('question');
       } else {
         setPhase('summary');
@@ -300,7 +323,8 @@ export default function PlayEarthOverlay({
         if (newLevel > next.level) {
           next.level = newLevel;
           setLeveledUp(true);
-          setTimeout(() => onLevelUp(), 300);
+          if (levelUpTimeoutRef.current) clearTimeout(levelUpTimeoutRef.current);
+          levelUpTimeoutRef.current = setTimeout(() => onLevelUp(), 300);
         }
 
         onCorrectSound();
@@ -320,7 +344,8 @@ export default function PlayEarthOverlay({
     });
 
     // Auto-advance after showing result
-    setTimeout(() => {
+    if (answerTimeoutRef.current) clearTimeout(answerTimeoutRef.current);
+    answerTimeoutRef.current = setTimeout(() => {
       setPhase('result');
     }, 800);
   }, [currentQuestion, selectedAnswer, timer, selectedCountry, selectedCategory, onCorrectSound, onWrongSound, onLevelUp]);

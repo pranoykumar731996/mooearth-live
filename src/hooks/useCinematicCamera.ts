@@ -12,7 +12,6 @@ export function useCinematicCamera(
   controls: CameraControls,
   introDone: boolean
 ) {
-  const lastProcessedGoalTime = useRef<number>(Date.now());
   const processedGoalIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {

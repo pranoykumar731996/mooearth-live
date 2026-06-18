@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ReactionEvent, WorldEvent } from '@/types';
+import { ReactionEvent, WorldEvent, EventCategory } from '@/types';
 import { fetchLiveFootball } from './football';
-import { fetchLiveNews } from './news';
+import { fetchLiveNews, searchLiveNews } from './news';
 import { fetchSocialReactions } from './social';
 import { analyzeSentiment } from './sentiment';
 
@@ -61,15 +61,13 @@ export async function fetchCountryReactions(country: string, category?: string |
       );
 
       const searchTerm = category === 'worldcup' ? `${country} FIFA World Cup` : `${country} sports`;
-      const { searchLiveNews } = require('./news');
-      const newsResult = await searchLiveNews(searchTerm, category);
+      const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
 
       newsHeadlines = [...countryFootball, ...(newsResult.events || [])];
     } else {
       // technology, business, weather, entertainment, breaking
       const searchTerm = category === 'breaking' ? `${country} news` : `${country} ${category}`;
-      const { searchLiveNews } = require('./news');
-      const newsResult = await searchLiveNews(searchTerm, category);
+      const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
 
       newsHeadlines = newsResult.events || [];
     }
@@ -93,7 +91,6 @@ export async function fetchCountryReactions(country: string, category?: string |
     // If no general headlines match this country, search specifically for this country
     if (newsHeadlines.length === 0) {
       try {
-        const { searchLiveNews } = require('./news');
         const searchResult = await searchLiveNews(country);
         if (searchResult.events && searchResult.events.length > 0) {
           newsHeadlines = [...football, ...searchResult.events].filter(

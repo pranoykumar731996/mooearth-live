@@ -14,17 +14,28 @@ interface GoalOverlayProps {
   onDismiss: () => void;
 }
 
+const seededRandom = (s: number) => {
+  let value = s;
+  return () => {
+    value = (value * 1664525 + 1013904223) % 4294967296;
+    return value / 4294967296;
+  };
+};
+
 export default function GoalOverlay({ celebration, onDismiss }: GoalOverlayProps) {
   // Generate randomized particle configurations once per celebration
   const particles = useMemo(() => {
     if (!celebration) return [];
+    const seed = (celebration.player || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + (celebration.goalTime || 0);
+    const rnd = seededRandom(seed);
     return Array.from({ length: 15 }).map((_, i) => ({
       id: i,
-      x: Math.random() * 100 - 50, // Percentage offset from center
-      y: Math.random() * 100 - 50,
-      size: Math.random() * 6 + 3,
-      delay: Math.random() * 1.5,
-      duration: Math.random() * 3 + 2,
+      x: rnd() * 100 - 50, // Percentage offset from center
+      y: rnd() * 100 - 50,
+      size: rnd() * 6 + 3,
+      delay: rnd() * 1.5,
+      duration: rnd() * 3 + 2,
+      driftX: rnd() * 10 - 5,
     }));
   }, [celebration]);
 
@@ -81,7 +92,7 @@ export default function GoalOverlay({ celebration, onDismiss }: GoalOverlayProps
                 animate={{
                   opacity: [0, 0.7, 0.7, 0],
                   y: ['80vh', '20vh'],
-                  x: [`${50 + p.x}vw`, `${50 + p.x + (Math.random() * 10 - 5)}vw`],
+                  x: [`${50 + p.x}vw`, `${50 + p.x + p.driftX}vw`],
                 }}
                 transition={{
                   duration: p.duration,

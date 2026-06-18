@@ -20,6 +20,12 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
       clearTimeout(debounceRef.current);
     }
     
+    if (!value.trim()) {
+      setDebouncedQuery('');
+      setServerResults([]);
+      return;
+    }
+    
     debounceRef.current = setTimeout(() => {
       setDebouncedQuery(value);
     }, SEARCH_DEBOUNCE_MS);
@@ -35,7 +41,6 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
   useEffect(() => {
     const q = debouncedQuery.trim();
     if (!q) {
-      setServerResults([]);
       return;
     }
 

@@ -22,7 +22,9 @@ export function useGlobeControls() {
       controls.autoRotate = true;
       controls.autoRotateSpeed = GLOBE_CONFIG.autoRotateSpeed;
       controls.enableDamping = true;
-      controls.dampingFactor = 0.1;
+      controls.dampingFactor = 0.04; // Google Earth style inertia damping (smoother momentum glide)
+      controls.rotateSpeed = 0.65;    // Smoother drag rotation
+      controls.zoomSpeed = 0.85;      // Smooth zoom speed
       controls.minDistance = 120;
       controls.maxDistance = 600;
     }

@@ -310,7 +310,7 @@ function getQuestionsForTarget(
   });
 
   // 2. Procedural generation (only for country matches)
-  let proceduralMatches: EarthQuestion[] = [];
+  const proceduralMatches: EarthQuestion[] = [];
   if (matchType === 'country') {
     const catsToGen: QuizCategory[] = category === 'any'
       ? ['geography', 'trivia', 'sports', 'history']
@@ -376,7 +376,7 @@ export function getQuestionsForCountry(
   const canonicalCountry = getCanonicalCountryName(country);
 
   // Filter local static questions strictly matching this country
-  let matches = DEDUPLICATED_STATIC_QUESTIONS.filter(q => {
+  const matches = DEDUPLICATED_STATIC_QUESTIONS.filter(q => {
     if (!matchCountry(q.country, canonicalCountry)) return false;
     return category === 'trivia' || q.category === category;
   });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactionEvent, EventCategory, WorldEvent } from '@/types';
-import { CATEGORY_MAP } from '@/lib/constants';
+import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
 import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
@@ -14,6 +14,7 @@ interface CountryReactionPanelProps {
   onClose: () => void;
   onReactionLoaded?: (data: ReactionEvent) => void;
   onSelectArticle?: (news: WorldEvent) => void;
+  onSelectCountry?: (country: string | null) => void;
 }
 
 export default function CountryReactionPanel({
@@ -22,10 +23,20 @@ export default function CountryReactionPanel({
   onClose,
   onReactionLoaded,
   onSelectArticle,
+  onSelectCountry,
 }: CountryReactionPanelProps) {
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Synchronously set isLoading to true in render when country or category changes
+  const [prevCountry, setPrevCountry] = useState(country);
+  const [prevCategory, setPrevCategory] = useState(activeCategory);
+  if (country !== prevCountry || activeCategory !== prevCategory) {
+    setPrevCountry(country);
+    setPrevCategory(activeCategory);
+    setIsLoading(true);
+  }
 
   const categoryConfig = activeCategory ? CATEGORY_MAP[activeCategory] : null;
   const categoryLabel = categoryConfig ? categoryConfig.label : 'Home';
@@ -40,7 +51,6 @@ export default function CountryReactionPanel({
   }, []);
 
   useEffect(() => {
-    setIsLoading(true);
     const catParam = activeCategory ? `&category=${activeCategory}` : '';
     fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
       .then(res => res.json())
@@ -189,6 +199,25 @@ export default function CountryReactionPanel({
               posts={reactionData.socialPosts}
               onSelectArticle={onSelectArticle}
             />
+
+            {/* V2 Smart Recommendations (Feature 9) */}
+            <div className="border-t border-white/5 pt-5 space-y-3">
+              <div className="text-[10px] text-white/45 uppercase tracking-widest font-bold">Related Destinations</div>
+              <div className="grid grid-cols-2 gap-2">
+                {getCountryRecommendations(country).map(rec => (
+                  <button
+                    key={rec}
+                    onClick={() => {
+                      if (onSelectCountry) onSelectCountry(rec);
+                    }}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-left text-xs font-semibold text-white/90 cursor-pointer"
+                  >
+                    <span>{rec}</span>
+                    <span className="text-cyan-400">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="p-6 text-center text-white/50">Failed to load reactions.</div>

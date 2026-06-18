@@ -46,6 +46,13 @@ export default function EarthCastOverlay({
   const [isTypewriterDone, setIsTypewriterDone] = useState(false);
   const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [prevNarration, setPrevNarration] = useState(currentNarration);
+  if (currentNarration !== prevNarration) {
+    setPrevNarration(currentNarration);
+    setDisplayedText('');
+    setIsTypewriterDone(false);
+  }
+
   // Typewriter effect
   useEffect(() => {
     if (typewriterRef.current) {
@@ -54,15 +61,11 @@ export default function EarthCastOverlay({
     }
 
     if (!currentNarration) {
-      setDisplayedText('');
-      setIsTypewriterDone(false);
       return;
     }
 
     const fullText = currentNarration.text;
     let index = 0;
-    setDisplayedText('');
-    setIsTypewriterDone(false);
 
     typewriterRef.current = setInterval(() => {
       index++;
@@ -191,7 +194,7 @@ export default function EarthCastOverlay({
                   // Create a frequency-like distribution
                   const centerDist = Math.abs(i - 12) / 12;
                   const baseHeight = (1 - centerDist * 0.6) * audioLevel;
-                  const jitter = Math.sin(i * 1.7 + Date.now() * 0.003) * 0.15;
+                  const jitter = Math.sin(i * 1.7) * 0.15;
                   const height = Math.max(0.08, Math.min(1, baseHeight + jitter));
 
                   return (

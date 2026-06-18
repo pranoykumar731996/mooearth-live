@@ -141,10 +141,10 @@ export default function FootballMatchCenter({ event }: FootballMatchCenterProps)
             {match.goals.map((g, idx) => (
               <div key={idx} className="flex justify-between items-center px-2">
                 <span className={g.team === 'home' ? 'font-bold text-white/70' : 'opacity-0'}>
-                  ⚽ {g.player} ({g.time}')
+                  ⚽ {g.player} ({g.time}{"'"})
                 </span>
                 <span className={g.team === 'away' ? 'font-bold text-white/70 text-right' : 'opacity-0'}>
-                  {g.player} ({g.time}') ⚽
+                  {g.player} ({g.time}{"'"}) ⚽
                 </span>
               </div>
             ))}

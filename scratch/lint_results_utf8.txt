@@ -1,0 +1,603 @@
+﻿
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\api\earthcast\route.ts
+  17:12  warning  'error' is defined but never used                           @typescript-eslint/no-unused-vars
+  55:9   error    'inFlightPromise' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\api\quiz\next\route.ts
+   63:16  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+   84:16  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+   92:16  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+  154:16  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+  173:18  warning  'e' is defined but never used      @typescript-eslint/no-unused-vars
+  183:12  warning  'err' is defined but never used    @typescript-eslint/no-unused-vars
+  469:14  warning  'inner' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx
+  117:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx:117:7
+  115 |     const seen = localStorage.getItem('mooearth_guide_seen');
+  116 |     if (seen !== 'true') {
+> 117 |       setShowFirstTimeGuide(true);
+      |       ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  118 |     }
+  119 |   }, []);
+  120 |                                                                     react-hooks/set-state-in-effect
+  227:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx:227:7
+  225 |   useEffect(() => {
+  226 |     if (currentUser) {
+> 227 |       setIsAuthModalOpen(false);
+      |       ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  228 |     }
+  229 |   }, [currentUser]);
+  230 |                                                                                                             react-hooks/set-state-in-effect
+  239:42  warning  'isEventsLoading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  354:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx:354:9
+  352 |       playGoalCelebration();
+  353 |       if (activeCelebration.country) {
+> 354 |         handleSelectCountry(activeCelebration.country);
+      |         ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  355 |       }
+  356 |     }
+  357 |   }, [activeCelebration, playGoalCelebration, handleSelectCountry]);  react-hooks/set-state-in-effect
+  362:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx:362:7
+  360 |   useEffect(() => {
+  361 |     if (!selectedCountry) {
+> 362 |       setActiveReaction(null);
+      |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  363 |     }
+  364 |   }, [selectedCountry]);
+  365 |                                                                                                       react-hooks/set-state-in-effect
+  374:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\app\page.tsx:374:7
+  372 |     const firstTarget = trendingCountries[0];
+  373 |     if (firstTarget) {
+> 374 |       handleSelectCountry(firstTarget.country);
+      |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  375 |       playDeepPulse();
+  376 |     }
+  377 |                                                                 react-hooks/set-state-in-effect
+  790:46  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/no-unescaped-entities
+  878:44  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/no-unescaped-entities
+  878:62  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/no-unescaped-entities
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Celebrations\MediaViewer.tsx
+  133:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @next/next/no-img-element
+  150:39  error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Celebrations\MediaViewer.tsx:150:39
+  148 |                     animate={{ height: [8, 30, 8] }}
+  149 |                     transition={{
+> 150 |                       duration: 0.5 + Math.random() * 0.5,
+      |                                       ^^^^^^^^^^^^^ Cannot call impure function
+  151 |                       repeat: Infinity,
+  152 |                       delay: i * 0.04,
+  153 |                     }}  react-hooks/purity
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Celebrations\UploadModal.tsx
+    4:18  warning  'AnimatePresence' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   70:10  warning  'recordedChunks' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   80:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Celebrations\UploadModal.tsx:80:9
+  78 |       const exists = activeMatches.some(m => m.title === selectedMatch);
+  79 |       if (!selectedMatch || !exists) {
+> 80 |         setSelectedMatch(activeMatches[0].title);
+     |         ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  81 |       }
+  82 |     }
+  83 |   }, [matches, selectedMatch]);  react-hooks/set-state-in-effect
+  316:45  error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Celebrations\UploadModal.tsx:316:45
+  314 |                           animate={{ height: [12, 36, 12] }}
+  315 |                           transition={{
+> 316 |                             duration: 0.6 + Math.random() * 0.4,
+      |                                             ^^^^^^^^^^^^^ Cannot call impure function
+  317 |                             repeat: Infinity,
+  318 |                             delay: i * 0.05,
+  319 |                           }}                                                                                                                                                                                                                                                                                  react-hooks/purity
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\EarthCast\EarthCastOverlay.tsx
+   57:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\EarthCast\EarthCastOverlay.tsx:57:7
+  55 |
+  56 |     if (!currentNarration) {
+> 57 |       setDisplayedText('');
+     |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  58 |       setIsTypewriterDone(false);
+  59 |       return;
+  60 |     }  react-hooks/set-state-in-effect
+  194:53  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\EarthCast\EarthCastOverlay.tsx:194:53
+  192 |                   const centerDist = Math.abs(i - 12) / 12;
+  193 |                   const baseHeight = (1 - centerDist * 0.6) * audioLevel;
+> 194 |                   const jitter = Math.sin(i * 1.7 + Date.now() * 0.003) * 0.15;
+      |                                                     ^^^^^^^^^^ Cannot call impure function
+  195 |                   const height = Math.max(0.08, Math.min(1, baseHeight + jitter));
+  196 |
+  197 |                   return (                                                                                                                                       react-hooks/purity
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\FootballMatchCenter.tsx
+  144:41  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  147:39  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx
+   154:12  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   275:46  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:275:46
+  273 |   }, [emotionMap]);
+  274 |
+> 275 |   const lastInteractionTime = useRef<number>(Date.now());
+      |                                              ^^^^^^^^^^ Cannot call impure function
+  276 |   const atmosphereMeshRef = useRef<any>(null);
+  277 |   const celebrationProcessedRef = useRef<string | null>(null);
+  278 |   const cloudsMeshRef = useRef<THREE.Mesh | null>(null);                                                                                                                                                                                                                                  react-hooks/purity
+   356:10  warning  'isTextureLoading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   376:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:376:7
+  374 |
+  375 |     if (targetTexture.startsWith('data:')) {
+> 376 |       setGlobeTextureUrl(targetTexture);
+      |       ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  377 |       return;
+  378 |     }
+  379 |  react-hooks/set-state-in-effect
+   734:13  error    'startTime' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              prefer-const
+   854:13  warning  'normCountry' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   917:17  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:917:17
+  915 |     if (!labelsData || labelsData.length === 0) return [];
+  916 |
+> 917 |     const alt = currentZoomAltitudeRef.current;
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  918 |     
+  919 |     // 1. Calculate dynamic collision threshold based on zoom altitude and mobile screen size
+  920 |     const baseThreshold = isMobile ? 24 : 13;                                                                                                                                                                             react-hooks/refs
+   917:17  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:917:17
+  915 |     if (!labelsData || labelsData.length === 0) return [];
+  916 |
+> 917 |     const alt = currentZoomAltitudeRef.current;
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  918 |     
+  919 |     // 1. Calculate dynamic collision threshold based on zoom altitude and mobile screen size
+  920 |     const baseThreshold = isMobile ? 24 : 13;                                                                                                                                                                                                    react-hooks/refs
+   917:17  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:917:17
+  915 |     if (!labelsData || labelsData.length === 0) return [];
+  916 |
+> 917 |     const alt = currentZoomAltitudeRef.current;
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  918 |     
+  919 |     // 1. Calculate dynamic collision threshold based on zoom altitude and mobile screen size
+  920 |     const baseThreshold = isMobile ? 24 : 13;                                                                                                                                                                                                    react-hooks/refs
+   917:17  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GlobeScene.tsx:917:17
+  915 |     if (!labelsData || labelsData.length === 0) return [];
+  916 |
+> 917 |     const alt = currentZoomAltitudeRef.current;
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  918 |     
+  919 |     // 1. Calculate dynamic collision threshold based on zoom altitude and mobile screen size
+  920 |     const baseThreshold = isMobile ? 24 : 13;                                                                                                                                                                                                    react-hooks/refs
+  1010:6   warning  React Hook useMemo has an unnecessary dependency: 'zoomAltitude'. Either exclude it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+  1273:5   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  2046:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx
+  23:10  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:23:10
+  21 |     return Array.from({ length: 15 }).map((_, i) => ({
+  22 |       id: i,
+> 23 |       x: Math.random() * 100 - 50, // Percentage offset from center
+     |          ^^^^^^^^^^^^^ Cannot call impure function
+  24 |       y: Math.random() * 100 - 50,
+  25 |       size: Math.random() * 6 + 3,
+  26 |       delay: Math.random() * 1.5,                                                                react-hooks/purity
+  24:10  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:24:10
+  22 |       id: i,
+  23 |       x: Math.random() * 100 - 50, // Percentage offset from center
+> 24 |       y: Math.random() * 100 - 50,
+     |          ^^^^^^^^^^^^^ Cannot call impure function
+  25 |       size: Math.random() * 6 + 3,
+  26 |       delay: Math.random() * 1.5,
+  27 |       duration: Math.random() * 3 + 2,                                                                                react-hooks/purity
+  25:13  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:25:13
+  23 |       x: Math.random() * 100 - 50, // Percentage offset from center
+  24 |       y: Math.random() * 100 - 50,
+> 25 |       size: Math.random() * 6 + 3,
+     |             ^^^^^^^^^^^^^ Cannot call impure function
+  26 |       delay: Math.random() * 1.5,
+  27 |       duration: Math.random() * 3 + 2,
+  28 |     }));                                                                                 react-hooks/purity
+  26:14  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:26:14
+  24 |       y: Math.random() * 100 - 50,
+  25 |       size: Math.random() * 6 + 3,
+> 26 |       delay: Math.random() * 1.5,
+     |              ^^^^^^^^^^^^^ Cannot call impure function
+  27 |       duration: Math.random() * 3 + 2,
+  28 |     }));
+  29 |   }, [celebration]);                                                                                                                               react-hooks/purity
+  27:17  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:27:17
+  25 |       size: Math.random() * 6 + 3,
+  26 |       delay: Math.random() * 1.5,
+> 27 |       duration: Math.random() * 3 + 2,
+     |                 ^^^^^^^^^^^^^ Cannot call impure function
+  28 |     }));
+  29 |   }, [celebration]);
+  30 |                                                                                                                                                               react-hooks/purity
+  84:55  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\GoalOverlay.tsx:84:55
+  82 |                   opacity: [0, 0.7, 0.7, 0],
+  83 |                   y: ['80vh', '20vh'],
+> 84 |                   x: [`${50 + p.x}vw`, `${50 + p.x + (Math.random() * 10 - 5)}vw`],
+     |                                                       ^^^^^^^^^^^^^ Cannot call impure function
+  85 |                 }}
+  86 |                 transition={{
+  87 |                   duration: p.duration,  react-hooks/purity
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\PlayEarthOverlay.tsx
+   52:12  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   70:12  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   94:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\PlayEarthOverlay.tsx:94:5
+  92 |   // Load game state when username changes
+  93 |   useEffect(() => {
+> 94 |     setGameState(loadGameState(username));
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  95 |   }, [username]);
+  96 |
+  97 |   // Reset quiz state and manage phase transitions on active/country changes  react-hooks/set-state-in-effect
+  112:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\PlayEarthOverlay.tsx:112:7
+  110 |
+  111 |     if (selectedCountry) {
+> 112 |       setPhase('category-select');
+      |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  113 |       onPlaySound();
+  114 |     } else {
+  115 |       setPhase('intro');                                                                            react-hooks/set-state-in-effect
+  146:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Globe\PlayEarthOverlay.tsx:146:5
+  144 |     }
+  145 |
+> 146 |     setTimer(TIMER_SECONDS);
+      |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  147 |     if (timerRef.current) {
+  148 |       clearInterval(timerRef.current);
+  149 |     }                                                                                           react-hooks/set-state-in-effect
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\AuthModal.tsx
+  42:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\AuthModal.tsx:42:5
+  40 |   useEffect(() => {
+  41 |     console.log('[AuthModal] Diagnostic: Modal isOpen changed to:', isOpen);
+> 42 |     setIsLoading(false);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  43 |     setError(null);
+  44 |     setEmail('');
+  45 |     setPassword('');  react-hooks/set-state-in-effect
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\LiveFeed.tsx
+   72:5    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\LiveFeed.tsx:72:5
+  70 |
+  71 |   useEffect(() => {
+> 72 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  73 |   }, []);
+  74 |
+  75 |   const sortedEvents = useMemo(() => {  react-hooks/set-state-in-effect
+  316:116  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react/no-unescaped-entities
+  385:9    warning  'totalCards' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\WorldCupSchedule.tsx
+   91:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Layout\WorldCupSchedule.tsx:91:5
+  89 |   // Client-side clock ticks every second for real-time updates
+  90 |   useEffect(() => {
+> 91 |     setMounted(true);
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  92 |     const iv = setInterval(() => setNow(new Date()), 1000);
+  93 |     return () => clearInterval(iv);
+  94 |   }, []);  react-hooks/set-state-in-effect
+  450:83  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  react/no-unescaped-entities
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\ArticleViewer.tsx
+   83:12  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   97:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\ArticleViewer.tsx:97:5
+   95 |   // Synchronise activeEvent with the prop event initially
+   96 |   useEffect(() => {
+>  97 |     setActiveEvent(event);
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+   98 |   }, [event]);
+   99 |
+  100 |   // Load article details (with local caching check)  react-hooks/set-state-in-effect
+  103:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\ArticleViewer.tsx:103:7
+  101 |   useEffect(() => {
+  102 |     if (!activeEvent) {
+> 103 |       setArticleDetails(null);
+      |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  104 |       return;
+  105 |     }
+  106 |                                                                           react-hooks/set-state-in-effect
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\CountryReactionPanel.tsx
+   4:18  warning  'AnimatePresence' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  45:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\CountryReactionPanel.tsx:45:5
+  43 |
+  44 |   useEffect(() => {
+> 45 |     setIsLoading(true);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  46 |     const catParam = activeCategory ? `&category=${activeCategory}` : '';
+  47 |     fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
+  48 |       .then(res => res.json())  react-hooks/set-state-in-effect
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\Reactions\ReactionFeed.tsx
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\components\UI\StarField.tsx
+  8:10  warning  'motion' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\data\questions\index.ts
+  294:10  warning  'getQuestionsForTarget' is defined but never used             @typescript-eslint/no-unused-vars
+  313:7   error    'proceduralMatches' is never reassigned. Use 'const' instead  prefer-const
+  342:10  warning  'getBestRepeatQuestion' is defined but never used             @typescript-eslint/no-unused-vars
+  379:7   error    'matches' is never reassigned. Use 'const' instead            prefer-const
+  442:40  warning  'country' is defined but never used                           @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\data\questions\quizDb.ts
+  37:12  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\data\worldCupSchedule.ts
+   30:7  warning  'V' is assigned a value but never used        @typescript-eslint/no-unused-vars
+   67:7  warning  'FP' is assigned a value but never used       @typescript-eslint/no-unused-vars
+   74:7  warning  'KO' is assigned a value but never used       @typescript-eslint/no-unused-vars
+   90:7  warning  'GV' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  109:7  warning  'RESULTS' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useCinematicCamera.ts
+  15:9   warning  'lastProcessedGoalTime' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  15:48  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useCinematicCamera.ts:15:48
+  13 |   introDone: boolean
+  14 | ) {
+> 15 |   const lastProcessedGoalTime = useRef<number>(Date.now());
+     |                                                ^^^^^^^^^^ Cannot call impure function
+  16 |   const processedGoalIds = useRef<Set<string>>(new Set());
+  17 |
+  18 |   useEffect(() => {  react-hooks/purity
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useEarthCast.ts
+    1:1   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  443:6   warning  React Hook useCallback has a missing dependency: 'playTensionDrone'. Either include it or remove the dependency array. If 'playTensionDrone' changes too often, find the parent component that defines it and wrap that definition in useCallback                          react-hooks/exhaustive-deps
+  525:62  warning  The ref value 'autoModeTimer.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'autoModeTimer.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useGlobeControls.ts
+  11:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useSearch.ts
+  38:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useSearch.ts:38:7
+  36 |     const q = debouncedQuery.trim();
+  37 |     if (!q) {
+> 38 |       setServerResults([]);
+     |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |       return;
+  40 |     }
+  41 |  react-hooks/set-state-in-effect
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\hooks\useSoundDesign.ts
+  121:20  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  123:16  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  191:20  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  291:20  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  293:16  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  358:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  390:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  424:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  466:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  515:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  571:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  628:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  655:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  696:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  723:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+  748:14  warning  'e' is defined but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\services\article.ts
+  1:10  warning  'WorldEvent' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\services\football.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\services\news.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\services\reactions.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\prano\OneDrive\Desktop\new project workspace\src\services\social.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+Γ£û 104 problems (44 errors, 60 warnings)
+  4 errors and 8 warnings potentially fixable with the `--fix` option.
+
