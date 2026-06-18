@@ -25,7 +25,7 @@ export function useEventFilter({
     if (activeCategory) {
       filtered = filtered.filter((e) => {
         if (activeCategory === 'worldcup') {
-          return e.category === 'worldcup' || e.category === 'football' || e.category === 'sports';
+          return e.category === 'worldcup' || e.category === 'football';
         }
         if (activeCategory === 'sports' || activeCategory === 'football') {
           return e.category === 'sports' || e.category === 'football' || e.category === 'worldcup';

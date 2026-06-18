@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "gen-india-curr-1-5a9564ad",
+    "country": "India",
+    "category": "current-affairs",
+    "difficulty": "easy",
+    "question": "According to recent demographic reports, what is the approximate population of India?",
+    "choices": [
+      "26 million",
+      "1.4 billion",
+      "29 million",
+      "331 million"
+    ],
+    "correctIndex": 1,
+    "funFact": "India has a population of approximately 1.4 billion."
+  }
+]

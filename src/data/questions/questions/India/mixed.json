@@ -103,5 +103,20 @@
     ],
     "correctIndex": 3,
     "funFact": "Diwali is the Festival of Lights, symbolizing the spiritual victory of light over darkness and good over evil."
+  },
+  {
+    "id": "gen-india-curr-1-5a9564ad",
+    "country": "India",
+    "category": "current-affairs",
+    "difficulty": "easy",
+    "question": "According to recent demographic reports, what is the approximate population of India?",
+    "choices": [
+      "26 million",
+      "1.4 billion",
+      "29 million",
+      "331 million"
+    ],
+    "correctIndex": 1,
+    "funFact": "India has a population of approximately 1.4 billion."
   }
 ]

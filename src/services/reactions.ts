@@ -61,13 +61,13 @@ export async function fetchCountryReactions(country: string, category?: string |
       );
 
       const searchTerm = category === 'worldcup' ? `${country} FIFA World Cup` : `${country} sports`;
-      const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
+      const newsResult = await searchLiveNews(searchTerm, category as EventCategory, country);
 
       newsHeadlines = [...countryFootball, ...(newsResult.events || [])];
     } else {
       // technology, business, weather, entertainment, breaking
       const searchTerm = category === 'breaking' ? `${country} news` : `${country} ${category}`;
-      const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
+      const newsResult = await searchLiveNews(searchTerm, category as EventCategory, country);
 
       newsHeadlines = newsResult.events || [];
     }
@@ -91,7 +91,7 @@ export async function fetchCountryReactions(country: string, category?: string |
     // If no general headlines match this country, search specifically for this country
     if (newsHeadlines.length === 0) {
       try {
-        const searchResult = await searchLiveNews(country);
+        const searchResult = await searchLiveNews(country, null, country);
         if (searchResult.events && searchResult.events.length > 0) {
           newsHeadlines = [...football, ...searchResult.events].filter(
             (e) =>

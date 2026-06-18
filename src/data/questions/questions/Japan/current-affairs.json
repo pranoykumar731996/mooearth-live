@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "gen-japan-curr-3-496dcf91",
+    "country": "Japan",
+    "category": "current-affairs",
+    "difficulty": "easy",
+    "question": "Which city currently serves as the official capital and modern administrative center of Japan?",
+    "choices": [
+      "Tbilisi",
+      "Luxembourg City",
+      "Yerevan",
+      "Tokyo"
+    ],
+    "correctIndex": 3,
+    "funFact": "Tokyo is the political hub and capital city of Japan."
+  }
+]

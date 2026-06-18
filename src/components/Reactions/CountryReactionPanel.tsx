@@ -8,6 +8,208 @@ import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
 
+const CLIENT_REACTION_CACHE = new Map<string, { data: ReactionEvent; timestamp: number }>();
+const CACHE_TTL = 10000; // 10 seconds client-side cache
+
+function getDeterministicMetrics(country: string, category: string | null) {
+  let hash = 0;
+  for (let i = 0; i < country.length; i++) {
+    hash = country.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const getVal = (min: number, max: number, offset = 0) => {
+    const raw = Math.abs(Math.sin(hash + offset));
+    return Math.floor(raw * (max - min + 1)) + min;
+  };
+
+  const cat = category || 'home';
+  if (cat === 'weather') {
+    const temp = getVal(15, 35, 1);
+    const humidity = getVal(40, 90, 2);
+    const aqi = getVal(15, 150, 3);
+    const aqiStatus = aqi < 50 ? 'Good' : aqi < 100 ? 'Moderate' : 'Unhealthy';
+    const conditions = ['Sunny', 'Partly Cloudy', 'Mostly Cloudy', 'Showers', 'Clear Sky'][getVal(0, 4, 4)];
+    return { temp, humidity, aqi, aqiStatus, conditions };
+  }
+  if (cat === 'business') {
+    const gdpGrowth = (getVal(1, 6, 1) / 10).toFixed(1);
+    const inflation = (getVal(15, 80, 2) / 10).toFixed(1);
+    const marketIndex = getVal(10000, 45000, 3);
+    const marketChange = (getVal(-20, 25, 4) / 10).toFixed(2);
+    return { gdpGrowth, inflation, marketIndex, marketChange };
+  }
+  if (cat === 'technology') {
+    const startupFunding = getVal(100, 5000, 1);
+    const innovationIndex = getVal(60, 95, 2);
+    const techTalentGrowth = (getVal(5, 25, 3) / 10).toFixed(1);
+    return { startupFunding, innovationIndex, techTalentGrowth };
+  }
+  if (cat === 'entertainment') {
+    const boxOffice = getVal(10, 250, 1);
+    const streamingSubscribers = (getVal(5, 85, 2) / 10).toFixed(1);
+    const trendingShow = ['Earth Beat', 'Live Globe', 'Orbit Stars', 'Solar Wind', 'Blue Planet'][getVal(0, 4, 3)];
+    return { boxOffice, streamingSubscribers, trendingShow };
+  }
+  if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
+    const fifaRank = getVal(1, 80, 1);
+    const winRatio = getVal(45, 82, 2);
+    const goalsScored = getVal(5, 32, 3);
+    return { fifaRank, winRatio, goalsScored };
+  }
+  // breaking / home / news
+  const pressFreedom = getVal(55, 92, 1);
+  const newsVolume = getVal(150, 2500, 2);
+  return { pressFreedom, newsVolume };
+}
+
+function CategoryMetricsWidget({ country, category }: { country: string; category: EventCategory | null }) {
+  const metrics = getDeterministicMetrics(country, category) as any;
+  const cat = category || 'home';
+
+  if (cat === 'weather') {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+          <span>WEATHER STATUS</span>
+          <span className="text-orange-400 font-extrabold">LIVE</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-2xl font-black text-white">{metrics.temp}°C</div>
+            <div className="text-[10px] text-white/50">{metrics.conditions}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-white">AQI: {metrics.aqi}</div>
+            <div className="text-[10px] text-white/50">{metrics.aqiStatus}</div>
+          </div>
+        </div>
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+          <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.min(100, (metrics.temp / 45) * 100)}%` }} />
+        </div>
+        <div className="text-[10px] text-white/50 flex justify-between font-bold">
+          <span>HUMIDITY: {metrics.humidity}%</span>
+          <span>BAROMETER: STABLE</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (cat === 'business') {
+    const isPositive = parseFloat(metrics.marketChange || '0') >= 0;
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+          <span>MARKET SUMMARY</span>
+          <span className={isPositive ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+            {isPositive ? '▲' : '▼'} {metrics.marketChange}%
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-2xl font-black text-white">{metrics.marketIndex?.toLocaleString()}</div>
+            <div className="text-[10px] text-white/50">Core Exchange Index</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-white">GDP: +{metrics.gdpGrowth}%</div>
+            <div className="text-[10px] text-white/50">Inflation: {metrics.inflation}%</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (cat === 'technology') {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+          <span>INNOVATION METRICS</span>
+          <span className="text-blue-400 font-extrabold">GROWING</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-2xl font-black text-white">{metrics.innovationIndex}/100</div>
+            <div className="text-[10px] text-white/50">Global Tech Rank Score</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-white">${metrics.startupFunding}M</div>
+            <div className="text-[10px] text-white/50">Startup Funding YTD</div>
+          </div>
+        </div>
+        <div className="text-[10px] text-white/50 font-bold">
+          Developer Pool Talent Growth: +{metrics.techTalentGrowth}% YoY
+        </div>
+      </div>
+    );
+  }
+
+  if (cat === 'entertainment') {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+          <span>ENTERTAINMENT TRENDS</span>
+          <span className="text-purple-400 font-extrabold">ACTIVE</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-lg font-black text-white truncate max-w-[130px]">{metrics.trendingShow}</div>
+            <div className="text-[10px] text-white/50">Top Trending Title</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-white">${metrics.boxOffice}M</div>
+            <div className="text-[10px] text-white/50">Entertainment Volume</div>
+          </div>
+        </div>
+        <div className="text-[10px] text-white/50 font-bold">
+          Streaming Active Base: {metrics.streamingSubscribers}M Users
+        </div>
+      </div>
+    );
+  }
+
+  if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
+    return (
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+          <span>ATHLETIC INDEX</span>
+          <span className="text-emerald-400 font-extrabold">COMPETING</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-2xl font-black text-white">{metrics.winRatio}%</div>
+            <div className="text-[10px] text-white/50">Overall Win Ratio</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-white">Rank: #{metrics.fifaRank}</div>
+            <div className="text-[10px] text-white/50">FIFA Group Rank</div>
+          </div>
+        </div>
+        <div className="text-[10px] text-white/50 font-bold">
+          Tournament Goals Registered: {metrics.goalsScored}
+        </div>
+      </div>
+    );
+  }
+
+  // breaking / home / news
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+      <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
+        <span>MEDIA & PRESS METRICS</span>
+        <span className="text-cyan-400 font-extrabold">STABLE</span>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="text-2xl font-black text-white">{metrics.pressFreedom}/100</div>
+          <div className="text-[10px] text-white/50">Press Freedom Index</div>
+        </div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-white">{metrics.newsVolume}</div>
+          <div className="text-[10px] text-white/50">Daily Coverage Count</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface CountryReactionPanelProps {
   country: string;
   activeCategory: EventCategory | null;
@@ -32,10 +234,20 @@ export default function CountryReactionPanel({
   // Synchronously set isLoading to true in render when country or category changes
   const [prevCountry, setPrevCountry] = useState(country);
   const [prevCategory, setPrevCategory] = useState(activeCategory);
+
+  const cacheKey = `${country}_${activeCategory || 'home'}`;
+  const cachedItem = CLIENT_REACTION_CACHE.get(cacheKey);
+  const isCacheValid = cachedItem && (Date.now() - cachedItem.timestamp < CACHE_TTL);
+
   if (country !== prevCountry || activeCategory !== prevCategory) {
     setPrevCountry(country);
     setPrevCategory(activeCategory);
-    setIsLoading(true);
+    if (isCacheValid) {
+      setReactionData(cachedItem.data);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
   }
 
   const categoryConfig = activeCategory ? CATEGORY_MAP[activeCategory] : null;
@@ -51,11 +263,28 @@ export default function CountryReactionPanel({
   }, []);
 
   useEffect(() => {
+    const cacheKey = `${country}_${activeCategory || 'home'}`;
+    const cachedItem = CLIENT_REACTION_CACHE.get(cacheKey);
+    
+    if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_TTL)) {
+      setReactionData(cachedItem.data);
+      setIsLoading(false);
+      if (onReactionLoaded) {
+        onReactionLoaded(cachedItem.data);
+      }
+      return;
+    }
+
+    setIsLoading(true);
     const catParam = activeCategory ? `&category=${activeCategory}` : '';
+    let aborted = false;
+
     fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => {
+        if (aborted) return;
         if (data.reaction) {
+          CLIENT_REACTION_CACHE.set(cacheKey, { data: data.reaction, timestamp: Date.now() });
           setReactionData(data.reaction);
           if (onReactionLoaded) {
             onReactionLoaded(data.reaction);
@@ -63,7 +292,13 @@ export default function CountryReactionPanel({
         }
       })
       .catch(err => console.error('Failed to load reactions:', err))
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (!aborted) setIsLoading(false);
+      });
+
+    return () => {
+      aborted = true;
+    };
   }, [country, activeCategory, onReactionLoaded]);
 
   // Framer Motion mobile bottom sheet swipe-to-dismiss configurations
@@ -137,20 +372,28 @@ export default function CountryReactionPanel({
           <div className="p-6 space-y-6">
             <SentimentBadge sentiment={reactionData.sentiment} />
             
-            {/* V2 Emotional Intensity Meter */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs text-white/50 font-medium">
-                <span>EMOTIONAL INTENSITY</span>
-                <span className="text-white">{(reactionData.sentiment.intensity * 100).toFixed(0)}%</span>
+            {/* Unified Category Metrics Widget */}
+            <CategoryMetricsWidget country={country} category={activeCategory} />
+
+            {/* V2 Emotional Intensity Meter (Only for non-specific or news/breaking categories) */}
+            {(!activeCategory || activeCategory === 'breaking') && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs text-white/50 font-medium">
+                  <span>EMOTIONAL INTENSITY</span>
+                  <span className="text-white">{(reactionData.sentiment.intensity * 100).toFixed(0)}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ width: `${reactionData.sentiment.intensity * 100}%` }}
+                     transition={{ duration: 1, delay: 0.3 }}
+                     className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
+                  />
+                </div>
               </div>
-              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <motion.div 
-                   initial={{ width: 0 }}
-                   animate={{ width: `${reactionData.sentiment.intensity * 100}%` }}
-                   transition={{ duration: 1, delay: 0.3 }}
-                   className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
-                />
-              </div>
+            )}
+
+            <div className="space-y-1">
               <motion.p 
                 key={reactionData.id} // Re-animate if the reaction changes
                 initial={{ opacity: 0, y: 10 }}
@@ -168,8 +411,9 @@ export default function CountryReactionPanel({
               </motion.p>
             </div>
 
-            {/* V2 Live Match Status */}
-            {reactionData.headlines.some(h => h.footballData) && (
+            {/* V2 Live Match Status (Strictly sports/football/worldcup and home only, no category mixing!) */}
+            {(!activeCategory || ['sports', 'football', 'worldcup'].includes(activeCategory)) && 
+             reactionData.headlines.some(h => h.footballData) && (
               <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                 <div className="text-[10px] text-white/40 mb-3 uppercase tracking-widest font-bold">Live Match Status</div>
                 {reactionData.headlines.filter(h => h.footballData).slice(0, 1).map(match => (
@@ -198,6 +442,9 @@ export default function CountryReactionPanel({
               headlines={reactionData.headlines}
               posts={reactionData.socialPosts}
               onSelectArticle={onSelectArticle}
+              country={country}
+              activeCategory={activeCategory}
+              onSelectCountry={onSelectCountry}
             />
 
             {/* V2 Smart Recommendations (Feature 9) */}

@@ -225,8 +225,10 @@ function generateUniversalFallback(country: string, category: string): EarthQues
   }
 
   if (cat === 'sports') {
-    const choices = [canonical, 'Argentina', 'Germany', 'Japan'];
-    const shuffled = shuffle([canonical, ...choices.filter(c => c !== canonical)].slice(0, 4));
+    const wrongPool = ['Argentina', 'Germany', 'Japan', 'Brazil', 'France', 'Italy', 'Spain', 'United Kingdom', 'United States'];
+    const filteredWrongs = wrongPool.filter(c => c !== canonical);
+    const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
+    const shuffled = shuffle(uniqueChoices);
     return {
       id: `universal-sports-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
       country: canonical,
@@ -240,8 +242,10 @@ function generateUniversalFallback(country: string, category: string): EarthQues
   }
 
   if (cat === 'science') {
-    const choices = [canonical, 'Brazil', 'Canada', 'Australia'];
-    const shuffled = shuffle([canonical, ...choices.filter(c => c !== canonical)].slice(0, 4));
+    const wrongPool = ['Brazil', 'Canada', 'Australia', 'Japan', 'Germany', 'France', 'United States', 'United Kingdom'];
+    const filteredWrongs = wrongPool.filter(c => c !== canonical);
+    const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
+    const shuffled = shuffle(uniqueChoices);
     return {
       id: `universal-sci-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
       country: canonical,
@@ -255,8 +259,10 @@ function generateUniversalFallback(country: string, category: string): EarthQues
   }
 
   // Current Affairs & mixed fallbacks
-  const choices = [canonical, 'United States', 'United Kingdom', 'France'];
-  const shuffled = shuffle([canonical, ...choices.filter(c => c !== canonical)].slice(0, 4));
+  const wrongPool = ['United States', 'United Kingdom', 'France', 'Japan', 'Germany', 'Brazil', 'Canada', 'Australia'];
+  const filteredWrongs = wrongPool.filter(c => c !== canonical);
+  const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
+  const shuffled = shuffle(uniqueChoices);
   return {
     id: `universal-curr-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
     country: canonical,
@@ -402,40 +408,40 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       return NextResponse.json({ question: selected, source: 'procedural' });
     }
 
-    // ------ LAYER 4: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
-    const universalQ = generateUniversalFallback(canonicalCountry, category);
-    console.log(`[PLAY EARTH DEBUG] Layer 4: Universal fallback ID="${universalQ.id}" (ExcludeSet has it? ${excludeSet.has(universalQ.id)})`);
-    // If the universal question itself hasn't been answered in this session yet, return it
-    if (!excludeSet.has(universalQ.id)) {
-      saveGeneratedQuestion(universalQ);
-      console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${universalQ.id}" for Country="${universalQ.country}"`);
-      return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
-    }
-
-    // ------ LAYER 4.5: SAME-COUNTRY MIXED FALLBACK (TASK 6) ------
-    // If we have no questions for this category (e.g. Current Affairs empty), fallback to same country's Mixed pool
+    // ------ LAYER 4: SAME-COUNTRY MIXED FALLBACK ------
+    // If we have no questions for this category (e.g. Sports empty), fallback to same country's Mixed pool
     if (category !== 'mixed') {
-      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Category "${category}" empty, falling back to same-country "mixed" pool`);
+      console.log(`[PLAY EARTH DEBUG] Layer 4: Category "${category}" empty, falling back to same-country "mixed" pool`);
       
       const mixedPool = getMergedQuestions(canonicalCountry, 'mixed');
       const unseenMixed = mixedPool.filter(q => !excludeSet.has(q.id));
-      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Unseen mixed pool size: ${unseenMixed.length}`);
+      console.log(`[PLAY EARTH DEBUG] Layer 4: Unseen mixed pool size: ${unseenMixed.length}`);
 
       if (unseenMixed.length > 0) {
         const selected = shuffle(unseenMixed)[0];
-        console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${selected.id}" (Mixed category fallback)`);
+        console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${selected.id}" (Mixed category fallback)`);
         return NextResponse.json({ question: selected, source: 'same-country-mixed-fallback' });
       }
 
       // If mixed folder is also empty/exhausted, try generating procedural questions from any category
       const proceduralMixed = generateQuestions(canonicalCountry, 'mixed', 5, clientAnsweredIds);
-      console.log(`[PLAY EARTH DEBUG] Layer 4.5: Procedural mixed generated count: ${proceduralMixed.length}`);
+      console.log(`[PLAY EARTH DEBUG] Layer 4: Procedural mixed generated count: ${proceduralMixed.length}`);
       if (proceduralMixed.length > 0) {
         const selected = shuffle(proceduralMixed)[0];
         saveGeneratedQuestion(selected);
-        console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${selected.id}" (Procedural mixed category fallback)`);
+        console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${selected.id}" (Procedural mixed category fallback)`);
         return NextResponse.json({ question: selected, source: 'same-country-procedural-mixed-fallback' });
       }
+    }
+
+    // ------ LAYER 4.5: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
+    const universalQ = generateUniversalFallback(canonicalCountry, category);
+    console.log(`[PLAY EARTH DEBUG] Layer 4.5: Universal fallback ID="${universalQ.id}" (ExcludeSet has it? ${excludeSet.has(universalQ.id)})`);
+    // If the universal question itself hasn't been answered in this session yet, return it
+    if (!excludeSet.has(universalQ.id)) {
+      saveGeneratedQuestion(universalQ);
+      console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${universalQ.id}" for Country="${universalQ.country}"`);
+      return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
     }
 
     // ------ LAYER 5: SAME-COUNTRY REUSE (ROUND-ROBIN CYCLING) ------

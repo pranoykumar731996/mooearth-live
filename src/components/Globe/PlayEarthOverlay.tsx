@@ -248,7 +248,9 @@ export default function PlayEarthOverlay({
         setXpGained(0);
         setShowXpFloat(false);
         setLeveledUp(false);
-        setTimer(TIMER_SECONDS);
+        // Dynamic timer based on difficulty (Task 6 timer validation: 10s, 15s, 20s)
+        const duration = q.difficulty === 'easy' ? 20 : q.difficulty === 'hard' ? 10 : 15;
+        setTimer(duration);
         setPhase('question');
       } else {
         setPhase('summary');
@@ -311,8 +313,9 @@ export default function PlayEarthOverlay({
         // Calculate XP
         let xp = XP_REWARDS[currentQuestion.difficulty] || 100;
         if (next.streak >= 3) xp = Math.floor(xp * STREAK_BONUS_MULTIPLIER);
-        // Time bonus: faster answers get bonus
-        const timeBonus = Math.floor((timer / TIMER_SECONDS) * 50);
+        // Time bonus: faster answers get bonus (adjusted for dynamic question duration)
+        const qDuration = currentQuestion.difficulty === 'easy' ? 20 : currentQuestion.difficulty === 'hard' ? 10 : 15;
+        const timeBonus = Math.floor((timer / qDuration) * 50);
         xp += timeBonus;
         next.xp += xp;
         setXpGained(xp);
@@ -387,6 +390,13 @@ export default function PlayEarthOverlay({
 
   return (
     <div className="fixed inset-0 z-[45] pointer-events-none" id="play-earth-overlay">
+      {/* Click-blocking backdrop when quiz is active (phase !== 'intro') (Task 8 Mobile Audit) */}
+      {phase !== 'intro' && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-[1.5px] pointer-events-auto" onClick={(e) => {
+          e.stopPropagation();
+        }} />
+      )}
+
       {/* Top HUD Bar — Always visible */}
       <motion.div
         initial={{ opacity: 0, y: -30 }}

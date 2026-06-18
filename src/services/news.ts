@@ -3,9 +3,20 @@ import { WorldEvent, EventCategory } from '@/types';
 import { demoEvents } from '@/data/events';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 
-function assignCoordinates(title: string, content: string) {
+function assignCoordinates(title: string, content: string, countryHint?: string) {
   const text = `${title} ${content}`.toLowerCase();
   
+  // If countryHint is provided, prioritize resolving it first to prevent cross-country leakage
+  if (countryHint) {
+    const hintLower = countryHint.toLowerCase().trim();
+    for (const [key, data] of Object.entries(COUNTRY_COORDINATES)) {
+      const k = key.toLowerCase();
+      if (k === hintLower || hintLower.includes(k) || k.includes(hintLower)) {
+        return data;
+      }
+    }
+  }
+
   for (const [key, data] of Object.entries(COUNTRY_COORDINATES)) {
     if (text.includes(key.toLowerCase())) {
       return data;
@@ -284,7 +295,7 @@ export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: b
   }
 }
 
-export async function searchLiveNews(query: string, category?: EventCategory | null): Promise<{ events: WorldEvent[]; active: boolean }> {
+export async function searchLiveNews(query: string, category?: EventCategory | null, countryHint?: string): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
     const response = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`, {
       next: { revalidate: 60 }
@@ -304,7 +315,7 @@ export async function searchLiveNews(query: string, category?: EventCategory | n
     }
 
     const events = articles.map((article, index) => {
-      const geo = assignCoordinates(article.title, article.summary);
+      const geo = assignCoordinates(article.title, article.summary, countryHint);
       
       return {
         id: `news-search-${Date.now()}-${index}`,

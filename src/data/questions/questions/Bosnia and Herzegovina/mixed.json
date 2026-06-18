@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-bosniaandherzegovina-geo-4-1a75a22b",
+    "country": "Bosnia and Herzegovina",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the primary official language of Bosnia and Herzegovina?",
+    "choices": [
+      "Bosnian, Croatian & Serbian",
+      "Dutch",
+      "Arabic",
+      "Luxembourgish, French & German"
+    ],
+    "correctIndex": 0,
+    "funFact": "The primary official language of Bosnia and Herzegovina is Bosnian, Croatian & Serbian."
+  }
+]

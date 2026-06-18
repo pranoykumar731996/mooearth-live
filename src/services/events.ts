@@ -1,6 +1,7 @@
 import { WorldEvent, EventCategory } from '@/types';
 import { fetchLiveNews, searchLiveNews } from './news';
 import { fetchLiveFootball } from './football';
+import { COUNTRY_COORDINATES } from '@/lib/constants';
 
 export interface EventsWithStatus {
   events: WorldEvent[];
@@ -8,6 +9,16 @@ export interface EventsWithStatus {
     newsActive: boolean;
     footballActive: boolean;
   };
+}
+
+function detectCountry(text: string): string | undefined {
+  const t = text.toLowerCase().trim();
+  for (const key of Object.keys(COUNTRY_COORDINATES)) {
+    if (t.includes(key.toLowerCase())) {
+      return COUNTRY_COORDINATES[key].country;
+    }
+  }
+  return undefined;
 }
 
 export async function fetchAllEvents(): Promise<EventsWithStatus> {
@@ -36,10 +47,12 @@ export async function searchAllEvents(query: string, category?: string | null): 
   let newsActive = false;
   let footballActive = false;
 
+  const detectedCountry = detectCountry(query);
+
   if (!category || category === 'home') {
     // Search everything
     const [newsResult, footballResult] = await Promise.all([
-      searchLiveNews(query),
+      searchLiveNews(query, null, detectedCountry),
       fetchLiveFootball()
     ]);
     newsEvents = newsResult.events;
@@ -49,7 +62,7 @@ export async function searchAllEvents(query: string, category?: string | null): 
   } else if (category === 'sports' || category === 'football' || category === 'worldcup') {
     const searchTerm = category === 'worldcup' ? `${query} FIFA World Cup` : `${query} sports`;
     const [newsResult, footballResult] = await Promise.all([
-      searchLiveNews(searchTerm, category as EventCategory),
+      searchLiveNews(searchTerm, category as EventCategory, detectedCountry),
       fetchLiveFootball()
     ]);
     newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
@@ -59,7 +72,7 @@ export async function searchAllEvents(query: string, category?: string | null): 
   } else {
     // technology, business, weather, entertainment, breaking
     const searchTerm = category === 'breaking' ? `${query} news` : `${query} ${category}`;
-    const newsResult = await searchLiveNews(searchTerm, category as EventCategory);
+    const newsResult = await searchLiveNews(searchTerm, category as EventCategory, detectedCountry);
     newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
     newsActive = newsResult.active;
   }

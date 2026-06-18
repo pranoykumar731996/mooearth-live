@@ -247,6 +247,15 @@
     "filesCount": 6
   },
   {
+    "country": "Libya",
+    "categories": {
+      "geography": 1,
+      "mixed": 1
+    },
+    "totalQuestions": 1,
+    "filesCount": 2
+  },
+  {
     "country": "Mexico",
     "categories": {
       "current-affairs": 0,

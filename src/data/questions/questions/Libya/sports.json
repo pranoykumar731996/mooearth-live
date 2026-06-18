@@ -1,20 +1,5 @@
 [
   {
-    "id": "gen-libya-geo-2-854u",
-    "country": "Libya",
-    "category": "geography",
-    "difficulty": "easy",
-    "question": "On which continent is Libya located?",
-    "choices": [
-      "South America",
-      "Oceania",
-      "Africa",
-      "North America"
-    ],
-    "correctIndex": 2,
-    "funFact": "Libya is located in the continent of Africa."
-  },
-  {
     "id": "gen-libya-sports-1-b52f299a",
     "country": "Libya",
     "category": "sports",

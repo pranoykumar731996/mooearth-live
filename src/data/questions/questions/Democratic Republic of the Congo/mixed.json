@@ -1,0 +1,17 @@
+[
+  {
+    "id": "universal-geo-democraticrepublicofthecongo",
+    "country": "Democratic Republic of the Congo",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which continent is the nation of Democratic Republic of the Congo located?",
+    "choices": [
+      "Africa",
+      "Americas",
+      "Europe",
+      "Asia"
+    ],
+    "correctIndex": 0,
+    "funFact": "Democratic Republic of the Congo is situated in Africa. It offers a unique geographical landscape to explore."
+  }
+]

@@ -167,15 +167,22 @@ export const COUNTRY_MAPPINGS: Record<string, string> = {
   'persia': 'Iran',
   'siam': 'Thailand',
   'holland': 'Netherlands',
+  'bosnia and herz.': 'Bosnia and Herzegovina',
+  'dem. rep. congo': 'Democratic Republic of the Congo',
+  'central african rep.': 'Central African Republic',
+  'dominican rep.': 'Dominican Republic',
+  'solomon is.': 'Solomon Islands',
+  's. sudan': 'South Sudan',
+  'eq. guinea': 'Equatorial Guinea',
 };
 
 export function getCanonicalCountryName(country: string): string {
-  const normalized = country.trim().toLowerCase();
+  const normalized = country.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
   
   if (COUNTRY_MAPPINGS[normalized]) return COUNTRY_MAPPINGS[normalized];
 
   const metaMatch = Object.keys(COUNTRY_METADATA).find(
-    k => k.toLowerCase() === normalized
+    k => k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() === normalized
   );
   if (metaMatch) return metaMatch;
 

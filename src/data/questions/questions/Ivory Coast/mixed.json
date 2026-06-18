@@ -1,0 +1,17 @@
+[
+  {
+    "id": "gen-ivorycoast-geo-4-bc93be2f",
+    "country": "Ivory Coast",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the primary official language of Ivory Coast?",
+    "choices": [
+      "French",
+      "English",
+      "English, Malay, Mandarin & Tamil",
+      "Amharic"
+    ],
+    "correctIndex": 0,
+    "funFact": "The primary official language of Ivory Coast is French."
+  }
+]
