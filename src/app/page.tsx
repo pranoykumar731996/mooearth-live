@@ -33,6 +33,7 @@ import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
+import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/services/analytics';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -120,6 +121,11 @@ export default function HomePage({
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Initialize analytics session on client mount
+  useEffect(() => {
+    initAnalyticsSession();
   }, []);
 
   // First-time user guide check
@@ -225,6 +231,7 @@ export default function HomePage({
         } catch (e) {
           console.warn('[page.tsx] Diagnostic: Failed to fetch user profile from Firestore, using Auth fallback:', e);
         }
+        updateAnalyticsUser(user.uid);
         setCurrentUser(profile);
         setIsAuthModalOpen(false);
       } else {
@@ -348,8 +355,9 @@ export default function HomePage({
       setActiveReaction(null);
     } else {
       setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
+      trackEvent('country', 'click', country, 1, { category: activeCategory || 'home' });
     }
-  }, [isMobile]);
+  }, [isMobile, activeCategory]);
 
   const handleGlobeSelectCountry = useCallback((country: string | null) => {
     if (country === selectedCountry && country !== null) {
@@ -360,12 +368,13 @@ export default function HomePage({
       setSelectedEvent(null);
       if (country) {
         setIsDashboardOpen(!isMobile);
+        trackEvent('country', 'click', country, 1, { category: activeCategory || 'home', trigger: 'globe_tap' });
       } else {
         setIsDashboardOpen(false);
         setActiveReaction(null);
       }
     }
-  }, [selectedCountry, isMobile, playDeepPulse]);
+  }, [selectedCountry, isMobile, playDeepPulse, activeCategory]);
 
   // EarthCast: Fly camera to a country by name
   const handleEarthCastFlyTo = useCallback((country: string) => {
@@ -384,6 +393,24 @@ export default function HomePage({
     playDeepPulse,
     playTensionDrone,
   });
+
+  // EarthCast analytics tracking
+  useEffect(() => {
+    if (earthCast.isEarthCastActive) {
+      trackEvent('earthcast', 'start');
+    } else if (earthCast.narrationHistory.length > 0) {
+      trackEvent('earthcast', 'complete');
+    }
+  }, [earthCast.isEarthCastActive, earthCast.narrationHistory.length]);
+
+  useEffect(() => {
+    if (earthCast.currentNarration) {
+      trackEvent('earthcast', 'narration_play', earthCast.currentNarration.country, 1, {
+        text: earthCast.currentNarration.text,
+        eventType: earthCast.currentNarration.eventType
+      });
+    }
+  }, [earthCast.currentNarration]);
 
   // Trigger sound when celebration activates
   useEffect(() => {

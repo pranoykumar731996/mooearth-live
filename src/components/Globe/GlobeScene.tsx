@@ -14,6 +14,7 @@ import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
+import { trackEvent } from '@/services/analytics';
 
 
 // Dynamic import — react-globe.gl requires window/WebGL
@@ -283,6 +284,9 @@ export default function GlobeScene({
 
   // References and variables to prevent React state updates from causing WebGL jank
   const currentZoomAltitudeRef = useRef(1.5);
+  const lastLoggedAltRef = useRef<number | null>(null);
+  const lastLoggedLatRef = useRef<number | null>(null);
+  const lastLoggedLngRef = useRef<number | null>(null);
   const htmlMarkersCacheRef = useRef<Map<string, HTMLElement>>(new Map());
 
   // Failsafe FPS Monitor & Trigger (Rule 11)
@@ -501,6 +505,31 @@ export default function GlobeScene({
         if (pov && typeof pov.altitude === 'number') {
           // Update ref instantly for immediate query reads (O(1) frame budget)
           currentZoomAltitudeRef.current = pov.altitude;
+
+          // Track zoom changes (> 0.05)
+          if (lastLoggedAltRef.current === null) {
+            lastLoggedAltRef.current = pov.altitude;
+          } else if (Math.abs(pov.altitude - lastLoggedAltRef.current) > 0.05) {
+            trackEvent('globe', 'zoom');
+            lastLoggedAltRef.current = pov.altitude;
+          }
+
+          // Track rotation / orbit changes (lat or lng changes > 1.5)
+          if (typeof pov.lat === 'number' && typeof pov.lng === 'number') {
+            if (lastLoggedLatRef.current === null || lastLoggedLngRef.current === null) {
+              lastLoggedLatRef.current = pov.lat;
+              lastLoggedLngRef.current = pov.lng;
+            } else {
+              const dLat = Math.abs(pov.lat - lastLoggedLatRef.current);
+              let dLng = Math.abs(pov.lng - lastLoggedLngRef.current);
+              if (dLng > 180) dLng = 360 - dLng;
+              if (dLat > 1.5 || dLng > 1.5) {
+                trackEvent('globe', 'rotation');
+                lastLoggedLatRef.current = pov.lat;
+                lastLoggedLngRef.current = pov.lng;
+              }
+            }
+          }
 
           // Throttle state update to prevent excessive React render passes
           if (!throttleTimeout) {
@@ -1701,6 +1730,9 @@ export default function GlobeScene({
     pauseRotation();
     recordInteraction();
 
+    // Log the country tap interaction
+    trackEvent('globe', 'tap', name);
+
     // Position the floating details card near the clicked country (using mouse event clientX/Y)
     if (event && typeof event.clientX === 'number') {
       setTooltipPosition({ x: event.clientX, y: event.clientY });
@@ -1711,6 +1743,12 @@ export default function GlobeScene({
     setHoveredPolygon(feat);
     const el = document.body;
     el.style.cursor = feat ? 'pointer' : 'default';
+    if (feat) {
+      const name = feat.properties?.NAME;
+      if (name) {
+        trackEvent('globe', 'hover', name);
+      }
+    }
   }, []);
 
   const handleGlobeClick = useCallback(() => {

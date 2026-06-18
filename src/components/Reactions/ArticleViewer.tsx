@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { CATEGORY_IMAGES, ArticleDetails } from '@/services/article';
+import { trackEvent } from '@/services/analytics';
 
 interface ArticleViewerProps {
   event: WorldEvent | null;
@@ -226,6 +227,41 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
         setLoading(false);
       });
   }, [activeEvent]);
+
+  // Track article open when activeEvent changes
+  useEffect(() => {
+    if (activeEvent) {
+      trackEvent('article', 'open', activeEvent.id, 1, {
+        title: activeEvent.title,
+        category: activeEvent.category
+      });
+    }
+  }, [activeEvent]);
+
+  // Track article completion (scroll-to-bottom)
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !activeEvent) return;
+
+    let reachedBottom = false;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        if (!reachedBottom) {
+          reachedBottom = true;
+          trackEvent('article', 'completed', activeEvent.id);
+        }
+      }
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    // Check initially in case content is shorter than viewport
+    setTimeout(handleScroll, 500);
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+    };
+  }, [activeEvent, loading]);
 
   if (!event || !activeEvent) return null;
 
@@ -462,7 +498,12 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
                   {/* Navigation Toolbar (Task 7) */}
                   <div className="flex items-center justify-between gap-4 pt-8 border-t border-white/[0.06] font-sans">
                     <button
-                      onClick={() => prevStory && setActiveEvent(prevStory)}
+                      onClick={() => {
+                        if (prevStory) {
+                          setActiveEvent(prevStory);
+                          trackEvent('article', 'click', prevStory.id, 1, { category: prevStory.category, direction: 'prev' });
+                        }
+                      }}
                       disabled={!prevStory}
                       className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/5 transition-all select-none ${
                         prevStory
@@ -480,6 +521,7 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
                       href={articleDetails?.source || activeEvent.source}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackEvent('article', 'source_click', activeEvent.id, 1, { publisher })}
                       className="flex-[2] sm:flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider
                                  bg-gradient-to-r from-cyan-500 to-blue-600
                                  text-white shadow-[0_0_25px_rgba(6,182,212,0.2)] hover:shadow-[0_0_35px_rgba(6,182,212,0.4)] hover:scale-[1.02]
@@ -494,7 +536,12 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
                     </a>
 
                     <button
-                      onClick={() => nextStory && setActiveEvent(nextStory)}
+                      onClick={() => {
+                        if (nextStory) {
+                          setActiveEvent(nextStory);
+                          trackEvent('article', 'click', nextStory.id, 1, { category: nextStory.category, direction: 'next' });
+                        }
+                      }}
                       disabled={!nextStory}
                       className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider border border-white/5 transition-all select-none ${
                         nextStory
@@ -597,7 +644,10 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
                             return (
                               <div
                                 key={story.id}
-                                onClick={() => setActiveEvent(story)}
+                                onClick={() => {
+                                  setActiveEvent(story);
+                                  trackEvent('article', 'related_click', story.id, 1, { category: story.category });
+                                }}
                                 className="p-4 rounded-xl bg-white/[0.01] border border-white/5 hover:border-white/10 hover:bg-white/[0.03] transition-all cursor-pointer flex flex-col justify-between gap-3 text-left group"
                               >
                                 <div className="space-y-1">

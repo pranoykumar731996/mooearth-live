@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase } from '@/types';
 import { QUIZ_CATEGORIES, XP_REWARDS, calculateLevel } from '@/data/questions';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
+import { trackEvent } from '@/services/analytics';
 
 const TIMER_SECONDS = 15;
 const STREAK_BONUS_MULTIPLIER = 1.5; // 50% bonus XP at streak ≥3
@@ -203,6 +204,9 @@ export default function PlayEarthOverlay({
     setIsLoadingQuestion(true);
     onPlaySound();
 
+    // Track category selection click
+    trackEvent('category', 'click', `quiz_${category}`);
+
     console.log(`[PLAY EARTH DEBUG] startQuestion: Selected Country="${selectedCountry}", Category="${category}"`);
 
     const startTime = Date.now();
@@ -254,6 +258,7 @@ export default function PlayEarthOverlay({
         setPhase('question');
       } else {
         setPhase('summary');
+        trackEvent('play_earth', 'round_completed');
       }
     } catch (err) {
       console.error('Error fetching question:', err);
@@ -263,6 +268,7 @@ export default function PlayEarthOverlay({
         await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
       }
       setPhase('summary');
+      trackEvent('play_earth', 'round_completed');
     } finally {
       setIsLoadingQuestion(false);
     }
@@ -276,6 +282,13 @@ export default function PlayEarthOverlay({
     const correct = index === currentQuestion.correctIndex;
     setSelectedAnswer(index);
     setIsCorrect(correct);
+
+    // Track question response in analytics
+    trackEvent('play_earth', 'question_answered', undefined, undefined, {
+      correct,
+      category: selectedCategory,
+      country: selectedCountry || 'Global'
+    });
 
     if (selectedCategory === 'mixed' && !correct) {
       setMixedWrongCount(prev => prev + 1);
@@ -364,11 +377,13 @@ export default function PlayEarthOverlay({
       if (mixedWrongCount >= 3) {
         setMixedWrongCount(0);
         setPhase('category-select');
+        trackEvent('play_earth', 'round_completed');
       } else {
         startQuestion('mixed');
       }
     } else {
       setPhase('category-select');
+      trackEvent('play_earth', 'round_completed');
     }
   }, [onPlaySound, selectedCategory, mixedWrongCount, startQuestion]);
 

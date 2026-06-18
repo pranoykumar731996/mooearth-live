@@ -1,7 +1,3 @@
-// ============================================================
-// MooEarth Live — Search Bar Component
-// ============================================================
-
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -9,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { useSearch } from '@/hooks/useSearch';
+import { trackEvent } from '@/services/analytics';
 
 interface SearchBarProps {
   events: WorldEvent[];
@@ -33,10 +30,16 @@ export default function SearchBar({ events, activeCategory, onSearch, onSelectEv
 
   const { query, debouncedQuery, setQuery, results, countryResult, clearSearch } = useSearch({ events, activeCategory });
 
-  // Sync debounced query to parent for external effects (prevents page-wide rerenders on every keystroke)
+  // Sync debounced query to parent for external effects & track search events
   useEffect(() => {
     onSearch(debouncedQuery);
-  }, [debouncedQuery, onSearch]);
+    if (debouncedQuery.trim()) {
+      trackEvent('search', 'query', debouncedQuery, 1, {
+        success: results.length > 0 || !!countryResult,
+        countrySearched: countryResult || undefined
+      });
+    }
+  }, [debouncedQuery, onSearch, results, countryResult]);
 
   // Animate placeholders
   useEffect(() => {

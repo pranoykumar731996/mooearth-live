@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { SIDEBAR_ITEMS } from '@/lib/constants';
 import { EventCategory } from '@/types';
+import { trackEvent } from '@/services/analytics';
 
 interface SidebarProps {
   activeCategory: EventCategory | null;
@@ -49,8 +50,11 @@ export default function Sidebar({ activeCategory, onCategoryChange }: SidebarPro
                 e.preventDefault();
                 if (item.id === 'home') {
                   onCategoryChange(null);
+                  trackEvent('category', 'click', 'home');
                 } else if (item.category) {
-                  onCategoryChange(activeCategory === item.category ? null : item.category);
+                  const targetCat = activeCategory === item.category ? null : item.category;
+                  onCategoryChange(targetCat);
+                  trackEvent('category', 'click', targetCat || 'home');
                 }
               }}
               className={`group relative w-11 h-11 rounded-xl flex items-center justify-center

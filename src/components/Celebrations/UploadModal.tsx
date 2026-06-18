@@ -6,6 +6,7 @@ import { WorldEvent } from '@/types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
+import { trackEvent } from '@/services/analytics';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -224,6 +225,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         newCeleb = data.celebration;
       }
       
+      trackEvent('upload', 'success', activeTab);
       onUploadSuccess(newCeleb);
       onClose();
       
@@ -232,6 +234,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       setFile(null);
       setRecordedAudioUrl(null);
     } catch (err: any) {
+      trackEvent('upload', 'failure', activeTab, 1, { error: err.message || 'Unknown' });
       console.error('Upload error:', err);
       setError(err.message || 'An error occurred during upload.');
     } finally {
