@@ -41,22 +41,25 @@ export default function Sidebar({ activeCategory, onCategoryChange }: SidebarPro
         const href = getHref(item.id, item.category);
 
         return (
-          <Link key={item.id} href={href} passHref legacyBehavior>
-            <motion.a
+          <Link
+            key={item.id}
+            href={href}
+            onClick={(e) => {
+              e.preventDefault();
+              if (item.id === 'home') {
+                onCategoryChange(null);
+                trackEvent('category', 'click', 'home');
+              } else if (item.category) {
+                const targetCat = activeCategory === item.category ? null : item.category;
+                onCategoryChange(targetCat);
+                trackEvent('category', 'click', targetCat || 'home');
+              }
+            }}
+          >
+            <motion.div
               id={`sidebar-${item.id}`}
               whileHover={{ scale: 1.15, x: 4 }}
               whileTap={{ scale: 0.9 }}
-              onClick={(e) => {
-                e.preventDefault();
-                if (item.id === 'home') {
-                  onCategoryChange(null);
-                  trackEvent('category', 'click', 'home');
-                } else if (item.category) {
-                  const targetCat = activeCategory === item.category ? null : item.category;
-                  onCategoryChange(targetCat);
-                  trackEvent('category', 'click', targetCat || 'home');
-                }
-              }}
               className={`group relative w-11 h-11 rounded-xl flex items-center justify-center
                          text-lg transition-all duration-300 cursor-pointer
                          ${
@@ -89,7 +92,7 @@ export default function Sidebar({ activeCategory, onCategoryChange }: SidebarPro
                   transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                 />
               )}
-            </motion.a>
+            </motion.div>
           </Link>
         );
       })}

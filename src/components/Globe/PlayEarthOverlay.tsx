@@ -32,6 +32,7 @@ interface PlayEarthOverlayProps {
   onTimerTick: (urgency: number) => void;
   onLevelUp: () => void;
   username: string;
+  isInline?: boolean;
 }
 
 /** Load game state from localStorage */
@@ -79,6 +80,7 @@ function saveGameState(state: PlayerGameState) {
 export default function PlayEarthOverlay({
   isActive, selectedCountry, onClose, onPlaySound,
   onCorrectSound, onWrongSound, onTimerTick, onLevelUp, username,
+  isInline = false,
 }: PlayEarthOverlayProps) {
   const [phase, setPhase] = useState<PlayEarthPhase>('intro');
   const [gameState, setGameState] = useState<PlayerGameState>(() => loadGameState(username));
@@ -451,6 +453,356 @@ export default function PlayEarthOverlay({
     ? Math.round((gameState.totalCorrect / gameState.totalAnswered) * 100)
     : 0;
 
+  if (isInline) {
+    return (
+      <div className="w-full flex flex-col gap-4 text-left select-none pointer-events-auto" id="play-earth-overlay">
+        {/* Inline Stats HUD (XP, Level, Streak) */}
+        <div className="px-4 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs font-bold text-white shadow-sm mb-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+            <span className="text-[10px] text-emerald-400 uppercase tracking-wider">Play Earth Game</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>⭐ {gameState.xp.toLocaleString()} XP</span>
+            <span className="text-white/20">|</span>
+            <span>Lv. {gameState.level}</span>
+            {gameState.streak > 0 && (
+              <>
+                <span className="text-white/20">|</span>
+                <span className="text-orange-400">🔥 {gameState.streak} Str</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ═══════════════ PHASES ═══════════════ */}
+        <AnimatePresence mode="wait">
+          {isLoadingQuestion && (
+            <motion.div
+              key="loading-challenge"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full"
+            >
+              <div className="glass rounded-3xl border border-cyan-500/30 p-6 text-center shadow-lg">
+                <div className="relative w-12 h-12 mx-auto mb-4 flex items-center justify-center">
+                  <span className="absolute inset-0 rounded-full border-2 border-cyan-500/10 border-t-cyan-400 animate-spin" />
+                  <span className="text-xl animate-pulse">🛰️</span>
+                </div>
+                <h3 className="text-sm font-black text-white tracking-wider mb-1">
+                  LOADING CHALLENGE
+                </h3>
+                <p className="text-[10px] text-cyan-400/80 uppercase tracking-widest font-black animate-pulse">
+                  Connecting...
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoadingQuestion && phase === 'intro' && (
+            <motion.div
+              key="intro"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="w-full text-center py-6"
+            >
+              <div className="text-5xl mb-4">🌍</div>
+              <h2 className="text-xl font-black text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
+                CHALLENGE ACTIVE
+              </h2>
+              <p className="text-xs text-white/50 max-w-xs mx-auto mb-6">
+                Choose a category tab above to see news, or select a quiz category below.
+              </p>
+            </motion.div>
+          )}
+
+          {!isLoadingQuestion && phase === 'category-select' && selectedCountry && (
+            <motion.div
+              key="category"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full"
+            >
+              <div className="glass rounded-3xl border border-white/10 p-5 shadow-lg">
+                {/* Country header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">{countryMeta?.flag || '🌍'}</span>
+                  <div>
+                    <h3 className="text-sm font-black text-white">{selectedCountry} Quiz</h3>
+                    <p className="text-[9px] text-white/40 uppercase tracking-widest font-bold">
+                      Select Quiz Topic
+                    </p>
+                  </div>
+                </div>
+
+                {/* Category Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  {QUIZ_CATEGORIES.map((cat, i) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => startQuestion(cat.id)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all cursor-pointer group"
+                    >
+                      <span className="text-lg group-hover:scale-105 transition-transform">{cat.emoji}</span>
+                      <span className="text-[9px] font-bold text-white/70 group-hover:text-white transition-colors truncate max-w-full text-center">
+                        {cat.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoadingQuestion && phase === 'question' && currentQuestion && (
+            <motion.div
+              key="question"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="w-full"
+            >
+              <div className={`glass rounded-3xl border p-5 shadow-lg ${
+                selectedAnswer !== null
+                  ? isCorrect
+                    ? 'border-emerald-500/40'
+                    : 'border-red-500/40 animate-[card-shake_0.5s_ease-in-out]'
+                  : 'border-white/10'
+              }`}>
+                {/* Timer + Country header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{countryMeta?.flag || '🌍'}</span>
+                    <div>
+                      <span className="text-xs font-bold text-white/80">{selectedCountry}</span>
+                      <span className="text-[8px] text-white/30 ml-2 uppercase tracking-wider">
+                        {currentQuestion.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Timer */}
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${
+                    timerCritical
+                      ? 'border-red-500/60 bg-red-500/15 animate-[timer-heartbeat_0.6s_ease-in-out_infinite]'
+                      : timerUrgent
+                        ? 'border-amber-500/40 bg-amber-500/10'
+                        : 'border-white/10 bg-white/5'
+                  }`}>
+                    <span className={`text-sm font-black tabular-nums ${
+                      timerCritical ? 'text-red-400' : timerUrgent ? 'text-amber-400' : 'text-white'
+                    }`}>
+                      {timer}
+                    </span>
+                    <span className="text-[8px] text-white/40 uppercase font-bold">sec</span>
+                  </div>
+                </div>
+
+                {/* Difficulty badge */}
+                <div className="mb-3 flex items-center justify-between">
+                  <span className={`text-[8px] uppercase tracking-widest font-black px-2 py-0.5 rounded-full ${
+                    currentQuestion.difficulty === 'easy' ? 'bg-emerald-500/15 text-emerald-400' :
+                      currentQuestion.difficulty === 'medium' ? 'bg-amber-500/15 text-amber-400' :
+                      'bg-red-500/15 text-red-400'
+                  }`}>
+                    {currentQuestion.difficulty} • +{XP_REWARDS[currentQuestion.difficulty]} XP
+                  </span>
+                  {selectedCategory === 'mixed' && (
+                    <div className="flex gap-1 items-center bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                      <span className="text-[8px] text-white/40 uppercase tracking-widest font-black mr-1">LIVES:</span>
+                      {Array.from({ length: 3 }).map((_, idx) => (
+                        <span key={idx} className="text-xs">
+                          {idx < (3 - mixedWrongCount) ? '❤️' : '🖤'}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Question */}
+                <h3 className="text-sm sm:text-base font-bold text-white mb-4 leading-snug">
+                  {currentQuestion.question}
+                </h3>
+
+                {/* Answer Choices */}
+                <div className="space-y-2">
+                  {currentQuestion.choices.map((choice, i) => {
+                    const isSelected = selectedAnswer === i;
+                    const isCorrectChoice = i === currentQuestion.correctIndex;
+                    const showResult = selectedAnswer !== null;
+
+                    let choiceStyle = 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20';
+                    if (showResult) {
+                      if (isCorrectChoice) {
+                        choiceStyle = 'bg-emerald-500/15 border-emerald-500/40';
+                      } else if (isSelected && !isCorrect) {
+                        choiceStyle = 'bg-red-500/15 border-red-500/40';
+                      } else {
+                        choiceStyle = 'bg-white/[0.02] border-white/5 opacity-50';
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => selectedAnswer === null && handleAnswer(i)}
+                        disabled={selectedAnswer !== null}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all duration-200 flex items-center gap-2 cursor-pointer ${choiceStyle}`}
+                      >
+                        <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black shrink-0 ${
+                          showResult && isCorrectChoice ? 'bg-emerald-500/30 text-emerald-300' :
+                            showResult && isSelected && !isCorrect ? 'bg-red-500/30 text-red-300' :
+                            'bg-white/10 text-white/50'
+                        }`}>
+                          {showResult && isCorrectChoice ? '✓' :
+                           showResult && isSelected && !isCorrect ? '✗' :
+                           String.fromCharCode(65 + i)}
+                        </span>
+                        <span className={`text-xs font-medium ${
+                          showResult && isCorrectChoice ? 'text-emerald-300' :
+                            showResult && isSelected && !isCorrect ? 'text-red-300' :
+                            'text-white/80'
+                        }`}>
+                          {choice}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoadingQuestion && phase === 'result' && currentQuestion && (
+            <motion.div
+              key="result"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full"
+            >
+              <div className={`glass rounded-3xl border p-5 shadow-lg ${
+                isCorrect ? 'border-emerald-500/30' : 'border-red-500/30'
+              }`}>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
+                      isCorrect
+                        ? 'bg-emerald-500/15'
+                        : 'bg-red-500/15'
+                    }`}>
+                      {isCorrect ? '🎉' : '💡'}
+                    </div>
+                    <div>
+                      <h3 className={`text-sm font-black ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {isCorrect ? 'Correct!' : 'Not Quite!'}
+                      </h3>
+                      {isCorrect && xpGained > 0 ? (
+                        <p className="text-[9px] text-emerald-400/80 font-bold uppercase tracking-wider">
+                          +{xpGained} XP earned {gameState.streak >= 3 ? '(🔥 Streak!)' : ''}
+                        </p>
+                      ) : (
+                        !isCorrect && (
+                          <p className="text-[9px] text-red-400/80 font-bold uppercase tracking-wider">
+                            {selectedCategory === 'mixed' && mixedWrongCount >= 3 ? 'Challenge Failed' : 'Incorrect Answer'}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {!isCorrect && (
+                  <div className="mb-3 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-[8px] text-emerald-400/60 uppercase tracking-widest font-bold mb-0.5">
+                      Correct Answer
+                    </p>
+                    <p className="text-xs text-emerald-300 font-bold">
+                      {currentQuestion.choices[currentQuestion.correctIndex]}
+                    </p>
+                  </div>
+                )}
+
+                {currentQuestion.funFact && (
+                  <div className="mb-4 px-3 py-2 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
+                    <p className="text-[8px] text-cyan-400/60 uppercase tracking-widest font-bold mb-0.5">
+                      💡 Fun Fact
+                    </p>
+                    <p className="text-[11px] text-white/70 leading-relaxed">{currentQuestion.funFact}</p>
+                  </div>
+                )}
+
+                {leveledUp && (
+                  <div className="mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 text-center">
+                    <p className="text-amber-400 font-black text-xs">🏆 LEVEL UP!</p>
+                    <p className="text-[9px] text-white/50">You reached Level {gameState.level}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleContinue}
+                    className={`flex-1 py-2.5 rounded-xl text-white font-bold text-xs tracking-wider transition-all cursor-pointer ${
+                      selectedCategory === 'mixed' && mixedWrongCount >= 3
+                        ? 'bg-gradient-to-r from-red-600 to-amber-600'
+                        : 'bg-gradient-to-r from-emerald-600 to-cyan-600'
+                    }`}
+                  >
+                    {selectedCategory === 'mixed' && mixedWrongCount >= 3 ? 'Categories →' : 'Continue →'}
+                  </button>
+                  <button
+                    onClick={handleExploreMore}
+                    className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs hover:text-white"
+                  >
+                    🌍
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoadingQuestion && phase === 'summary' && (
+            <motion.div
+              key="summary"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full"
+            >
+              <div className="glass rounded-3xl border border-white/10 p-5 shadow-lg text-center">
+                <span className="text-3xl">🌟</span>
+                <h3 className="text-base font-black text-white mt-1">
+                  {selectedCountry} Mastered!
+                </h3>
+                <p className="text-[10px] text-white/40 mt-0.5 mb-4">
+                  No more questions in this category.
+                </p>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleContinue}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs tracking-wider cursor-pointer"
+                  >
+                    Category Select
+                  </button>
+                  <button
+                    onClick={handleExploreMore}
+                    className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs cursor-pointer"
+                  >
+                    New Country
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[45] pointer-events-none" id="play-earth-overlay">
       {/* Toast Alert */}
@@ -551,7 +903,7 @@ export default function PlayEarthOverlay({
             transition={{ duration: 0.5 }}
             className="fixed inset-0 z-[46] flex items-center justify-center pointer-events-none"
           >
-            <div className="text-center pointer-events-auto">
+            <div className="text-center pointer-events-none select-none">
               <motion.div
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}

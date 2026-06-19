@@ -40,6 +40,7 @@ interface GlobeSceneProps {
   activeCategory?: EventCategory | null;
   isPlayEarthActive?: boolean;
   globeView?: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery';
+  isDashboardOpen?: boolean;
 }
 
 // Generate a green/gold soccer pitch texture dynamically at runtime via HTML Canvas
@@ -210,6 +211,7 @@ export default function GlobeScene({
   activeCategory = null,
   isPlayEarthActive = false,
   globeView = 'standard',
+  isDashboardOpen = false,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, pauseRotation, resumeRotation } = useGlobeControls();
   const [failsafeActive, setFailsafeActive] = useState(false);
@@ -1758,6 +1760,34 @@ export default function GlobeScene({
     recordInteraction();
   }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction]);
 
+  // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
+  const constrainedTooltipPos = useMemo(() => {
+    let x = tooltipPosition.x + 15;
+    let y = tooltipPosition.y + 15;
+    const tooltipWidth = 256;
+    const tooltipHeight = 180; // approximate max height
+
+    if (typeof window !== 'undefined') {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+
+      // Keep x within screen bounds
+      if (x + tooltipWidth > screenWidth - 16) {
+        x = Math.max(16, tooltipPosition.x - tooltipWidth - 15);
+      }
+      
+      // If mobile, prevent overlapping with bottom drawer (top of bottom drawer is around screenHeight - 280)
+      const maxAllowedY = isMobile ? screenHeight - 280 - tooltipHeight : screenHeight - tooltipHeight - 16;
+      if (y > maxAllowedY) {
+        y = Math.max(16, tooltipPosition.y - tooltipHeight - 15);
+      }
+
+      if (x < 16) x = 16;
+      if (y < 16) y = 16;
+    }
+    return { x, y };
+  }, [tooltipPosition, isMobile]);
+
   const rendererConfig = useMemo(() => ({
     antialias: !isMobile, // Disable antialiasing on mobile to increase FPS
     alpha: true,
@@ -1920,7 +1950,7 @@ export default function GlobeScene({
 
       {/* Floating details card (Feature 2 & Feature 8) */}
       <AnimatePresence>
-        {selectedCountry && countryStats && (
+        {selectedCountry && countryStats && !isDashboardOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1928,8 +1958,8 @@ export default function GlobeScene({
             transition={{ duration: 0.12 }}
             className="fixed z-[100] w-64 rounded-2xl glass border border-white/10 p-4 shadow-[0_15px_40px_rgba(0,0,0,0.6),0_0_30px_rgba(0,229,255,0.1)] flex flex-col gap-2 pointer-events-auto"
             style={{
-              left: tooltipPosition.x + 15,
-              top: tooltipPosition.y + 15,
+              left: constrainedTooltipPos.x,
+              top: constrainedTooltipPos.y,
               background: 'linear-gradient(135deg, rgba(12,12,25,0.95) 0%, rgba(5,5,15,0.95) 100%)',
             }}
           >

@@ -87,16 +87,16 @@ export default function ReactionFeed({
                   </div>
                   <div className="flex flex-wrap gap-1.5 justify-center mt-1">
                     {getCountryRecommendations(country).map((rec) => (
-                      <Link key={rec} href={`/country/${encodeURIComponent(rec.toLowerCase())}`} passHref legacyBehavior>
-                        <a
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (onSelectCountry) onSelectCountry(rec);
-                          }}
-                          className="px-2.5 py-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-[10px] font-bold text-white/90 cursor-pointer"
-                        >
-                          {rec}
-                        </a>
+                      <Link
+                        key={rec}
+                        href={`/country/${encodeURIComponent(rec.toLowerCase())}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (onSelectCountry) onSelectCountry(rec);
+                        }}
+                        className="px-2.5 py-1 rounded bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 transition-all text-[10px] font-bold text-white/90 cursor-pointer"
+                      >
+                        {rec}
                       </Link>
                     ))}
                   </div>
@@ -141,8 +141,8 @@ export default function ReactionFeed({
                 const news = item.data as WorldEvent;
                 const cConfig = CATEGORY_MAP[news.category as EventCategory] || CATEGORY_MAP.breaking;
                 return (
-                  <Link key={item.id} href={`/article/${news.id}`} passHref legacyBehavior>
-                    <motion.a
+                  <Link key={item.id} href={`/article/${news.id}`}>
+                    <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
@@ -177,7 +177,7 @@ export default function ReactionFeed({
                           {getRelativeTime(news.publishedAt)}
                         </span>
                       </div>
-                    </motion.a>
+                    </motion.div>
                   </Link>
                 );
               }

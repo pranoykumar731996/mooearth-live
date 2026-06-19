@@ -13,6 +13,8 @@ interface ArticleViewerProps {
   event: WorldEvent | null;
   allEvents: WorldEvent[];
   onClose: () => void;
+  isInline?: boolean;
+  onBack?: () => void;
 }
 
 // Module-level cache to persist loaded articles across mounts/unmounts in the session
@@ -113,7 +115,13 @@ function getCountryInfo(country: string, allEvents: WorldEvent[]) {
   };
 }
 
-export default function ArticleViewer({ event, allEvents, onClose }: ArticleViewerProps) {
+export default function ArticleViewer({
+  event,
+  allEvents,
+  onClose,
+  isInline = false,
+  onBack,
+}: ArticleViewerProps) {
   const [activeEvent, setActiveEvent] = useState<WorldEvent | null>(null);
   const [loading, setLoading] = useState(false);
   const [articleDetails, setArticleDetails] = useState<ArticleDetails | null>(null);
@@ -367,6 +375,151 @@ export default function ArticleViewer({ event, allEvents, onClose }: ArticleView
 
   const displayImage = articleDetails?.image || CATEGORY_IMAGES[activeEvent.category as EventCategory] || CATEGORY_IMAGES.breaking;
   const articleBody = articleDetails?.fullContent || activeEvent.summary || 'No further content is available.';
+
+  if (isInline) {
+    return (
+      <div className="w-full flex flex-col space-y-4 select-text pointer-events-auto" id="inline-article-reader">
+        {/* Top Navbar */}
+        <div className="flex items-center justify-between py-2 border-b border-white/[0.06] bg-black/20 shrink-0">
+          <button
+            onClick={onBack || onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white transition-colors cursor-pointer text-xs font-bold"
+          >
+            ← Back to List
+          </button>
+          
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+            <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5 text-white">
+              <span>{getFlagEmoji(activeEvent.country)}</span>
+              <span>{activeEvent.country}</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Loading / Error States */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+            <p className="text-[10px] text-cyan-400/70 uppercase tracking-widest font-black animate-pulse">Running AI News Summarizer...</p>
+          </div>
+        ) : error ? (
+          <div className="p-4 text-center rounded-xl bg-red-500/5 border border-red-500/10 text-red-400 text-xs space-y-2">
+            <p className="font-semibold">{error}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Banner Image */}
+            {displayImage && (
+              <div className="relative w-full h-36 rounded-xl overflow-hidden border border-white/5 bg-white/5 shadow-md">
+                <img
+                  src={displayImage}
+                  alt={cleanTitle}
+                  className="w-full h-full object-cover object-center"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              </div>
+            )}
+
+            {/* Title */}
+            <h1 className="text-lg font-black text-white leading-tight tracking-tight">
+              {cleanTitle}
+            </h1>
+
+            {/* Byline metadata */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/40 pb-2 border-b border-white/[0.06]">
+              {articleDetails?.author && (
+                <span className="text-white/70">By {articleDetails.author}</span>
+              )}
+              <span>•</span>
+              <span suppressHydrationWarning>{formatRelativeTime(activeEvent.publishedAt)}</span>
+              <span>•</span>
+              <span className="italic">{publisher}</span>
+            </div>
+
+            {/* Key Facts */}
+            {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+              <div
+                className="rounded-xl p-4 border border-cyan-500/10 bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                style={{ borderLeft: `3px solid ${categoryConfig.color}` }}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">
+                    AI Key Takeaways
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
+                </div>
+                <ul className="space-y-2.5">
+                  {articleDetails.keyFacts.map((fact, idx) => {
+                    const separatorIndex = fact.indexOf(':');
+                    if (separatorIndex !== -1) {
+                      const label = fact.substring(0, separatorIndex + 1);
+                      const text = fact.substring(separatorIndex + 1);
+                      return (
+                        <li key={idx} className="flex items-start gap-2 text-[11px] text-white/85 leading-relaxed font-medium">
+                          <span className="mt-1.5 w-1 h-1 shrink-0 rounded-full bg-cyan-400" />
+                          <span>
+                            <strong className="text-cyan-300 font-bold">{label}</strong>
+                            {text}
+                          </span>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={idx} className="flex items-start gap-2 text-[11px] text-white/80 leading-relaxed">
+                        <span className="mt-1.5 w-1 h-1 shrink-0 rounded-full bg-cyan-400" />
+                        <span>{fact}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* AI Summary Insight */}
+            {articleDetails?.aiSummary && (
+              <div className="space-y-2 text-xs text-white/70 leading-relaxed">
+                <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Summary Overview</h3>
+                <div className="space-y-2">
+                  {articleDetails.aiSummary.split('\n\n').map((para, idx) => (
+                    <p key={idx}>{para}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Full Content Body */}
+            <div className="space-y-2 pt-3 border-t border-white/[0.05]">
+              <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Detailed Report</h3>
+              <div className="space-y-2 text-xs text-white/70 leading-relaxed">
+                {articleBody.split('\n\n').map((para, idx) => (
+                  <p key={idx}>{para}</p>
+                ))}
+              </div>
+            </div>
+
+            {/* Share / Read Source buttons */}
+            <div className="flex gap-2 pt-4 border-t border-white/[0.05]">
+              <a
+                href={articleDetails?.source || activeEvent.source}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('article', 'source_click', activeEvent.id, 1, { publisher })}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm"
+              >
+                <span>Read Source on {publisher}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <AnimatePresence>

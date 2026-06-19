@@ -400,25 +400,24 @@ function MatchCard({
         {/* Teams + Score */}
         <div className="flex items-center gap-3">
           {/* Home */}
-          <Link href={`/country/${encodeURIComponent(match.homeTeam.toLowerCase())}`} passHref legacyBehavior>
-            <a
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSelectCountry) onSelectCountry(match.homeTeam);
-              }}
-              className="flex-1 flex items-center gap-2.5 min-w-0 hover:text-cyan-400 transition-colors"
-            >
-              <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-                {getFlag(match.homeTeam)}
-              </span>
-              <span className={`text-[11px] font-bold truncate ${
-                isFT && status.homeScore > status.awayScore ? 'text-white' :
-                isFT && status.homeScore < status.awayScore ? 'text-white/40' :
-                'text-white/85'
-              }`}>
-                {match.homeTeam}
-              </span>
-            </a>
+          <Link
+            href={`/country/${encodeURIComponent(match.homeTeam.toLowerCase())}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onSelectCountry) onSelectCountry(match.homeTeam);
+            }}
+            className="flex-1 flex items-center gap-2.5 min-w-0 hover:text-cyan-400 transition-colors"
+          >
+            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
+              {getFlag(match.homeTeam)}
+            </span>
+            <span className={`text-[11px] font-bold truncate ${
+              isFT && status.homeScore > status.awayScore ? 'text-white' :
+              isFT && status.homeScore < status.awayScore ? 'text-white/40' :
+              'text-white/85'
+            }`}>
+              {match.homeTeam}
+            </span>
           </Link>
 
           {/* Score / VS */}
@@ -439,25 +438,24 @@ function MatchCard({
           </div>
 
           {/* Away */}
-          <Link href={`/country/${encodeURIComponent(match.awayTeam.toLowerCase())}`} passHref legacyBehavior>
-            <a
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSelectCountry) onSelectCountry(match.awayTeam);
-              }}
-              className="flex-1 flex items-center gap-2.5 min-w-0 justify-end hover:text-cyan-400 transition-colors"
-            >
-              <span className={`text-[11px] font-bold truncate text-right ${
-                isFT && status.awayScore > status.homeScore ? 'text-white' :
-                isFT && status.awayScore < status.homeScore ? 'text-white/40' :
-                'text-white/85'
-              }`}>
-                {match.awayTeam}
-              </span>
-              <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-                {getFlag(match.awayTeam)}
-              </span>
-            </a>
+          <Link
+            href={`/country/${encodeURIComponent(match.awayTeam.toLowerCase())}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onSelectCountry) onSelectCountry(match.awayTeam);
+            }}
+            className="flex-1 flex items-center gap-2.5 min-w-0 justify-end hover:text-cyan-400 transition-colors"
+          >
+            <span className={`text-[11px] font-bold truncate text-right ${
+              isFT && status.awayScore > status.homeScore ? 'text-white' :
+              isFT && status.awayScore < status.homeScore ? 'text-white/40' :
+              'text-white/85'
+            }`}>
+              {match.awayTeam}
+            </span>
+            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
+              {getFlag(match.awayTeam)}
+            </span>
           </Link>
         </div>
 

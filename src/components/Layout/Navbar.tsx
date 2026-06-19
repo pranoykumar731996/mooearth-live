@@ -51,6 +51,7 @@ export default function Navbar({
   onTogglePlayEarth,
 }: NavbarProps) {
   const [isDeveloper, setIsDeveloper] = useState(false);
+  const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -91,13 +92,47 @@ export default function Navbar({
         background: 'linear-gradient(180deg, rgba(5,5,15,0.85) 0%, rgba(5,5,15,0.6) 100%)',
       }}
     >
+      {/* Mobile Search Overlay Mode */}
+      {isMobileSearchActive && (
+        <div className="absolute inset-0 z-50 bg-[#070712] flex items-center px-4 gap-3">
+          <button 
+            onClick={() => setIsMobileSearchActive(false)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+          >
+            ←
+          </button>
+          <div className="flex-1">
+            <SearchBar 
+              events={events} 
+              activeCategory={activeCategory} 
+              onSearch={onSearch} 
+              onSelectEvent={(e) => {
+                onSelectEvent(e);
+                setIsMobileSearchActive(false);
+              }} 
+              onSelectCountry={(c) => {
+                if (onSelectCountry) onSelectCountry(c);
+                setIsMobileSearchActive(false);
+              }} 
+            />
+          </div>
+        </div>
+      )}
+
       {/* Logo & Status Badge */}
       <div className="flex items-center gap-4 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600
-                          flex items-center justify-center text-base shadow-lg shadow-cyan-500/20">
+          <div className="hidden sm:flex w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600
+                          items-center justify-center text-base shadow-lg shadow-cyan-500/20">
             🌍
           </div>
+          {/* Mobile Logo Text matching user screenshot */}
+          <div className="block sm:hidden">
+            <h1 className="text-sm font-black tracking-tight text-white leading-none">
+              <span className="text-cyan-400 font-black">public</span> MooEarth
+            </h1>
+          </div>
+          {/* Desktop Logo Text */}
           <div className="hidden sm:block">
             <h1 className="text-base font-bold text-white leading-tight">
               MooEarth
@@ -149,100 +184,151 @@ export default function Navbar({
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-md mx-4 sm:mx-8">
+      <div className="hidden sm:block flex-1 max-w-md mx-4 sm:mx-8">
         <SearchBar events={events} activeCategory={activeCategory} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} />
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-3 shrink-0">
-        {/* Play Earth Game Mode Toggle */}
-        <button
-          onClick={onTogglePlayEarth}
-          title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
-          className={`relative h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer ${
-            isPlayEarthActive
-              ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-400 shadow-[0_0_18px_rgba(0,255,136,0.3)] animate-[neon-pulse_2s_ease-in-out_infinite]'
-              : 'bg-white/5 border-white/10 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)]'
-          }`}
-        >
-          {isPlayEarthActive && (
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
-          )}
-          <span>🎮</span>
-          <span className="hidden sm:inline">PLAY EARTH</span>
-        </button>
+      <div className="flex items-center shrink-0">
+        {/* Mobile-Only Header Icon Bar (matches user screenshot design) */}
+        <div className="flex sm:hidden items-center gap-3">
+          {/* Search Icon */}
+          <button
+            onClick={() => setIsMobileSearchActive(true)}
+            className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+            title="Search"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
 
-        {/* Phase 3: Cinematic Mode Toggle */}
-        <button
-          onClick={onToggleCinematicMode}
-          title={isCinematicModeActive ? "Stop Watch the World React Mode" : "Start Watch the World React Mode"}
-          className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer relative ${
-            isCinematicModeActive
-              ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-              : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          {isCinematicModeActive ? (
-            <>
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute top-1 right-1 animate-[ping_1.5s_infinite]" />
-              📺
-            </>
-          ) : (
-            '🌍'
-          )}
-        </button>
+          {/* Play Earth Game Mode (Gamepad Icon) */}
+          <button
+            onClick={onTogglePlayEarth}
+            className={`w-9 h-9 flex items-center justify-center active:scale-95 transition-all cursor-pointer relative ${
+              isPlayEarthActive ? 'text-emerald-400' : 'text-white/80 hover:text-white'
+            }`}
+            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
+          >
+            {isPlayEarthActive && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
+            )}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="6" width="20" height="12" rx="3" />
+              <line x1="6" y1="12" x2="10" y2="12" />
+              <line x1="8" y1="10" x2="8" y2="14" />
+              <line x1="15" y1="13" x2="15.01" y2="13" />
+              <line x1="18" y1="11" x2="18.01" y2="11" />
+            </svg>
+          </button>
 
-        {/* Phase 7: Sound Toggle Button */}
-        <button
-          onClick={onToggleMute}
-          title={isMuted ? "Unmute Audio" : "Mute Audio"}
-          className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
-            !isMuted
-              ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-              : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          {isMuted ? '🔇' : '🔊'}
-        </button>
+          {/* Leaderboard/Achievements (Badge/Award Icon) */}
+          <button
+            onClick={onLeaderboardClick}
+            className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+            title="Leaderboards"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              <path d="M7.5 13.5v7.25L12 18.5l4.5 2.25v-7.25" />
+              <path d="M12 2L4.5 5.5v5a7.5 7.5 0 0 0 15 0v-5L12 2Z" />
+            </svg>
+          </button>
+        </div>
 
-        {/* Global Leaderboard Button */}
-        <button
-          onClick={onLeaderboardClick}
-          title="View Leaderboards"
-          className="hidden sm:flex w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer items-center justify-center text-sm"
-        >
-          🏆
-        </button>
+        {/* Desktop-Only Section (completely unchanged design) */}
+        <div className="hidden sm:flex items-center gap-2 sm:gap-3">
+          {/* Play Earth Game Mode Toggle */}
+          <button
+            onClick={onTogglePlayEarth}
+            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
+            className={`relative h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer ${
+              isPlayEarthActive
+                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-400 shadow-[0_0_18px_rgba(0,255,136,0.3)] animate-[neon-pulse_2s_ease-in-out_infinite]'
+                : 'bg-white/5 border-white/10 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)]'
+            }`}
+          >
+            {isPlayEarthActive && (
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
+            )}
+            <span>🎮</span>
+            <span className="hidden sm:inline">PLAY EARTH</span>
+          </button>
 
-        <InstallButton />
-        {currentUser ? (
-          <div className="flex items-center gap-2 group relative">
-            <button
-              id="profile-avatar"
-              onClick={onProfileClick}
-              className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-500/25
-                         border border-cyan-400/30 flex items-center justify-center
-                         text-xl cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.2)]
-                         hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 pointer-events-auto"
-            >
-              {currentUser.avatar}
-            </button>
-            {/* Tooltip on hover */}
-            <div className="absolute right-0 top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              <div className="glass px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/5 flex flex-col items-center">
-                <span>@{currentUser.username} ({currentUser.country})</span>
-                <span className="text-cyan-400 text-[8px] mt-0.5 uppercase tracking-widest font-bold">View Profile & Stats</span>
+          {/* Phase 3: Cinematic Mode Toggle */}
+          <button
+            onClick={onToggleCinematicMode}
+            title={isCinematicModeActive ? "Stop Watch the World React Mode" : "Start Watch the World React Mode"}
+            className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer relative ${
+              isCinematicModeActive
+                ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {isCinematicModeActive ? (
+              <>
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute top-1 right-1 animate-[ping_1.5s_infinite]" />
+                📺
+              </>
+            ) : (
+              '🌍'
+            )}
+          </button>
+
+          {/* Phase 7: Sound Toggle Button */}
+          <button
+            onClick={onToggleMute}
+            title={isMuted ? "Unmute Audio" : "Mute Audio"}
+            className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
+              !isMuted
+                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {isMuted ? '🔇' : '🔊'}
+          </button>
+
+          {/* Global Leaderboard Button */}
+          <button
+            onClick={onLeaderboardClick}
+            title="View Leaderboards"
+            className="hidden sm:flex w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer items-center justify-center text-sm"
+          >
+            🏆
+          </button>
+
+          <InstallButton />
+          {currentUser ? (
+            <div className="hidden sm:flex items-center gap-2 group relative">
+              <button
+                id="profile-avatar"
+                onClick={onProfileClick}
+                className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-500/25
+                           border border-cyan-400/30 flex items-center justify-center
+                           text-xl cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.2)]
+                           hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 pointer-events-auto"
+              >
+                {currentUser.avatar}
+              </button>
+              {/* Tooltip on hover */}
+              <div className="absolute right-0 top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="glass px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/5 flex flex-col items-center">
+                  <span>@{currentUser.username} ({currentUser.country})</span>
+                  <span className="text-cyan-400 text-[8px] mt-0.5 uppercase tracking-widest font-bold">View Profile & Stats</span>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={onAuthClick}
-            className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs tracking-wider shadow-[0_0_20px_rgba(0,229,255,0.25)] hover:shadow-[0_0_25px_rgba(0,229,255,0.45)] transition-all duration-300 pointer-events-auto cursor-pointer"
-          >
-            SIGN IN
-          </button>
-        )}
+          ) : (
+            <button
+              onClick={onAuthClick}
+              className="hidden sm:block px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs tracking-wider shadow-[0_0_20px_rgba(0,229,255,0.25)] hover:shadow-[0_0_25px_rgba(0,229,255,0.45)] transition-all duration-300 pointer-events-auto cursor-pointer"
+            >
+              SIGN IN
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );

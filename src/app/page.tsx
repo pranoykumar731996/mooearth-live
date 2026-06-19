@@ -13,6 +13,7 @@ import { useGoalCelebration } from '@/hooks/useGoalCelebration';
 import { useSoundDesign } from '@/hooks/useSoundDesign';
 import { useEarthCast } from '@/hooks/useEarthCast';
 import { useStreaks } from '@/hooks/useStreaks';
+import { useMobileSheet } from '@/hooks/useMobileSheet';
 import { requestNotificationPermission, sendLocalNotification } from '@/utils/notifications';
 import { EventCategory, WorldEvent } from '@/types';
 import Navbar from '@/components/Layout/Navbar';
@@ -21,6 +22,7 @@ import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
 import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
 import ArticleViewer from '@/components/Reactions/ArticleViewer';
+import MobileCountrySheet from '@/components/UI/MobileCountrySheet';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
@@ -123,6 +125,9 @@ export default function HomePage({
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+
+  // Mobile draggable bottom sheet (Google Maps style)
+  const mobileSheet = useMobileSheet('collapsed');
 
   // Detect mobile viewport (Phase 9 Mobile Experience)
   useEffect(() => {
@@ -1042,8 +1047,20 @@ export default function HomePage({
 
       {/* Massive Cinematic Globe */}
       <div
-        className="absolute z-[2] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ width: '110vw', height: '110vh' }}
+        className="absolute z-[2] pointer-events-none"
+        style={isMobile
+          ? {
+              width: '100vw',
+              height: `${mobileSheet.globeAvailableVh}vh`,
+              top: 0,
+              left: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: mobileSheet.isDragging ? 'none' : 'height 0.35s cubic-bezier(0.2, 0, 0, 1)',
+            }
+          : { width: '110vw', height: '110vh', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+        }
       >
         <div 
           className="w-full h-full transition-opacity duration-1000"
@@ -1069,6 +1086,7 @@ export default function HomePage({
             activeCategory={activeCategory}
             isPlayEarthActive={isPlayEarthActive}
             globeView={globeView}
+            isDashboardOpen={isDashboardOpen}
           />
         </div>
       </div>
@@ -1082,28 +1100,32 @@ export default function HomePage({
       )}
 
       {/* FULL ARTICLE READER SYSTEM */}
-      <ArticleViewer
-        event={activeArticle}
-        allEvents={filteredEvents}
-        onClose={() => setActiveArticle(null)}
-      />
+      {!isMobile && (
+        <ArticleViewer
+          event={activeArticle}
+          allEvents={filteredEvents}
+          onClose={() => setActiveArticle(null)}
+        />
+      )}
 
       {/* PLAY EARTH GAME MODE OVERLAY */}
-      <PlayEarthOverlay
-        isActive={isPlayEarthActive}
-        selectedCountry={selectedCountry}
-        onClose={() => {
-          setIsPlayEarthActive(false);
-          handleSelectCountry(null);
-          playHoverBlip();
-        }}
-        onPlaySound={playHoverBlip}
-        onCorrectSound={playCorrectSound}
-        onWrongSound={playWrongSound}
-        onTimerTick={playTimerTick}
-        onLevelUp={playLevelUp}
-        username={currentUser?.username || 'Guest'}
-      />
+      {(!isMobile || !selectedCountry) && (
+        <PlayEarthOverlay
+          isActive={isPlayEarthActive}
+          selectedCountry={selectedCountry}
+          onClose={() => {
+            setIsPlayEarthActive(false);
+            handleSelectCountry(null);
+            playHoverBlip();
+          }}
+          onPlaySound={playHoverBlip}
+          onCorrectSound={playCorrectSound}
+          onWrongSound={playWrongSound}
+          onTimerTick={playTimerTick}
+          onLevelUp={playLevelUp}
+          username={currentUser?.username || 'Guest'}
+        />
+      )}
 
       {/* EARTHCAST NARRATION OVERLAY */}
       <EarthCastOverlay
@@ -1217,7 +1239,7 @@ export default function HomePage({
       {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
-            {selectedCountry && (!isMobile || isDashboardOpen) ? (
+            {selectedCountry && !isMobile ? (
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
@@ -1228,104 +1250,64 @@ export default function HomePage({
                 onSelectCountry={handleSelectCountry}
               />
             ) : (
-              <motion.div
-                key="live-feed"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-              >
-                {selectedEvent && (
-                  <button 
-                    onClick={() => {
-                      handleSelectEvent(null);
+              (!isMobile || !selectedCountry) && (
+                <motion.div
+                  key="live-feed"
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 50 }}
+                >
+                  {selectedEvent && (
+                    <button 
+                      onClick={() => {
+                        handleSelectEvent(null);
+                        playHoverBlip();
+                      }}
+                      className="fixed right-6 top-[100px] z-[60] bg-black/50 text-white p-2 rounded-full hover:bg-white/20 transition backdrop-blur-md cursor-pointer"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  )}
+                  <LiveFeed
+                    events={selectedEvent ? [selectedEvent] : filteredEvents}
+                    onSelectEvent={(e) => {
+                      handleEventNavigate(e);
                       playHoverBlip();
                     }}
-                    className="fixed right-6 top-[100px] z-[60] bg-black/50 text-white p-2 rounded-full hover:bg-white/20 transition backdrop-blur-md cursor-pointer"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </button>
-                )}
-                <LiveFeed
-                  events={selectedEvent ? [selectedEvent] : filteredEvents}
-                  onSelectEvent={(e) => {
-                    handleEventNavigate(e);
-                    playHoverBlip();
-                  }}
-                  activeCategory={activeCategory}
-                  onSelectCountry={handleSelectCountry}
-                  onPlaySound={playHoverBlip}
-                  footballActive={apiStatus?.footballActive}
-                />
-              </motion.div>
+                    activeCategory={activeCategory}
+                    onSelectCountry={handleSelectCountry}
+                    onPlaySound={playHoverBlip}
+                    footballActive={apiStatus?.footballActive}
+                    mobileSheetRef={mobileSheet.sheetRef}
+                    onSheetPointerDown={mobileSheet.onPointerDown}
+                  />
+                </motion.div>
+              )
             )}
           </AnimatePresence>
         </div>
       )}
 
-      {/* Mobile Country Preview Card (Bottom Drawer) */}
+      {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && selectedCountry && !isDashboardOpen && (
-          <motion.div
-            initial={{ y: 150, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 150, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-24 left-4 right-4 z-40 glass border border-white/10 p-5 rounded-2xl flex flex-col gap-4 shadow-[0_-10px_35px_rgba(0,0,0,0.5)] pointer-events-auto"
-            style={{
-              background: 'linear-gradient(135deg, rgba(12,12,22,0.96) 0%, rgba(5,5,12,0.96) 100%)',
-            }}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl leading-none">{findCountryMeta(selectedCountry)?.flag || '🏳️'}</span>
-                <div>
-                  <h3 className="text-base font-black text-white leading-tight">{selectedCountry}</h3>
-                  <p className="text-[10px] text-white/40 font-medium">
-                    {findCountryMeta(selectedCountry)?.capital} • {findCountryMeta(selectedCountry)?.continent}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  handleSelectCountry(null);
-                  playHoverBlip();
-                }}
-                className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/55 hover:bg-white/10 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Category-aware mini stats inside mobile preview */}
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-white/50 border-t border-b border-white/5 py-3">
-              <div>
-                <span className="text-white/30 block uppercase tracking-wider text-[8px] mb-0.5">Active Stories</span>
-                <span className="text-white font-bold text-xs">
-                  {filteredEvents.filter(e => e.country === selectedCountry).length} Stories
-                </span>
-              </div>
-              <div>
-                <span className="text-white/30 block uppercase tracking-wider text-[8px] mb-0.5">Category Context</span>
-                <span className={`font-bold text-xs uppercase ${
-                  activeCategory === 'breaking' ? 'text-blue-400' :
-                  activeCategory === 'football' ? 'text-emerald-400' :
-                  activeCategory === 'weather' ? 'text-orange-400' : 'text-cyan-400'
-                }`}>
-                  {activeCategory ? activeCategory : 'Global Pulse'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                setIsDashboardOpen(true);
-                playDeepPulse();
-              }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-xs tracking-wider text-white uppercase hover:scale-[1.01] transition-transform cursor-pointer"
-            >
-              Open Reaction Dashboard 💬
-            </button>
-          </motion.div>
+        {isMobile && selectedCountry && (
+          <MobileCountrySheet
+            country={selectedCountry}
+            onClose={() => handleSelectCountry(null)}
+            activeCategory={activeCategory}
+            onCategoryChange={handleCategoryChange}
+            activeArticle={activeArticle}
+            onSelectArticle={setActiveArticle}
+            isPlayEarthActive={isPlayEarthActive}
+            onTogglePlayEarth={setIsPlayEarthActive}
+            allEvents={filteredEvents}
+            username={currentUser?.username || 'Guest'}
+            onPlaySound={playHoverBlip}
+            onCorrectSound={playCorrectSound}
+            onWrongSound={playWrongSound}
+            onTimerTick={playTimerTick}
+            onLevelUp={playLevelUp}
+          />
         )}
       </AnimatePresence>
 
@@ -1338,7 +1320,7 @@ export default function HomePage({
       {/* UI Overlays (Mini Globe, Timeline, AI Button) */}
       <div 
         className="fixed bottom-6 left-6 right-6 z-30 flex items-end justify-between pointer-events-none transition-all duration-300"
-        style={isMobile && !isFullScreenGlobe && !isPlayEarthActive ? { bottom: 'calc(55vh + 16px)' } : undefined}
+        style={isMobile && !isFullScreenGlobe && !isPlayEarthActive ? { bottom: `calc(${mobileSheet.sheetHeightPercent}vh + 16px)` } : undefined}
       >
         
         {/* Phase 10: Left - Global Pulse Energy Card + Mini Globe */}
@@ -1370,8 +1352,8 @@ export default function HomePage({
         {/* Center: Timeline Slider */}
         <TimelineSlider />
 
-        {/* Right: Floating AI & Upload Buttons */}
-        <div className="pointer-events-auto mb-2 mr-0 md:mr-[340px] lg:mr-0 flex items-center gap-3">
+        {/* Right: Floating AI & Upload Buttons (Desktop-only) */}
+        <div className="hidden lg:flex pointer-events-auto mb-2 mr-0 md:mr-[340px] lg:mr-0 items-center gap-3">
           {/* Phase 9 Mobile Full Screen Toggle */}
           <button
             onClick={() => {
@@ -1461,6 +1443,104 @@ export default function HomePage({
           </button>
         </div>
       </div>
+
+      {/* Mobile-Only Floating Action Button Stack (matches user screenshot design) */}
+      {isMobile && (
+        <div 
+          className="fixed right-4 z-40 flex flex-col gap-4.5 items-center pointer-events-auto transition-all duration-300"
+          style={{ bottom: isFullScreenGlobe || isPlayEarthActive ? '24px' : `calc(${mobileSheet.sheetHeightPercent}vh + 16px)` }}
+        >
+          {/* Globe/Fullscreen Toggle */}
+          <button
+            onClick={() => {
+              setIsFullScreenGlobe(!isFullScreenGlobe);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              !isFullScreenGlobe
+                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={isFullScreenGlobe ? "Show Live Events panel" : "Hide Live Events panel"}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </button>
+
+          {/* Microphone/EarthCast Narration Toggle */}
+          <button
+            onClick={() => {
+              earthCast.toggleEarthCast();
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              earthCast.isEarthCastActive
+                ? earthCast.narrationState === 'speaking'
+                  ? 'bg-red-500/15 border-red-500/50 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse'
+                  : 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={earthCast.isEarthCastActive ? "Mute Narration" : "Unmute Narration"}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+          </button>
+
+          {/* Megaphone/Speaker Mute/Unmute Toggle */}
+          <button
+            onClick={() => {
+              setIsMuted(!isMuted);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              !isMuted
+                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={isMuted ? "Unmute Sound" : "Mute Sound"}
+          >
+            {isMuted ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+            )}
+          </button>
+
+          {/* Chatbot/Robot (AI Assistant) Toggle */}
+          <button
+            onClick={() => {
+              setIsAssistantOpen(!isAssistantOpen);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+              isAssistantOpen
+                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
+                : 'bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_15px_rgba(0,229,255,0.4)] hover:scale-105'
+            }`}
+            title={isAssistantOpen ? "Close AI Assistant" : "MooEarth AI Assistant"}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2" />
+              <circle cx="12" cy="5" r="2" />
+              <path d="M12 7v4M9 16h.01M15 16h.01M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* First-Time User Guide Overlay */}
       <AnimatePresence>
