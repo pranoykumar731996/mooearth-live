@@ -142,17 +142,42 @@ export default function HomePage({
     initAnalyticsSession();
   }, []);
 
-  // Register PWA Service Worker on client mount
+  // Register PWA Service Worker on client mount with Auto-Update logic (forces instant reload on developer updates)
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('[PWA] Service Worker registered successfully with scope:', registration.scope);
-        })
-        .catch((error) => {
-          console.error('[PWA] Service Worker registration failed:', error);
-        });
-    }
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    let refreshing = false;
+    const handleControllerChange = () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    };
+    
+    navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+
+    let intervalId: NodeJS.Timeout;
+
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('[PWA] Service Worker registered successfully with scope:', registration.scope);
+        
+        // Check for updates immediately on load
+        registration.update();
+
+        // Periodically check for service worker updates every 30 seconds
+        intervalId = setInterval(() => {
+          registration.update().catch((err) => console.log('[PWA] Update check failed:', err));
+        }, 30000);
+      })
+      .catch((error) => {
+        console.error('[PWA] Service Worker registration failed:', error);
+      });
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   // Capture referral code on mount
