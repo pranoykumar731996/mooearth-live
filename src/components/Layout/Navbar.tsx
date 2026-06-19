@@ -176,7 +176,7 @@ export default function Navbar({
         <button
           onClick={onToggleCinematicMode}
           title={isCinematicModeActive ? "Stop Watch the World React Mode" : "Start Watch the World React Mode"}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer relative ${
+          className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer relative ${
             isCinematicModeActive
               ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
               : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
@@ -196,7 +196,7 @@ export default function Navbar({
         <button
           onClick={onToggleMute}
           title={isMuted ? "Unmute Audio" : "Mute Audio"}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
+          className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
             !isMuted
               ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
               : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
@@ -209,7 +209,7 @@ export default function Navbar({
         <button
           onClick={onLeaderboardClick}
           title="View Leaderboards"
-          className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer flex items-center justify-center text-sm"
+          className="hidden sm:flex w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer items-center justify-center text-sm"
         >
           🏆
         </button>

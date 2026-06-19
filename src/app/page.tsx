@@ -688,7 +688,7 @@ export default function HomePage({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-cyan-400">
             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shrink-0" />
-            <span className="uppercase tracking-widest font-black text-[9px]">Living Earth Network</span>
+            <span className="uppercase tracking-widest font-black text-[9px] hidden sm:inline">Living Earth Network</span>
           </div>
           <span className="text-white/10">|</span>
           <div className="flex items-center gap-1">
@@ -704,12 +704,12 @@ export default function HomePage({
         
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
-            <span className="text-white/30">Active Stories:</span>
+            <span className="text-white/30"><span className="hidden sm:inline">Active </span>Stories:</span>
             <span className="text-cyan-400 font-bold">{filteredEvents.length}</span>
           </div>
           <span className="text-white/10">|</span>
           <div className="flex items-center gap-1">
-            <span className="text-white/30">Live Matches:</span>
+            <span className="text-white/30"><span className="hidden sm:inline">Live </span>Matches:</span>
             <span className="text-emerald-400 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
               {liveEvents.filter(e => e.category === 'football' && e.footballData?.status === 'LIVE').length}
@@ -1336,7 +1336,10 @@ export default function HomePage({
       />
 
       {/* UI Overlays (Mini Globe, Timeline, AI Button) */}
-      <div className="fixed bottom-6 left-6 right-6 z-30 flex items-end justify-between pointer-events-none">
+      <div 
+        className="fixed bottom-6 left-6 right-6 z-30 flex items-end justify-between pointer-events-none transition-all duration-300"
+        style={isMobile && !isFullScreenGlobe && !isPlayEarthActive ? { bottom: 'calc(55vh + 16px)' } : undefined}
+      >
         
         {/* Phase 10: Left - Global Pulse Energy Card + Mini Globe */}
         <div className="hidden lg:flex flex-col gap-2.5 pointer-events-auto">
@@ -1368,7 +1371,7 @@ export default function HomePage({
         <TimelineSlider />
 
         {/* Right: Floating AI & Upload Buttons */}
-        <div className="pointer-events-auto mb-2 mr-[340px] lg:mr-0 flex items-center gap-3">
+        <div className={`pointer-events-auto mb-2 flex items-center gap-3 transition-all duration-300 ${(!isFullScreenGlobe && !isPlayEarthActive) ? 'lg:mr-[410px]' : ''}`}>
           {/* Phase 9 Mobile Full Screen Toggle */}
           <button
             onClick={() => {
@@ -1425,10 +1428,11 @@ export default function HomePage({
                 setIsUploadModalOpen(true);
               }
             }}
-            className="h-14 px-5 rounded-2xl flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 shadow-[0_0_30px_rgba(230,64,251,0.25)] hover:shadow-[0_0_45px_rgba(230,64,251,0.45)] hover:scale-105 transition-all duration-300 font-bold text-xs tracking-wider text-white cursor-pointer"
+            className="h-14 w-14 md:w-auto md:px-5 rounded-2xl flex items-center justify-center md:gap-2 bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 shadow-[0_0_30px_rgba(230,64,251,0.25)] hover:shadow-[0_0_45px_rgba(230,64,251,0.45)] hover:scale-105 transition-all duration-300 font-bold text-xs tracking-wider text-white cursor-pointer"
+            title="Upload Reaction"
           >
             <span>📣</span>
-            UPLOAD REACTION
+            <span className="hidden md:inline">UPLOAD REACTION</span>
           </button>
 
           <button

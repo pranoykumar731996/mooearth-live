@@ -34,7 +34,7 @@ export default function EarthCastToggle({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onToggle}
-        className={`relative h-14 px-5 rounded-2xl flex items-center gap-2.5 border transition-all duration-500 cursor-pointer ${
+        className={`relative h-14 w-14 md:w-auto md:px-5 rounded-2xl flex items-center justify-center md:gap-2.5 border transition-all duration-500 cursor-pointer ${
           isActive
             ? isSpeaking
               ? 'bg-gradient-to-r from-red-600/30 to-orange-600/30 border-red-500/50 shadow-[0_0_35px_rgba(239,68,68,0.3)]'
@@ -81,7 +81,7 @@ export default function EarthCastToggle({
 
         {/* Label */}
         <span
-          className={`text-xs font-black tracking-wider ${
+          className={`text-xs font-black tracking-wider hidden md:inline ${
             isActive
               ? isSpeaking
                 ? 'text-red-400'
