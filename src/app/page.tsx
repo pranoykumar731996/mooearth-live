@@ -126,6 +126,66 @@ export default function HomePage({
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
 
+  // PWA Install Prompt States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
+  // Detect PWA Installation status, iOS environment, and capture installer prompt
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Do not show banner if already running in standalone (installed) app mode
+    const isStandalone = 
+      (window.navigator as any).standalone || 
+      window.matchMedia('(display-mode: standalone)').matches;
+
+    if (isStandalone) return;
+
+    // Do not show if user previously dismissed the banner
+    const dismissed = localStorage.getItem('mooearth_install_dismissed');
+    if (dismissed === 'true') return;
+
+    // Detect iOS devices (Safari does not fire beforeinstallprompt and requires manual Add to Home Screen instructions)
+    const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIos(isIosDevice);
+
+    if (isIosDevice) {
+      setShowInstallBanner(true);
+    } else {
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setShowInstallBanner(true);
+      };
+
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      };
+    }
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (isIos) {
+      setShowIosGuide(true);
+      return;
+    }
+
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`[PWA] Install prompt outcome: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const dismissInstallBanner = () => {
+    localStorage.setItem('mooearth_install_dismissed', 'true');
+    setShowInstallBanner(false);
+  };
+
   // Mobile draggable bottom sheet (Google Maps style)
   const mobileSheet = useMobileSheet('collapsed');
 
@@ -1118,6 +1178,101 @@ export default function HomePage({
 
       {/* GOAL CELEBRATION OVERLAY */}
       <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />
+
+      {/* PWA INSTALL BANNER FOR MOBILE */}
+      <AnimatePresence>
+        {showInstallBanner && isMobile && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed left-4 right-4 z-40 rounded-2xl glass border border-white/10 p-3 shadow-2xl flex items-center justify-between pointer-events-auto"
+            style={{
+              top: '108px',
+              background: 'linear-gradient(135deg, rgba(12,12,25,0.96) 0%, rgba(5,5,15,0.96) 100%)',
+              backdropFilter: 'blur(16px)',
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-lg shrink-0 select-none">
+                🌍
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-extrabold text-white text-xs truncate">Install MooEarth Live</h4>
+                <p className="text-[9px] text-white/50 leading-relaxed truncate">Add to home screen for native experience & offline mode.</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleInstallClick}
+                className="px-3.5 py-1.5 rounded-xl bg-cyan-500 text-black font-bold text-[10px] hover:bg-cyan-400 transition-colors cursor-pointer shadow-lg shadow-cyan-500/10"
+              >
+                Install
+              </button>
+              <button
+                onClick={dismissInstallBanner}
+                className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* iOS INSTALL INSTRUCTIONS MODAL */}
+      <AnimatePresence>
+        {showIosGuide && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm pointer-events-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm rounded-3xl border border-white/10 p-6 shadow-2xl flex flex-col gap-4"
+              style={{
+                background: 'linear-gradient(135deg, rgba(12,12,25,0.98) 0%, rgba(5,5,15,0.98) 100%)',
+              }}
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Install on iOS</h3>
+                <button
+                  onClick={() => setShowIosGuide(false)}
+                  className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="text-xs text-white/70 space-y-4 py-1">
+                <p>Follow these steps to add **MooEarth Live** to your home screen using Safari:</p>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-bold text-cyan-400 text-[10px] shrink-0">1</span>
+                    <p className="leading-relaxed">Tap the **Share** button <span className="text-cyan-400 font-bold">📤</span> in Safari.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-bold text-cyan-400 text-[10px] shrink-0">2</span>
+                    <p className="leading-relaxed">Scroll down the options and select **Add to Home Screen** <span className="text-cyan-400 font-bold">➕</span>.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="w-5 h-5 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-bold text-cyan-400 text-[10px] shrink-0">3</span>
+                    <p className="leading-relaxed">Tap **Add** in the top-right corner to install.</p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowIosGuide(false)}
+                className="w-full mt-2 py-2.5 rounded-2xl bg-cyan-500 text-black font-bold text-xs hover:bg-cyan-400 transition-colors cursor-pointer text-center"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* EVENT DETAIL POPUP OVERLAY */}
       {!isPlayEarthActive && (
