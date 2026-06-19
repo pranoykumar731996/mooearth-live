@@ -59,7 +59,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const gaId = process.env.NEXT_PUBLIC_GA_ID || 'G-XXXXXXXXXX';
+  const gaId = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-XXXXXXXXXX';
 
   return (
     <html lang="en" className={`${inter.variable} dark`}>

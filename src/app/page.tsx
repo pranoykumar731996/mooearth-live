@@ -137,6 +137,19 @@ export default function HomePage({
     initAnalyticsSession();
   }, []);
 
+  // Register PWA Service Worker on client mount
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('[PWA] Service Worker registered successfully with scope:', registration.scope);
+        })
+        .catch((error) => {
+          console.error('[PWA] Service Worker registration failed:', error);
+        });
+    }
+  }, []);
+
   // Capture referral code on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
