@@ -1371,7 +1371,7 @@ export default function HomePage({
         <TimelineSlider />
 
         {/* Right: Floating AI & Upload Buttons */}
-        <div className={`pointer-events-auto mb-2 flex items-center gap-3 transition-all duration-300 ${(!isFullScreenGlobe && !isPlayEarthActive) ? 'lg:mr-[410px]' : ''}`}>
+        <div className="pointer-events-auto mb-2 mr-0 md:mr-[340px] lg:mr-0 flex items-center gap-3">
           {/* Phase 9 Mobile Full Screen Toggle */}
           <button
             onClick={() => {
