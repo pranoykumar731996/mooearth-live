@@ -383,7 +383,7 @@ export default function MobileCountrySheet({
       drag="y"
       dragControls={dragControls}
       dragListener={false}
-      dragConstraints={{ top: 0, bottom: window.innerHeight * 0.80 }}
+      dragConstraints={{ top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight * 0.80 : 600 }}
       dragElastic={0.1}
       onDragEnd={handleDragEnd}
       className="fixed bottom-0 left-0 right-0 w-full h-[80vh] z-40 glass rounded-t-[32px] rounded-b-none border-t border-white/10 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden pointer-events-auto select-none"
@@ -427,16 +427,19 @@ export default function MobileCountrySheet({
       </div>
 
       {/* Category Tabs (sticky at top, scrollable horizontally) */}
-      <div className="sticky top-0 bg-black/40 border-b border-white/[0.05] py-2 px-6 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 shrink-0 z-20">
+      <div 
+        className="sticky top-0 bg-black/60 backdrop-blur-md border-b border-white/[0.05] py-2 px-4 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 shrink-0 z-20"
+        style={{ touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}
+      >
         {MOBILE_CATEGORIES.map((tab) => {
           const isActiveTab = currentActiveTabValue === tab.categoryValue;
           return (
             <button
               key={tab.id}
               onClick={() => handleTabClick(tab.categoryValue)}
-              className={`px-3 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 isActiveTab
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-sm'
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-[0_0_10px_rgba(0,229,255,0.15)]'
                   : 'bg-white/5 text-white/50 border-white/5 hover:text-white hover:bg-white/10'
               }`}
             >

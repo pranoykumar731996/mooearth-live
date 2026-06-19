@@ -52,6 +52,16 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Hide scrollbar completely while keeping scroll functionality */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
+  -webkit-overflow-scrolling: touch; /* Smooth iOS momentum scrolling */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;             /* Chrome/Safari/Opera */
+}
+
 /* ---------- Marker Animations ---------- */
 @keyframes marker-pulse {
   0%,

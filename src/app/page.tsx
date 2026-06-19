@@ -645,6 +645,13 @@ export default function HomePage({
     setSelectedCountry(null);
   }, []);
 
+  // Mobile-specific: change category WITHOUT closing the country sheet
+  const handleMobileCategoryChange = useCallback((category: EventCategory | null) => {
+    setActiveCategory(category);
+    setSelectedEvent(null);
+    // Do NOT set selectedCountry to null — keep the country sheet open
+  }, []);
+
   const handleEventNavigate = useCallback((event: WorldEvent) => {
     if (event.category !== 'football') {
       setActiveArticle(event);
@@ -1475,7 +1482,7 @@ export default function HomePage({
             country={selectedCountry}
             onClose={() => handleSelectCountry(null)}
             activeCategory={activeCategory}
-            onCategoryChange={handleCategoryChange}
+            onCategoryChange={handleMobileCategoryChange}
             activeArticle={activeArticle}
             onSelectArticle={setActiveArticle}
             isPlayEarthActive={isPlayEarthActive}
