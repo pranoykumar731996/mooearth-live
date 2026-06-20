@@ -295,6 +295,7 @@ const templatesByCategory: Record<QuizCategory, TemplateGenerator[]> = {
   culture: triviaTemplates,     // Fallback to trivia for culture
   'current-affairs': currentAffairsTemplates,
   mixed: [...geoTemplates, ...sportsTemplates, ...triviaTemplates, ...historyTemplates, ...currentAffairsTemplates],
+  worldcup: sportsTemplates,
 };
 
 /**

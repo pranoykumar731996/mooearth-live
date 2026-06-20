@@ -17,11 +17,14 @@ interface LeaderboardEntry {
   country: string;
   xp: number;
   level: number;
+  survivalBest?: number;
+  clockBest60s?: number;
 }
 
 export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: LeaderboardModalProps) {
   const [activeTab, setActiveTab] = useState<'global' | 'country'>('global');
   const [filterType, setFilterType] = useState<'all-time' | 'weekly'>('all-time');
+  const [activeMetric, setActiveMetric] = useState<'xp' | 'survival' | 'clock'>('xp');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,23 +36,36 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
       try {
         const usersRef = collection(db, 'users');
         let q;
+        const metricField = activeMetric === 'xp' 
+          ? 'xp' 
+          : activeMetric === 'survival' 
+            ? 'survivalBest' 
+            : 'clockBest.60s';
 
         if (activeTab === 'country' && selectedCountry) {
           q = query(
             usersRef,
             where('country', '==', selectedCountry),
-            orderBy('xp', 'desc'),
-            limit(20)
+            orderBy(metricField, 'desc'),
+            limit(50)
           );
         } else {
           q = query(
             usersRef,
-            orderBy('xp', 'desc'),
-            limit(20)
+            orderBy(metricField, 'desc'),
+            limit(50)
           );
         }
 
-        const querySnapshot = await getDocs(q);
+        let querySnapshot;
+        try {
+          querySnapshot = await getDocs(q);
+        } catch (queryErr) {
+          console.warn('[LeaderboardModal] OrderBy query failed, trying fallback limit query:', queryErr);
+          const fallbackQ = query(usersRef, limit(100));
+          querySnapshot = await getDocs(fallbackQ);
+        }
+
         const fetchedEntries: LeaderboardEntry[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -59,41 +75,63 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
             country: data.country || 'Global',
             xp: typeof data.xp === 'number' ? data.xp : 0,
             level: typeof data.level === 'number' ? data.level : 1,
+            survivalBest: typeof data.survivalBest === 'number' ? data.survivalBest : 0,
+            clockBest60s: data.clockBest && typeof data.clockBest['60s'] === 'number' ? data.clockBest['60s'] : 0,
           });
         });
 
-        // If weekly tab is selected, we simulate/shuffle slightly or just display them with slight adjustments
-        if (filterType === 'weekly') {
-          fetchedEntries.sort((a, b) => (b.xp % 700 + b.level * 10) - (a.xp % 700 + a.level * 10));
-        } else {
-          fetchedEntries.sort((a, b) => b.xp - a.xp);
+        // Client-side filtering and sorting
+        let filtered = [...fetchedEntries];
+        if (activeTab === 'country' && selectedCountry) {
+          filtered = filtered.filter(e => e.country.toLowerCase() === selectedCountry.toLowerCase());
         }
 
-        setEntries(fetchedEntries);
+        if (activeMetric === 'xp') {
+          if (filterType === 'weekly') {
+            filtered.sort((a, b) => (b.xp % 700 + b.level * 10) - (a.xp % 700 + a.level * 10));
+          } else {
+            filtered.sort((a, b) => b.xp - a.xp);
+          }
+        } else if (activeMetric === 'survival') {
+          filtered.sort((a, b) => (b.survivalBest || 0) - (a.survivalBest || 0));
+        } else if (activeMetric === 'clock') {
+          filtered.sort((a, b) => (b.clockBest60s || 0) - (a.clockBest60s || 0));
+        }
+
+        setEntries(filtered.slice(0, 20));
       } catch (err) {
         console.error('[LeaderboardModal] Error fetching leaderboard:', err);
         // Fallback mock entries if Firestore is offline or unindexed
         const mockEntries: LeaderboardEntry[] = [
-          { username: 'NeymarFanatic', avatar: '🇧🇷', country: 'Brazil', xp: 12450, level: 14 },
-          { username: 'MessiGoat', avatar: '🇦🇷', country: 'Argentina', xp: 11200, level: 12 },
-          { username: 'MbappeSpeed', avatar: '🇫🇷', country: 'France', xp: 9850, level: 11 },
-          { username: 'CR7Legend', avatar: '🇵🇹', country: 'Portugal', xp: 9600, level: 10 },
-          { username: 'SamuraiBlue', avatar: '🇯🇵', country: 'Japan', xp: 8200, level: 9 },
-          { username: 'Yash_Quizzer', avatar: '🇮🇳', country: 'India', xp: 7500, level: 8 },
+          { username: 'NeymarFanatic', avatar: '🇧🇷', country: 'Brazil', xp: 12450, level: 14, survivalBest: 12, clockBest60s: 22 },
+          { username: 'MessiGoat', avatar: '🇦🇷', country: 'Argentina', xp: 11200, level: 12, survivalBest: 15, clockBest60s: 18 },
+          { username: 'MbappeSpeed', avatar: '🇫🇷', country: 'France', xp: 9850, level: 11, survivalBest: 9, clockBest60s: 25 },
+          { username: 'CR7Legend', avatar: '🇵🇹', country: 'Portugal', xp: 9600, level: 10, survivalBest: 10, clockBest60s: 20 },
+          { username: 'SamuraiBlue', avatar: '🇯🇵', country: 'Japan', xp: 8200, level: 9, survivalBest: 8, clockBest60s: 15 },
+          { username: 'Yash_Quizzer', avatar: '🇮🇳', country: 'India', xp: 7500, level: 8, survivalBest: 7, clockBest60s: 14 },
         ];
         
+        let filtered = [...mockEntries];
         if (activeTab === 'country' && selectedCountry) {
-          setEntries(mockEntries.filter(e => e.country.toLowerCase() === selectedCountry.toLowerCase()));
-        } else {
-          setEntries(mockEntries);
+          filtered = filtered.filter(e => e.country.toLowerCase() === selectedCountry.toLowerCase());
         }
+
+        if (activeMetric === 'xp') {
+          filtered.sort((a, b) => b.xp - a.xp);
+        } else if (activeMetric === 'survival') {
+          filtered.sort((a, b) => (b.survivalBest || 0) - (a.survivalBest || 0));
+        } else if (activeMetric === 'clock') {
+          filtered.sort((a, b) => (b.clockBest60s || 0) - (a.clockBest60s || 0));
+        }
+
+        setEntries(filtered);
       } finally {
         setLoading(false);
       }
     };
 
     fetchLeaderboard();
-  }, [isOpen, activeTab, filterType, selectedCountry]);
+  }, [isOpen, activeTab, filterType, activeMetric, selectedCountry]);
 
   if (!isOpen) return null;
 
@@ -150,7 +188,7 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
         </div>
 
         {/* Filter Toggle (All Time vs Weekly) */}
-        <div className="flex items-center justify-between mb-4 px-2 font-sans">
+        <div className="flex items-center justify-between mb-3 px-2 font-sans">
           <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Timeframe</span>
           <div className="flex gap-2">
             {(['all-time', 'weekly'] as const).map((t) => (
@@ -164,6 +202,26 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
                 }`}
               >
                 {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Metric Selector (XP vs Survival vs Speed) */}
+        <div className="flex items-center justify-between mb-4 px-2 font-sans">
+          <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Metric</span>
+          <div className="flex gap-1.5">
+            {(['xp', 'survival', 'clock'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setActiveMetric(m)}
+                className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
+                  activeMetric === m
+                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                    : 'bg-transparent border-transparent text-white/40 hover:text-white/60'
+                }`}
+              >
+                {m === 'xp' ? '🏆 XP' : m === 'survival' ? '🔥 Survival' : '⏱️ Speed'}
               </button>
             ))}
           </div>
@@ -217,7 +275,11 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
 
                   <div className="text-right shrink-0">
                     <p className="text-xs font-black text-cyan-400 tabular-nums">
-                      {entry.xp.toLocaleString()} XP
+                      {activeMetric === 'xp' 
+                        ? `${entry.xp.toLocaleString()} XP` 
+                        : activeMetric === 'survival'
+                          ? `${entry.survivalBest} Countries`
+                          : `${entry.clockBest60s} Pts`}
                     </p>
                     <p className="text-[9px] text-white/30 font-bold uppercase tracking-wider mt-0.5">
                       Lv.{entry.level}

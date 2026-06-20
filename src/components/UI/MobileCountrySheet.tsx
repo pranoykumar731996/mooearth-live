@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { WorldEvent, EventCategory, ReactionEvent } from '@/types';
+import { WorldEvent, EventCategory, ReactionEvent, PlayEarthMode } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import SentimentBadge from '../Reactions/SentimentBadge';
 import TrendingHashtags from '../Reactions/TrendingHashtags';
@@ -10,9 +10,11 @@ import ReactionFeed from '../Reactions/ReactionFeed';
 import PlayEarthOverlay from '../Globe/PlayEarthOverlay';
 import ArticleViewer from '../Reactions/ArticleViewer';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
+import { matchCountry } from '@/data/questions';
 
 // Categories mapping helper
-const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryValue: EventCategory | 'play_earth' }[] = [
+const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryValue: EventCategory | 'play_earth' | 'discovery' }[] = [
+  { id: 'discovery', label: 'Discovery', emoji: '🌍', categoryValue: 'discovery' },
   { id: 'news', label: 'News', emoji: '📰', categoryValue: 'breaking' },
   { id: 'sports', label: 'Sports', emoji: '⚽', categoryValue: 'sports' },
   { id: 'worldcup', label: 'FIFA World Cup', emoji: '🏆', categoryValue: 'football' },
@@ -264,6 +266,13 @@ export default function MobileCountrySheet({
   const [isLoading, setIsLoading] = useState(true);
   const dragControls = useDragControls();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [launchMode, setLaunchMode] = useState<PlayEarthMode | null>(null);
+
+  const handleLaunchMode = (mode: PlayEarthMode) => {
+    onPlaySound();
+    setLaunchMode(mode);
+    onTogglePlayEarth(true);
+  };
 
   const countryMeta = findCountryMeta(country);
 
@@ -334,10 +343,14 @@ export default function MobileCountrySheet({
     }
   };
 
-  const handleTabClick = (tabVal: EventCategory | 'play_earth') => {
+  const handleTabClick = (tabVal: EventCategory | 'play_earth' | 'discovery') => {
     onPlaySound();
     if (tabVal === 'play_earth') {
+      setLaunchMode(null);
       onTogglePlayEarth(true);
+    } else if (tabVal === 'discovery') {
+      onTogglePlayEarth(false);
+      onCategoryChange(null);
     } else {
       onTogglePlayEarth(false);
       onCategoryChange(tabVal);
@@ -372,7 +385,182 @@ export default function MobileCountrySheet({
     );
   };
 
-  const currentActiveTabValue = isPlayEarthActive ? 'play_earth' : (activeCategory || 'breaking');
+  // Render Earth Discovery dashboard (V7)
+  const renderDiscoveryDashboard = () => {
+    const weatherMetrics = getDeterministicMetrics(country, 'weather') as any;
+    const sportsMetrics = getDeterministicMetrics(country, 'sports') as any;
+    
+    // Find headlines for this country
+    const countryEvents = allEvents.filter(e => matchCountry(e.country, country));
+    const topHeadline = countryEvents[0];
+
+    return (
+      <div className="space-y-6 animate-[quiz-reveal_0.3s_ease-out]">
+        {/* Core Stats Grid */}
+        <div className="grid grid-cols-2 gap-2.5">
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] text-white/40 uppercase font-black tracking-wider flex items-center gap-1">🏛️ Capital</span>
+            <div className="text-sm font-black text-white">{countryMeta?.capital || 'N/A'}</div>
+          </div>
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] text-white/40 uppercase font-black tracking-wider flex items-center gap-1">👥 Population</span>
+            <div className="text-sm font-black text-white">{countryMeta?.population || 'N/A'}</div>
+          </div>
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] text-white/40 uppercase font-black tracking-wider flex items-center gap-1">🗣️ Language</span>
+            <div className="text-sm font-black text-white truncate">{countryMeta?.language || 'N/A'}</div>
+          </div>
+          <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-3.5 space-y-1">
+            <span className="text-[10px] text-white/40 uppercase font-black tracking-wider flex items-center gap-1">💰 Currency</span>
+            <div className="text-sm font-black text-white truncate">{countryMeta?.currency || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Dynamic Context Widgets */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Weather Widget snippet */}
+          <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-2xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-cyan-300 uppercase tracking-widest">🌦️ Local Weather</span>
+              <span className="text-[8px] bg-cyan-400/20 text-cyan-200 px-1.5 py-0.5 rounded font-black">STABLE</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-white">{weatherMetrics.temp}°C</span>
+              <span className="text-[10px] text-white/50">{weatherMetrics.conditions}</span>
+            </div>
+            <p className="text-[9px] text-white/40 font-bold uppercase">AQI: {weatherMetrics.aqi} ({weatherMetrics.aqiStatus})</p>
+          </div>
+
+          {/* Sports Widget snippet */}
+          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">⚽ Sports & Athletics</span>
+              <span className="text-[8px] bg-emerald-400/20 text-emerald-200 px-1.5 py-0.5 rounded font-black">{countryMeta?.sport || 'Football'}</span>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-white">#{sportsMetrics.fifaRank}</span>
+              <span className="text-[10px] text-white/50">FIFA Ranking</span>
+            </div>
+            <p className="text-[9px] text-white/40 font-bold uppercase">Win Ratio: {sportsMetrics.winRatio}% • Goals: {sportsMetrics.goalsScored}</p>
+          </div>
+        </div>
+
+        {/* Fun Fact Banner */}
+        {countryMeta?.funFact && (
+          <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3">
+            <span className="text-2xl select-none">💡</span>
+            <div>
+              <h4 className="text-[10px] font-black text-amber-300 uppercase tracking-wider">Did you know?</h4>
+              <p className="text-xs text-white/80 leading-relaxed font-medium mt-0.5">{countryMeta.funFact}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Top Headline News snippet */}
+        {topHeadline ? (
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">📰 Top Headline</span>
+            <h4 className="text-xs font-bold text-white line-clamp-2 leading-snug">{topHeadline.title}</h4>
+            <div className="flex justify-between items-center pt-1.5">
+              <span className="text-[9px] text-white/40">{topHeadline.source}</span>
+              <button 
+                onClick={() => onSelectArticle(topHeadline)}
+                className="text-[10px] font-bold text-cyan-400 hover:text-cyan-300 cursor-pointer flex items-center gap-0.5"
+              >
+                Read Article →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-center text-[10px] text-white/30 font-bold uppercase py-6">
+            No active headlines in this region.
+          </div>
+        )}
+
+        {/* PLAY EARTH GAME CHALLENGES */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full" />
+            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Play Earth Challenges</h4>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* Country Explorer */}
+            <button
+              onClick={() => handleLaunchMode('explorer')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">🌍</span>
+              <span className="text-xs font-black text-white">Country Explorer</span>
+              <span className="text-[8px] text-white/40 leading-snug">Answer trivia about {country}.</span>
+            </button>
+
+            {/* Capital Challenge */}
+            <button
+              onClick={() => handleLaunchMode('capital')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">🏙️</span>
+              <span className="text-xs font-black text-white">Capitals Test</span>
+              <span className="text-[8px] text-white/40 leading-snug">Match sovereign capital cities.</span>
+            </button>
+
+            {/* Flag Challenge */}
+            <button
+              onClick={() => handleLaunchMode('flag')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">🚩</span>
+              <span className="text-xs font-black text-white">Flag Blitz</span>
+              <span className="text-[8px] text-white/40 leading-snug">Test your national flag knowledge.</span>
+            </button>
+
+            {/* Survival Mode */}
+            <button
+              onClick={() => handleLaunchMode('survival')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">🔥</span>
+              <span className="text-xs font-black text-white">Survival Mode</span>
+              <span className="text-[8px] text-white/40 leading-snug">Answer wrong & game over!</span>
+            </button>
+
+            {/* Beat the clock */}
+            <button
+              onClick={() => handleLaunchMode('clock')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">⏱️</span>
+              <span className="text-xs font-black text-white">Beat The Clock</span>
+              <span className="text-[8px] text-white/40 leading-snug">Fast-paced countdown blitz.</span>
+            </button>
+
+            {/* World Cup */}
+            <button
+              onClick={() => handleLaunchMode('worldcup')}
+              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
+            >
+              <span className="text-xl group-hover:scale-110 transition-transform">🏆</span>
+              <span className="text-xs font-black text-white">World Cup</span>
+              <span className="text-[8px] text-white/40 leading-snug">FIFA tournament history trivia.</span>
+            </button>
+          </div>
+
+          {/* Daily Global Challenge */}
+          <button
+            onClick={() => handleLaunchMode('daily')}
+            className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs tracking-wider flex items-center justify-center gap-2 cursor-pointer hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-[0_4px_15px_rgba(245,158,11,0.1)]"
+          >
+            📆 PLAY DAILY EARTH CHALLENGE
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const currentActiveTabValue = isPlayEarthActive 
+    ? 'play_earth' 
+    : (activeCategory === null ? 'discovery' : activeCategory);
 
   return (
     <motion.div
@@ -478,6 +666,7 @@ export default function MobileCountrySheet({
                 onLevelUp={onLevelUp}
                 username={username}
                 isInline={true}
+                initialMode={launchMode}
               />
             ) : activeArticle ? (
               /* Inline Article Reader inside bottom sheet */
@@ -488,6 +677,9 @@ export default function MobileCountrySheet({
                 isInline={true}
                 onBack={() => onSelectArticle(null)}
               />
+            ) : currentActiveTabValue === 'discovery' ? (
+              /* Earth Discovery Mode Dashboard (V7) */
+              renderDiscoveryDashboard()
             ) : (
               /* Standard News/Reaction Category Feed */
               <div className="space-y-5 animate-[quiz-reveal_0.3s_ease-out]">

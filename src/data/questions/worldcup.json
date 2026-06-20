@@ -1,0 +1,152 @@
+[
+  {
+    "id": "wc-hist-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which country won the first-ever FIFA World Cup in 1930?",
+    "choices": ["Argentina", "Uruguay", "Brazil", "Italy"],
+    "correctIndex": 1,
+    "funFact": "Uruguay hosted the inaugural tournament in 1930 and defeated Argentina 4-2 in the final."
+  },
+  {
+    "id": "wc-hist-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which nation has won the most FIFA World Cup titles in history?",
+    "choices": ["Germany", "Italy", "Argentina", "Brazil"],
+    "correctIndex": 3,
+    "funFact": "Brazil has won the World Cup 5 times (1958, 1962, 1970, 1994, 2002) and is the only team to play in every tournament."
+  },
+  {
+    "id": "wc-2026-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "How many host nations are organizing the FIFA World Cup 2026?",
+    "choices": ["One", "Two", "Three", "Four"],
+    "correctIndex": 2,
+    "funFact": "The 2026 World Cup will be jointly hosted by three nations: Canada, Mexico, and the United States."
+  },
+  {
+    "id": "wc-2026-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "How many teams will compete in the expanded FIFA World Cup 2026?",
+    "choices": ["32", "40", "48", "64"],
+    "correctIndex": 2,
+    "funFact": "The 2026 edition will expand the tournament format from 32 teams to 48 teams for the first time."
+  },
+  {
+    "id": "wc-players-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Who is the all-time top goal scorer in FIFA World Cup history?",
+    "choices": ["Miroslav Klose", "Ronaldo Nazário", "Pelé", "Just Fontaine"],
+    "correctIndex": 0,
+    "funFact": "German forward Miroslav Klose scored 16 goals across four World Cup tournaments (2002-2014)."
+  },
+  {
+    "id": "wc-players-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "hard",
+    "question": "Who holds the record for the most goals scored in a single FIFA World Cup tournament?",
+    "choices": ["Gerd Müller", "Just Fontaine", "Eusébio", "Kylian Mbappé"],
+    "correctIndex": 1,
+    "funFact": "French striker Just Fontaine scored an incredible 13 goals in just six games during the 1958 World Cup."
+  },
+  {
+    "id": "wc-stadiums-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which historic stadium is set to host the FIFA World Cup 2026 Final match?",
+    "choices": ["Azteca Stadium", "MetLife Stadium", "SoFi Stadium", "AT&T Stadium"],
+    "correctIndex": 1,
+    "funFact": "MetLife Stadium (New York/New Jersey) was chosen to host the final on July 19, 2026."
+  },
+  {
+    "id": "wc-stadiums-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "hard",
+    "question": "Which stadium has hosted the FIFA World Cup Final twice, in 1970 and 1986?",
+    "choices": ["Maracanã Stadium", "Wembley Stadium", "Estadio Azteca", "Olympiastadion"],
+    "correctIndex": 2,
+    "funFact": "Estadio Azteca in Mexico City hosted Pelé's Brazil victory in 1970 and Maradona's Argentina triumph in 1986."
+  },
+  {
+    "id": "wc-records-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "hard",
+    "question": "Who is the oldest player to ever play in a FIFA World Cup match?",
+    "choices": ["Roger Milla", "Faryd Mondragón", "Essam El-Hadary", "Dino Zoff"],
+    "correctIndex": 2,
+    "funFact": "Egyptian goalkeeper Essam El-Hadary played in the 2018 World Cup at the age of 45 years and 161 days."
+  },
+  {
+    "id": "wc-records-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which country has played in the most World Cup Finals without ever winning the trophy?",
+    "choices": ["Netherlands", "Sweden", "Croatia", "Hungary"],
+    "correctIndex": 0,
+    "funFact": "The Netherlands reached the World Cup Final three times (1974, 1978, 2010) but lost all three."
+  },
+  {
+    "id": "wc-teams-1",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Which team became the first African nation to reach the World Cup semi-finals in 2022?",
+    "choices": ["Senegal", "Morocco", "Cameroon", "Ghana"],
+    "correctIndex": 1,
+    "funFact": "Morocco defeated Spain and Portugal in the knockout stages to reach the historic semi-final in Qatar."
+  },
+  {
+    "id": "wc-teams-2",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which country hosted the 2022 FIFA World Cup?",
+    "choices": ["Saudi Arabia", "Qatar", "UAE", "South Africa"],
+    "correctIndex": 1,
+    "funFact": "Qatar was the first Middle Eastern country to host a FIFA World Cup."
+  },
+  {
+    "id": "wc-players-3",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "easy",
+    "question": "Which player won the Golden Ball award for best player at both the 2014 and 2022 World Cups?",
+    "choices": ["Cristiano Ronaldo", "Luka Modrić", "Kylian Mbappé", "Lionel Messi"],
+    "correctIndex": 3,
+    "funFact": "Lionel Messi is the only player to win the Golden Ball twice since the award was introduced in 1982."
+  },
+  {
+    "id": "wc-hist-3",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "medium",
+    "question": "Who was the president of FIFA who helped found the World Cup and has the trophy named after him?",
+    "choices": ["Jules Rimet", "João Havelange", "Stanley Rous", "Sepp Blatter"],
+    "correctIndex": 0,
+    "funFact": "Jules Rimet was the FIFA President who served for 33 years and initialized the inaugural 1930 tournament."
+  },
+  {
+    "id": "wc-stadiums-3",
+    "country": "World Cup",
+    "category": "sports",
+    "difficulty": "hard",
+    "question": "Which Qatari stadium featured a design constructed out of 974 shipping containers?",
+    "choices": ["Lusail Stadium", "Al Janoub Stadium", "Stadium 974", "Al Bayt Stadium"],
+    "correctIndex": 2,
+    "funFact": "Stadium 974 in Doha was built using recycled shipping containers and was fully dismantled after the 2022 tournament."
+  }
+]

@@ -108,7 +108,8 @@ export type QuizCategory =
   | 'culture'
   | 'trivia'
   | 'current-affairs'
-  | 'mixed';
+  | 'mixed'
+  | 'worldcup';
 
 /** Difficulty tiers */
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
@@ -134,13 +135,37 @@ export interface GameBadge {
   unlockedAt?: number;        // Timestamp when unlocked
 }
 
+export type PlayEarthMode =
+  | 'explorer'
+  | 'survival'
+  | 'clock'
+  | 'flag'
+  | 'capital'
+  | 'worldcup'
+  | 'daily';
+
 /** Phase of the Play Earth game flow */
 export type PlayEarthPhase =
-  | 'intro'             // Initial landing — "Tap any country"
-  | 'category-select'   // Choose a quiz category
-  | 'question'          // Active timed question
-  | 'result'            // Showing answer result
-  | 'summary';          // Post-round summary
+  | 'intro'                 // Initial landing — "Choose a Mode / Tap any country"
+  | 'category-select'       // Choose a quiz category (Explorer Mode)
+  | 'mode-select'           // Select game mode (Country select dashboard)
+  | 'survival-start'        // Instructions for survival mode
+  | 'beat-the-clock-start'  // Duration select for beat the clock
+  | 'flag-challenge-start'  // Difficulty select for flag challenge
+  | 'capital-challenge-start' // Difficulty select for capital city challenge
+  | 'world-cup-start'       // World cup topic selection
+  | 'daily-earth-start'     // Daily global challenge dashboard
+  | 'question'              // Active timed question
+  | 'result'                // Showing answer result
+  | 'summary';              // Post-round summary
+
+export interface ModeStats {
+  gamesPlayed: number;
+  highScore: number;
+  bestStreak: number;
+  totalCorrect: number;
+  totalAnswered: number;
+}
 
 /** Persistent player game state (stored in localStorage) */
 export interface PlayerGameState {
@@ -158,4 +183,13 @@ export interface PlayerGameState {
   countriesExplored: string[]; // Countries the player has quizzed on
   badges: GameBadge[];
   lastPlayedAt?: number;       // Timestamp
+  
+  // V2 Game Mode statistics
+  survivalBest?: number;       // Best country streak survived
+  clockBest?: Record<'30s' | '60s' | '120s', number>; // High scores per duration
+  flagBest?: Record<'easy' | 'medium' | 'hard', number>; // High streaks per flag difficulty
+  capitalBest?: Record<'easy' | 'medium' | 'hard', number>; // High streaks per capital difficulty
+  worldCupBest?: number;       // High score in World Cup mode
+  dailyChallengeStreak?: number;
+  lastDailyChallengeDate?: string; // YYYY-MM-DD
 }

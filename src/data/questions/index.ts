@@ -471,6 +471,116 @@ export function calculateLevel(xp: number): number {
   return 10 + Math.floor((xp - 30000) / 10000);
 }
 
+// Custom Generators for Play Earth V2 Modes
+import WORLDCUP_QUESTIONS from './worldcup.json';
+
+/** Generates a flag quiz question dynamically from COUNTRY_METADATA */
+export function generateFlagQuestion(difficulty: 'easy' | 'medium' | 'hard', answeredIds: string[] = []): EarthQuestion {
+  const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.flag && m.name);
+  const excludeSet = new Set(answeredIds);
+  const unseen = metadataArray.filter(m => !excludeSet.has(`flag-${m.name.toLowerCase()}`));
+  
+  const target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+
+  let distractors: string[] = [];
+  if (difficulty === 'hard') {
+    const sameContinent = metadataArray.filter(m => m.continent === target.continent && m.name !== target.name);
+    distractors = shuffle(sameContinent).map(m => m.name).slice(0, 3);
+  } else if (difficulty === 'medium') {
+    const potential = metadataArray.filter(m => m.name !== target.name);
+    distractors = shuffle(potential).map(m => m.name).slice(0, 3);
+  } else {
+    const diffContinent = metadataArray.filter(m => m.continent !== target.continent);
+    distractors = shuffle(diffContinent).map(m => m.name).slice(0, 3);
+  }
+
+  while (distractors.length < 3) {
+    const fallback = metadataArray.find(m => m.name !== target.name && !distractors.includes(m.name));
+    if (fallback) distractors.push(fallback.name);
+    else break;
+  }
+
+  const choices = shuffle([target.name, ...distractors]);
+  const correctIndex = choices.indexOf(target.name);
+
+  return {
+    id: `flag-${target.name.toLowerCase()}`,
+    country: target.name,
+    category: 'geography',
+    difficulty,
+    question: `Which country does this flag belong to?\n\n${target.flag}`,
+    choices,
+    correctIndex,
+    funFact: `${target.flag} belongs to ${target.name}. ${target.funFact}`
+  };
+}
+
+/** Generates a capital city quiz question dynamically from COUNTRY_METADATA */
+export function generateCapitalQuestion(difficulty: 'easy' | 'medium' | 'hard', answeredIds: string[] = []): EarthQuestion {
+  const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
+  const excludeSet = new Set(answeredIds);
+  const unseen = metadataArray.filter(m => !excludeSet.has(`capital-${m.name.toLowerCase()}`));
+  
+  const target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+
+  const otherCapitals = metadataArray.filter(m => m.name !== target.name).map(m => m.capital);
+  const distractors = shuffle(otherCapitals).slice(0, 3);
+
+  const choices = shuffle([target.capital, ...distractors]);
+  const correctIndex = choices.indexOf(target.capital);
+
+  return {
+    id: `capital-${target.name.toLowerCase()}`,
+    country: target.name,
+    category: 'geography',
+    difficulty,
+    question: `What is the capital city of ${target.name}?`,
+    choices,
+    correctIndex,
+    funFact: `${target.capital} is the capital of ${target.name}. ${target.funFact}`
+  };
+}
+
+/** Generates a deterministic daily earth question based on calendar date and index */
+export function getDailyEarthQuestion(dateStr: string, index: number): EarthQuestion {
+  // Simple seed based on date string
+  const charSum = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const seed = charSum + index * 17;
+  const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
+  
+  const target = metadataArray[seed % metadataArray.length];
+  const otherCapitals = metadataArray.filter(m => m.name !== target.name).map(m => m.capital);
+  const distractors = shuffle(otherCapitals).slice(0, 3);
+  const choices = shuffle([target.capital, ...distractors]);
+
+  return {
+    id: `daily-${dateStr}-${index}`,
+    country: target.name,
+    category: 'mixed',
+    difficulty: 'medium',
+    question: `[Daily Challenge #${index + 1}] What is the capital city of ${target.name}?`,
+    choices,
+    correctIndex: choices.indexOf(target.capital),
+    funFact: `${target.name} has a population of approximately ${target.population}. ${target.funFact}`
+  };
+}
+
+/** Retrieves World Cup questions from curated worldcup.json database with fallbacks */
+export function getWorldCupQuestion(answeredIds: string[] = []): EarthQuestion {
+  const excludeSet = new Set(answeredIds);
+  const unseen = (WORLDCUP_QUESTIONS as EarthQuestion[]).filter(q => !excludeSet.has(q.id));
+  
+  if (unseen.length > 0) {
+    return shuffle(unseen)[0];
+  }
+
+  // Fallback to random World Cup questions by recycling
+  const recycled = (WORLDCUP_QUESTIONS as EarthQuestion[]).sort((a, b) => {
+    return answeredIds.lastIndexOf(a.id) - answeredIds.lastIndexOf(b.id);
+  });
+  return recycled[0];
+}
+
 /** All quiz categories with labels, emojis, and styling */
 export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; color: string }[] = [
   { id: 'geography', label: 'Geography', emoji: '🌍', color: '#00e5ff' },
@@ -479,4 +589,5 @@ export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; 
   { id: 'science', label: 'Science', emoji: '🔬', color: '#3b82f6' },
   { id: 'current-affairs', label: 'Current Affairs', emoji: '📰', color: '#a78bfa' },
   { id: 'mixed', label: 'Mixed Challenge', emoji: '🌍', color: '#ec4899' },
+  { id: 'worldcup', label: 'FIFA World Cup', emoji: '🏆', color: '#fbbf24' },
 ];
