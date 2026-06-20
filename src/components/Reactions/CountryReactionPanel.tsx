@@ -220,6 +220,7 @@ interface CountryReactionPanelProps {
   onReactionLoaded?: (data: ReactionEvent) => void;
   onSelectArticle?: (news: WorldEvent) => void;
   onSelectCountry?: (country: string | null) => void;
+  isFocusMode?: boolean;
 }
 
 export default function CountryReactionPanel({
@@ -229,6 +230,7 @@ export default function CountryReactionPanel({
   onReactionLoaded,
   onSelectArticle,
   onSelectCountry,
+  isFocusMode = false,
 }: CountryReactionPanelProps) {
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -296,6 +298,7 @@ export default function CountryReactionPanel({
   }, []);
 
   useEffect(() => {
+    if (!country || isFocusMode) return;
     const cacheKey = `${country}_${activeCategory || 'home'}`;
     const cachedItem = CLIENT_REACTION_CACHE.get(cacheKey);
     
@@ -309,6 +312,9 @@ export default function CountryReactionPanel({
     }
 
     setIsLoading(true);
+    if (onReactionLoaded) {
+      onReactionLoaded(null as any); // Clear parent reaction state when starting fetch to prevent stale state matching
+    }
     const catParam = activeCategory ? `&category=${activeCategory}` : '';
     let aborted = false;
 
@@ -332,7 +338,7 @@ export default function CountryReactionPanel({
     return () => {
       aborted = true;
     };
-  }, [country, activeCategory, onReactionLoaded]);
+  }, [country, activeCategory, onReactionLoaded, isFocusMode]);
 
   // Framer Motion mobile bottom sheet swipe-to-dismiss configurations
   const dragProps = isMobile ? {
@@ -434,6 +440,55 @@ export default function CountryReactionPanel({
             
             {/* Unified Category Metrics Widget */}
             <CategoryMetricsWidget country={country} category={activeCategory} />
+
+            {/* System Filter Monitor (Debug Display) */}
+            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
+                <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                  System Filter Monitor
+                </span>
+                <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                  Active Filter
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
+                <div>
+                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
+                  <span className="text-white">{country}</span>
+                </div>
+                <div>
+                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
+                  <span className="text-white">{categoryLabel}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
+                  <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData.query || `${country} ${categoryLabel}`}&quot;</code>
+                </div>
+                <div>
+                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
+                  <span className="text-white font-bold">{reactionData.headlines.length} headlines</span>
+                </div>
+                <div>
+                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Data Source</span>
+                  <span className="text-emerald-400 truncate block max-w-[130px] font-bold">{reactionData.source || 'Google News RSS Search'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Fallback alert for empty category */}
+            {reactionData.noCategoryContent && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3 text-xs leading-relaxed animate-[quiz-reveal_0.3s_ease-out]">
+                <span className="text-lg shrink-0 select-none">⚠️</span>
+                <div>
+                  <span className="font-extrabold text-amber-300 block mb-0.5">Category Filter Fallback</span>
+                  <span className="text-white/70">
+                    No specific {reactionData.fallbackCategory || categoryLabel} updates currently available for {country}. Showing related {country} content.
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* V2 Emotional Intensity Meter (Only for non-specific or news/breaking categories) */}
             {(!activeCategory || activeCategory === 'breaking') && (

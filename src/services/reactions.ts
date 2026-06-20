@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactionEvent, WorldEvent, EventCategory } from '@/types';
 import { fetchLiveFootball } from './football';
-import { fetchLiveNews, searchLiveNews } from './news';
+import { fetchLiveNews, searchLiveNews, generateLocalFallbackEvents } from './news';
 import { fetchSocialReactions } from './social';
 import { analyzeSentiment } from './sentiment';
 
@@ -45,14 +45,30 @@ export async function fetchCountryReactions(country: string, category?: string |
     return cached.data;
   }
 
-  // 1. Fetch related headlines (Football + News) depending on category
   let newsHeadlines: WorldEvent[] = [];
+  let generatedQuery = '';
+  let dataSource = 'Google News RSS Search';
+  let noCategoryContent = false;
+
+  const categoryLabelMap: Record<string, string> = {
+    breaking: 'News',
+    sports: 'Sports',
+    football: 'Football',
+    worldcup: 'FIFA World Cup',
+    technology: 'Technology',
+    business: 'Business',
+    weather: 'Weather',
+    entertainment: 'Entertainment'
+  };
+
+  const catLabel = categoryLabelMap[category || ''] || 'News';
 
   if (category && category !== 'home') {
     if (category === 'sports' || category === 'football' || category === 'worldcup') {
       const footballResult = await fetchLiveFootball();
       const football = footballResult.events;
 
+      // Filter football events strictly by country
       const countryFootball = football.filter(
         (e) =>
           isSameCountry(e.country, country) ||
@@ -60,19 +76,48 @@ export async function fetchCountryReactions(country: string, category?: string |
           e.summary.toLowerCase().includes(country.toLowerCase())
       );
 
-      const searchTerm = category === 'worldcup' ? `${country} FIFA World Cup` : `${country} sports`;
-      const newsResult = await searchLiveNews(searchTerm, category as EventCategory, country);
+      generatedQuery = category === 'worldcup' ? `${country} FIFA World Cup` : category === 'football' ? `${country} Football` : `${country} Sports`;
+      const newsResult = await searchLiveNews(generatedQuery, category as EventCategory, country);
+      let newsEvents = (newsResult.events || []).filter(e => isSameCountry(e.country, country));
 
-      newsHeadlines = [...countryFootball, ...(newsResult.events || [])];
+      if (newsEvents.length === 0 && countryFootball.length === 0) {
+        noCategoryContent = true;
+        const generalQuery = `${country} News`;
+        const fallbackResult = await searchLiveNews(generalQuery, null, country);
+        newsEvents = (fallbackResult.events || []).filter(e => isSameCountry(e.country, country));
+        dataSource = 'Google News RSS Search (Related Fallback)';
+
+        if (newsEvents.length === 0) {
+          newsEvents = generateLocalFallbackEvents(generalQuery, null, country);
+          dataSource = 'Local Fallback Database (Related)';
+        }
+      }
+
+      newsHeadlines = [...countryFootball, ...newsEvents];
     } else {
       // technology, business, weather, entertainment, breaking
-      const searchTerm = category === 'breaking' ? `${country} news` : `${country} ${category}`;
-      const newsResult = await searchLiveNews(searchTerm, category as EventCategory, country);
+      generatedQuery = category === 'breaking' ? `${country} Breaking News` : `${country} ${catLabel}`;
+      const newsResult = await searchLiveNews(generatedQuery, category as EventCategory, country);
+      let newsEvents = (newsResult.events || []).filter(e => isSameCountry(e.country, country));
 
-      newsHeadlines = newsResult.events || [];
+      if (newsEvents.length === 0) {
+        noCategoryContent = true;
+        const generalQuery = `${country} News`;
+        const fallbackResult = await searchLiveNews(generalQuery, null, country);
+        newsEvents = (fallbackResult.events || []).filter(e => isSameCountry(e.country, country));
+        dataSource = 'Google News RSS Search (Related Fallback)';
+
+        if (newsEvents.length === 0) {
+          newsEvents = generateLocalFallbackEvents(generalQuery, null, country);
+          dataSource = 'Local Fallback Database (Related)';
+        }
+      }
+
+      newsHeadlines = newsEvents;
     }
   } else {
-    // Home mode: fetch everything and combine
+    // Home mode
+    generatedQuery = `${country} News`;
     const [footballResult, newsResult] = await Promise.all([
       fetchLiveFootball(),
       fetchLiveNews()
@@ -81,7 +126,15 @@ export async function fetchCountryReactions(country: string, category?: string |
     const football = footballResult.events;
     const news = newsResult.events;
 
-    newsHeadlines = [...football, ...news].filter(
+    // Filter by country
+    const countryFootball = football.filter(
+      (e) =>
+        isSameCountry(e.country, country) ||
+        e.title.toLowerCase().includes(country.toLowerCase()) ||
+        e.summary.toLowerCase().includes(country.toLowerCase())
+    );
+
+    let newsEvents = news.filter(
       (e) =>
         isSameCountry(e.country, country) ||
         e.title.toLowerCase().includes(country.toLowerCase()) ||
@@ -89,21 +142,17 @@ export async function fetchCountryReactions(country: string, category?: string |
     );
 
     // If no general headlines match this country, search specifically for this country
-    if (newsHeadlines.length === 0) {
-      try {
-        const searchResult = await searchLiveNews(country, null, country);
-        if (searchResult.events && searchResult.events.length > 0) {
-          newsHeadlines = [...football, ...searchResult.events].filter(
-            (e) =>
-              isSameCountry(e.country, country) ||
-              e.title.toLowerCase().includes(country.toLowerCase()) ||
-              e.summary.toLowerCase().includes(country.toLowerCase())
-          );
-        }
-      } catch (err) {
-        console.error(`Failed to perform dynamic country search for ${country}:`, err);
-      }
+    if (newsEvents.length === 0 && countryFootball.length === 0) {
+      const searchResult = await searchLiveNews(generatedQuery, null, country);
+      newsEvents = (searchResult.events || []).filter(e => isSameCountry(e.country, country));
     }
+
+    if (newsEvents.length === 0 && countryFootball.length === 0) {
+      newsEvents = generateLocalFallbackEvents(generatedQuery, null, country);
+      dataSource = 'Local Fallback Database';
+    }
+
+    newsHeadlines = [...countryFootball, ...newsEvents];
   }
 
   // Read local fan celebrations and filter for this country (only for sports / football / worldcup / home)
@@ -159,7 +208,11 @@ export async function fetchCountryReactions(country: string, category?: string |
     headlines: allHeadlines,
     socialPosts: socialData.posts,
     trendingHashtags: socialData.hashtags,
-    sentiment
+    sentiment,
+    query: generatedQuery,
+    source: dataSource,
+    noCategoryContent,
+    fallbackCategory: noCategoryContent ? catLabel : undefined
   };
 
   reactionCache.set(cacheKey, { data: reactionData, timestamp: Date.now() });

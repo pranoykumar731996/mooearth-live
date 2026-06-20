@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { WorldEvent } from '@/types';
 
 export interface ApiStatus {
@@ -7,7 +7,7 @@ export interface ApiStatus {
   earthCastActive: boolean;
 }
 
-export function useLiveEvents() {
+export function useLiveEvents(isFocusMode: boolean = false) {
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<ApiStatus>({
@@ -16,10 +16,16 @@ export function useLiveEvents() {
     earthCastActive: false,
   });
 
+  const pendingRefreshRef = useRef(false);
+
   useEffect(() => {
     let isMounted = true;
 
     async function fetchEvents() {
+      if (isFocusMode) {
+        pendingRefreshRef.current = true;
+        return;
+      }
       try {
         const response = await fetch(`/api/events?t=${Date.now()}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
@@ -32,6 +38,7 @@ export function useLiveEvents() {
             setApiStatus(data.status);
           }
           setIsLoading(false);
+          pendingRefreshRef.current = false;
         }
       } catch (error) {
         console.error('Error fetching live events:', error);
@@ -47,17 +54,25 @@ export function useLiveEvents() {
       }
     }
 
-    // Initial fetch
-    fetchEvents();
+    if (!isFocusMode) {
+      // If we exited Focus Mode and have a pending refresh, or have no events loaded, refresh immediately
+      if (pendingRefreshRef.current || events.length === 0) {
+        fetchEvents();
+      }
+      
+      // Poll every 60 seconds
+      const intervalId = setInterval(fetchEvents, 60000);
 
-    // Poll every 60 seconds
-    const intervalId = setInterval(fetchEvents, 60000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, []);
+      return () => {
+        isMounted = false;
+        clearInterval(intervalId);
+      };
+    } else {
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isFocusMode, events.length]);
 
   return { events, isLoading, apiStatus };
 }

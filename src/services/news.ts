@@ -15,6 +15,20 @@ function assignCoordinates(title: string, content: string, countryHint?: string)
         return data;
       }
     }
+    // If not found in COUNTRY_COORDINATES, create a fallback coordinate for this country hint
+    // We generate a deterministic lat/lng from the name to keep it on land or consistent
+    let hash = 0;
+    for (let i = 0; i < countryHint.length; i++) {
+      hash = countryHint.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const lat = ((Math.abs(hash) % 100) - 50); // -50 to 50
+    const lng = ((Math.abs(hash >> 5) % 320) - 160); // -160 to 160
+    return {
+      country: countryHint.charAt(0).toUpperCase() + countryHint.slice(1),
+      city: 'Main Region',
+      lat,
+      lng
+    };
   }
 
   for (const [key, data] of Object.entries(COUNTRY_COORDINATES)) {
@@ -30,27 +44,56 @@ function assignCoordinates(title: string, content: string, countryHint?: string)
 }
 
 // Generate realistic mock events based on the search query when GNews is rate-limited
-function generateLocalFallbackEvents(query: string, category?: EventCategory | null): WorldEvent[] {
+export function generateLocalFallbackEvents(query: string, category?: EventCategory | null, countryHint?: string): WorldEvent[] {
   const normalizedQuery = query.trim().toLowerCase();
   
   // Try to find if query matches any country in our map
   let matchedKey = '';
-  for (const key of Object.keys(COUNTRY_COORDINATES)) {
-    if (normalizedQuery.includes(key) || key.includes(normalizedQuery)) {
-      matchedKey = key;
-      break;
+  if (countryHint) {
+    const hintLower = countryHint.toLowerCase().trim();
+    for (const key of Object.keys(COUNTRY_COORDINATES)) {
+      if (key === hintLower || hintLower.includes(key) || key.includes(hintLower)) {
+        matchedKey = key;
+        break;
+      }
+    }
+  } else {
+    for (const key of Object.keys(COUNTRY_COORDINATES)) {
+      if (normalizedQuery.includes(key) || key.includes(normalizedQuery)) {
+        matchedKey = key;
+        break;
+      }
     }
   }
 
   const baseEvents: WorldEvent[] = [];
   const now = Date.now();
 
+  let countryName = '';
+  if (countryHint) {
+    countryName = countryHint.charAt(0).toUpperCase() + countryHint.slice(1);
+  } else if (matchedKey) {
+    countryName = COUNTRY_COORDINATES[matchedKey].country;
+  } else {
+    countryName = query.split(' ')[0];
+    countryName = countryName.charAt(0).toUpperCase() + countryName.slice(1);
+  }
+
   const geo = matchedKey ? COUNTRY_COORDINATES[matchedKey] : {
-    country: query.charAt(0).toUpperCase() + query.slice(1),
+    country: countryName,
     city: 'Capital City',
     lat: 0,
     lng: 0
   };
+
+  if (geo.lat === 0 && geo.lng === 0 && countryName) {
+    let hash = 0;
+    for (let i = 0; i < countryName.length; i++) {
+      hash = countryName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    geo.lat = ((Math.abs(hash) % 100) - 50);
+    geo.lng = ((Math.abs(hash >> 5) % 320) - 160);
+  }
 
   const cat = category || 'breaking';
 
@@ -310,7 +353,7 @@ export async function searchLiveNews(query: string, category?: EventCategory | n
     
     if (articles.length === 0) {
       console.log(`Google News RSS returned 0 results for "${query}". Triggering local fallback.`);
-      const fallbackEvents = generateLocalFallbackEvents(query, category);
+      const fallbackEvents = generateLocalFallbackEvents(query, category, countryHint);
       return { events: fallbackEvents, active: true };
     }
 
@@ -334,7 +377,7 @@ export async function searchLiveNews(query: string, category?: EventCategory | n
     return { events, active: true };
   } catch (error) {
     console.warn('Failed to search news via RSS, calling local fallback:', error);
-    const fallbackEvents = generateLocalFallbackEvents(query, category);
+    const fallbackEvents = generateLocalFallbackEvents(query, category, countryHint);
     return { events: fallbackEvents, active: true };
   }
 }

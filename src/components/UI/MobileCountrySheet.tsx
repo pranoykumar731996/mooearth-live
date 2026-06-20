@@ -240,6 +240,8 @@ interface MobileCountrySheetProps {
   onWrongSound: () => void;
   onTimerTick: (urgency: number) => void;
   onLevelUp: () => void;
+  onReactionLoaded?: (reaction: ReactionEvent | null) => void;
+  isFocusMode?: boolean;
 }
 
 type SheetHeightState = 'collapsed' | 'half' | 'full';
@@ -260,6 +262,8 @@ export default function MobileCountrySheet({
   onWrongSound,
   onTimerTick,
   onLevelUp,
+  onReactionLoaded,
+  isFocusMode = false,
 }: MobileCountrySheetProps) {
   const [sheetState, setSheetState] = useState<SheetHeightState>('half');
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
@@ -276,12 +280,14 @@ export default function MobileCountrySheet({
 
   const countryMeta = findCountryMeta(country);
 
-  // Fetch reactions when country or category changes
   useEffect(() => {
-    if (!country) return;
+    if (!country || isFocusMode) return;
     const cat = isPlayEarthActive ? 'sports' : (activeCategory || 'breaking');
     const catParam = `&category=${cat}`;
     setIsLoading(true);
+    if (onReactionLoaded) {
+      onReactionLoaded(null);
+    }
 
     let aborted = false;
     fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
@@ -290,6 +296,9 @@ export default function MobileCountrySheet({
         if (aborted) return;
         if (data.reaction) {
           setReactionData(data.reaction);
+          if (onReactionLoaded) {
+            onReactionLoaded(data.reaction);
+          }
         }
       })
       .catch(err => console.error('Failed to load reactions:', err))
@@ -300,7 +309,7 @@ export default function MobileCountrySheet({
     return () => {
       aborted = true;
     };
-  }, [country, activeCategory, isPlayEarthActive]);
+  }, [country, activeCategory, isPlayEarthActive, onReactionLoaded, isFocusMode]);
 
   // Adjust sheetState if article opens
   useEffect(() => {
@@ -685,6 +694,54 @@ export default function MobileCountrySheet({
               <div className="space-y-5 animate-[quiz-reveal_0.3s_ease-out]">
                 {/* Metrics specific to selected category */}
                 <CategoryMetricsWidget country={country} category={activeCategory} />
+                
+                {/* System Filter Monitor (Debug Display) */}
+                <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
+                    <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                      System Filter Monitor
+                    </span>
+                    <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                      Active Filter
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
+                      <span className="text-white">{country}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
+                      <span className="text-white">{MOBILE_CATEGORIES.find(c => c.categoryValue === activeCategory)?.label || 'Home'}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
+                      <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData?.query || `${country} News`}&quot;</code>
+                    </div>
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
+                      <span className="text-white font-bold">{reactionData?.headlines.length || 0} headlines</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Data Source</span>
+                      <span className="text-emerald-400 truncate block max-w-[130px] font-bold">{reactionData?.source || 'Google News RSS Search'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {reactionData?.noCategoryContent && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3 text-xs leading-relaxed animate-[quiz-reveal_0.3s_ease-out]">
+                    <span className="text-lg shrink-0 select-none">⚠️</span>
+                    <div>
+                      <span className="font-extrabold text-amber-300 block mb-0.5">Category Filter Fallback</span>
+                      <span className="text-white/70">
+                        No specific {reactionData.fallbackCategory || MOBILE_CATEGORIES.find(c => c.categoryValue === activeCategory)?.label || 'News'} updates currently available for {country}. Showing related {country} content.
+                      </span>
+                    </div>
+                  </div>
+                )}
                 
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">

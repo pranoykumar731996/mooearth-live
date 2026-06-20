@@ -88,6 +88,10 @@ export interface ReactionEvent {
   socialPosts: { id: string; user: string; text: string; time: string; likes: number }[];
   trendingHashtags: string[];
   sentiment: SentimentData;
+  query?: string;
+  source?: string;
+  noCategoryContent?: boolean;
+  fallbackCategory?: string;
 }
 
 // ============================================================

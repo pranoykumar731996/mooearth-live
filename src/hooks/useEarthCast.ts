@@ -35,6 +35,7 @@ interface UseEarthCastProps {
   playNarrationIntro?: () => void;
   playDeepPulse?: () => void;
   playTensionDrone?: () => void;
+  isFocusMode?: boolean;
 }
 
 const COOLDOWN_MS = 30000; // 30 seconds between narrations
@@ -124,7 +125,9 @@ export function useEarthCast({
   isMuted,
   onFlyToCountry,
   playNarrationIntro,
+  playDeepPulse,
   playTensionDrone,
+  isFocusMode = false,
 }: UseEarthCastProps) {
   // Core state
   const [isEarthCastActive, setIsEarthCastActive] = useState(false);
@@ -446,7 +449,7 @@ export function useEarthCast({
   // EVENT DETECTION — Watch for new goals, cards, match endings
   // ============================================================
   useEffect(() => {
-    if (!isEarthCastActive || narrationState !== 'idle') return;
+    if (!isEarthCastActive || narrationState !== 'idle' || isFocusMode) return;
 
     const footballEvents = events.filter(e => e.category === 'football' && e.footballData);
 
@@ -477,7 +480,7 @@ export function useEarthCast({
     footballEvents.forEach(e => newMap.set(e.id, e));
     previousEvents.current = newMap;
 
-  }, [events, isEarthCastActive, narrationState, celebrations.length, globalEnergyScore, trendingCountries, triggerNarration]);
+  }, [events, isEarthCastActive, narrationState, celebrations.length, globalEnergyScore, trendingCountries, triggerNarration, isFocusMode]);
 
   // ============================================================
   // AUTO MODE — Periodic atmospheric narrations (Disabled in production launch)

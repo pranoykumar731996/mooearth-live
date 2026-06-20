@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
@@ -38,6 +38,7 @@ import ProfileModal from '@/components/UI/ProfileModal';
 import UploadModal from '@/components/Celebrations/UploadModal';
 import MediaViewer from '@/components/Celebrations/MediaViewer';
 import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
+import FocusDebugPanel from '@/components/UI/FocusDebugPanel';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/services/analytics';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
@@ -126,6 +127,12 @@ export default function HomePage({
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
 
+  // Focus Mode States
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [currentActivity, setCurrentActivity] = useState('None');
+  const isFocusModeRef = useRef(false);
+  isFocusModeRef.current = isFocusMode;
+
   // PWA Install Prompt States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -208,6 +215,10 @@ export default function HomePage({
 
     let refreshing = false;
     const handleControllerChange = () => {
+      if (isFocusModeRef.current) {
+        sessionStorage.setItem('mooearth_pending_sw_reload', 'true');
+        return;
+      }
       if (!refreshing) {
         refreshing = true;
         window.location.reload();
@@ -239,6 +250,17 @@ export default function HomePage({
       if (intervalId) clearInterval(intervalId);
     };
   }, []);
+
+  // Handle deferred service worker reloads after exiting Focus Mode
+  useEffect(() => {
+    if (!isFocusMode) {
+      const pendingReload = sessionStorage.getItem('mooearth_pending_sw_reload');
+      if (pendingReload === 'true') {
+        sessionStorage.removeItem('mooearth_pending_sw_reload');
+        window.location.reload();
+      }
+    }
+  }, [isFocusMode]);
 
   // Capture referral code on mount
   useEffect(() => {
@@ -394,13 +416,17 @@ export default function HomePage({
     return () => clearTimeout(timer);
   }, []);
 
-  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents();
+  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents(isFocusMode);
 
   // Filtered events
   const filteredEvents = useEventFilter({
-    events: liveEvents,
+    events: selectedCountry && activeReaction && activeReaction.country === selectedCountry
+      ? activeReaction.headlines
+      : liveEvents,
     searchQuery,
     activeCategory,
+    selectedCountry,
+    isReactionData: !!(selectedCountry && activeReaction && activeReaction.country === selectedCountry),
   });
 
   // Load initial article if provided (SEO URL parameters support)
@@ -469,7 +495,7 @@ export default function HomePage({
   const currentCelebrationId = activeCelebration?.active ? activeCelebration.id || 'active' : null;
   if (currentCelebrationId !== prevCelebrationId) {
     setPrevCelebrationId(currentCelebrationId);
-    if (activeCelebration?.active && activeCelebration.country) {
+    if (activeCelebration?.active && activeCelebration.country && !isFocusMode) {
       setSelectedCountry(activeCelebration.country);
       setSelectedEvent(null);
       setIsDashboardOpen(true);
@@ -532,7 +558,27 @@ export default function HomePage({
     playNarrationIntro,
     playDeepPulse,
     playTensionDrone,
+    isFocusMode,
   });
+
+  // Synchronize computed Focus Mode state
+  const computedFocusMode = isPlayEarthActive || 
+                            (selectedCountry !== null && isDashboardOpen) || 
+                            (activeArticle !== null) || 
+                            isUploadModalOpen || 
+                            (earthCast && (earthCast.narrationState === 'speaking' || earthCast.narrationState === 'loading'));
+
+  const computedActivity = isPlayEarthActive ? 'Play Earth'
+                          : activeArticle !== null ? 'Article Reader'
+                          : isUploadModalOpen ? 'Upload Reaction'
+                          : (earthCast && (earthCast.narrationState === 'speaking' || earthCast.narrationState === 'loading')) ? 'EarthCast Playback'
+                          : (selectedCountry !== null && isDashboardOpen) ? 'Country Explorer'
+                          : 'None';
+
+  useEffect(() => {
+    setIsFocusMode(computedFocusMode);
+    setCurrentActivity(computedActivity);
+  }, [computedFocusMode, computedActivity]);
 
   // EarthCast analytics tracking
   useEffect(() => {
@@ -563,7 +609,7 @@ export default function HomePage({
 
   // Phase 3: Cinematic Broadcast cycle (watch the world react)
   useEffect(() => {
-    if (!isCinematicMode || trendingCountries.length === 0) return;
+    if (!isCinematicMode || trendingCountries.length === 0 || isFocusMode) return;
 
     let index = 0;
 
@@ -577,7 +623,7 @@ export default function HomePage({
     }, 12000); // Cycle every 12 seconds
 
     return () => clearInterval(interval);
-  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry]);
+  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry, isFocusMode]);
 
   const handleLoginSuccess = useCallback((user: { username: string; avatar: string; country: string }) => {
     setCurrentUser(user);
@@ -642,7 +688,7 @@ export default function HomePage({
   const handleCategoryChange = useCallback((category: EventCategory | null) => {
     setActiveCategory(category);
     setSelectedEvent(null);
-    setSelectedCountry(null);
+    // Keep selectedCountry active to persist selection
   }, []);
 
   // Mobile-specific: change category WITHOUT closing the country sheet
@@ -1179,12 +1225,13 @@ export default function HomePage({
             isPlayEarthActive={isPlayEarthActive}
             globeView={globeView}
             isDashboardOpen={isDashboardOpen}
+            isFocusMode={isFocusMode}
           />
         </div>
       </div>
 
       {/* GOAL CELEBRATION OVERLAY */}
-      <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />
+      {!isFocusMode && <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />}
 
       {/* PWA INSTALL BANNER FOR MOBILE */}
       <AnimatePresence>
@@ -1435,6 +1482,7 @@ export default function HomePage({
                 onReactionLoaded={setActiveReaction}
                 onSelectArticle={setActiveArticle}
                 onSelectCountry={handleSelectCountry}
+                isFocusMode={isFocusMode}
               />
             ) : (
               (!isMobile || !selectedCountry) && (
@@ -1494,6 +1542,8 @@ export default function HomePage({
             onWrongSound={playWrongSound}
             onTimerTick={playTimerTick}
             onLevelUp={playLevelUp}
+            onReactionLoaded={setActiveReaction}
+            isFocusMode={isFocusMode}
           />
         )}
       </AnimatePresence>
@@ -1821,6 +1871,9 @@ export default function HomePage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* FOCUS MODE DEBUG PANEL */}
+      <FocusDebugPanel isFocusMode={isFocusMode} currentActivity={currentActivity} />
     </main>
   );
 }

@@ -1,0 +1,122 @@
+'use client';
+
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface FocusDebugPanelProps {
+  isFocusMode: boolean;
+  currentActivity: string;
+}
+
+export default function FocusDebugPanel({ isFocusMode, currentActivity }: FocusDebugPanelProps) {
+  const pausedSystems = [
+    { name: 'News Feed', desc: 'Background breaking news polling' },
+    { name: 'Country Feed', desc: 'Interactive reaction updates' },
+    { name: 'EarthCast', desc: 'Auto event narration trigger' },
+    { name: 'Notifications', desc: 'Non-critical browser alerts' },
+  ];
+
+  return (
+    <div className="fixed top-24 left-6 z-[90] pointer-events-auto font-sans">
+      <motion.div
+        initial={{ opacity: 0, x: -20, scale: 0.95 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        className="w-72 rounded-2xl border glass p-4 shadow-2xl relative overflow-hidden transition-all duration-300"
+        style={{
+          background: 'linear-gradient(135deg, rgba(10,12,22,0.92) 0%, rgba(5,5,10,0.95) 100%)',
+          borderColor: isFocusMode ? 'rgba(6, 182, 212, 0.4)' : 'rgba(255, 255, 255, 0.08)',
+          boxShadow: isFocusMode
+            ? '0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.15)'
+            : '0 20px 40px -15px rgba(0, 0, 0, 0.5)',
+        }}
+      >
+        {/* Glow effect */}
+        {isFocusMode && (
+          <div className="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500/10 rounded-full blur-[30px] animate-pulse" />
+        )}
+
+        <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">⚙️</span>
+            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">
+              UX Debug Console
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+            <div
+              className={`w-1.5 h-1.5 rounded-full ${
+                isFocusMode ? 'bg-cyan-400 animate-ping' : 'bg-white/20'
+              }`}
+            />
+            <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider">
+              Diagnostic
+            </span>
+          </div>
+        </div>
+
+        {/* Focus Mode Status */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold text-white/60">Focus Mode</span>
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+              isFocusMode
+                ? 'bg-cyan-500/15 border-cyan-500/35 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.15)]'
+                : 'bg-white/5 border-white/10 text-white/40'
+            }`}
+          >
+            {isFocusMode ? 'ACTIVE' : 'INACTIVE'}
+          </span>
+        </div>
+
+        {/* Current Activity */}
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+          <span className="text-xs font-bold text-white/60">Current Activity</span>
+          <span
+            className={`text-xs font-black truncate max-w-[150px] ${
+              isFocusMode ? 'text-white' : 'text-white/30 font-medium'
+            }`}
+          >
+            {currentActivity}
+          </span>
+        </div>
+
+        {/* Paused Systems */}
+        <div>
+          <span className="text-[9px] font-extrabold text-white/40 uppercase tracking-wider block mb-2">
+            Background Systems
+          </span>
+          <div className="space-y-2">
+            {pausedSystems.map((sys) => (
+              <div
+                key={sys.name}
+                className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.03] hover:bg-white/[0.04] transition-all"
+              >
+                <div>
+                  <span className="text-[10px] font-black text-white/80 block leading-none">
+                    {sys.name}
+                  </span>
+                  <span className="text-[8px] text-white/40 block mt-0.5 leading-none">
+                    {sys.desc}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <div
+                    className={`w-1 h-1 rounded-full ${
+                      isFocusMode ? 'bg-amber-400' : 'bg-emerald-400'
+                    }`}
+                  />
+                  <span
+                    className={`text-[8px] font-extrabold uppercase tracking-wider ${
+                      isFocusMode ? 'text-amber-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {isFocusMode ? 'PAUSED' : 'RUNNING'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

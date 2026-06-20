@@ -41,6 +41,7 @@ interface GlobeSceneProps {
   isPlayEarthActive?: boolean;
   globeView?: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery';
   isDashboardOpen?: boolean;
+  isFocusMode?: boolean;
 }
 
 // Generate a green/gold soccer pitch texture dynamically at runtime via HTML Canvas
@@ -212,6 +213,7 @@ export default function GlobeScene({
   isPlayEarthActive = false,
   globeView = 'standard',
   isDashboardOpen = false,
+  isFocusMode = false,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, pauseRotation, resumeRotation } = useGlobeControls();
   const [failsafeActive, setFailsafeActive] = useState(false);
@@ -873,14 +875,14 @@ export default function GlobeScene({
 
   // Auto focus loop — only when idle
   useEffect(() => {
-    if (!introDone) return;
+    if (!introDone || isFocusMode) return;
     const interval = setInterval(() => {
       if (Date.now() - lastInteractionTime.current < 30000) return;
       const randomEvent = events[Math.floor(Math.random() * events.length)];
       if (randomEvent) onSelectEvent(randomEvent);
     }, 15000);
     return () => clearInterval(interval);
-  }, [events, onSelectEvent, introDone]);
+  }, [events, onSelectEvent, introDone, isFocusMode]);
 
   // Major countries always visible at all zoom levels (Feature 7)
   const MAJOR_COUNTRIES = useMemo(() => [

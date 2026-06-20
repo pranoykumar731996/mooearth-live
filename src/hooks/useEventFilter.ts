@@ -6,23 +6,33 @@
 
 import { useMemo } from 'react';
 import { EventCategory, WorldEvent } from '@/types';
+import { matchCountry } from '@/data/questions';
 
 interface UseEventFilterOptions {
   events: WorldEvent[];
   searchQuery: string;
   activeCategory: EventCategory | null;
+  selectedCountry?: string | null;
+  isReactionData?: boolean;
 }
 
 export function useEventFilter({
   events,
   searchQuery,
   activeCategory,
+  selectedCountry,
+  isReactionData = false,
 }: UseEventFilterOptions): WorldEvent[] {
   return useMemo(() => {
     let filtered = events;
 
-    // Filter by category
-    if (activeCategory) {
+    // Filter by selected country if active
+    if (selectedCountry) {
+      filtered = filtered.filter((e) => matchCountry(e.country, selectedCountry));
+    }
+
+    // Filter by category - skip if this is reaction data (server-side reactions are pre-filtered / have fallback headlines)
+    if (activeCategory && !isReactionData) {
       filtered = filtered.filter((e) => {
         if (activeCategory === 'worldcup') {
           return e.category === 'worldcup' || e.category === 'football';
@@ -48,5 +58,5 @@ export function useEventFilter({
     }
 
     return filtered;
-  }, [events, searchQuery, activeCategory]);
+  }, [events, searchQuery, activeCategory, selectedCountry, isReactionData]);
 }
