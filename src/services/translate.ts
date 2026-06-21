@@ -172,33 +172,57 @@ function parseTranslationJson(text: string): TranslationResult | null {
   return null;
 }
 
-// ─── Circuit Breaker for Gemini ─────────────────────────────────────────────────
-// When Gemini returns 429, skip all Gemini calls for CIRCUIT_BREAKER_DURATION_MS.
-// This prevents wasting 2x 15s timeouts on every translation when quota is exhausted.
-let geminiCircuitOpen = false;
-let geminiCircuitOpenedAt = 0;
-const CIRCUIT_BREAKER_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+// ─── Circuit Breakers for Models ────────────────────────────────────────────────
+// Prevent wasting API time when a model has hit rate/quota limits (returns 429).
+class ModelCircuitBreaker {
+  private open = false;
+  private openedAt = 0;
+  private durationMs = 0;
+  private name: string;
 
-function isGeminiCircuitOpen(): boolean {
-  if (!geminiCircuitOpen) return false;
-  if (Date.now() - geminiCircuitOpenedAt > CIRCUIT_BREAKER_DURATION_MS) {
-    console.log('[TranslateService] Gemini circuit breaker reset — will retry Gemini.');
-    geminiCircuitOpen = false;
-    return false;
+  constructor(name: string) {
+    this.name = name;
   }
-  return true;
+
+  isOpen(): boolean {
+    if (!this.open) return false;
+    if (Date.now() - this.openedAt > this.durationMs) {
+      console.log(`[TranslateService] Circuit breaker for ${this.name} reset — will retry.`);
+      this.open = false;
+      return false;
+    }
+    return true;
+  }
+
+  openCircuit(durationMs: number) {
+    this.open = true;
+    this.openedAt = Date.now();
+    this.durationMs = durationMs;
+    console.warn(`[TranslateService] Circuit breaker for ${this.name} OPENED — skipping for ${durationMs / 1000}s.`);
+  }
 }
 
-function openGeminiCircuit() {
-  geminiCircuitOpen = true;
-  geminiCircuitOpenedAt = Date.now();
-  console.warn('[TranslateService] Gemini circuit breaker OPENED — skipping Gemini for 10 min.');
-}
+const breakers = {
+  groqVersatile: new ModelCircuitBreaker('Groq Llama 3.3 70B'),
+  groqInstant: new ModelCircuitBreaker('Groq Llama 3.1 8B'),
+  geminiLatest: new ModelCircuitBreaker('Gemini Flash Latest'),
+  gemini20: new ModelCircuitBreaker('Gemini 2.0 Flash')
+};
 
-// ─── Model: Groq Llama 3.3 70B (PRIMARY — fastest, most reliable) ────────────
-async function tryGroqSingle(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
+// ─── Groq API Request Implementation ───────────────────────────────────────────
+async function tryGroqSingle(
+  model: string,
+  apiKey: string,
+  userPrompt: string,
+  breaker: ModelCircuitBreaker
+): Promise<TranslationResult | null> {
+  if (breaker.isOpen()) {
+    console.log(`[TranslateService] Skipping Groq ${model} because its circuit breaker is open.`);
+    return null;
+  }
+
   try {
-    console.log('[TranslateService] Trying Groq Llama-3.3-70b-versatile...');
+    console.log(`[TranslateService] Trying Groq ${model}...`);
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -206,113 +230,88 @@ async function tryGroqSingle(apiKey: string, userPrompt: string): Promise<Transl
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: model,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt }
         ],
-        // NOTE: response_format removed — it causes json_validate_failed for
-        // non-Latin scripts (Hindi, Odia, Bengali, Tamil, Telugu) due to
-        // byte-fallback tokenization producing token-heavy output.
         temperature: 0.1,
         max_tokens: 4096
       }),
-      signal: AbortSignal.timeout(30000) // 30s for long articles
+      signal: AbortSignal.timeout(30000) // 30s timeout
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`[TranslateService] Groq returned ${response.status}: ${errText.substring(0, 200)}`);
+      console.error(`[TranslateService] Groq ${model} returned ${response.status}: ${errText.substring(0, 200)}`);
+      if (response.status === 429) {
+        // Distinguish between permanent daily limits (TPD/RPD) and transient minute limits (TPM/RPM)
+        const isDaily = errText.toLowerCase().includes('per day') || errText.toLowerCase().includes('tpd') || errText.toLowerCase().includes('rpd');
+        if (isDaily) {
+          breaker.openCircuit(10 * 60 * 1000); // 10 minutes
+        } else {
+          breaker.openCircuit(15 * 1000); // 15 seconds for transient TPM/RPM
+        }
+      }
       return null;
     }
 
     const result = await response.json();
     const content = result.choices?.[0]?.message?.content;
     if (!content) {
-      console.error('[TranslateService] Groq returned empty content');
+      console.error(`[TranslateService] Groq ${model} returned empty content`);
       return null;
     }
 
-    console.log(`[TranslateService] Groq raw response length: ${content.length} chars`);
+    console.log(`[TranslateService] Groq ${model} raw response length: ${content.length} chars`);
     const parsed = parseTranslationJson(content);
     if (parsed) {
-      parsed.modelUsed = 'llama-3.3-70b-versatile';
-      console.log('[TranslateService] ✅ Groq translation SUCCESS');
+      parsed.modelUsed = model;
+      console.log(`[TranslateService] ✅ Groq ${model} translation SUCCESS`);
       return parsed;
     }
-    console.error('[TranslateService] Groq returned content but JSON parsing failed');
+    console.error(`[TranslateService] Groq ${model} returned content but JSON parsing failed`);
     return null;
   } catch (err: any) {
-    console.error('[TranslateService] Groq failed:', err.message);
+    console.error(`[TranslateService] Groq ${model} failed:`, err.message);
     return null;
   }
 }
 
-async function tryGroq(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
+async function tryGroq(
+  model: string,
+  apiKey: string,
+  userPrompt: string,
+  breaker: ModelCircuitBreaker
+): Promise<TranslationResult | null> {
   const maxAttempts = 2;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const result = await tryGroqSingle(apiKey, userPrompt);
+    const result = await tryGroqSingle(model, apiKey, userPrompt, breaker);
     if (result) return result;
+    if (breaker.isOpen()) return null; // do not retry if circuit breaker was opened
     if (attempt < maxAttempts) {
-      console.warn(`[TranslateService] Groq attempt ${attempt} failed or parsed poorly. Retrying in 1.5s...`);
+      console.warn(`[TranslateService] Groq ${model} attempt ${attempt} failed. Retrying in 1.5s...`);
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
   }
   return null;
 }
 
-// ─── Model: Gemini 2.0 Flash (BACKUP — currently rate-limited) ───────────────
-async function tryGemini20(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
-  try {
-    console.log('[TranslateService] Trying Gemini 2.0 Flash...');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': apiKey
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }]
-        }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-          maxOutputTokens: 4096
-        }
-      }),
-      signal: AbortSignal.timeout(15000)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[TranslateService] Gemini 2.0 returned ${response.status}: ${errText.substring(0, 150)}`);
-      if (response.status === 429) openGeminiCircuit();
-      return null;
-    }
-
-    const result = await response.json();
-    const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) return null;
-
-    const parsed = parseTranslationJson(content);
-    if (parsed) {
-      parsed.modelUsed = 'gemini-2.0-flash';
-      return parsed;
-    }
-    return null;
-  } catch (err: any) {
-    console.error('[TranslateService] Gemini 2.0 failed:', err.message);
+// ─── Gemini API Request Implementation ─────────────────────────────────────────
+async function tryGemini(
+  model: string,
+  apiKey: string,
+  userPrompt: string,
+  breaker: ModelCircuitBreaker
+): Promise<TranslationResult | null> {
+  if (breaker.isOpen()) {
+    console.log(`[TranslateService] Skipping Gemini ${model} because its circuit breaker is open.`);
     return null;
   }
-}
 
-// ─── Model: Gemini Flash Latest (BACKUP) ────────────────────────────────────────
-async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
   try {
-    console.log('[TranslateService] Trying Gemini Flash Latest...');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    console.log(`[TranslateService] Trying Gemini ${model}...`);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -329,28 +328,42 @@ async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<Tran
           maxOutputTokens: 4096
         }
       }),
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(15000) // 15s timeout
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`[TranslateService] Gemini Latest returned ${response.status}: ${errText.substring(0, 150)}`);
-      if (response.status === 429) openGeminiCircuit();
+      console.error(`[TranslateService] Gemini ${model} returned ${response.status}: ${errText.substring(0, 150)}`);
+      if (response.status === 429) {
+        // Check if it's a transient free tier limit (e.g. limit: 20 or limit: 15) vs permanent / zero quota limit (limit: 0)
+        const isTransient = errText.includes('limit: 20') || errText.includes('limit: 15') || errText.includes('Please retry in') || errText.includes('RESOURCE_EXHAUSTED');
+        if (isTransient) {
+          breaker.openCircuit(15 * 1000); // 15 seconds
+        } else {
+          breaker.openCircuit(10 * 60 * 1000); // 10 minutes
+        }
+      }
       return null;
     }
 
     const result = await response.json();
     const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) return null;
+    if (!content) {
+      console.error(`[TranslateService] Gemini ${model} returned empty content`);
+      return null;
+    }
 
+    console.log(`[TranslateService] Gemini ${model} raw response length: ${content.length} chars`);
     const parsed = parseTranslationJson(content);
     if (parsed) {
-      parsed.modelUsed = 'gemini-flash-latest';
+      parsed.modelUsed = model;
+      console.log(`[TranslateService] ✅ Gemini ${model} translation SUCCESS`);
       return parsed;
     }
+    console.error(`[TranslateService] Gemini ${model} returned content but JSON parsing failed`);
     return null;
   } catch (err: any) {
-    console.error('[TranslateService] Gemini Latest failed:', err.message);
+    console.error(`[TranslateService] Gemini ${model} failed:`, err.message);
     return null;
   }
 }
@@ -358,11 +371,12 @@ async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<Tran
 /**
  * Translates article title, summary, and content into a target language.
  * 
- * Model priority (changed from original):
- *   1. Groq Llama 3.3 70B — PRIMARY (fast, reliable, no quota issues)
- *   2. Gemini 2.0 Flash   — BACKUP (currently rate-limited on free tier)
- *   3. Gemini Flash Latest — BACKUP (same quota as above)
- *   4. Simulated fallback  — LAST RESORT (never a real translation)
+ * Model priority:
+ *   1. Groq Llama 3.3 70B   — PRIMARY (highest quality translation)
+ *   2. Groq Llama 3.1 8B    — SECONDARY (fast, separate rate limits)
+ *   3. Gemini Flash Latest  — BACKUP PRIMARY (1.5 Flash, works under 2.0 Flash 429)
+ *   4. Gemini 2.0 Flash     — BACKUP SECONDARY (often quota-exhausted)
+ *   5. Simulated fallback   — LAST RESORT (never a real translation)
  */
 export async function translateArticle(
   targetLang: string,
@@ -378,30 +392,32 @@ export async function translateArticle(
   const geminiKey = process.env.GEMINI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
 
-  // ── 1. Try Groq FIRST (primary, most reliable) ──
+  // ── 1. Try Groq Llama 3.3 70B ──
   if (groqKey) {
-    const r1 = await tryGroq(groqKey, userPrompt);
+    const r1 = await tryGroq('llama-3.3-70b-versatile', groqKey, userPrompt, breakers.groqVersatile);
     if (r1) return r1;
-    console.warn('[TranslateService] Groq failed, falling back to Gemini...');
-  } else {
-    console.warn('[TranslateService] No GROQ_API_KEY found in env');
   }
 
-  // ── 2. Try Gemini (only if circuit breaker is closed) ──
-  if (geminiKey && !isGeminiCircuitOpen()) {
-    const r2 = await tryGemini20(geminiKey, userPrompt);
+  // ── 2. Try Groq Llama 3.1 8B ──
+  if (groqKey) {
+    const r2 = await tryGroq('llama-3.1-8b-instant', groqKey, userPrompt, breakers.groqInstant);
     if (r2) return r2;
-
-    const r3 = await tryGeminiLatest(geminiKey, userPrompt);
-    if (r3) return r3;
-  } else if (isGeminiCircuitOpen()) {
-    console.log('[TranslateService] Gemini circuit breaker is OPEN — skipping Gemini calls.');
-  } else {
-    console.warn('[TranslateService] No GEMINI_API_KEY found in env');
   }
 
-  // ── 3. Simulated fallback (never a real translation) ──
-  console.warn('[TranslateService] ⚠️ ALL API providers failed. Reverting to simulated fallback.');
+  // ── 3. Try Gemini Flash Latest ──
+  if (geminiKey) {
+    const r3 = await tryGemini('gemini-flash-latest', geminiKey, userPrompt, breakers.geminiLatest);
+    if (r3) return r3;
+  }
+
+  // ── 4. Try Gemini 2.0 Flash ──
+  if (geminiKey) {
+    const r4 = await tryGemini('gemini-2.0-flash', geminiKey, userPrompt, breakers.gemini20);
+    if (r4) return r4;
+  }
+
+  // ── 5. Simulated fallback (never a real translation) ──
+  console.warn('[TranslateService] ⚠️ ALL API providers failed or circuit broken. Reverting to simulated fallback.');
   return {
     translatedTitle: `[${targetLang}] ${title}`,
     translatedSummary: `[Translated to ${targetLang}]: ${summary}`,
