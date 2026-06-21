@@ -20,6 +20,41 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+export class SeededRandom {
+  private seed: number;
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+  next(): number {
+    this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
+    return this.seed / 4294967296;
+  }
+  nextInt(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min)) + min;
+  }
+  shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = this.nextInt(0, i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+}
+
+export function isQuestionExpired(q: EarthQuestion): boolean {
+  if (q.expirationDate) {
+    const exp = new Date(q.expirationDate).getTime();
+    if (!isNaN(exp) && Date.now() > exp) return true;
+  }
+  if (q.category === 'current-affairs' && q.timestamp) {
+    const ageMs = Date.now() - q.timestamp;
+    const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+    if (ageMs > ninetyDaysMs) return true;
+  }
+  return false;
+}
+
 /** Complete mapping of country aliases to their canonical forms */
 export const COUNTRY_MAPPINGS: Record<string, string> = {
   'usa': 'United States',
@@ -305,6 +340,7 @@ function getQuestionsForTarget(
 ): EarthQuestion[] {
   // 1. Filter static matches
   const staticMatches = DEDUPLICATED_STATIC_QUESTIONS.filter(q => {
+    if (isQuestionExpired(q)) return false;
     if (category !== 'any' && q.category !== category) return false;
 
     if (matchType === 'country') {
@@ -384,6 +420,7 @@ export function getQuestionsForCountry(
 
   // Filter local static questions strictly matching this country
   const matches = DEDUPLICATED_STATIC_QUESTIONS.filter(q => {
+    if (isQuestionExpired(q)) return false;
     if (!matchCountry(q.country, canonicalCountry)) return false;
     return category === 'trivia' || q.category === category;
   });
@@ -475,12 +512,18 @@ export function calculateLevel(xp: number): number {
 import WORLDCUP_QUESTIONS from './worldcup.json';
 
 /** Generates a flag quiz question dynamically from COUNTRY_METADATA */
-export function generateFlagQuestion(difficulty: 'easy' | 'medium' | 'hard', answeredIds: string[] = []): EarthQuestion {
+export function generateFlagQuestion(
+  difficulty: 'easy' | 'medium' | 'hard',
+  answeredIds: string[] = [],
+  countryName?: string
+): EarthQuestion {
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.flag && m.name);
-  const excludeSet = new Set(answeredIds);
-  const unseen = metadataArray.filter(m => !excludeSet.has(`flag-${m.name.toLowerCase()}`));
-  
-  const target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+  let target = countryName ? metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase()) : null;
+  if (!target) {
+    const excludeSet = new Set(answeredIds);
+    const unseen = metadataArray.filter(m => !excludeSet.has(`flag-${m.name.toLowerCase()}`));
+    target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+  }
 
   let distractors: string[] = [];
   if (difficulty === 'hard') {
@@ -516,12 +559,18 @@ export function generateFlagQuestion(difficulty: 'easy' | 'medium' | 'hard', ans
 }
 
 /** Generates a capital city quiz question dynamically from COUNTRY_METADATA */
-export function generateCapitalQuestion(difficulty: 'easy' | 'medium' | 'hard', answeredIds: string[] = []): EarthQuestion {
+export function generateCapitalQuestion(
+  difficulty: 'easy' | 'medium' | 'hard',
+  answeredIds: string[] = [],
+  countryName?: string
+): EarthQuestion {
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
-  const excludeSet = new Set(answeredIds);
-  const unseen = metadataArray.filter(m => !excludeSet.has(`capital-${m.name.toLowerCase()}`));
-  
-  const target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+  let target = countryName ? metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase()) : null;
+  if (!target) {
+    const excludeSet = new Set(answeredIds);
+    const unseen = metadataArray.filter(m => !excludeSet.has(`capital-${m.name.toLowerCase()}`));
+    target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
+  }
 
   const otherCapitals = metadataArray.filter(m => m.name !== target.name).map(m => m.capital);
   const distractors = shuffle(otherCapitals).slice(0, 3);
@@ -545,16 +594,28 @@ export function generateCapitalQuestion(difficulty: 'easy' | 'medium' | 'hard', 
 export function getDailyEarthQuestion(dateStr: string, index: number): EarthQuestion {
   // Simple seed based on date string
   const charSum = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const seed = charSum + index * 17;
+  const seed = charSum + index * 101;
+  const rng = new SeededRandom(seed);
+
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
-  
   const target = metadataArray[seed % metadataArray.length];
+
   const otherCapitals = metadataArray.filter(m => m.name !== target.name).map(m => m.capital);
-  const distractors = shuffle(otherCapitals).slice(0, 3);
-  const choices = shuffle([target.capital, ...distractors]);
+  
+  // Deterministically select 3 distractors
+  const distractors: string[] = [];
+  const availableCapitals = [...otherCapitals];
+  for (let i = 0; i < 3; i++) {
+    const randIdx = rng.nextInt(0, availableCapitals.length);
+    distractors.push(availableCapitals[randIdx]);
+    availableCapitals.splice(randIdx, 1);
+  }
+
+  // Deterministically shuffle the choices
+  const choices = rng.shuffle([target.capital, ...distractors]);
 
   return {
-    id: `daily-${dateStr}-${index}`,
+    id: `daily-${dateStr.replace(/[^a-zA-Z0-9]/g, '')}-${index}`,
     country: target.name,
     category: 'mixed',
     difficulty: 'medium',

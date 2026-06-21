@@ -5,7 +5,8 @@ import { EarthQuestion, QuizCategory } from '@/types';
 import { 
   matchCountry, 
   getCanonicalCountryName,
-  getContinentForCountry
+  getContinentForCountry,
+  isQuestionExpired
 } from '@/data/questions';
 import { generateQuestions } from '@/data/questions/generator';
 
@@ -111,11 +112,12 @@ function getMergedQuestions(country: string, category: string): EarthQuestion[] 
     return getCanonicalCategory(q.category) === cat;
   });
 
-  // Merge and deduplicate by question text
-  const merged = [...folderQuestions];
-  const seenText = new Set<string>(folderQuestions.map(q => q.question.toLowerCase().trim()));
+  // Merge, filter out expired, and deduplicate by question text
+  const merged: EarthQuestion[] = [];
+  const seenText = new Set<string>();
 
-  for (const q of memQuestions) {
+  for (const q of [...folderQuestions, ...memQuestions]) {
+    if (isQuestionExpired(q)) continue;
     const key = q.question.toLowerCase().trim();
     if (!seenText.has(key)) {
       seenText.add(key);
@@ -374,7 +376,9 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
               question: questionText,
               choices: options,
               correctIndex: correctIndex,
-              funFact: parsed.fact || parsed.funFact || ''
+              funFact: parsed.fact || parsed.funFact || '',
+              timestamp: Date.now(),
+              expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
             };
 
             // Write to files / cache

@@ -318,6 +318,10 @@ export function generateQuestions(
       if (results.length >= count) break;
       const q = template(country);
       if (q && !excludeSet.has(q.id)) {
+        if (q.category === 'current-affairs') {
+          q.timestamp = Date.now();
+          q.expirationDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        }
         results.push(q);
         excludeSet.add(q.id);
       }

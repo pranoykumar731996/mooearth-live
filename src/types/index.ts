@@ -128,6 +128,8 @@ export interface EarthQuestion {
   choices: string[];          // 4 multiple-choice options
   correctIndex: number;       // Index of the correct answer in choices[]
   funFact?: string;           // Educational tidbit shown after answering
+  timestamp?: number;         // Optional creation timestamp
+  expirationDate?: string;    // Optional expiration ISO string
 }
 
 /** Badge definition */
