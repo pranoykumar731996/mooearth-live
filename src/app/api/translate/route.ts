@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { translateArticle } from '@/services/translate';
+import { FEATURES } from '@/config/features';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,14 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 Days in Milliseconds
 
 export async function POST(request: NextRequest) {
   try {
+    if (!FEATURES.enableTranslation) {
+      console.log('[TranslateAPI] Translation feature is disabled via flag.');
+      return NextResponse.json(
+        { error: 'Translation feature is disabled' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { articleId, targetLanguage, title, summary, fullContent } = body;
 

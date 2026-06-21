@@ -9,6 +9,7 @@ import { trackEvent } from '@/services/analytics';
 import { shareContent, getWhatsAppShareUrl, getXShareUrl, getFacebookShareUrl, getTelegramShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
 import { isCountryWhitelisted } from '@/config/publishers';
+import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
@@ -423,6 +424,7 @@ export default function ArticleViewer({
 
   const handleTranslate = async (langCode: string) => {
     setIsLangDropdownOpen(false);
+    if (!FEATURES.enableTranslation) return;
     if (langCode === 'en') {
       setTargetLanguage('en');
       setTranslatedTitle(null);
@@ -638,7 +640,7 @@ export default function ArticleViewer({
 
             {/* Share / Read Source / Translate buttons */}
             <div className="flex flex-col gap-2 pt-4 border-t border-white/[0.05]">
-              {translationError && (
+              {FEATURES.enableTranslation && translationError && (
                 <div className="p-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 flex justify-between items-center">
                   <span>⚠️ {translationError}</span>
                   <button onClick={() => setTranslationError(null)} className="text-[10px] font-bold underline ml-2">Dismiss</button>
@@ -647,51 +649,53 @@ export default function ArticleViewer({
 
               <div className="flex flex-row gap-2">
                 {/* Translate Popover */}
-                <div className="relative flex-1">
-                  <button
-                    onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                      targetLanguage !== 'en'
-                        ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
-                        : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
-                    }`}
-                  >
-                    <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {isLangDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
-                        style={{
-                          background: 'rgba(10, 10, 20, 0.98)',
-                          backdropFilter: 'blur(10px)'
-                        }}
-                      >
-                        <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
-                          Select Language
-                        </div>
-                        {SUPPORTED_LANGUAGES.map((lang) => (
-                          <button
-                            key={lang.code}
-                            onClick={() => handleTranslate(lang.code)}
-                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                              targetLanguage === lang.code
-                                ? 'bg-indigo-600/30 text-indigo-300'
-                                : 'text-white/70 hover:bg-white/5 hover:text-white'
-                            }`}
-                          >
-                            <span>{lang.nativeName}</span>
-                            <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                {FEATURES.enableTranslation && (
+                  <div className="relative flex-1">
+                    <button
+                      onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                      className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                        targetLanguage !== 'en'
+                          ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
+                          : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                      }`}
+                    >
+                      <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isLangDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
+                          style={{
+                            background: 'rgba(10, 10, 20, 0.98)',
+                            backdropFilter: 'blur(10px)'
+                          }}
+                        >
+                          <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                            Select Language
+                          </div>
+                          {SUPPORTED_LANGUAGES.map((lang) => (
+                            <button
+                              key={lang.code}
+                              onClick={() => handleTranslate(lang.code)}
+                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                targetLanguage === lang.code
+                                  ? 'bg-indigo-600/30 text-indigo-300'
+                                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                              }`}
+                            >
+                              <span>{lang.nativeName}</span>
+                              <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
                 {isCountryWhitelisted(activeEvent.country) && (
                   <button
@@ -794,52 +798,54 @@ export default function ArticleViewer({
 
             <div className="flex items-center gap-2">
               {/* Translate Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                  className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
-                    targetLanguage !== 'en'
-                      ? 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                      : 'bg-white/5 text-white/70 border-white/5 hover:text-white hover:bg-white/10'
-                  }`}
-                  title="Translate Article"
-                >
-                  <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
-                </button>
-                
-                <AnimatePresence>
-                  {isLangDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                      className="absolute top-full mt-2 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 w-48 overflow-y-auto scrollbar-thin shadow-2xl"
-                      style={{
-                        background: 'rgba(10, 10, 20, 0.98)',
-                        backdropFilter: 'blur(10px)'
-                      }}
-                    >
-                      <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
-                        Select Language
-                      </div>
-                      {SUPPORTED_LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => handleTranslate(lang.code)}
-                          className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                            targetLanguage === lang.code
-                              ? 'bg-indigo-600/30 text-indigo-300'
-                              : 'text-white/70 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <span>{lang.nativeName}</span>
-                          <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {FEATURES.enableTranslation && (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                    className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
+                      targetLanguage !== 'en'
+                        ? 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                        : 'bg-white/5 text-white/70 border-white/5 hover:text-white hover:bg-white/10'
+                    }`}
+                    title="Translate Article"
+                  >
+                    <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isLangDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        className="absolute top-full mt-2 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 w-48 overflow-y-auto scrollbar-thin shadow-2xl"
+                        style={{
+                          background: 'rgba(10, 10, 20, 0.98)',
+                          backdropFilter: 'blur(10px)'
+                        }}
+                      >
+                        <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                          Select Language
+                        </div>
+                        {SUPPORTED_LANGUAGES.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => handleTranslate(lang.code)}
+                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              targetLanguage === lang.code
+                                ? 'bg-indigo-600/30 text-indigo-300'
+                                : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span>{lang.nativeName}</span>
+                            <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Reading Mode Button */}
               <button
@@ -910,7 +916,7 @@ export default function ArticleViewer({
 
                   {/* Headline */}
                   <h1 className={`text-2xl lg:text-3xl font-black text-white leading-tight tracking-tight ${readingMode ? 'font-serif font-extrabold' : 'font-sans'}`}>
-                    {translatedTitle || cleanTitle}
+                    {(FEATURES.enableTranslation && translatedTitle) || cleanTitle}
                   </h1>
 
                   {/* Byline metadata */}
@@ -928,7 +934,7 @@ export default function ArticleViewer({
                   </div>
 
                   {/* AI Story Summary - Bullet Points */}
-                  {targetLanguage === 'en' && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+                  {(!FEATURES.enableTranslation || targetLanguage === 'en') && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
                     <div
                       className="rounded-2xl p-5 border border-cyan-500/10 relative overflow-hidden bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] font-sans"
                       style={{ borderLeft: `4px solid ${categoryConfig.color}` }}
@@ -951,7 +957,7 @@ export default function ArticleViewer({
                                 <span>
                                   <strong className="text-cyan-300 font-bold">{label}</strong>
                                   {text}
-                                </span>
+                                  </span>
                               </li>
                             );
                           }
@@ -966,14 +972,14 @@ export default function ArticleViewer({
                     </div>
                   )}
 
-                  {translationError && (
+                  {FEATURES.enableTranslation && translationError && (
                     <div className="p-3 px-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex justify-between items-center font-sans">
                       <span>⚠️ {translationError}</span>
                       <button onClick={() => setTranslationError(null)} className="text-xs font-bold underline ml-2 cursor-pointer">Dismiss</button>
                     </div>
                   )}
 
-                  {isTranslating ? (
+                  {FEATURES.enableTranslation && isTranslating ? (
                     <div className="p-8 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center justify-center py-20 gap-3 font-sans">
                       <div className="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
                       <p className="text-xs text-indigo-400 font-black uppercase tracking-widest animate-pulse">Translating article content...</p>
@@ -981,11 +987,11 @@ export default function ArticleViewer({
                   ) : (
                     <>
                       {/* AI Summary Insight Description (Task 2 & 10) */}
-                      {(translatedSummary || articleDetails?.aiSummary) && (
+                      {((FEATURES.enableTranslation && translatedSummary) || articleDetails?.aiSummary) && (
                         <div className={`space-y-4 pt-2 ${readingMode ? 'text-lg text-white/90 font-serif leading-relaxed' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
                           <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Summary Overview</h3>
                           <div className="space-y-3">
-                            {(translatedSummary || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
+                            {((FEATURES.enableTranslation && translatedSummary) || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
                               <p key={idx}>{para}</p>
                             ))}
                           </div>
@@ -996,7 +1002,7 @@ export default function ArticleViewer({
                       <div className="space-y-4 pt-4 border-t border-white/[0.05]">
                         <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Detailed Report</h3>
                         <div className={`space-y-4 ${readingMode ? 'text-lg lg:text-xl text-white/95 leading-relaxed font-serif' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
-                          {(translatedContent || articleBody).split('\n\n').map((para, idx) => (
+                          {((FEATURES.enableTranslation && translatedContent) || articleBody).split('\n\n').map((para, idx) => (
                             <p key={idx}>{para}</p>
                           ))}
                         </div>
