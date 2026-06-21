@@ -7,6 +7,22 @@ import { SessionAnalytics } from '@/services/analytics';
 import { BRANDING } from '@/config/branding';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const LANGUAGE_CODE_TO_NAME: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi (हिन्दी)',
+  or: 'Odia (ଓଡ଼ିଆ)',
+  bn: 'Bengali (বাংলা)',
+  ta: 'Tamil (தமிழ்)',
+  te: 'Telugu (తెలుగు)',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ja: 'Japanese',
+  zh: 'Chinese',
+  ar: 'Arabic'
+};
+
 // --- MOCK SIMULATION DATA GENERATOR ---
 const generateSimulationData = (): SessionAnalytics[] => {
   const sources = ['direct', 'google', 'bing', 'x', 'facebook', 'chatgpt', 'perplexity', 'gemini', 'copilot', 'reddit'];
@@ -95,6 +111,29 @@ const generateSimulationData = (): SessionAnalytics[] => {
     const ecCompleted = ecStarted && Math.random() > 0.6 ? 1 : 0;
     const ecDuration = ecStarted ? Math.floor(10 + Math.random() * 120) : 0;
 
+    // Translation simulation stats
+    const tOpens = Math.random() > 0.4 ? Math.floor(Math.random() * 3) + 1 : 0;
+    const tLanguages: Record<string, number> = {};
+    let tSuccess = 0;
+    let tFail = 0;
+    const tArticleIds: string[] = [];
+    const tCountries: Record<string, number> = {};
+    
+    if (tOpens > 0) {
+      const selectedLangs = ['hi', 'or', 'es', 'fr', 'ja', 'zh'].slice(0, tOpens);
+      selectedLangs.forEach(lang => {
+        tLanguages[lang] = (tLanguages[lang] || 0) + 1;
+        if (Math.random() > 0.15) {
+          tSuccess++;
+          tArticleIds.push(`art_${Math.floor(Math.random() * 5) + 1}`);
+          const c = countries[Math.floor(Math.random() * countries.length)];
+          tCountries[c] = (tCountries[c] || 0) + 1;
+        } else {
+          tFail++;
+        }
+      });
+    }
+
     sessions.push({
       sessionId,
       userId,
@@ -146,6 +185,14 @@ const generateSimulationData = (): SessionAnalytics[] => {
         started: ecStarted,
         completed: ecCompleted,
         duration: ecDuration
+      },
+      translation: {
+        opens: tOpens,
+        languages: tLanguages,
+        successCount: tSuccess,
+        failCount: tFail,
+        translatedArticleIds: tArticleIds,
+        translatedCountries: tCountries
       }
     });
   }
@@ -253,6 +300,14 @@ export default function AdminAnalyticsPage() {
     let ecCompleted = 0;
     let ecDuration = 0;
 
+    // Translation Telemetry
+    let translationOpens = 0;
+    const translationLanguages: Record<string, number> = {};
+    let translationSuccess = 0;
+    let translationFail = 0;
+    const translationArticleIds = new Set<string>();
+    const translationCountries: Record<string, number> = {};
+
     sessions.forEach(sess => {
       // Basic metrics
       uniqueUsers.add(sess.userId || sess.sessionId);
@@ -342,6 +397,27 @@ export default function AdminAnalyticsPage() {
         ecStarted += sess.earthcast.started || 0;
         ecCompleted += sess.earthcast.completed || 0;
         ecDuration += sess.earthcast.duration || 0;
+      }
+
+      // Translation Telemetry
+      if (sess.translation) {
+        translationOpens += sess.translation.opens || 0;
+        translationSuccess += sess.translation.successCount || 0;
+        translationFail += sess.translation.failCount || 0;
+        
+        if (sess.translation.languages) {
+          Object.entries(sess.translation.languages).forEach(([lang, count]) => {
+            translationLanguages[lang] = (translationLanguages[lang] || 0) + count;
+          });
+        }
+        if (sess.translation.translatedArticleIds) {
+          sess.translation.translatedArticleIds.forEach(id => translationArticleIds.add(id));
+        }
+        if (sess.translation.translatedCountries) {
+          Object.entries(sess.translation.translatedCountries).forEach(([country, count]) => {
+            translationCountries[country] = (translationCountries[country] || 0) + count;
+          });
+        }
       }
     });
 
@@ -447,6 +523,18 @@ export default function AdminAnalyticsPage() {
         started: ecStarted,
         completed: ecCompleted,
         avgDuration: ecStarted > 0 ? Math.round(ecDuration / ecStarted) : 0
+      },
+      translation: {
+        opens: translationOpens,
+        success: translationSuccess,
+        fail: translationFail,
+        total: translationSuccess + translationFail,
+        successRate: (translationSuccess + translationFail) > 0 
+          ? Math.round((translationSuccess / (translationSuccess + translationFail)) * 100) 
+          : 100,
+        languages: translationLanguages,
+        articleIdsCount: translationArticleIds.size,
+        countries: translationCountries
       },
       funnelSteps
     };
@@ -570,12 +658,13 @@ export default function AdminAnalyticsPage() {
             )}
 
             {/* KPI Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
               <KpiCard title="Active Sessions" value={aggregatedStats.totalSessions} sub="Traffic session count" icon="📊" />
               <KpiCard title="Unique Visitors" value={aggregatedStats.uniqueUsers} sub="Anonymous user IDs" icon="👥" />
               <KpiCard title="New Visitors" value={aggregatedStats.newUsers} sub="First-time visits logged" icon="✨" />
               <KpiCard title="Returning Rate" value={`${aggregatedStats.returningRate}%`} sub="Cohort loyalty index" icon="🔄" />
               <KpiCard title="Avg Session Duration" value={`${Math.floor(aggregatedStats.avgDuration / 60)}m ${aggregatedStats.avgDuration % 60}s`} sub="Avg session length" icon="⏱️" />
+              <KpiCard title="Article Translations" value={aggregatedStats.translation.success} sub={`Success rate: ${aggregatedStats.translation.successRate}%`} icon="🌐" />
               <KpiCard title="WebGL Zoom/Rotate" value={aggregatedStats.globe.rotations + aggregatedStats.globe.zooms} sub="Globe rendering interactions" icon="🌍" />
             </div>
 
@@ -842,6 +931,117 @@ export default function AdminAnalyticsPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Translation Telemetry Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card 1: Language Popularity */}
+              <div className="glass rounded-3xl p-5 border border-white/5 flex flex-col gap-4">
+                <div>
+                  <h3 className="font-extrabold text-sm tracking-wide text-white">Translation Languages</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Languages chosen by readers</p>
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-[220px] scrollbar-thin pr-1 space-y-2.5">
+                  {Object.keys(aggregatedStats.translation.languages).length === 0 ? (
+                    <div className="text-center py-10 text-xs text-white/30 font-sans">No translations requested yet.</div>
+                  ) : (
+                    Object.entries(aggregatedStats.translation.languages)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([lang, count], idx) => {
+                        const maxCount = Math.max(...Object.values(aggregatedStats.translation.languages));
+                        const pct = Math.round((count / maxCount) * 100);
+                        const langName = LANGUAGE_CODE_TO_NAME[lang] || lang;
+                        return (
+                          <div key={lang} className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold font-sans">
+                              <span className="text-white/80">{idx + 1}. {langName}</span>
+                              <span className="font-mono text-cyan-400 font-bold">{count} times</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <motion.div 
+                                className="h-full bg-emerald-400" 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.5 }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+
+              {/* Card 2: Translation Metrics & Success Rate */}
+              <div className="glass rounded-3xl p-5 border border-white/5 flex flex-col gap-4">
+                <div>
+                  <h3 className="font-extrabold text-sm tracking-wide text-white">Translation Success & Health</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">API execution status & reliability</p>
+                </div>
+                <div className="flex-1 space-y-4 font-sans">
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-3 text-center">
+                      <span className="block text-white/45 text-[9px] font-bold uppercase tracking-widest">Total Opens</span>
+                      <strong className="text-sm font-black text-white">{aggregatedStats.translation.opens}</strong>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-3 text-center">
+                      <span className="block text-white/45 text-[9px] font-bold uppercase tracking-widest">Success Rate</span>
+                      <strong className={`text-sm font-black ${aggregatedStats.translation.successRate >= 90 ? 'text-emerald-400' : 'text-amber-400'}`}>{aggregatedStats.translation.successRate}%</strong>
+                    </div>
+                  </div>
+                  <div className="text-[11px] space-y-1 text-white/70">
+                    <div className="flex justify-between">
+                      <span>Successful API Calls:</span>
+                      <strong className="text-white">{aggregatedStats.translation.success}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Failed / Fallback Calls:</span>
+                      <strong className="text-red-400">{aggregatedStats.translation.fail}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Requests Logged:</span>
+                      <strong className="text-white">{aggregatedStats.translation.total}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Top Translated Countries */}
+              <div className="glass rounded-3xl p-5 border border-white/5 flex flex-col gap-4">
+                <div>
+                  <h3 className="font-extrabold text-sm tracking-wide text-white">Top Translated Regions</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Countries where articles get translated</p>
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-[220px] scrollbar-thin pr-1 space-y-2.5">
+                  {Object.keys(aggregatedStats.translation.countries).length === 0 ? (
+                    <div className="text-center py-10 text-xs text-white/30 font-sans">No translations for any region yet.</div>
+                  ) : (
+                    Object.entries(aggregatedStats.translation.countries)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([country, count], idx) => {
+                        const maxCount = Math.max(...Object.values(aggregatedStats.translation.countries));
+                        const pct = Math.round((count / maxCount) * 100);
+                        return (
+                          <div key={country} className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-semibold font-sans">
+                              <span className="text-white/80">{idx + 1}. {country}</span>
+                              <span className="font-mono text-cyan-400 font-bold">{count} translations</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <motion.div 
+                                className="h-full bg-cyan-400" 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.5 }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
                 </div>
               </div>
             </div>

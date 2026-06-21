@@ -10,6 +10,10 @@ import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
 import { shareContent } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
+import { isCountryWhitelisted } from '@/config/publishers';
+import dynamic from 'next/dynamic';
+
+const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
 const CLIENT_REACTION_CACHE = new Map<string, { data: ReactionEvent; timestamp: number }>();
 const CACHE_TTL = 10000; // 10 seconds client-side cache
@@ -236,6 +240,9 @@ export default function CountryReactionPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
+  const [showDebugMonitor, setShowDebugMonitor] = useState(true);
+  const [isDebugCollapsed, setIsDebugCollapsed] = useState(false);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -298,7 +305,7 @@ export default function CountryReactionPanel({
   }, []);
 
   useEffect(() => {
-    if (!country || isFocusMode) return;
+    if (!country) return;
     const cacheKey = `${country}_${activeCategory || 'home'}`;
     const cachedItem = CLIENT_REACTION_CACHE.get(cacheKey);
     
@@ -338,7 +345,7 @@ export default function CountryReactionPanel({
     return () => {
       aborted = true;
     };
-  }, [country, activeCategory, onReactionLoaded, isFocusMode]);
+  }, [country, activeCategory, onReactionLoaded]);
 
   // Framer Motion mobile bottom sheet swipe-to-dismiss configurations
   const dragProps = isMobile ? {
@@ -441,41 +448,82 @@ export default function CountryReactionPanel({
             {/* Unified Category Metrics Widget */}
             <CategoryMetricsWidget country={country} category={activeCategory} />
 
+            {/* Perspective Lens Promo Card */}
+            {isCountryWhitelisted(country) && (
+              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shadow-lg relative overflow-hidden space-y-3">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-indigo-400 font-black tracking-widest uppercase flex items-center gap-1">
+                    <span>🧠</span>
+                    <span>Perspective Lens</span>
+                  </span>
+                  <span className="text-[8px] bg-indigo-500/20 text-indigo-200 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                    Compare Framing
+                  </span>
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed font-medium">
+                  Compare how domestic media in {country} and global publishers cover major stories.
+                </p>
+                <button
+                  onClick={() => setIsPerspectiveOpen(true)}
+                  className="w-full py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-bold text-xs transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
+                >
+                  🧠 Compare Local vs Global News
+                </button>
+              </div>
+            )}
+
             {/* System Filter Monitor (Debug Display) */}
-            <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-              <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
-                <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
-                  System Filter Monitor
-                </span>
-                <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                  Active Filter
-                </span>
+            {showDebugMonitor && (
+              <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
+                  <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                    System Filter Monitor
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                      Active Filter
+                    </span>
+                    <button
+                      onClick={() => setIsDebugCollapsed(!isDebugCollapsed)}
+                      className="text-cyan-400 hover:text-white transition-colors p-0.5 hover:bg-cyan-500/10 rounded text-[9px] font-bold leading-none cursor-pointer"
+                      title={isDebugCollapsed ? "Expand" : "Collapse"}
+                    >
+                      {isDebugCollapsed ? '➕' : '➖'}
+                    </button>
+                    <button
+                      onClick={() => setShowDebugMonitor(false)}
+                      className="text-cyan-400 hover:text-red-400 transition-colors p-0.5 hover:bg-cyan-500/10 rounded text-[9px] font-bold leading-none cursor-pointer"
+                      title="Close Monitor"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                {!isDebugCollapsed && (
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
+                      <span className="text-white">{country}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
+                      <span className="text-white">{categoryLabel}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
+                      <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData.query || `${country} ${categoryLabel}`}&quot;</code>
+                    </div>
+                    <div>
+                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
+                      <span className="text-white font-bold">{reactionData.headlines.length} headlines</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
-                <div>
-                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
-                  <span className="text-white">{country}</span>
-                </div>
-                <div>
-                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
-                  <span className="text-white">{categoryLabel}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
-                  <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData.query || `${country} ${categoryLabel}`}&quot;</code>
-                </div>
-                <div>
-                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
-                  <span className="text-white font-bold">{reactionData.headlines.length} headlines</span>
-                </div>
-                <div>
-                  <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Data Source</span>
-                  <span className="text-emerald-400 truncate block max-w-[130px] font-bold">{reactionData.source || 'Google News RSS Search'}</span>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Fallback alert for empty category */}
             {reactionData.noCategoryContent && (
@@ -587,6 +635,20 @@ export default function CountryReactionPanel({
           <div className="p-6 text-center text-white/50">Failed to load reactions.</div>
         )}
       </div>
+
+      {isPerspectiveOpen && reactionData && (
+        <PerspectiveLensModal
+          isOpen={isPerspectiveOpen}
+          onClose={() => setIsPerspectiveOpen(false)}
+          country={country}
+          topic={
+            reactionData.headlines[0]?.title
+              ? (reactionData.headlines[0].title.split(' - ')[0] || reactionData.headlines[0].title)
+              : `${country} developments`
+          }
+          category={activeCategory || 'news'}
+        />
+      )}
     </motion.div>
   );
 }

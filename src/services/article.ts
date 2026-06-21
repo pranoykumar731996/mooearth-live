@@ -231,65 +231,101 @@ function generateProceduralArticle(
   };
 }
 
-/**
- * Fetches, cleans, and enriches article content. Uses OpenAI GPT-3.5-Turbo
- * to expand snippets, falling back to a structured template generator if offline.
- */
-export async function fetchOrGenerateArticleDetails(
-  id: string,
-  url: string,
-  title: string,
-  summary: string,
-  country: string,
-  category: string,
-  publishedAt: string
-): Promise<ArticleDetails> {
-  const cacheKey = id || url || title;
-  
-  if (articleCache.has(cacheKey)) {
-    return articleCache.get(cacheKey)!;
-  }
-
-  const cleanTitle = cleanText(title);
-  const cleanSummary = cleanText(summary);
-
-  // Attempt OpenAI generation
+function parseJsonContent(text: string): any {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not defined');
+    let jsonStr = text.trim();
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    }
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.error('[ArticleService] JSON parse error:', e.message, 'Raw text head:', text.substring(0, 150));
+    return null;
+  }
+}
+
+async function generateWithGemini20(apiKey: string, prompt: string): Promise<any> {
+  try {
+    console.log('[ArticleService] Generating article with Gemini 2.0 Flash...');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
+          maxOutputTokens: 4096
+        }
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[ArticleService] Gemini 2.0 returned ${response.status}: ${errText.substring(0, 150)}`);
+      return null;
     }
 
-    const prompt = `
-      You are a premium news expansion engine for MooEarth Live. 
-      Take the following news snippet and expand it into a full, professional article reading experience.
-      
-      TITLE: ${cleanTitle}
-      SNIPPET: ${cleanSummary}
-      COUNTRY: ${country}
-      CATEGORY: ${category}
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
+    return parseJsonContent(text);
+  } catch (err: any) {
+    console.error('[ArticleService] Gemini 2.0 failed:', err.message);
+    return null;
+  }
+}
 
-      Generate a JSON response containing:
-      1. "aiSummary": 2-3 short, clean paragraphs summarizing the event. Fix any run-together words, double spaces, and punctuation mistakes.
-      2. "fullContent": A 3-4 paragraph detailed article writeup detailing the news context, local impact, and expected future developments.
-      3. "keyFacts": An array of exactly 4-6 concise bullet points containing crucial takeaways. Each bullet point MUST cover exactly one of the following aspects in order:
-         - Main event (e.g. "Main Event: [description]")
-         - Important development (e.g. "Important Development: [description]")
-         - Why it matters (e.g. "Why It Matters: [description]")
-         - Country impact (e.g. "Country Impact: [description]")
-      4. "author": A realistic reporter or editorial team name.
+async function generateWithGeminiLatest(apiKey: string, prompt: string): Promise<any> {
+  try {
+    console.log('[ArticleService] Generating article with Gemini Flash Latest...');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
+          maxOutputTokens: 4096
+        }
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
 
-      OUTPUT FORMAT:
-      You must respond with raw, valid JSON only. Do not wrap in markdown codeblocks.
-      JSON structure:
-      {
-        "aiSummary": "paragraph 1\\n\\nparagraph 2",
-        "fullContent": "paragraph 1\\n\\nparagraph 2\\n\\nparagraph 3",
-        "keyFacts": ["bullet 1", "bullet 2", "bullet 3", "bullet 4", "bullet 5"],
-        "author": "Reporter Name"
-      }
-    `;
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[ArticleService] Gemini Latest returned ${response.status}: ${errText.substring(0, 150)}`);
+      return null;
+    }
 
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
+    return parseJsonContent(text);
+  } catch (err: any) {
+    console.error('[ArticleService] Gemini Latest failed:', err.message);
+    return null;
+  }
+}
+
+async function generateWithOpenAI(apiKey: string, prompt: string): Promise<any> {
+  try {
+    console.log('[ArticleService] Generating article with OpenAI gpt-3.5-turbo...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -309,61 +345,131 @@ export async function fetchOrGenerateArticleDetails(
           }
         ],
         temperature: 0.4,
-        max_tokens: 800,
+        max_tokens: 1200,
       }),
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API returned status ${response.status}`);
+      const errText = await response.text();
+      console.error(`[ArticleService] OpenAI returned ${response.status}: ${errText.substring(0, 150)}`);
+      return null;
     }
 
     const data = await response.json();
-    let textResult = data.choices?.[0]?.message?.content?.trim() || '';
+    const textResult = data.choices?.[0]?.message?.content?.trim() || '';
+    return parseJsonContent(textResult);
+  } catch (err: any) {
+    console.error('[ArticleService] OpenAI failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Fetches, cleans, and enriches article content. Uses cascading Gemini 2.0 Flash,
+ * Gemini Flash Latest, and OpenAI gpt-3.5-turbo to expand snippets into detailed articles,
+ * falling back to procedural templates if offline.
+ */
+export async function fetchOrGenerateArticleDetails(
+  id: string,
+  url: string,
+  title: string,
+  summary: string,
+  country: string,
+  category: string,
+  publishedAt: string
+): Promise<ArticleDetails> {
+  const cacheKey = id || url || title;
+  
+  if (articleCache.has(cacheKey)) {
+    return articleCache.get(cacheKey)!;
+  }
+
+  const cleanTitle = cleanText(title);
+  const cleanSummary = cleanText(summary);
+
+  const prompt = `
+    You are an elite research journalist and premium news expansion engine for MooEarth Live. 
+    Take the following news snippet and expand it into a comprehensive, highly accurate, and deeply informative article reading experience.
     
-    // Clean up potential markdown formatting wrapping the JSON
-    if (textResult.startsWith('```json')) {
-      textResult = textResult.replace(/^```json/, '').replace(/```$/, '').trim();
-    } else if (textResult.startsWith('```')) {
-      textResult = textResult.replace(/^```/, '').replace(/```$/, '').trim();
+    TITLE: ${cleanTitle}
+    SNIPPET: ${cleanSummary}
+    COUNTRY: ${country}
+    CATEGORY: ${category}
+
+    Generate a JSON response containing:
+    1. "aiSummary": A detailed 2-3 paragraph summary of the event. Provide concrete background details, timeline context, and clear explanations. Fix any typos or run-together words.
+    2. "fullContent": A substantial, in-depth 4-6 paragraph detailed article writeup. Include regional impact analysis, geopolitical or economic context, testimonials or perspectives (if applicable), and expected future developments. Make the content rich, informative, and extensive (at least 500-600 words).
+    3. "keyFacts": An array of exactly 4-6 concise bullet points containing crucial takeaways. Each bullet point MUST cover exactly one of the following aspects in order:
+       - Main event (e.g. "Main Event: [description]")
+       - Important development (e.g. "Important Development: [description]")
+       - Why it matters (e.g. "Why It Matters: [description]")
+       - Country impact (e.g. "Country Impact: [description]")
+    4. "author": A realistic reporter or editorial team name.
+
+    OUTPUT FORMAT:
+    You must respond with raw, valid JSON only conforming to the schema. Do not write conversational text or wrap in markdown blocks.
+    JSON structure:
+    {
+      "aiSummary": "paragraph 1\\n\\nparagraph 2",
+      "fullContent": "paragraph 1\\n\\nparagraph 2\\n\\nparagraph 3\\n\\nparagraph 4\\n\\nparagraph 5",
+      "keyFacts": ["bullet 1", "bullet 2", "bullet 3", "bullet 4", "bullet 5"],
+      "author": "Reporter Name"
     }
+  `;
 
-    const parsed = JSON.parse(textResult);
+  let parsed: any = null;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
 
-    if (parsed.aiSummary && parsed.fullContent && Array.isArray(parsed.keyFacts)) {
-      const details: ArticleDetails = {
-        id,
-        title: cleanTitle,
-        source: cleanText(url),
-        publishedAt,
-        country,
-        category,
-        aiSummary: cleanText(parsed.aiSummary),
-        fullContent: cleanText(parsed.fullContent),
-        keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
-        author: parsed.author ? cleanText(parsed.author) : getDeterministicAuthor(id || title),
-        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-        description: cleanSummary
-      };
-
-      articleCache.set(cacheKey, details);
-      return details;
-    }
-
-    throw new Error('Parsed JSON did not contain required keys');
-  } catch (error) {
-    console.warn(`OpenAI article expansion failed for "${title}". Triggering procedural fallback. Reason:`, error);
+  // 1. Try Gemini 2.0 Flash
+  if (geminiApiKey) {
+    parsed = await generateWithGemini20(geminiApiKey, prompt);
     
-    const fallbackDetails = generateProceduralArticle(
+    // 2. Try Gemini Flash Latest
+    if (!parsed) {
+      parsed = await generateWithGeminiLatest(geminiApiKey, prompt);
+    }
+  }
+
+  // 3. Try OpenAI gpt-3.5-turbo
+  if (!parsed && openaiApiKey) {
+    parsed = await generateWithOpenAI(openaiApiKey, prompt);
+  }
+
+  // Handle successful generation
+  if (parsed && parsed.aiSummary && parsed.fullContent && Array.isArray(parsed.keyFacts)) {
+    const details: ArticleDetails = {
       id,
-      title,
-      summary,
+      title: cleanTitle,
+      source: cleanText(url),
+      publishedAt,
       country,
       category,
-      url,
-      publishedAt
-    );
+      aiSummary: cleanText(parsed.aiSummary),
+      fullContent: cleanText(parsed.fullContent),
+      keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
+      author: parsed.author ? cleanText(parsed.author) : getDeterministicAuthor(id || title),
+      image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+      description: cleanSummary
+    };
 
-    articleCache.set(cacheKey, fallbackDetails);
-    return fallbackDetails;
+    articleCache.set(cacheKey, details);
+    return details;
   }
+
+  // 4. Procedural fallback
+  console.warn(`[ArticleService] AI article expansion failed or timed out for "${title}". Triggering procedural fallback.`);
+  const fallbackDetails = generateProceduralArticle(
+    id,
+    title,
+    summary,
+    country,
+    category,
+    url,
+    publishedAt
+  );
+
+  articleCache.set(cacheKey, fallbackDetails);
+  return fallbackDetails;
 }

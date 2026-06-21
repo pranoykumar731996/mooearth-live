@@ -11,6 +11,10 @@ import PlayEarthOverlay from '../Globe/PlayEarthOverlay';
 import ArticleViewer from '../Reactions/ArticleViewer';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { matchCountry } from '@/data/questions';
+import { isCountryWhitelisted } from '@/config/publishers';
+import dynamic from 'next/dynamic';
+
+const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
 // Categories mapping helper
 const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryValue: EventCategory | 'play_earth' | 'discovery' }[] = [
@@ -271,6 +275,9 @@ export default function MobileCountrySheet({
   const dragControls = useDragControls();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [launchMode, setLaunchMode] = useState<PlayEarthMode | null>(null);
+  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
+  const [showDebugMonitor, setShowDebugMonitor] = useState(true);
+  const [isDebugCollapsed, setIsDebugCollapsed] = useState(false);
 
   const handleLaunchMode = (mode: PlayEarthMode) => {
     onPlaySound();
@@ -281,7 +288,7 @@ export default function MobileCountrySheet({
   const countryMeta = findCountryMeta(country);
 
   useEffect(() => {
-    if (!country || isFocusMode) return;
+    if (!country) return;
     const cat = isPlayEarthActive ? 'sports' : (activeCategory || 'breaking');
     const catParam = `&category=${cat}`;
     setIsLoading(true);
@@ -309,7 +316,7 @@ export default function MobileCountrySheet({
     return () => {
       aborted = true;
     };
-  }, [country, activeCategory, isPlayEarthActive, onReactionLoaded, isFocusMode]);
+  }, [country, activeCategory, isPlayEarthActive, onReactionLoaded]);
 
   // Adjust sheetState if article opens
   useEffect(() => {
@@ -694,42 +701,83 @@ export default function MobileCountrySheet({
               <div className="space-y-5 animate-[quiz-reveal_0.3s_ease-out]">
                 {/* Metrics specific to selected category */}
                 <CategoryMetricsWidget country={country} category={activeCategory} />
+
+                {/* Perspective Lens Promo Card */}
+                {isCountryWhitelisted(country) && (
+                  <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shadow-lg relative overflow-hidden space-y-3">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-indigo-400 font-black tracking-widest uppercase flex items-center gap-1">
+                        <span>🧠</span>
+                        <span>Perspective Lens</span>
+                      </span>
+                      <span className="text-[8px] bg-indigo-500/20 text-indigo-200 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                        Compare Framing
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/60 leading-relaxed font-medium">
+                      Compare how domestic media in {country} and global publishers cover major stories.
+                    </p>
+                    <button
+                      onClick={() => setIsPerspectiveOpen(true)}
+                      className="w-full py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-bold text-xs transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
+                    >
+                      🧠 Compare Local vs Global News
+                    </button>
+                  </div>
+                )}
                 
                 {/* System Filter Monitor (Debug Display) */}
-                <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
-                  <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
-                    <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
-                      System Filter Monitor
-                    </span>
-                    <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                      Active Filter
-                    </span>
+                {showDebugMonitor && (
+                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-4 space-y-3 relative overflow-hidden shadow-[0_0_15px_rgba(0,229,255,0.05)]">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="flex items-center justify-between border-b border-cyan-500/15 pb-2">
+                      <span className="text-[10px] text-cyan-400 font-black tracking-[0.2em] uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse" />
+                        System Filter Monitor
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                          Active Filter
+                        </span>
+                        <button
+                          onClick={() => setIsDebugCollapsed(!isDebugCollapsed)}
+                          className="text-cyan-400 hover:text-white transition-colors p-0.5 hover:bg-cyan-500/10 rounded text-[9px] font-bold leading-none cursor-pointer"
+                          title={isDebugCollapsed ? "Expand" : "Collapse"}
+                        >
+                          {isDebugCollapsed ? '➕' : '➖'}
+                        </button>
+                        <button
+                          onClick={() => setShowDebugMonitor(false)}
+                          className="text-cyan-400 hover:text-red-400 transition-colors p-0.5 hover:bg-cyan-500/10 rounded text-[9px] font-bold leading-none cursor-pointer"
+                          title="Close Monitor"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    {!isDebugCollapsed && (
+                      <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
+                        <div>
+                          <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
+                          <span className="text-white">{country}</span>
+                        </div>
+                        <div>
+                          <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
+                          <span className="text-white">{MOBILE_CATEGORIES.find(c => c.categoryValue === activeCategory)?.label || 'Home'}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
+                          <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData?.query || `${country} News`}&quot;</code>
+                        </div>
+                        <div>
+                          <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
+                          <span className="text-white font-bold">{reactionData?.headlines.length || 0} headlines</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-xs font-semibold">
-                    <div>
-                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Country</span>
-                      <span className="text-white">{country}</span>
-                    </div>
-                    <div>
-                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Selected Category</span>
-                      <span className="text-white">{MOBILE_CATEGORIES.find(c => c.categoryValue === activeCategory)?.label || 'Home'}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Generated Query</span>
-                      <code className="text-cyan-300 text-[10px] font-mono leading-none break-all select-all">&quot;{reactionData?.query || `${country} News`}&quot;</code>
-                    </div>
-                    <div>
-                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Results Returned</span>
-                      <span className="text-white font-bold">{reactionData?.headlines.length || 0} headlines</span>
-                    </div>
-                    <div>
-                      <span className="text-white/40 text-[9px] uppercase tracking-wider block font-bold">Data Source</span>
-                      <span className="text-emerald-400 truncate block max-w-[130px] font-bold">{reactionData?.source || 'Google News RSS Search'}</span>
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 {reactionData?.noCategoryContent && (
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex gap-3 text-xs leading-relaxed animate-[quiz-reveal_0.3s_ease-out]">
@@ -790,6 +838,20 @@ export default function MobileCountrySheet({
           </div>
         )}
       </div>
+
+      {isPerspectiveOpen && (
+        <PerspectiveLensModal
+          isOpen={isPerspectiveOpen}
+          onClose={() => setIsPerspectiveOpen(false)}
+          country={country}
+          topic={
+            reactionData?.headlines[0]?.title
+              ? (reactionData.headlines[0].title.split(' - ')[0] || reactionData.headlines[0].title)
+              : `${country} developments`
+          }
+          category={activeCategory || 'news'}
+        />
+      )}
     </motion.div>
   );
 }

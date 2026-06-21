@@ -8,6 +8,26 @@ import { CATEGORY_IMAGES, ArticleDetails } from '@/services/article';
 import { trackEvent } from '@/services/analytics';
 import { shareContent, getWhatsAppShareUrl, getXShareUrl, getFacebookShareUrl, getTelegramShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
+import { isCountryWhitelisted } from '@/config/publishers';
+import dynamic from 'next/dynamic';
+
+const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+  { code: 'fr', name: 'French', nativeName: 'Français' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch' },
+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  { code: 'zh', name: 'Chinese', nativeName: '中文' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
+];
 
 interface ArticleViewerProps {
   event: WorldEvent | null;
@@ -129,6 +149,14 @@ export default function ArticleViewer({
   const [readingMode, setReadingMode] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
+  const [targetLanguage, setTargetLanguage] = useState<string>('en');
+  const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
+  const [translatedSummary, setTranslatedSummary] = useState<string | null>(null);
+  const [translatedContent, setTranslatedContent] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState<boolean>(false);
 
   const handleShare = async () => {
     if (!activeEvent) return;
@@ -200,6 +228,14 @@ export default function ArticleViewer({
   const [prevActiveEvent, setPrevActiveEvent] = useState<WorldEvent | null>(null);
   if (activeEvent !== prevActiveEvent) {
     setPrevActiveEvent(activeEvent);
+    setTargetLanguage('en');
+    setTranslatedTitle(null);
+    setTranslatedSummary(null);
+    setTranslatedContent(null);
+    setTranslationError(null);
+    setIsTranslating(false);
+    setIsLangDropdownOpen(false);
+    
     if (activeEvent) {
       const cacheKey = activeEvent.id || activeEvent.source || activeEvent.title;
       if (localArticleCache[cacheKey]) {
@@ -376,8 +412,70 @@ export default function ArticleViewer({
   const displayImage = articleDetails?.image || CATEGORY_IMAGES[activeEvent.category as EventCategory] || CATEGORY_IMAGES.breaking;
   const articleBody = articleDetails?.fullContent || activeEvent.summary || 'No further content is available.';
 
+  const handleTranslate = async (langCode: string) => {
+    setIsLangDropdownOpen(false);
+    if (langCode === 'en') {
+      setTargetLanguage('en');
+      setTranslatedTitle(null);
+      setTranslatedSummary(null);
+      setTranslatedContent(null);
+      setTranslationError(null);
+      return;
+    }
+
+    setTargetLanguage(langCode);
+    setIsTranslating(true);
+    setTranslationError(null);
+
+    // Track analytics: open & select_language
+    trackEvent('translation', 'open');
+    trackEvent('translation', 'select_language', langCode);
+
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          articleId: activeEvent?.id || activeEvent?.source || activeEvent?.title || '',
+          targetLanguage: langCode,
+          title: cleanTitle,
+          summary: activeEvent?.summary || '',
+          fullContent: articleBody || ''
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Translation request failed');
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setTranslatedTitle(data.translatedTitle);
+      setTranslatedSummary(data.translatedSummary);
+      setTranslatedContent(data.translatedContent);
+
+      // Track analytics: success
+      trackEvent('translation', 'success', langCode, 1, {
+        articleId: activeEvent?.id,
+        country: activeEvent?.country
+      });
+
+    } catch (err: any) {
+      console.error('Translation error:', err);
+      setTranslationError('Translation temporarily unavailable.');
+      // Track analytics: failure
+      trackEvent('translation', 'failure', langCode);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   if (isInline) {
     return (
+      <>
       <div className="w-full flex flex-col space-y-4 select-text pointer-events-auto" id="inline-article-reader">
         {/* Top Navbar */}
         <div className="flex items-center justify-between py-2 border-b border-white/[0.06] bg-black/20 shrink-0">
@@ -423,7 +521,7 @@ export default function ArticleViewer({
 
             {/* Title */}
             <h1 className="text-lg font-black text-white leading-tight tracking-tight">
-              {cleanTitle}
+              {translatedTitle || cleanTitle}
             </h1>
 
             {/* Byline metadata */}
@@ -437,8 +535,8 @@ export default function ArticleViewer({
               <span className="italic">{publisher}</span>
             </div>
 
-            {/* Key Facts */}
-            {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+            {/* Key Facts (only shown in English mode or if loaded) */}
+            {targetLanguage === 'en' && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
               <div
                 className="rounded-xl p-4 border border-cyan-500/10 bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                 style={{ borderLeft: `3px solid ${categoryConfig.color}` }}
@@ -476,36 +574,110 @@ export default function ArticleViewer({
               </div>
             )}
 
-            {/* AI Summary Insight */}
-            {articleDetails?.aiSummary && (
-              <div className="space-y-2 text-xs text-white/70 leading-relaxed">
-                <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Summary Overview</h3>
-                <div className="space-y-2">
-                  {articleDetails.aiSummary.split('\n\n').map((para, idx) => (
-                    <p key={idx}>{para}</p>
-                  ))}
-                </div>
+            {isTranslating ? (
+              <div className="p-8 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-6 h-6 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
+                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">Translating article content...</p>
               </div>
+            ) : (
+              <>
+                {/* AI Summary Insight */}
+                {(translatedSummary || articleDetails?.aiSummary) && (
+                  <div className="space-y-2 text-xs text-white/70 leading-relaxed">
+                    <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Summary Overview</h3>
+                    <div className="space-y-2">
+                      {(translatedSummary || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
+                        <p key={idx}>{para}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Full Content Body */}
+                <div className="space-y-2 pt-3 border-t border-white/[0.05]">
+                  <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Detailed Report</h3>
+                  <div className="space-y-2 text-xs text-white/70 leading-relaxed">
+                    {(translatedContent || articleBody).split('\n\n').map((para, idx) => (
+                      <p key={idx}>{para}</p>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Full Content Body */}
-            <div className="space-y-2 pt-3 border-t border-white/[0.05]">
-              <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Detailed Report</h3>
-              <div className="space-y-2 text-xs text-white/70 leading-relaxed">
-                {articleBody.split('\n\n').map((para, idx) => (
-                  <p key={idx}>{para}</p>
-                ))}
-              </div>
-            </div>
+            {/* Share / Read Source / Translate buttons */}
+            <div className="flex flex-col gap-2 pt-4 border-t border-white/[0.05]">
+              {translationError && (
+                <div className="p-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 flex justify-between items-center">
+                  <span>⚠️ {translationError}</span>
+                  <button onClick={() => setTranslationError(null)} className="text-[10px] font-bold underline ml-2">Dismiss</button>
+                </div>
+              )}
 
-            {/* Share / Read Source buttons */}
-            <div className="flex gap-2 pt-4 border-t border-white/[0.05]">
+              <div className="flex flex-row gap-2">
+                {/* Translate Popover */}
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                      targetLanguage !== 'en'
+                        ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
+                        : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                    }`}
+                  >
+                    <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isLangDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
+                        style={{
+                          background: 'rgba(10, 10, 20, 0.98)',
+                          backdropFilter: 'blur(10px)'
+                        }}
+                      >
+                        <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                          Select Language
+                        </div>
+                        {SUPPORTED_LANGUAGES.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => handleTranslate(lang.code)}
+                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              targetLanguage === lang.code
+                                ? 'bg-indigo-600/30 text-indigo-300'
+                                : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span>{lang.nativeName}</span>
+                            <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {isCountryWhitelisted(activeEvent.country) && (
+                  <button
+                    onClick={() => setIsPerspectiveOpen(true)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-indigo-600/90 hover:bg-indigo-600 text-white shadow-sm transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
+                  >
+                    <span>🧠 Perspective</span>
+                  </button>
+                )}
+              </div>
+
               <a
                 href={articleDetails?.source || activeEvent.source}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent('article', 'source_click', activeEvent.id, 1, { publisher })}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm"
               >
                 <span>Read Source on {publisher}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -518,10 +690,21 @@ export default function ArticleViewer({
           </div>
         )}
       </div>
+      {isPerspectiveOpen && (
+        <PerspectiveLensModal
+          isOpen={isPerspectiveOpen}
+          onClose={() => setIsPerspectiveOpen(false)}
+          country={activeEvent.country}
+          topic={cleanTitle}
+          category={activeEvent.category}
+        />
+      )}
+      </>
     );
   }
 
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 lg:p-6 select-none overflow-hidden">
         {/* Backdrop glass blur */}
@@ -577,6 +760,54 @@ export default function ArticleViewer({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Translate Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                  className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
+                    targetLanguage !== 'en'
+                      ? 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                      : 'bg-white/5 text-white/70 border-white/5 hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Translate Article"
+                >
+                  <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                </button>
+                
+                <AnimatePresence>
+                  {isLangDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      className="absolute top-full mt-2 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 w-48 overflow-y-auto scrollbar-thin shadow-2xl"
+                      style={{
+                        background: 'rgba(10, 10, 20, 0.98)',
+                        backdropFilter: 'blur(10px)'
+                      }}
+                    >
+                      <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                        Select Language
+                      </div>
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => handleTranslate(lang.code)}
+                          className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                            targetLanguage === lang.code
+                              ? 'bg-indigo-600/30 text-indigo-300'
+                              : 'text-white/70 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <span>{lang.nativeName}</span>
+                          <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* Reading Mode Button */}
               <button
                 onClick={() => setReadingMode(!readingMode)}
@@ -646,7 +877,7 @@ export default function ArticleViewer({
 
                   {/* Headline */}
                   <h1 className={`text-2xl lg:text-3xl font-black text-white leading-tight tracking-tight ${readingMode ? 'font-serif font-extrabold' : 'font-sans'}`}>
-                    {cleanTitle}
+                    {translatedTitle || cleanTitle}
                   </h1>
 
                   {/* Byline metadata */}
@@ -664,7 +895,7 @@ export default function ArticleViewer({
                   </div>
 
                   {/* AI Story Summary - Bullet Points */}
-                  {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+                  {targetLanguage === 'en' && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
                     <div
                       className="rounded-2xl p-5 border border-cyan-500/10 relative overflow-hidden bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] font-sans"
                       style={{ borderLeft: `4px solid ${categoryConfig.color}` }}
@@ -702,27 +933,43 @@ export default function ArticleViewer({
                     </div>
                   )}
 
-                  {/* AI Summary Insight Description (Task 2 & 10) */}
-                  {articleDetails?.aiSummary && (
-                    <div className={`space-y-4 pt-2 ${readingMode ? 'text-lg text-white/90 font-serif leading-relaxed' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
-                      <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Summary Overview</h3>
-                      <div className="space-y-3">
-                        {articleDetails.aiSummary.split('\n\n').map((para, idx) => (
-                          <p key={idx}>{para}</p>
-                        ))}
-                      </div>
+                  {translationError && (
+                    <div className="p-3 px-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex justify-between items-center font-sans">
+                      <span>⚠️ {translationError}</span>
+                      <button onClick={() => setTranslationError(null)} className="text-xs font-bold underline ml-2 cursor-pointer">Dismiss</button>
                     </div>
                   )}
 
-                  {/* Full Content Body */}
-                  <div className="space-y-4 pt-4 border-t border-white/[0.05]">
-                    <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Detailed Report</h3>
-                    <div className={`space-y-4 ${readingMode ? 'text-lg lg:text-xl text-white/95 leading-relaxed font-serif' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
-                      {articleBody.split('\n\n').map((para, idx) => (
-                        <p key={idx}>{para}</p>
-                      ))}
+                  {isTranslating ? (
+                    <div className="p-8 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center justify-center py-20 gap-3 font-sans">
+                      <div className="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
+                      <p className="text-xs text-indigo-400 font-black uppercase tracking-widest animate-pulse">Translating article content...</p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* AI Summary Insight Description (Task 2 & 10) */}
+                      {(translatedSummary || articleDetails?.aiSummary) && (
+                        <div className={`space-y-4 pt-2 ${readingMode ? 'text-lg text-white/90 font-serif leading-relaxed' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
+                          <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Summary Overview</h3>
+                          <div className="space-y-3">
+                            {(translatedSummary || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Full Content Body */}
+                      <div className="space-y-4 pt-4 border-t border-white/[0.05]">
+                        <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Detailed Report</h3>
+                        <div className={`space-y-4 ${readingMode ? 'text-lg lg:text-xl text-white/95 leading-relaxed font-serif' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
+                          {(translatedContent || articleBody).split('\n\n').map((para, idx) => (
+                            <p key={idx}>{para}</p>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* Share Action Bar */}
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 font-sans">
@@ -828,6 +1075,15 @@ export default function ArticleViewer({
                       </svg>
                       <span>Prev Story</span>
                     </button>
+
+                    {isCountryWhitelisted(activeEvent.country) && (
+                      <button
+                        onClick={() => setIsPerspectiveOpen(true)}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-indigo-600/90 hover:bg-indigo-600 text-white shadow-[0_0_25px_rgba(99,102,241,0.2)] hover:shadow-[0_0_35px_rgba(99,102,241,0.4)] hover:scale-[1.02] border border-indigo-500/30 hover:border-indigo-500/50 transition-all duration-300 cursor-pointer"
+                      >
+                        <span>🧠 Perspective Lens</span>
+                      </button>
+                    )}
 
                     <a
                       href={articleDetails?.source || activeEvent.source}
@@ -993,5 +1249,15 @@ export default function ArticleViewer({
         </motion.div>
       </div>
     </AnimatePresence>
+    {isPerspectiveOpen && (
+      <PerspectiveLensModal
+        isOpen={isPerspectiveOpen}
+        onClose={() => setIsPerspectiveOpen(false)}
+        country={activeEvent.country}
+        topic={cleanTitle}
+        category={activeEvent.category}
+      />
+    )}
+    </>
   );
 }

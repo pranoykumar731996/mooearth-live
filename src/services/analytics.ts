@@ -53,6 +53,14 @@ export interface SessionAnalytics {
     completed: number;
     duration: number; // in seconds
   };
+  translation?: {
+    opens: number;
+    languages: Record<string, number>;
+    successCount: number;
+    failCount: number;
+    translatedArticleIds: string[];
+    translatedCountries: Record<string, number>;
+  };
 }
 
 let currentSession: SessionAnalytics | null = null;
@@ -174,6 +182,14 @@ export function initAnalyticsSession(userId: string | null = null) {
       started: 0,
       completed: 0,
       duration: 0
+    },
+    translation: {
+      opens: 0,
+      languages: {},
+      successCount: 0,
+      failCount: 0,
+      translatedArticleIds: [],
+      translatedCountries: {}
     }
   };
 
@@ -342,6 +358,35 @@ export function trackEvent(category: string, action: string, label?: string, val
         currentSession.earthcast.completed++;
       } else if (action === 'duration') {
         currentSession.earthcast.duration += (value || 0);
+      }
+      break;
+
+    case 'translation':
+      if (!currentSession.translation) {
+        currentSession.translation = {
+          opens: 0,
+          languages: {},
+          successCount: 0,
+          failCount: 0,
+          translatedArticleIds: [],
+          translatedCountries: {}
+        };
+      }
+      if (action === 'open') {
+        currentSession.translation.opens++;
+      } else if (action === 'select_language' && label) {
+        currentSession.translation.languages[label] = (currentSession.translation.languages[label] || 0) + 1;
+      } else if (action === 'success') {
+        currentSession.translation.successCount++;
+        if (customParams?.articleId && !currentSession.translation.translatedArticleIds.includes(customParams.articleId)) {
+          currentSession.translation.translatedArticleIds.push(customParams.articleId);
+        }
+        if (customParams?.country) {
+          const c = customParams.country;
+          currentSession.translation.translatedCountries[c] = (currentSession.translation.translatedCountries[c] || 0) + 1;
+        }
+      } else if (action === 'failure') {
+        currentSession.translation.failCount++;
       }
       break;
   }
