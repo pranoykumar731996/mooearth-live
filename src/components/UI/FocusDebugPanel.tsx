@@ -6,11 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface FocusDebugPanelProps {
   isFocusMode: boolean;
   currentActivity: string;
+  onClose: () => void;
 }
 
-export default function FocusDebugPanel({ isFocusMode, currentActivity }: FocusDebugPanelProps) {
+export default function FocusDebugPanel({ isFocusMode, currentActivity, onClose }: FocusDebugPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
 
   const pausedSystems = [
     { name: 'News Feed', desc: 'Background breaking news polling' },
@@ -18,8 +18,6 @@ export default function FocusDebugPanel({ isFocusMode, currentActivity }: FocusD
     { name: 'EarthCast', desc: 'Auto event narration trigger' },
     { name: 'Notifications', desc: 'Non-critical browser alerts' },
   ];
-
-  if (isDismissed) return null;
 
   return (
     <div className="fixed top-24 left-6 z-[90] pointer-events-auto font-sans select-none">
@@ -94,7 +92,7 @@ export default function FocusDebugPanel({ isFocusMode, currentActivity }: FocusD
                   ➖
                 </button>
                 <button
-                  onClick={() => setIsDismissed(true)}
+                  onClick={onClose}
                   className="text-white/40 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-md text-xs font-bold leading-none cursor-pointer"
                   title="Close Console"
                 >

@@ -29,6 +29,8 @@ interface NavbarProps {
   onToggleCinematicMode: () => void;
   isPlayEarthActive: boolean;
   onTogglePlayEarth: () => void;
+  showDebugConsole?: boolean;
+  onToggleDebug?: () => void;
 }
 
 export default function Navbar({
@@ -49,6 +51,8 @@ export default function Navbar({
   onToggleCinematicMode,
   isPlayEarthActive,
   onTogglePlayEarth,
+  showDebugConsole = false,
+  onToggleDebug,
 }: NavbarProps) {
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
@@ -224,7 +228,6 @@ export default function Navbar({
             </svg>
           </button>
 
-          {/* Leaderboard/Achievements (Badge/Award Icon) */}
           <button
             onClick={onLeaderboardClick}
             className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
@@ -236,11 +239,21 @@ export default function Navbar({
               <path d="M12 2L4.5 5.5v5a7.5 7.5 0 0 0 15 0v-5L12 2Z" />
             </svg>
           </button>
+
+          {isDeveloper && onToggleDebug && (
+            <button
+              onClick={onToggleDebug}
+              className={`w-9 h-9 flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
+                showDebugConsole ? 'text-cyan-400' : 'text-white/80 hover:text-white'
+              }`}
+              title={showDebugConsole ? "Hide UX Debug Console" : "Show UX Debug Console"}
+            >
+              ⚙️
+            </button>
+          )}
         </div>
 
-        {/* Desktop-Only Section (completely unchanged design) */}
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
-          {/* Play Earth Game Mode Toggle */}
           <button
             onClick={onTogglePlayEarth}
             title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
@@ -298,6 +311,21 @@ export default function Navbar({
           >
             🏆
           </button>
+
+          {/* Debug Console Toggle Button */}
+          {isDeveloper && onToggleDebug && (
+            <button
+              onClick={onToggleDebug}
+              title={showDebugConsole ? "Hide UX Debug Console" : "Show UX Debug Console"}
+              className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
+                showDebugConsole
+                  ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              ⚙️
+            </button>
+          )}
 
           <InstallButton />
           {currentUser ? (

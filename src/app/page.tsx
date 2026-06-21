@@ -132,6 +132,7 @@ export default function HomePage({
   const [currentActivity, setCurrentActivity] = useState('None');
   const isFocusModeRef = useRef(false);
   isFocusModeRef.current = isFocusMode;
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
 
   // PWA Install Prompt States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -819,6 +820,11 @@ export default function HomePage({
             if (nextActive) {
               handleSelectCountry(null);
             }
+            playHoverBlip();
+          }}
+          showDebugConsole={showDebugConsole}
+          onToggleDebug={() => {
+            setShowDebugConsole(prev => !prev);
             playHoverBlip();
           }}
         />
@@ -1873,7 +1879,13 @@ export default function HomePage({
       </AnimatePresence>
 
       {/* FOCUS MODE DEBUG PANEL */}
-      <FocusDebugPanel isFocusMode={isFocusMode} currentActivity={currentActivity} />
+      {showDebugConsole && (
+        <FocusDebugPanel
+          isFocusMode={isFocusMode}
+          currentActivity={currentActivity}
+          onClose={() => setShowDebugConsole(false)}
+        />
+      )}
     </main>
   );
 }
