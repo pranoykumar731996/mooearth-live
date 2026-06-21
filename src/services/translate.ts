@@ -5,6 +5,25 @@ export interface TranslationResult {
   modelUsed: string;
 }
 
+// ─── Language code → full name map ─────────────────────────────────────────────
+// Resolves ambiguous 2-letter codes (e.g. 'or' which an LLM may read as the
+// English conjunction) into unambiguous full language names for prompting.
+const LANGUAGE_MAP: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  or: 'Odia',
+  bn: 'Bengali',
+  ta: 'Tamil',
+  te: 'Telugu',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ja: 'Japanese',
+  zh: 'Chinese',
+  ar: 'Arabic'
+};
+
 const SYSTEM_PROMPT = `You are a professional, elite translator. Translate the given article's title, summary, and detailed content into the target language.
 Preserve the exact meaning, names, dates, numbers, locations, and structural formatting (like line breaks or paragraph breaks).
 Do not summarize, do not add opinions, do not add headers/labels (like "Title:" or "Summary:"), and do not remove content.
@@ -13,7 +32,8 @@ Output must be in JSON format conforming strictly to this structure:
   "translatedTitle": "translated title here",
   "translatedSummary": "translated summary here",
   "translatedContent": "translated detailed content here"
-}`;
+}
+CRITICAL: The entire output MUST be a valid JSON object. In JSON, literal newlines inside string values are forbidden. You MUST escape all newlines in the string values as the two-character sequence '\\n' (not literal raw newlines).`;
 
 function buildUserPrompt(targetLang: string, title: string, summary: string, content: string): string {
   return `Target Language: ${targetLang}
@@ -28,6 +48,99 @@ Original Detailed Content to translate:
 ${content}`;
 }
 
+function sanitizeJsonControlChars(str: string): string {
+  let result = '';
+  let inString = false;
+  let i = 0;
+
+  function isValidEscape(nextChar: string, subsequent: string): boolean {
+    if (['"', '\\', '/', 'b', 'f', 'n', 'r', 't'].includes(nextChar)) {
+      return true;
+    }
+    if (nextChar === 'u') {
+      return /^[0-9a-fA-F]{4}/.test(subsequent);
+    }
+    return false;
+  }
+
+  while (i < str.length) {
+    const char = str[i];
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      i++;
+    } else if (char === '\\' && inString) {
+      const nextChar = str[i + 1] || '';
+      const subsequent = str.slice(i + 2, i + 6);
+      if (isValidEscape(nextChar, subsequent)) {
+        result += char + nextChar;
+        i += 2;
+      } else {
+        result += '\\\\';
+        i++;
+      }
+    } else {
+      if (inString) {
+        if (char === '\n') {
+          result += '\\n';
+        } else if (char === '\r') {
+          result += '\\r';
+        } else if (char === '\t') {
+          result += '\\t';
+        } else {
+          const code = char.charCodeAt(0);
+          if (code < 32) {
+            result += ' ';
+          } else {
+            result += char;
+          }
+        }
+      } else {
+        result += char;
+      }
+      i++;
+    }
+  }
+  return result;
+}
+
+function unescapeString(str: string): string {
+  try {
+    return JSON.parse(`"${str}"`);
+  } catch (e) {
+    return str
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  }
+}
+
+function parseTranslationFallbackRegex(text: string): TranslationResult | null {
+  try {
+    const titleMatch = text.match(/"translatedTitle"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    const summaryMatch = text.match(/"translatedSummary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    const contentMatch = text.match(/"translatedContent"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+
+    const translatedTitle = titleMatch ? unescapeString(titleMatch[1]) : '';
+    const translatedSummary = summaryMatch ? unescapeString(summaryMatch[1]) : '';
+    const translatedContent = contentMatch ? unescapeString(contentMatch[1]) : '';
+
+    if (translatedTitle && translatedSummary) {
+      return {
+        translatedTitle: translatedTitle.trim(),
+        translatedSummary: translatedSummary.trim(),
+        translatedContent: (translatedContent || translatedSummary).trim(),
+        modelUsed: ''
+      };
+    }
+  } catch (e) {
+    console.error('[TranslateService] Fallback regex parsing error:', e);
+  }
+  return null;
+}
+
 function parseTranslationJson(text: string): TranslationResult | null {
   try {
     let jsonStr = text.trim();
@@ -35,7 +148,8 @@ function parseTranslationJson(text: string): TranslationResult | null {
     if (codeBlockMatch) {
       jsonStr = codeBlockMatch[1].trim();
     }
-    const parsed = JSON.parse(jsonStr);
+    const sanitized = sanitizeJsonControlChars(jsonStr);
+    const parsed = JSON.parse(sanitized);
     if (parsed.translatedTitle && parsed.translatedSummary && parsed.translatedContent) {
       return {
         translatedTitle: parsed.translatedTitle.trim(),
@@ -44,14 +158,110 @@ function parseTranslationJson(text: string): TranslationResult | null {
         modelUsed: ''
       };
     }
+    console.warn('[TranslateService] JSON parsed but missing required fields. Keys:', Object.keys(parsed));
+  } catch (err: any) {
+    console.warn('[TranslateService] JSON.parse failed, attempting regex recovery... Error:', err.message);
+  }
+
+  const regexResult = parseTranslationFallbackRegex(text);
+  if (regexResult) {
+    console.log('[TranslateService] ✅ Regex recovery parsed fields successfully.');
+    return regexResult;
+  }
+
+  return null;
+}
+
+// ─── Circuit Breaker for Gemini ─────────────────────────────────────────────────
+// When Gemini returns 429, skip all Gemini calls for CIRCUIT_BREAKER_DURATION_MS.
+// This prevents wasting 2x 15s timeouts on every translation when quota is exhausted.
+let geminiCircuitOpen = false;
+let geminiCircuitOpenedAt = 0;
+const CIRCUIT_BREAKER_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+function isGeminiCircuitOpen(): boolean {
+  if (!geminiCircuitOpen) return false;
+  if (Date.now() - geminiCircuitOpenedAt > CIRCUIT_BREAKER_DURATION_MS) {
+    console.log('[TranslateService] Gemini circuit breaker reset — will retry Gemini.');
+    geminiCircuitOpen = false;
+    return false;
+  }
+  return true;
+}
+
+function openGeminiCircuit() {
+  geminiCircuitOpen = true;
+  geminiCircuitOpenedAt = Date.now();
+  console.warn('[TranslateService] Gemini circuit breaker OPENED — skipping Gemini for 10 min.');
+}
+
+// ─── Model: Groq Llama 3.3 70B (PRIMARY — fastest, most reliable) ────────────
+async function tryGroqSingle(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
+  try {
+    console.log('[TranslateService] Trying Groq Llama-3.3-70b-versatile...');
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt }
+        ],
+        // NOTE: response_format removed — it causes json_validate_failed for
+        // non-Latin scripts (Hindi, Odia, Bengali, Tamil, Telugu) due to
+        // byte-fallback tokenization producing token-heavy output.
+        temperature: 0.1,
+        max_tokens: 4096
+      }),
+      signal: AbortSignal.timeout(30000) // 30s for long articles
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[TranslateService] Groq returned ${response.status}: ${errText.substring(0, 200)}`);
+      return null;
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error('[TranslateService] Groq returned empty content');
+      return null;
+    }
+
+    console.log(`[TranslateService] Groq raw response length: ${content.length} chars`);
+    const parsed = parseTranslationJson(content);
+    if (parsed) {
+      parsed.modelUsed = 'llama-3.3-70b-versatile';
+      console.log('[TranslateService] ✅ Groq translation SUCCESS');
+      return parsed;
+    }
+    console.error('[TranslateService] Groq returned content but JSON parsing failed');
     return null;
   } catch (err: any) {
-    console.error('[TranslateService] JSON parse error:', err.message, 'Raw response head:', text.substring(0, 150));
+    console.error('[TranslateService] Groq failed:', err.message);
     return null;
   }
 }
 
-// ─── Model 1: Gemini 2.0 Flash ───────────────────────────────────────────────
+async function tryGroq(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const result = await tryGroqSingle(apiKey, userPrompt);
+    if (result) return result;
+    if (attempt < maxAttempts) {
+      console.warn(`[TranslateService] Groq attempt ${attempt} failed or parsed poorly. Retrying in 1.5s...`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+  }
+  return null;
+}
+
+// ─── Model: Gemini 2.0 Flash (BACKUP — currently rate-limited) ───────────────
 async function tryGemini20(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
   try {
     console.log('[TranslateService] Trying Gemini 2.0 Flash...');
@@ -78,6 +288,7 @@ async function tryGemini20(apiKey: string, userPrompt: string): Promise<Translat
     if (!response.ok) {
       const errText = await response.text();
       console.error(`[TranslateService] Gemini 2.0 returned ${response.status}: ${errText.substring(0, 150)}`);
+      if (response.status === 429) openGeminiCircuit();
       return null;
     }
 
@@ -97,7 +308,7 @@ async function tryGemini20(apiKey: string, userPrompt: string): Promise<Translat
   }
 }
 
-// ─── Model 2: Gemini Flash Latest ──────────────────────────────────────────────
+// ─── Model: Gemini Flash Latest (BACKUP) ────────────────────────────────────────
 async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
   try {
     console.log('[TranslateService] Trying Gemini Flash Latest...');
@@ -124,6 +335,7 @@ async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<Tran
     if (!response.ok) {
       const errText = await response.text();
       console.error(`[TranslateService] Gemini Latest returned ${response.status}: ${errText.substring(0, 150)}`);
+      if (response.status === 429) openGeminiCircuit();
       return null;
     }
 
@@ -143,53 +355,14 @@ async function tryGeminiLatest(apiKey: string, userPrompt: string): Promise<Tran
   }
 }
 
-// ─── Model 3: Groq Llama 3.3 70B ─────────────────────────────────────────────
-async function tryGroq(apiKey: string, userPrompt: string): Promise<TranslationResult | null> {
-  try {
-    console.log('[TranslateService] Trying Groq Llama-3.3-70b-versatile...');
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-        max_tokens: 2048
-      }),
-      signal: AbortSignal.timeout(15000)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[TranslateService] Groq returned ${response.status}: ${errText.substring(0, 150)}`);
-      return null;
-    }
-
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    const parsed = parseTranslationJson(content);
-    if (parsed) {
-      parsed.modelUsed = 'llama-3.3-70b-versatile';
-      return parsed;
-    }
-    return null;
-  } catch (err: any) {
-    console.error('[TranslateService] Groq failed:', err.message);
-    return null;
-  }
-}
-
 /**
- * Translates article title, summary, and content into a target language using cascading models.
+ * Translates article title, summary, and content into a target language.
+ * 
+ * Model priority (changed from original):
+ *   1. Groq Llama 3.3 70B — PRIMARY (fast, reliable, no quota issues)
+ *   2. Gemini 2.0 Flash   — BACKUP (currently rate-limited on free tier)
+ *   3. Gemini Flash Latest — BACKUP (same quota as above)
+ *   4. Simulated fallback  — LAST RESORT (never a real translation)
  */
 export async function translateArticle(
   targetLang: string,
@@ -197,33 +370,38 @@ export async function translateArticle(
   summary: string,
   content: string
 ): Promise<TranslationResult> {
-  const userPrompt = buildUserPrompt(targetLang, title, summary, content);
+  // Resolve short code to full language name for unambiguous LLM prompting
+  const resolvedLang = LANGUAGE_MAP[targetLang] || targetLang;
+  console.log(`[TranslateService] translateArticle called — code="${targetLang}" resolved="${resolvedLang}"`);
+  const userPrompt = buildUserPrompt(resolvedLang, title, summary, content);
   
   const geminiKey = process.env.GEMINI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
 
-  if (geminiKey) {
-    // 1. Try Gemini 2.0 Flash
-    const r1 = await tryGemini20(geminiKey, userPrompt);
-    if (r1) return r1;
-
-    // 2. Try Gemini Flash Latest (verified backup)
-    const r2 = await tryGeminiLatest(geminiKey, userPrompt);
-    if (r2) return r2;
-  } else {
-    console.warn('[TranslateService] No GEMINI_API_KEY found in env');
-  }
-
+  // ── 1. Try Groq FIRST (primary, most reliable) ──
   if (groqKey) {
-    // 3. Try Groq Llama 3.3
-    const r3 = await tryGroq(groqKey, userPrompt);
-    if (r3) return r3;
+    const r1 = await tryGroq(groqKey, userPrompt);
+    if (r1) return r1;
+    console.warn('[TranslateService] Groq failed, falling back to Gemini...');
   } else {
     console.warn('[TranslateService] No GROQ_API_KEY found in env');
   }
 
-  // 4. Return Simulated Translator Output if all APIs failed to ensure 0 crashes
-  console.warn('[TranslateService] All API providers failed. Reverting to Simulated fallback translation.');
+  // ── 2. Try Gemini (only if circuit breaker is closed) ──
+  if (geminiKey && !isGeminiCircuitOpen()) {
+    const r2 = await tryGemini20(geminiKey, userPrompt);
+    if (r2) return r2;
+
+    const r3 = await tryGeminiLatest(geminiKey, userPrompt);
+    if (r3) return r3;
+  } else if (isGeminiCircuitOpen()) {
+    console.log('[TranslateService] Gemini circuit breaker is OPEN — skipping Gemini calls.');
+  } else {
+    console.warn('[TranslateService] No GEMINI_API_KEY found in env');
+  }
+
+  // ── 3. Simulated fallback (never a real translation) ──
+  console.warn('[TranslateService] ⚠️ ALL API providers failed. Reverting to simulated fallback.');
   return {
     translatedTitle: `[${targetLang}] ${title}`,
     translatedSummary: `[Translated to ${targetLang}]: ${summary}`,

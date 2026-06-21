@@ -157,6 +157,15 @@ export default function ArticleViewer({
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState<boolean>(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    selectedLanguage: string;
+    articleId: string;
+    apiCalled: string;
+    modelUsed: string;
+    translationLength: number;
+    rendered: string;
+    cached?: string;
+  } | null>(null);
 
   const handleShare = async () => {
     if (!activeEvent) return;
@@ -420,12 +429,22 @@ export default function ArticleViewer({
       setTranslatedSummary(null);
       setTranslatedContent(null);
       setTranslationError(null);
+      setDebugInfo(null);
       return;
     }
 
+    const artId = activeEvent?.id || activeEvent?.source || activeEvent?.title || '';
     setTargetLanguage(langCode);
     setIsTranslating(true);
     setTranslationError(null);
+    setDebugInfo({
+      selectedLanguage: langCode,
+      articleId: artId,
+      apiCalled: 'PENDING',
+      modelUsed: '—',
+      translationLength: 0,
+      rendered: 'NO',
+    });
 
     // Track analytics: open & select_language
     trackEvent('translation', 'open');
@@ -436,7 +455,7 @@ export default function ArticleViewer({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          articleId: activeEvent?.id || activeEvent?.source || activeEvent?.title || '',
+          articleId: artId,
           targetLanguage: langCode,
           title: cleanTitle,
           summary: activeEvent?.summary || '',
@@ -444,8 +463,10 @@ export default function ArticleViewer({
         })
       });
 
+      setDebugInfo(prev => prev ? { ...prev, apiCalled: res.ok ? 'YES' : `FAIL (${res.status})` } : prev);
+
       if (!res.ok) {
-        throw new Error('Translation request failed');
+        throw new Error(`Translation request failed (HTTP ${res.status})`);
       }
 
       const data = await res.json();
@@ -457,6 +478,15 @@ export default function ArticleViewer({
       setTranslatedSummary(data.translatedSummary);
       setTranslatedContent(data.translatedContent);
 
+      const totalLen = (data.translatedTitle?.length || 0) + (data.translatedSummary?.length || 0) + (data.translatedContent?.length || 0);
+      setDebugInfo(prev => prev ? {
+        ...prev,
+        modelUsed: data.modelUsed || 'unknown',
+        translationLength: totalLen,
+        rendered: 'YES',
+        cached: data.cached ? 'HIT' : 'MISS',
+      } : prev);
+
       // Track analytics: success
       trackEvent('translation', 'success', langCode, 1, {
         articleId: activeEvent?.id,
@@ -465,7 +495,8 @@ export default function ArticleViewer({
 
     } catch (err: any) {
       console.error('Translation error:', err);
-      setTranslationError('Translation temporarily unavailable.');
+      setTranslationError('Translation temporarily unavailable. (API quota or formatting failure)');
+      setDebugInfo(prev => prev ? { ...prev, apiCalled: prev.apiCalled === 'PENDING' ? 'NETWORK_ERROR' : prev.apiCalled, rendered: 'NO' } : prev);
       // Track analytics: failure
       trackEvent('translation', 'failure', langCode);
     } finally {
@@ -687,6 +718,8 @@ export default function ArticleViewer({
                 </svg>
               </a>
             </div>
+
+
           </div>
         )}
       </div>
@@ -971,6 +1004,8 @@ export default function ArticleViewer({
                     </>
                   )}
 
+
+
                   {/* Share Action Bar */}
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 font-sans">
                     <div className="flex items-center justify-between">
@@ -1075,6 +1110,53 @@ export default function ArticleViewer({
                       </svg>
                       <span>Prev Story</span>
                     </button>
+
+                    {/* Translate Selector Dropdown */}
+                    <div className="relative flex-1">
+                      <button
+                        onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                        className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                          targetLanguage !== 'en'
+                            ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
+                            : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                        }`}
+                      >
+                        <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                      </button>
+                      
+                      <AnimatePresence>
+                        {isLangDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
+                            style={{
+                              background: 'rgba(10, 10, 20, 0.98)',
+                              backdropFilter: 'blur(10px)'
+                            }}
+                          >
+                            <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                              Select Language
+                            </div>
+                            {SUPPORTED_LANGUAGES.map((lang) => (
+                              <button
+                                key={lang.code}
+                                onClick={() => handleTranslate(lang.code)}
+                                className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                  targetLanguage === lang.code
+                                    ? 'bg-indigo-600/30 text-indigo-300'
+                                    : 'text-white/70 hover:bg-white/5 hover:text-white'
+                                }`}
+                              >
+                                <span>{lang.nativeName}</span>
+                                <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
                     {isCountryWhitelisted(activeEvent.country) && (
                       <button

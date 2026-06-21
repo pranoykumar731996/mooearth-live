@@ -33,8 +33,10 @@ export async function POST(request: NextRequest) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         const age = Date.now() - (data.timestamp || 0);
-        if (age < CACHE_TTL_MS) {
-          console.log(`[TranslateAPI] Cache HIT for: ${docId}`);
+        // Reject stale cache AND cached simulated-fallback entries (they contain
+        // untranslated text prefixed with [langCode] from when all APIs failed)
+        if (age < CACHE_TTL_MS && data.modelUsed !== 'simulated-fallback') {
+          console.log(`[TranslateAPI] Cache HIT for: ${docId} (model: ${data.modelUsed})`);
           cachedData = {
             translatedTitle: data.translatedTitle,
             translatedSummary: data.translatedSummary,
@@ -42,6 +44,8 @@ export async function POST(request: NextRequest) {
             cached: true,
             modelUsed: data.modelUsed || 'cache'
           };
+        } else if (data.modelUsed === 'simulated-fallback') {
+          console.log(`[TranslateAPI] Cache SKIP for: ${docId} (was simulated-fallback, re-translating)`);
         } else {
           console.log(`[TranslateAPI] Cache EXPIRED for: ${docId}`);
         }
