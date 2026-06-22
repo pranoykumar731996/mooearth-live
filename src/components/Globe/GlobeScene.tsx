@@ -252,8 +252,7 @@ export default function GlobeScene({
       const name = feat.properties.NAME;
       const hasMatchingEvent = events.some(e => 
         matchCountryNames(e.country, name) && 
-        (e.category === activeCategory || 
-         (activeCategory === 'worldcup' && e.category === 'football'))
+        e.category === activeCategory
       );
       if (hasMatchingEvent) {
         map[name] = true;

@@ -96,6 +96,7 @@ export async function fetchLiveFootball(): Promise<{ events: WorldEvent[]; activ
             type: e.detail.includes('Yellow') ? 'Yellow' : 'Red',
             time: e.time.elapsed
           })) || [],
+          leagueId: match.league?.id,
         }
       };
     });

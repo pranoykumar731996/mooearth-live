@@ -714,6 +714,8 @@ export default function HomePage({
   const handleCategoryChange = useCallback((category: EventCategory | null) => {
     setActiveCategory(category);
     setSelectedEvent(null);
+    setActiveArticle(null);
+    setSearchQuery('');
     // Keep selectedCountry active to persist selection
   }, []);
 
@@ -721,6 +723,8 @@ export default function HomePage({
   const handleMobileCategoryChange = useCallback((category: EventCategory | null) => {
     setActiveCategory(category);
     setSelectedEvent(null);
+    setActiveArticle(null);
+    setSearchQuery('');
     // Do NOT set selectedCountry to null — keep the country sheet open
   }, []);
 

@@ -95,6 +95,18 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
     if (!q) return [];
 
     const localFiltered = events.filter((e) => {
+      if (activeCategory) {
+        if (activeCategory === 'worldcup') {
+          if (e.category !== 'worldcup') return false;
+        } else if (activeCategory === 'football') {
+          if (e.category !== 'football') return false;
+        } else if (activeCategory === 'sports') {
+          if (e.category !== 'sports' && e.category !== 'football' && e.category !== 'worldcup') return false;
+        } else {
+          if (e.category !== activeCategory) return false;
+        }
+      }
+
       return (
         (e.title && e.title.toLowerCase().includes(q)) ||
         (e.city && e.city.toLowerCase().includes(q)) ||

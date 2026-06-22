@@ -22,6 +22,7 @@ export interface FootballMatchData {
   elapsed: number;     // e.g., 45
   goals?: { team: 'home' | 'away'; player: string; time: number }[];
   cards?: { team: 'home' | 'away'; player: string; type: 'Yellow' | 'Red'; time: number }[];
+  leagueId?: number;   // Competition ID for isolation
 }
 
 /** A world event displayed on the globe */
