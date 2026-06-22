@@ -85,90 +85,20 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
     );
   }, [events]);
 
-  // Custom mobile display lists matching user's screenshot
   const displayMatches = useMemo(() => {
-    const list = events.filter(e => e.category === 'football');
-    if (list.length > 0) return list;
-    return [
-      {
-        id: 'mock-match-bra-sui',
-        title: 'Brazil vs Switzerland',
-        summary: 'World Cup Qualifiers Group Stage live match.',
-        category: 'football' as const,
-        country: 'Brazil',
-        city: 'Rio de Janeiro',
-        lat: -22.9068,
-        lng: -43.1729,
-        publishedAt: new Date().toISOString(),
-        source: 'mock',
-        footballData: {
-          homeTeam: 'Brazil',
-          awayTeam: 'Switzerland',
-          homeScore: 2,
-          awayScore: 1,
-          status: 'LIVE',
-          elapsed: 74,
-        }
-      }
-    ];
+    return events.filter(e => e.category === 'football');
   }, [events]);
 
   const displayNews = useMemo(() => {
-    const list = events.filter(e => e.category === 'breaking');
-    if (list.length > 0) return list;
-    return [
-      {
-        id: 'mock-news-fusion',
-        title: 'Global Energy Shift Accelerated by New Fusion Reactor',
-        summary: 'The experimental reactor in central Tokyo has sustained a net energy gain of 150% for record duration, accelerating the transition to clean commercial fusion power worldwide.',
-        category: 'breaking' as const,
-        country: 'Japan',
-        city: 'Tokyo',
-        lat: 35.6762,
-        lng: 139.6503,
-        publishedAt: new Date(Date.now() - 120000).toISOString(),
-        source: 'mock',
-      }
-    ];
+    return events.filter(e => e.category === 'breaking');
   }, [events]);
 
   const displayTech = useMemo(() => {
-    const list = events.filter(e => e.category === 'technology');
-    if (list.length > 0) return list;
-    return [
-      {
-        id: 'mock-tech-iss',
-        title: 'ISS passing over current location in 4 minutes. Optimal viewing conditions',
-        summary: 'International Space Station orbital tracker update. Clear night skies offer excellent visibility.',
-        category: 'technology' as const,
-        country: 'Space',
-        city: 'Orbit',
-        lat: 0,
-        lng: 0,
-        publishedAt: new Date().toISOString(),
-        isOrbital: true,
-        source: 'mock',
-      }
-    ];
+    return events.filter(e => e.category === 'technology');
   }, [events]);
 
   const displayWeather = useMemo(() => {
-    const list = events.filter(e => e.category === 'weather');
-    if (list.length > 0) return list;
-    return [
-      {
-        id: 'mock-weather-1',
-        title: 'Unusual Climate Patterns Observed Across Southern Europe',
-        summary: 'Meteorologists are tracking a unique high-pressure atmospheric system over Madrid, bringing dry winds and record temperatures.',
-        category: 'weather' as const,
-        country: 'Spain',
-        city: 'Madrid',
-        lat: 40.4168,
-        lng: -3.7038,
-        publishedAt: new Date().toISOString(),
-        source: 'mock',
-      }
-    ];
+    return events.filter(e => e.category === 'weather');
   }, [events]);
 
   // Calculate live counters
@@ -586,55 +516,63 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
             {/* Scrollable list */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scrollbar-thin">
               <AnimatePresence initial={false}>
-              {sortedEvents.map((event) => {
-                const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking;
-                return (
-                  <motion.button
-                    key={event.id}
-                    id={`feed-${event.id}`}
-                    layout
-                    initial={{ opacity: 0, x: 30, height: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, x: 0, height: 'auto', scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                    transition={{ type: 'spring', bounce: 0.3, duration: 0.6 }}
-                    whileHover={{ scale: 1.02, x: -4, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                    onClick={() => onSelectEvent(event)}
-                    className="w-full text-left p-4 rounded-2xl transition-all cursor-pointer group bg-black/20 border border-white/5 relative overflow-hidden mb-3"
-                  >
-                    {/* Subtle category glow on hover */}
-                    <div 
-                      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
-                      style={{ background: `linear-gradient(90deg, transparent, ${config.color})` }}
-                    />
+              {sortedEvents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
+                  <span className="text-2xl mb-2">📡</span>
+                  <span>No live events reported at this moment</span>
+                  <p className="text-[10px] text-white/20 mt-1 lowercase normal-case">Check back later for global updates</p>
+                </div>
+              ) : (
+                sortedEvents.map((event) => {
+                  const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking;
+                  return (
+                    <motion.button
+                      key={event.id}
+                      id={`feed-${event.id}`}
+                      layout
+                      initial={{ opacity: 0, x: 30, height: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, x: 0, height: 'auto', scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                      transition={{ type: 'spring', bounce: 0.3, duration: 0.6 }}
+                      whileHover={{ scale: 1.02, x: -4, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                      onClick={() => onSelectEvent(event)}
+                      className="w-full text-left p-4 rounded-2xl transition-all cursor-pointer group bg-black/20 border border-white/5 relative overflow-hidden mb-3"
+                    >
+                      {/* Subtle category glow on hover */}
+                      <div 
+                        className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                        style={{ background: `linear-gradient(90deg, transparent, ${config.color})` }}
+                      />
 
-                    <div className="flex items-start gap-3 relative z-10">
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="text-lg">{config.emoji}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.color }}>
-                            {config.label}
-                          </span>
-                          <span className="text-[10px] text-white/30 tabular-nums font-medium" suppressHydrationWarning>
-                            {formatRelativeTime(event.publishedAt)}
-                          </span>
+                      <div className="flex items-start gap-3 relative z-10">
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="text-lg">{config.emoji}</span>
                         </div>
-                        <p className="text-sm text-white/90 font-medium leading-relaxed mb-2 group-hover:text-white transition-colors line-clamp-2">
-                          {event.title}
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30" strokeWidth="2">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                            <circle cx="12" cy="10" r="3" />
-                          </svg>
-                          <span className="text-xs text-white/40">{event.city}, {event.country}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.color }}>
+                              {config.label}
+                            </span>
+                            <span className="text-[10px] text-white/30 tabular-nums font-medium" suppressHydrationWarning>
+                              {formatRelativeTime(event.publishedAt)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/90 font-medium leading-relaxed mb-2 group-hover:text-white transition-colors line-clamp-2">
+                            {event.title}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30" strokeWidth="2">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                              <circle cx="12" cy="10" r="3" />
+                            </svg>
+                            <span className="text-xs text-white/40">{event.city}, {event.country}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.button>
-                );
-              })}
+                    </motion.button>
+                  );
+                })
+              )}
               </AnimatePresence>
             </div>
           </>
@@ -726,130 +664,158 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)' }}>
           {mobileActiveTab === 'matches' && (
             <>
-              {displayMatches.map((event) => {
-                const fd = event.footballData;
-                if (!fd) return null;
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onSelectEvent(event)}
-                    className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 border border-red-500 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                        LIVE {fd.elapsed}{"'"}
-                      </span>
-                      <span className="text-[9px] font-bold tracking-widest text-white/40 uppercase">
-                        WORLD CUP QUALIFIERS
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-center gap-8 py-1">
-                      <div className="flex flex-col items-center gap-1.5 flex-1 text-right">
-                        <span className="text-3.5xl leading-none">{getTeamFlag(fd.homeTeam)}</span>
-                        <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.homeTeam}</span>
+              {displayMatches.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                  <span className="text-xl mb-1.5">📡</span>
+                  <span>No live matches active</span>
+                </div>
+              ) : (
+                displayMatches.map((event) => {
+                  const fd = event.footballData;
+                  if (!fd) return null;
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => onSelectEvent(event)}
+                      className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="px-2 py-0.5 border border-red-500 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          LIVE {fd.elapsed}{"'"}
+                        </span>
+                        <span className="text-[9px] font-bold tracking-widest text-white/40 uppercase">
+                          WORLD CUP QUALIFIERS
+                        </span>
                       </div>
-                      <span className="text-3xl font-black text-white tracking-widest select-none">{fd.homeScore} - {fd.awayScore}</span>
-                      <div className="flex flex-col items-center gap-1.5 flex-1 text-left">
-                        <span className="text-3.5xl leading-none">{getTeamFlag(fd.awayTeam)}</span>
-                        <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.awayTeam}</span>
+                      <div className="flex items-center justify-center gap-8 py-1">
+                        <div className="flex flex-col items-center gap-1.5 flex-1 text-right">
+                          <span className="text-3.5xl leading-none">{getTeamFlag(fd.homeTeam)}</span>
+                          <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.homeTeam}</span>
+                        </div>
+                        <span className="text-3xl font-black text-white tracking-widest select-none">{fd.homeScore} - {fd.awayScore}</span>
+                        <div className="flex flex-col items-center gap-1.5 flex-1 text-left">
+                          <span className="text-3.5xl leading-none">{getTeamFlag(fd.awayTeam)}</span>
+                          <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.awayTeam}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </>
           )}
 
           {mobileActiveTab === 'news' && (
             <>
-              {displayNews.map((event) => (
-                <div
-                  key={event.id}
-                  onClick={() => onSelectEvent(event)}
-                  className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 border border-red-500/60 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-red-500" />
-                      BREAKING
-                    </span>
-                    <span className="text-[9px] text-white/40 font-medium">
-                      {formatRelativeTime(event.publishedAt)} • {event.city}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-bold text-white leading-snug mt-2.5">
-                    {event.title}
-                  </h3>
-                  <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
-                    {event.summary}
-                  </p>
+              {displayNews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                  <span className="text-xl mb-1.5">📰</span>
+                  <span>No news articles found</span>
                 </div>
-              ))}
+              ) : (
+                displayNews.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => onSelectEvent(event)}
+                    className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 border border-red-500/60 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500" />
+                        BREAKING
+                      </span>
+                      <span className="text-[9px] text-white/40 font-medium">
+                        {formatRelativeTime(event.publishedAt)} • {event.city}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-white leading-snug mt-2.5">
+                      {event.title}
+                    </h3>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
+                      {event.summary}
+                    </p>
+                  </div>
+                ))
+              )}
             </>
           )}
 
           {mobileActiveTab === 'tech' && (
             <>
-              {displayTech.map((event) => {
-                const isOrbital = (event as any).isOrbital || event.title.toLowerCase().includes('iss') || event.summary.toLowerCase().includes('orbital');
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => onSelectEvent(event)}
-                    className={`p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer ${
-                      isOrbital ? 'border-l-2 border-l-emerald-400 pl-3.5' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-emerald-400">
-                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                          <circle cx="12" cy="12" r="5" />
-                          <path d="M12 1v3M12 20v3M1 12h3M20 12h3" />
-                        </svg>
-                      </span>
-                      <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
-                        {isOrbital ? 'ORBITAL UPDATE' : 'TECH UPDATE'}
-                      </span>
-                    </div>
-                    <p className="text-xs font-semibold text-white/90 leading-relaxed mt-2">
-                      {event.title}
-                    </p>
-                    {!isOrbital && (
-                      <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
-                        {event.summary}
+              {displayTech.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                  <span className="text-xl mb-1.5">🛰️</span>
+                  <span>No space/tech updates active</span>
+                </div>
+              ) : (
+                displayTech.map((event) => {
+                  const isOrbital = (event as any).isOrbital || event.title.toLowerCase().includes('iss') || event.summary.toLowerCase().includes('orbital');
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => onSelectEvent(event)}
+                      className={`p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer ${
+                        isOrbital ? 'border-l-2 border-l-emerald-400 pl-3.5' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-400">
+                          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="5" />
+                            <path d="M12 1v3M12 20v3M1 12h3M20 12h3" />
+                          </svg>
+                        </span>
+                        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+                          {isOrbital ? 'ORBITAL UPDATE' : 'TECH UPDATE'}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-white/90 leading-relaxed mt-2">
+                        {event.title}
                       </p>
-                    )}
-                  </div>
-                );
-              })}
+                      {!isOrbital && (
+                        <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
+                          {event.summary}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </>
           )}
 
           {mobileActiveTab === 'weather' && (
             <>
-              {displayWeather.map((event) => (
-                <div
-                  key={event.id}
-                  onClick={() => onSelectEvent(event)}
-                  className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer border-l-2 border-l-orange-400 pl-3.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1">
-                      ⚡ CLIMATE WARNING
-                    </span>
-                    <span className="text-[9px] text-white/40 font-medium">
-                      {event.city}, {event.country}
-                    </span>
-                  </div>
-                  <h3 className="text-xs font-bold text-white mt-2 leading-snug">
-                    {event.title}
-                  </h3>
-                  <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
-                    {event.summary}
-                  </p>
+              {displayWeather.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                  <span className="text-xl mb-1.5">⛈️</span>
+                  <span>No climate alerts reported</span>
                 </div>
-              ))}
+              ) : (
+                displayWeather.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => onSelectEvent(event)}
+                    className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer border-l-2 border-l-orange-400 pl-3.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1">
+                        ⚡ CLIMATE WARNING
+                      </span>
+                      <span className="text-[9px] text-white/40 font-medium">
+                        {event.city}, {event.country}
+                      </span>
+                    </div>
+                    <h3 className="text-xs font-bold text-white mt-2 leading-snug">
+                      {event.title}
+                    </h3>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
+                      {event.summary}
+                    </p>
+                  </div>
+                ))
+              )}
             </>
           )}
         </div>

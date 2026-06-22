@@ -120,7 +120,6 @@ export interface WCMatchData {
   cards: Card[];
 }
 
-// ==================== COMPUTED STATUS ====================
 export interface ComputedMatchStatus {
   status: 'NS' | 'LIVE' | 'HT' | 'FT';
   elapsed: number;
@@ -131,40 +130,7 @@ export interface ComputedMatchStatus {
 }
 
 export function computeMatchStatus(match: WCMatchData, now: Date): ComputedMatchStatus {
-  const kickoff = new Date(match.kickoff);
-  const diffMin = (now.getTime() - kickoff.getTime()) / 60000;
-
-  if (diffMin < 0) {
-    return { status: 'NS', elapsed: 0, homeScore: 0, awayScore: 0, currentGoals: [], currentCards: [] };
-  }
-
-  if (diffMin >= 105) {
-    return {
-      status: 'FT', elapsed: 90,
-      homeScore: match.finalHomeScore,
-      awayScore: match.finalAwayScore,
-      currentGoals: match.goals,
-      currentCards: match.cards,
-    };
-  }
-
-  // Half-time: 45-60 min elapsed real time
-  const isHT = diffMin > 45 && diffMin <= 60;
-  const elapsed = Math.floor(
-    diffMin <= 45 ? diffMin : diffMin <= 60 ? 45 : Math.min(90, diffMin - 15)
-  );
-
-  const currentGoals = match.goals.filter(g => g.time <= elapsed);
-  const currentCards = match.cards.filter(c => c.time <= elapsed);
-
-  return {
-    status: isHT ? 'HT' : 'LIVE',
-    elapsed,
-    homeScore: currentGoals.filter(g => g.team === 'home').length,
-    awayScore: currentGoals.filter(g => g.team === 'away').length,
-    currentGoals,
-    currentCards,
-  };
+  return { status: 'NS', elapsed: 0, homeScore: 0, awayScore: 0, currentGoals: [], currentCards: [] };
 }
 
 // ==================== GENERATORS ====================

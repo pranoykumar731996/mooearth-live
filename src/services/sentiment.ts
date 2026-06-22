@@ -74,42 +74,17 @@ Return the result strictly as JSON in this format:
 }
 
 function simulateSentiment(country: string, context: string, category?: string | null): SentimentData {
-  const cat = category || 'home';
-
-  if (cat === 'technology') {
-    return {
-      mood: '🔥 Hype',
-      intensity: 0.85,
-      explanation: `Excitement is surging in ${country} following key technology breakthroughs and startup innovations. Social discussions are highly positive, highlighting scientific research and engineering talent driving national pride.`
-    };
-  } else if (cat === 'weather') {
+  const cleanContext = context.replace(/No live events currently reported for.*/gi, '').trim();
+  if (!cleanContext || cleanContext.length < 5) {
     return {
       mood: '😐 Neutral',
-      intensity: 0.6,
-      explanation: `Residents in ${country} are actively tracking current weather conditions and climate updates. Discussions are moderate, focusing on shifting temperatures and localized rainfall predictions for the week.`
-    };
-  } else if (cat === 'business') {
-    return {
-      mood: '🔥 Hype',
-      intensity: 0.75,
-      explanation: `Business sentiment in ${country} is optimistic amid strong market indices and trade reports. Investors and local analysts are monitoring commercial expansions and economic growth metrics closely.`
-    };
-  } else if (cat === 'entertainment') {
-    return {
-      mood: '😄 Celebration',
-      intensity: 0.8,
-      explanation: `A vibrant pop culture wave is spreading across ${country} as new movies and music releases go viral. Fan channels are celebrating celebrity announcements and global streaming chart success.`
-    };
-  } else if (cat === 'breaking') {
-    return {
-      mood: '😐 Neutral',
-      intensity: 0.65,
-      explanation: `Major headlines and breaking news reports are circulating in ${country}. Public interest is highly active as community leaders and citizens analyze the local societal impacts of the latest announcements.`
+      intensity: 0.5,
+      explanation: `No active headlines or live match updates are currently reported for ${country}.`
     };
   }
 
   // 1. Try to parse a football match involving this country from the context
-  const matchMatch = context.match(/([A-Za-z\s]+)\s+vs\s+([A-Za-z\s]+)/i);
+  const matchMatch = cleanContext.match(/([A-Za-z\s]+)\s+vs\s+([A-Za-z\s]+)/i);
   if (matchMatch) {
     const teamA = matchMatch[1].trim();
     const teamB = matchMatch[2].trim();
@@ -118,7 +93,7 @@ function simulateSentiment(country: string, context: string, category?: string |
 
     if (isTeamA || isTeamB) {
       // Find the score pattern (e.g. 2 - 0)
-      const scoreMatch = context.match(/(\d+)\s*-\s*(\d+)/);
+      const scoreMatch = cleanContext.match(/(\d+)\s*-\s*(\d+)/);
       if (scoreMatch) {
         const scoreA = parseInt(scoreMatch[1], 10);
         const scoreB = parseInt(scoreMatch[2], 10);
@@ -150,7 +125,7 @@ function simulateSentiment(country: string, context: string, category?: string |
     }
   }
 
-  const text = context.toLowerCase();
+  const text = cleanContext.toLowerCase();
   
   // Helper to check for a whole word match
   const hasWord = (word: string) => {
@@ -166,31 +141,31 @@ function simulateSentiment(country: string, context: string, category?: string |
     return {
       mood: '😄 Celebration',
       intensity: 0.9,
-      explanation: 'Fans are ecstatic after a stunning victory. Social media is flooded with celebrations as the team secures a crucial win.'
+      explanation: `Fans in ${country} are celebrating after recent sports victories and positive achievements reported in the region.`
     };
   } else if (hasAnyWord(['loss', 'defeat', 'out', 'lose', 'lost'])) {
     return {
       mood: '😢 Sadness',
       intensity: 0.8,
-      explanation: 'Heartbreak across the nation as the team suffers a devastating defeat. Fans are mourning the end of their World Cup dreams.'
+      explanation: `Disappointment observed in ${country} following recent losses or setbacks in local activities.`
     };
   } else if (hasAnyWord(['shock', 'upset', 'surprise', 'stunned'])) {
     return {
       mood: '😨 Shock',
       intensity: 0.85,
-      explanation: 'Total disbelief as an unexpected result leaves fans stunned. The football world is reeling from this massive upset.'
+      explanation: `A sense of surprise and disbelief is circulating in ${country} following recent unexpected announcements.`
     };
   } else if (hasAnyWord(['angry', 'referee', 'ref', 'disgrace', 'unfair'])) {
     return {
       mood: '😡 Anger',
       intensity: 0.9,
-      explanation: 'Furious reactions from supporters directing their anger at poor decisions and tactics. Demands for immediate changes are trending.'
+      explanation: `Frustrated discussions and public anger are rising in ${country} over recent controversial rulings or updates.`
     };
   }
   
   return {
-    mood: '🔥 Hype',
-    intensity: 0.7,
-    explanation: 'Anticipation is building ahead of the crucial fixture. Fans are tense but optimistic about their team\'s chances.'
+    mood: '😐 Neutral',
+    intensity: 0.5,
+    explanation: `Recent news and updates from ${country} indicate a stable and neutral social sentiment.`
   };
 }
