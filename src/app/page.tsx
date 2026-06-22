@@ -1340,7 +1340,7 @@ export default function HomePage({
       )}
 
       {/* FULL ARTICLE READER SYSTEM */}
-      {!isMobile && (
+      {(!isMobile || !selectedCountry) && (
         <ArticleViewer
           event={activeArticle}
           allEvents={filteredEvents}
