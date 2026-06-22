@@ -1118,51 +1118,53 @@ export default function ArticleViewer({
                     </button>
 
                     {/* Translate Selector Dropdown */}
-                    <div className="relative flex-1">
-                      <button
-                        onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                        className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
-                          targetLanguage !== 'en'
-                            ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
-                            : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
-                        }`}
-                      >
-                        <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
-                      </button>
-                      
-                      <AnimatePresence>
-                        {isLangDropdownOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
-                            style={{
-                              background: 'rgba(10, 10, 20, 0.98)',
-                              backdropFilter: 'blur(10px)'
-                            }}
-                          >
-                            <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
-                              Select Language
-                            </div>
-                            {SUPPORTED_LANGUAGES.map((lang) => (
-                              <button
-                                key={lang.code}
-                                onClick={() => handleTranslate(lang.code)}
-                                className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                                  targetLanguage === lang.code
-                                    ? 'bg-indigo-600/30 text-indigo-300'
-                                    : 'text-white/70 hover:bg-white/5 hover:text-white'
-                                }`}
-                              >
-                                <span>{lang.nativeName}</span>
-                                <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
-                              </button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    {FEATURES.enableTranslation && (
+                      <div className="relative flex-1">
+                        <button
+                          onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                          className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                            targetLanguage !== 'en'
+                              ? 'bg-emerald-600/90 border-emerald-500/30 text-white shadow-sm'
+                              : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                          }`}
+                        >
+                          <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `In ${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
+                        </button>
+                        
+                        <AnimatePresence>
+                          {isLangDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute bottom-full mb-2 left-0 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 overflow-y-auto scrollbar-thin shadow-xl"
+                              style={{
+                                background: 'rgba(10, 10, 20, 0.98)',
+                                backdropFilter: 'blur(10px)'
+                              }}
+                            >
+                              <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                                Select Language
+                              </div>
+                              {SUPPORTED_LANGUAGES.map((lang) => (
+                                <button
+                                  key={lang.code}
+                                  onClick={() => handleTranslate(lang.code)}
+                                  className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                    targetLanguage === lang.code
+                                      ? 'bg-indigo-600/30 text-indigo-300'
+                                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                                  }`}
+                                >
+                                  <span>{lang.nativeName}</span>
+                                  <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
 
                     {isCountryWhitelisted(activeEvent.country) && (
                       <button
