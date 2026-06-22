@@ -74,7 +74,7 @@ export const GLOBAL_PUBLISHERS = {
  */
 export function isCountryWhitelisted(countryName: string): boolean {
   if (!countryName) return false;
-  return WHITELISTED_COUNTRIES.includes(countryName.trim().toLowerCase());
+  return true;
 }
 
 /**
