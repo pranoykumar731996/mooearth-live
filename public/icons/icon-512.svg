@@ -14,7 +14,7 @@
   <circle cx="256" cy="230" r="90" fill="url(#glow)" opacity="0.15"/>
   <text x="256" y="258" text-anchor="middle" font-size="140">🌍</text>
   <text x="256" y="410" text-anchor="middle" font-family="Inter, sans-serif" font-size="48" font-weight="700" fill="white">
-    <tspan fill="white">Earth</tspan><tspan fill="#00e5ff">Pulse</tspan>
+    <tspan fill="#00e5ff">Moo</tspan><tspan fill="white">Earth</tspan>
   </text>
-  <text x="256" y="455" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" fill="rgba(255,255,255,0.4)" letter-spacing="4">AI</text>
+  <text x="256" y="455" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" fill="rgba(255,255,255,0.4)" letter-spacing="4">LIVE</text>
 </svg>
