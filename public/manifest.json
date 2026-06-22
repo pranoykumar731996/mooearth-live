@@ -1,6 +1,6 @@
 {
-  "name": "MooEarth Live",
-  "short_name": "MooEarth",
+  "name": "mooearth",
+  "short_name": "mooearth",
   "description": "An immersive emotional globe visualizing live football reactions, celebrations, and global energy during the FIFA World Cup.",
   "start_url": "/",
   "display": "standalone",
