@@ -23,6 +23,7 @@ import StarField from '@/components/UI/StarField';
 import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
 import ArticleViewer from '@/components/Reactions/ArticleViewer';
 import MobileCountrySheet from '@/components/UI/MobileCountrySheet';
+import MobileGlobeViewsSheet from '@/components/UI/MobileGlobeViewsSheet';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
@@ -126,6 +127,30 @@ export default function HomePage({
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+
+  // Mobile Layers Selector & Toast Notifications
+  const [isMobileViewsOpen, setIsMobileViewsOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMessage(message);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Focus Mode States
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -1782,6 +1807,22 @@ export default function HomePage({
               <path d="M12 7v4M9 16h.01M15 16h.01M8 11V8a4 4 0 0 1 8 0v3" />
             </svg>
           </button>
+
+          {/* Globe Views / Layers Selector Toggle */}
+          <button
+            onClick={() => {
+              setIsMobileViewsOpen(!isMobileViewsOpen);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+              isMobileViewsOpen
+                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
+                : 'bg-black/60 border border-white/10 text-white/70 hover:text-white'
+            }`}
+            title="Globe Layers"
+          >
+            <span className="text-xl">🗺️</span>
+          </button>
         </div>
       )}
 
@@ -1886,6 +1927,52 @@ export default function HomePage({
           onClose={() => setShowDebugConsole(false)}
         />
       )}
+
+      {/* MOBILE GLOBE VIEW SELECTOR SHEET */}
+      {isMobile && (
+        <MobileGlobeViewsSheet
+          isOpen={isMobileViewsOpen}
+          onClose={() => setIsMobileViewsOpen(false)}
+          currentView={globeView}
+          onSelectView={(view) => {
+            setGlobeView(view);
+            setIsPlayEarthActive(view === 'discovery');
+            if (view === 'discovery') {
+              handleSelectCountry(null);
+            }
+            setIsMobileViewsOpen(false);
+            const viewNames: Record<string, string> = {
+              standard: 'Standard View',
+              fifa: 'FIFA World Cup',
+              night: 'Night Lights',
+              weather: 'Weather Radar',
+              satellite: 'Satellite View',
+              discovery: 'Earth Discovery',
+            };
+            showToast(`${viewNames[view] || 'Globe View'} Activated`);
+          }}
+          playHoverBlip={playHoverBlip}
+        />
+      )}
+
+      {/* TOAST NOTIFIER */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-full border border-cyan-500/30 text-xs font-bold tracking-wide text-white shadow-[0_0_30px_rgba(0,229,255,0.15)] flex items-center gap-2"
+            style={{
+              background: 'rgba(10, 10, 20, 0.92)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }
