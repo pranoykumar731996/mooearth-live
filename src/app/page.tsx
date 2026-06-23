@@ -2094,21 +2094,6 @@ export default function HomePage({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* World Cup Diagnostics HUD */}
-      {activeCategory === 'worldcup' && (
-        <div className="fixed bottom-24 left-6 z-[60] p-4 rounded-2xl glass border border-white/10 text-[10px] font-mono text-cyan-400 space-y-1.5 shadow-lg max-w-[240px] pointer-events-auto select-none">
-          <div className="text-[9px] font-bold uppercase tracking-wider text-white/50 mb-1 flex items-center justify-between">
-            <span>⚙️ WC DEBUG PANEL</span>
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-          </div>
-          <div><span className="text-white/40">Category:</span> {activeCategory}</div>
-          <div><span className="text-white/40">Match:</span> {selectedEvent ? selectedEvent.title : 'None'}</div>
-          <div><span className="text-white/40">Data Source:</span> Football API-Sports (Live)</div>
-          <div><span className="text-white/40">Competition:</span> FIFA World Cup 2026</div>
-          <div><span className="text-white/40">Auto Nav Triggered:</span> {selectedEvent && selectedCountry && isDashboardOpen ? 'true (ERR)' : 'false'}</div>
-        </div>
-      )}
     </main>
   );
 }
