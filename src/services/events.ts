@@ -1,6 +1,6 @@
 import { WorldEvent, EventCategory } from '@/types';
 import { fetchLiveNews, searchLiveNews } from './news';
-import { fetchLiveFootball } from './football';
+import { fetchLiveFootball, fetchWorldCupMatches } from './football';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 
 export const WORLD_CUP_LEAGUE_IDS = [
@@ -109,15 +109,49 @@ export async function searchAllEvents(query: string, category?: string | null): 
     newsActive = newsResult.active;
     footballActive = footballResult.active;
   } else if (category === 'sports' || category === 'football' || category === 'worldcup') {
-    const searchTerm = category === 'worldcup' ? `${query} FIFA World Cup` : `${query} sports`;
-    const [newsResult, footballResult] = await Promise.all([
-      searchLiveNews(searchTerm, category as EventCategory, detectedCountry),
-      fetchLiveFootball()
-    ]);
-    newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
-    footballEvents = footballResult.events.map(sanitizeEventCategory);
-    newsActive = newsResult.active;
-    footballActive = footballResult.active;
+    if (category === 'worldcup') {
+      const [newsResult, wcMatches] = await Promise.all([
+        searchLiveNews(`${query} FIFA World Cup`, 'worldcup', detectedCountry),
+        fetchWorldCupMatches(false)
+      ]);
+      newsEvents = (newsResult.events || []).map(e => ({ ...e, category: 'worldcup' as any }));
+      footballEvents = wcMatches.map(m => ({
+        id: m.id,
+        title: `${m.homeTeam} vs ${m.awayTeam}`,
+        summary: `FIFA World Cup 2026 match at ${m.venue.name}, ${m.venue.city}. Score: ${m.apiData?.homeScore ?? 0} - ${m.apiData?.awayScore ?? 0}.`,
+        category: 'worldcup' as any,
+        country: m.venue.country,
+        city: m.venue.city,
+        lat: m.venue.lat,
+        lng: m.venue.lng,
+        source: 'https://www.api-football.com',
+        publishedAt: m.kickoff,
+        stadium: m.venue.name,
+        footballData: {
+          homeTeam: m.homeTeam,
+          awayTeam: m.awayTeam,
+          homeScore: m.apiData?.homeScore ?? 0,
+          awayScore: m.apiData?.awayScore ?? 0,
+          status: m.apiData?.status || 'NS',
+          elapsed: m.apiData?.elapsed || 0,
+          goals: m.goals || [],
+          cards: m.cards || [],
+          leagueId: 1
+        }
+      }));
+      newsActive = newsResult.active;
+      footballActive = true;
+    } else {
+      const searchTerm = category === 'sports' ? `${query} sports` : `${query} football`;
+      const [newsResult, footballResult] = await Promise.all([
+        searchLiveNews(searchTerm, category as EventCategory, detectedCountry),
+        fetchLiveFootball()
+      ]);
+      newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
+      footballEvents = footballResult.events.map(sanitizeEventCategory);
+      newsActive = newsResult.active;
+      footballActive = footballResult.active;
+    }
   } else {
     // technology, business, weather, entertainment, breaking
     const searchTerm = category === 'breaking' ? `${query} news` : `${query} ${category}`;

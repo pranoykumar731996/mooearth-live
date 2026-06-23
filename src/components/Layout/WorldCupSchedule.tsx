@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import {
-  getAllWorldCupMatches,
   computeMatchStatus,
   matchToWorldEvent,
   getFlag,
@@ -48,98 +47,40 @@ interface TeamStats {
   points: number;
 }
 
-function computeStandings(matchesWithStatus: { match: WCMatchData; status: ComputedMatchStatus }[]): Record<string, TeamStats[]> {
-  const standings: Record<string, Record<string, TeamStats>> = {};
-
-  Object.entries(GROUPS).forEach(([group, teams]) => {
-    standings[group] = {};
-    teams.forEach(team => {
-      standings[group][team] = {
-        team,
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        gf: 0,
-        ga: 0,
-        gd: 0,
-        points: 0,
-      };
-    });
-  });
-
-  matchesWithStatus.forEach(({ match, status }) => {
-    if (match.stage === 'group' && status.status === 'FT') {
-      const g = match.group;
-      const h = match.homeTeam;
-      const a = match.awayTeam;
-      const hs = status.homeScore;
-      const as = status.awayScore;
-
-      if (standings[g] && standings[g][h] && standings[g][a]) {
-        const homeStats = standings[g][h];
-        const awayStats = standings[g][a];
-
-        homeStats.played++;
-        awayStats.played++;
-        homeStats.gf += hs;
-        homeStats.ga += as;
-        awayStats.gf += as;
-        awayStats.ga += hs;
-
-        if (hs > as) {
-          homeStats.won++;
-          homeStats.points += 3;
-          awayStats.lost++;
-        } else if (hs < as) {
-          awayStats.won++;
-          awayStats.points += 3;
-          homeStats.lost++;
-        } else {
-          homeStats.drawn++;
-          awayStats.drawn++;
-          homeStats.points += 1;
-          awayStats.points += 1;
-        }
-
-        homeStats.gd = homeStats.gf - homeStats.ga;
-        awayStats.gd = awayStats.gf - awayStats.ga;
-      }
-    }
-  });
-
-  const sortedStandings: Record<string, TeamStats[]> = {};
-  Object.entries(standings).forEach(([group, teamsMap]) => {
-    sortedStandings[group] = Object.values(teamsMap).sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.gd !== a.gd) return b.gd - a.gd;
-      if (b.gf !== a.gf) return b.gf - a.gf;
-      return a.team.localeCompare(b.team);
-    });
-  });
-
-  return sortedStandings;
+interface WCTopScorer {
+  player: string;
+  team: string;
+  goals: number;
+  assists: number;
+  matchesPlayed: number;
+  photo?: string;
 }
 
 interface TournamentStats {
   matchesPlayed: number;
   totalGoals: number;
+  yellowCards: number;
 }
 
 function computeTournamentStats(matchesWithStatus: { match: WCMatchData; status: ComputedMatchStatus }[]): TournamentStats {
   let matchesPlayed = 0;
   let totalGoals = 0;
+  let yellowCards = 0;
 
-  matchesWithStatus.forEach(({ status }) => {
+  matchesWithStatus.forEach(({ match, status }) => {
     if (status.status === 'FT') {
       matchesPlayed++;
+    }
+    if (status.status === 'FT' || status.status === 'LIVE' || status.status === 'HT') {
       totalGoals += (status.homeScore || 0) + (status.awayScore || 0);
+      yellowCards += (match.cards || []).filter(c => c.type === 'Yellow').length;
     }
   });
 
   return {
     matchesPlayed,
     totalGoals,
+    yellowCards,
   };
 }
 
@@ -199,32 +140,75 @@ export default function WorldCupSchedule({
   const [mounted, setMounted] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
 
+  // Live Data States
+  const [matches, setMatches] = useState<WCMatchData[]>([]);
+  const [standings, setStandings] = useState<Record<string, TeamStats[]>>({});
+  const [scorers, setScorers] = useState<WCTopScorer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const fetchData = useCallback(async (force = false) => {
+    setLoading(true);
+    try {
+      const suffix = force ? '?refresh=true' : '';
+      const [matchesRes, standingsRes, scorersRes] = await Promise.all([
+        fetch(`/api/worldcup/matches${suffix}`).then(r => { if (!r.ok) throw new Error('Matches fetch failed'); return r.json(); }),
+        fetch(`/api/worldcup/standings${suffix}`).then(r => { if (!r.ok) throw new Error('Standings fetch failed'); return r.json(); }),
+        fetch(`/api/worldcup/scorers${suffix}`).then(r => { if (!r.ok) throw new Error('Scorers fetch failed'); return r.json(); })
+      ]);
+
+      setMatches(matchesRes);
+      setStandings(standingsRes);
+      setScorers(scorersRes);
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { hour12: false }));
+      setError(null);
+    } catch (err: any) {
+      console.error('[WorldCupSchedule] fetch error:', err);
+      setError(err?.message || 'Failed to update live World Cup data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     requestAnimationFrame(() => {
       setMounted(true);
     });
-    const iv = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(iv);
-  }, []);
+    
+    fetchData(false);
 
-  const allMatches = useMemo(() => getAllWorldCupMatches(), []);
+    const clockIv = setInterval(() => setNow(new Date()), 1000);
+    // 30s auto-refresh interval
+    const refreshIv = setInterval(() => fetchData(false), 30000);
+
+    return () => {
+      clearInterval(clockIv);
+      clearInterval(refreshIv);
+    };
+  }, [fetchData]);
+
+  const handleManualRefresh = () => {
+    if (onPlaySound) onPlaySound();
+    fetchData(true);
+  };
 
   const matchesWithStatus = useMemo(() => {
-    return allMatches.map(m => ({
+    return matches.map(m => ({
       match: m,
       status: computeMatchStatus(m, now),
     }));
-  }, [allMatches, now]);
+  }, [matches, now]);
 
   const counts = useMemo(() => {
-    const c = { live: 0, upcoming: 0, finished: 0, total: allMatches.length };
+    const c = { live: 0, upcoming: 0, finished: 0, total: matches.length };
     matchesWithStatus.forEach(({ status }) => {
       if (status.status === 'LIVE' || status.status === 'HT') c.live++;
       else if (status.status === 'FT') c.finished++;
       else c.upcoming++;
     });
     return c;
-  }, [matchesWithStatus, allMatches.length]);
+  }, [matchesWithStatus]);
 
   const filtered = useMemo(() => {
     return matchesWithStatus.filter(({ match, status }) => {
@@ -275,7 +259,6 @@ export default function WorldCupSchedule({
     return groups.sort((a, b) => a.date.localeCompare(b.date));
   }, [filtered, now]);
 
-  const standings = useMemo(() => computeStandings(matchesWithStatus), [matchesWithStatus]);
   const tournamentStats = useMemo(() => computeTournamentStats(matchesWithStatus), [matchesWithStatus]);
 
   if (!mounted) {
@@ -287,7 +270,16 @@ export default function WorldCupSchedule({
   }
 
   const renderStandingsTab = () => {
-    const groupsToRender = groupFilter === 'all' ? Object.keys(GROUPS) : [groupFilter];
+    const groupsToRender = groupFilter === 'all' ? Object.keys(standings).sort() : [groupFilter];
+
+    if (Object.keys(standings).length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center">
+          <span className="text-2xl mb-2">📋</span>
+          <span>No standing data available</span>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-4">
@@ -346,11 +338,12 @@ export default function WorldCupSchedule({
       { label: 'Matches Played', value: tournamentStats.matchesPlayed.toString(), desc: 'Completed tournament matches', color: 'text-cyan-400' },
       { label: 'Total Goals', value: tournamentStats.totalGoals.toString(), desc: 'Goals scored in the tournament', color: 'text-emerald-400' },
       { label: 'Average Goals', value: tournamentStats.matchesPlayed > 0 ? (tournamentStats.totalGoals / tournamentStats.matchesPlayed).toFixed(2) : '0.00', desc: 'Goals per match average', color: 'text-yellow-400' },
-      { label: 'Total Yellow Cards', value: '0', desc: 'Cards shown in official matches', color: 'text-orange-400' },
+      { label: 'Total Yellow Cards', value: tournamentStats.yellowCards.toString(), desc: 'Cards counted from live streams', color: 'text-orange-400' },
     ];
 
     return (
       <div className="space-y-4">
+        {/* Tournament Counters */}
         <div className="grid grid-cols-2 gap-2.5">
           {statsList.map((s, idx) => (
             <div key={idx} className="p-3.5 rounded-xl border border-white/[0.05] bg-black/20 flex flex-col justify-between hover:border-white/10 transition-colors">
@@ -361,6 +354,50 @@ export default function WorldCupSchedule({
           ))}
         </div>
 
+        {/* Top Scorers Leaderboard */}
+        <div className="rounded-2xl border border-white/[0.06] bg-black/20 overflow-hidden">
+          <div className="bg-white/[0.02] px-4 py-2 border-b border-white/[0.04] flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-widest text-cyan-400">Top Scorers</h3>
+            <span className="text-[8px] font-black uppercase text-white/30 tracking-wider">Goals (Assists)</span>
+          </div>
+          <div className="p-2 divide-y divide-white/[0.03]">
+            {scorers.length === 0 ? (
+              <div className="p-4 text-center text-white/20 text-[10px]">No scorer data available</div>
+            ) : (
+              scorers.slice(0, 10).map((s, idx) => (
+                <div key={idx} className="flex items-center justify-between py-2 px-2 hover:bg-white/[0.01] transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-[10px] font-black text-white/30 w-4">{idx + 1}</span>
+                    {s.photo ? (
+                      <img 
+                        src={s.photo} 
+                        alt={s.player} 
+                        className="w-5 h-5 rounded-full object-cover bg-white/5 border border-white/10 shrink-0" 
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                      />
+                    ) : (
+                      <span className="text-xs">👤</span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-white/95 truncate">{s.player}</p>
+                      <p className="text-[8px] text-white/40 font-medium truncate flex items-center gap-1">
+                        <span>{getFlag(s.team)}</span>
+                        <span>{s.team}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[11px] font-black text-emerald-400 tabular-nums">{s.goals}</span>
+                    <span className="text-[9px] text-white/30 font-bold tabular-nums ml-1">({s.assists})</span>
+                    <p className="text-[8px] text-white/20 uppercase tracking-widest mt-0.5">{s.matchesPlayed} matches</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Participating Countries */}
         <div className="rounded-2xl border border-white/[0.06] bg-black/20 p-4">
           <h3 className="text-xs font-black uppercase tracking-widest text-cyan-400 mb-3">Participating Countries</h3>
           <div className="grid grid-cols-2 gap-2">
@@ -386,7 +423,7 @@ export default function WorldCupSchedule({
 
   const renderProgressTab = () => {
     const stages = [
-      { id: 'group', name: 'Group Stage', dates: 'June 11 – June 27', status: 'Upcoming' },
+      { id: 'group', name: 'Group Stage', dates: 'June 11 – June 27', status: counts.finished > 0 ? 'Active' : 'Upcoming' },
       { id: 'r32', name: 'Round of 32', dates: 'June 28 – July 3', status: 'Locked' },
       { id: 'r16', name: 'Round of 16', dates: 'July 4 – July 7', status: 'Locked' },
       { id: 'qf', name: 'Quarter-Finals', dates: 'July 9 – July 11', status: 'Locked' },
@@ -407,7 +444,13 @@ export default function WorldCupSchedule({
                     <h4 className="text-[10px] font-black uppercase tracking-wider text-white/80">{stage.name}</h4>
                     <span className="text-[8px] text-white/30 font-medium">{stage.dates}</span>
                   </div>
-                  <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/[0.02] text-white/20 border border-white/[0.04]">
+                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
+                    stage.status === 'Active'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : stage.status === 'Upcoming'
+                      ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 animate-pulse'
+                      : 'bg-white/[0.02] text-white/20 border-white/[0.04]'
+                  }`}>
                     {stage.status}
                   </span>
                 </div>
@@ -450,13 +493,47 @@ export default function WorldCupSchedule({
       );
     }
 
+    if (loading && matches.length === 0) {
+      return (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="animate-pulse p-4 rounded-2xl border border-white/[0.04] bg-white/[0.01] h-28 flex flex-col justify-between">
+              <div className="h-2.5 bg-white/5 rounded w-1/4" />
+              <div className="flex items-center justify-between my-2">
+                <div className="h-3 bg-white/5 rounded w-1/3" />
+                <div className="h-6 bg-white/5 rounded-xl w-12" />
+                <div className="h-3 bg-white/5 rounded w-1/3" />
+              </div>
+              <div className="h-2 bg-white/5 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (error && matches.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+          <span className="text-3xl mb-2">❌</span>
+          <span className="text-xs font-bold text-red-400">Failed to load schedule</span>
+          <p className="text-[10px] text-white/40 mt-1">{error}</p>
+          <button 
+            onClick={() => handleManualRefresh()}
+            className="mt-4 px-3 py-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-[9px] font-black uppercase tracking-wider hover:bg-cyan-500/20 active:scale-95 transition-all"
+          >
+            Retry Connection
+          </button>
+        </div>
+      );
+    }
+
     if (filtered.length === 0) {
       if (statusFilter === 'live') {
         return (
           <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-6">
             <span className="text-2xl mb-2">🟢</span>
             <span>No live matches currently in progress</span>
-            <p className="text-[10px] text-white/20 mt-2 lowercase normal-case">Check back during scheduled match kickoff times</p>
+            <p className="text-[10px] text-white/20 mt-2 normal-case">Check back during scheduled match kickoff times</p>
           </div>
         );
       }
@@ -465,7 +542,7 @@ export default function WorldCupSchedule({
           <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-6">
             <span className="text-2xl mb-2">✅</span>
             <span>No matches completed yet</span>
-            <p className="text-[10px] text-white/20 mt-2 lowercase normal-case">Matches will appear here as results are finalized</p>
+            <p className="text-[10px] text-white/20 mt-2 normal-case">Matches will appear here as results are finalized</p>
           </div>
         );
       }
@@ -473,7 +550,7 @@ export default function WorldCupSchedule({
         <div className="flex flex-col items-center justify-center py-20 text-white/25 text-xs font-semibold uppercase tracking-wider text-center px-6">
           <span className="text-3xl mb-3">📡</span>
           Connecting to live football feeds...
-          <p className="text-[10px] text-white/20 mt-2 lowercase normal-case">No matches found for the selected filters</p>
+          <p className="text-[10px] text-white/20 mt-2 normal-case">No matches found for the selected filters</p>
         </div>
       );
     }
@@ -548,6 +625,12 @@ export default function WorldCupSchedule({
                   <span className="text-white/30">Records Loaded:</span>
                   <span className="font-bold text-white/90 tabular-nums">{filtered.length} matches</span>
                 </div>
+                {lastUpdated && (
+                  <div className="flex justify-between">
+                    <span className="text-white/30">Last API Sync:</span>
+                    <span className="font-bold text-white">{lastUpdated}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -560,17 +643,40 @@ export default function WorldCupSchedule({
     <div className="flex flex-col h-full overflow-hidden bg-[#0d0e15]">
       {/* ===== HEADER ===== */}
       <div className="shrink-0 px-5 pt-4 pb-3 border-b border-white/[0.05] bg-gradient-to-b from-black/40 to-transparent">
-        <div className="flex items-center gap-2.5 mb-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-400/20 flex items-center justify-center text-base animate-pulse">
-            🏆
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-400/20 flex items-center justify-center text-base">
+              🏆
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs font-black uppercase tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-400">
+                FIFA World Cup 2026
+              </h2>
+              <p className="text-[9px] text-white/35 font-semibold tracking-wider uppercase">
+                USA · Mexico · Canada
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xs font-black uppercase tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-cyan-400">
-              FIFA World Cup 2026
-            </h2>
-            <p className="text-[9px] text-white/35 font-semibold tracking-wider uppercase">
-              USA · Mexico · Canada
-            </p>
+          
+          {/* Refresh Action / Timestamp */}
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <button
+              onClick={() => handleManualRefresh()}
+              disabled={loading}
+              className={`p-1.5 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/5 hover:border-white/10 active:scale-95 transition-all text-white/40 hover:text-white/80 cursor-pointer flex items-center gap-1 text-[9px] uppercase font-bold tracking-widest ${loading ? 'animate-pulse' : ''}`}
+            >
+              {loading ? (
+                <div className="w-2.5 h-2.5 rounded-full border border-white/20 border-t-white animate-spin" />
+              ) : (
+                <span>🔄</span>
+              )}
+              <span>Refresh</span>
+            </button>
+            {lastUpdated && (
+              <span className="text-[7px] text-white/20 font-bold tabular-nums">
+                Updated {lastUpdated}
+              </span>
+            )}
           </div>
         </div>
         {/* Live Counters */}
@@ -638,7 +744,7 @@ export default function WorldCupSchedule({
           {/* Group Filter + Status Filter Row */}
           <div className="flex items-center gap-2">
             {/* Group Dropdown */}
-            {stageFilter !== 'knockout' && (
+            {stageFilter !== 'knockout' && Object.keys(standings).length > 0 && (
               <select
                 value={groupFilter}
                 onChange={e => { setGroupFilter(e.target.value); if (onPlaySound) onPlaySound(); }}
@@ -646,7 +752,7 @@ export default function WorldCupSchedule({
                 style={{ minWidth: 80 }}
               >
                 <option value="all" className="bg-[#0a0a14]">All Groups</option>
-                {Object.keys(GROUPS).map(g => (
+                {Object.keys(standings).sort().map(g => (
                   <option key={g} value={g} className="bg-[#0a0a14]">Group {g}</option>
                 ))}
               </select>
@@ -662,13 +768,13 @@ export default function WorldCupSchedule({
                   { id: 'finished' as const, label: 'FT', icon: '✅' },
                 ].map(s => (
                   <button
-                    key={s.id}
-                    onClick={() => { setStatusFilter(s.id); if (onPlaySound) onPlaySound(); }}
-                    className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer border shrink-0 flex items-center gap-1 ${
-                      statusFilter === s.id
-                        ? 'bg-white/10 text-white border-white/20'
-                        : 'bg-white/[0.02] text-white/35 border-white/[0.04] hover:text-white/60'
-                    }`}
+                     key={s.id}
+                     onClick={() => { setStatusFilter(s.id); if (onPlaySound) onPlaySound(); }}
+                     className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer border shrink-0 flex items-center gap-1 ${
+                       statusFilter === s.id
+                         ? 'bg-white/10 text-white border-white/20'
+                         : 'bg-white/[0.02] text-white/35 border-white/[0.04] hover:text-white/60'
+                     }`}
                   >
                     <span className="text-[9px]">{s.icon}</span>
                     {s.label}
@@ -708,6 +814,7 @@ function MatchCard({
   onClick: () => void;
   onSelectCountry?: (country: string | null) => void;
 }) {
+  const [nowLocal] = useState(() => new Date());
   const isLive = status.status === 'LIVE' || status.status === 'HT';
   const isFT = status.status === 'FT';
   const isNS = status.status === 'NS';

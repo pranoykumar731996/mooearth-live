@@ -118,6 +118,7 @@ export interface WCMatchData {
   finalAwayScore: number;
   goals: Goal[];
   cards: Card[];
+  apiData?: any;
 }
 
 export interface ComputedMatchStatus {
@@ -130,6 +131,26 @@ export interface ComputedMatchStatus {
 }
 
 export function computeMatchStatus(match: WCMatchData, now: Date): ComputedMatchStatus {
+  if (match.apiData) {
+    const rawStatus = match.apiData.status;
+    let status: 'NS' | 'LIVE' | 'HT' | 'FT' = 'NS';
+    if (['1H', '2H', 'ET', 'P', 'LIVE'].includes(rawStatus)) {
+      status = 'LIVE';
+    } else if (rawStatus === 'HT') {
+      status = 'HT';
+    } else if (['FT', 'AET', 'PEN'].includes(rawStatus)) {
+      status = 'FT';
+    }
+    
+    return {
+      status,
+      elapsed: match.apiData.elapsed || 0,
+      homeScore: match.apiData.homeScore ?? 0,
+      awayScore: match.apiData.awayScore ?? 0,
+      currentGoals: match.goals || [],
+      currentCards: match.cards || [],
+    };
+  }
   return { status: 'NS', elapsed: 0, homeScore: 0, awayScore: 0, currentGoals: [], currentCards: [] };
 }
 

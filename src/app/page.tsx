@@ -1550,6 +1550,7 @@ export default function HomePage({
                     footballActive={apiStatus?.footballActive}
                     mobileSheetRef={mobileSheet.sheetRef}
                     onSheetPointerDown={mobileSheet.onPointerDown}
+                    selectedCountry={selectedCountry}
                   />
                 </motion.div>
               )

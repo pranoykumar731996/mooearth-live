@@ -17,6 +17,7 @@ interface LiveFeedProps {
   onSelectCountry?: (country: string | null) => void;
   onPlaySound?: () => void;
   footballActive?: boolean;
+  selectedCountry?: string | null;
   /** Ref for the mobile bottom sheet container (controlled by useMobileSheet) */
   mobileSheetRef?: React.RefObject<HTMLDivElement | null>;
   /** Pointer down handler for draggable sheet (works for touch + mouse) */
@@ -68,7 +69,17 @@ function formatRelativeTime(dateStr: string | undefined): string {
   return `${days}d ago`;
 }
 
-export default function LiveFeed({ events, onSelectEvent, activeCategory, onSelectCountry, onPlaySound, footballActive = true, mobileSheetRef, onSheetPointerDown }: LiveFeedProps) {
+export default function LiveFeed({ 
+  events, 
+  onSelectEvent, 
+  activeCategory, 
+  onSelectCountry, 
+  onPlaySound, 
+  footballActive = true, 
+  mobileSheetRef, 
+  onSheetPointerDown,
+  selectedCountry
+}: LiveFeedProps) {
   const [footballTab, setFootballTab] = useState<FootballTab>('matches');
   const [mobileActiveTab, setMobileActiveTab] = useState<'matches' | 'news' | 'weather' | 'tech'>('matches');
   const [mounted, setMounted] = useState(false);
@@ -469,6 +480,7 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
             onSelectCountry={onSelectCountry}
             onPlaySound={onPlaySound}
             footballActive={footballActive}
+            selectedCountry={selectedCountry}
           />
         ) : activeCategory === 'football' ? (
           <>
@@ -607,218 +619,232 @@ export default function LiveFeed({ events, onSelectEvent, activeCategory, onSele
           </div>
         </div>
 
-        {/* Tabs Bar */}
-        <div className="flex border-b border-white/5 bg-black/20 overflow-x-auto scrollbar-none px-2 py-1 gap-1 shrink-0">
-          {[
-            { id: 'matches', label: 'MATCHES', icon: (
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
-                <circle cx="12" cy="12" r="10" />
-                <path d="m12 2 2.5 3.5h-5L12 2Zm-2.5 3.5-3.5 3 2 5.5M14.5 5.5l3.5 3-2 5.5M6 8.5h12M7 14h10" />
-              </svg>
-            ) },
-            { id: 'news', label: 'NEWS', icon: (
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-            ) },
-            { id: 'weather', label: 'WEATHER', icon: (
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
-                <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-3.41-3.32-6-6.5-6C6.18 5 3.7 7.71 3.5 11.25c-1.5.5-2.5 1.75-2.5 3.25a3.5 3.5 0 0 0 3.5 3.5H17.5Z" />
-              </svg>
-            ) },
-            { id: 'tech', label: 'TECH', icon: (
-              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-                <rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" />
-                <line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" />
-                <line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" />
-                <line x1="20" y1="15" x2="23" y2="15" />
-                <line x1="1" y1="9" x2="4" y2="9" />
-                <line x1="1" y1="15" x2="4" y2="15" />
-              </svg>
-            ) }
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setMobileActiveTab(t.id as any)}
-              className={`flex-1 py-3.5 flex items-center justify-center gap-1.5 text-center text-[10px] font-bold tracking-wider transition-all duration-300 cursor-pointer border-b-2 ${
-                mobileActiveTab === t.id
-                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.01]'
-                  : 'text-white/40 border-transparent hover:text-white/70'
-              }`}
-            >
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {activeCategory === 'worldcup' ? (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <WorldCupSchedule
+              onSelectEvent={onSelectEvent}
+              onSelectCountry={onSelectCountry}
+              onPlaySound={onPlaySound}
+              footballActive={footballActive}
+              selectedCountry={selectedCountry}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Tabs Bar */}
+            <div className="flex border-b border-white/5 bg-black/20 overflow-x-auto scrollbar-none px-2 py-1 gap-1 shrink-0">
+              {[
+                { id: 'matches', label: 'MATCHES', icon: (
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="m12 2 2.5 3.5h-5L12 2Zm-2.5 3.5-3.5 3 2 5.5M14.5 5.5l3.5 3-2 5.5M6 8.5h12M7 14h10" />
+                  </svg>
+                ) },
+                { id: 'news', label: 'NEWS', icon: (
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                  </svg>
+                ) },
+                { id: 'weather', label: 'WEATHER', icon: (
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
+                    <path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-3.41-3.32-6-6.5-6C6.18 5 3.7 7.71 3.5 11.25c-1.5.5-2.5 1.75-2.5 3.25a3.5 3.5 0 0 0 3.5 3.5H17.5Z" />
+                  </svg>
+                ) },
+                { id: 'tech', label: 'TECH', icon: (
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" className="shrink-0">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <rect x="9" y="9" width="6" height="6" />
+                    <line x1="9" y1="1" x2="9" y2="4" />
+                    <line x1="15" y1="1" x2="15" y2="4" />
+                    <line x1="9" y1="20" x2="9" y2="23" />
+                    <line x1="15" y1="20" x2="15" y2="23" />
+                    <line x1="20" y1="9" x2="23" y2="9" />
+                    <line x1="20" y1="15" x2="23" y2="15" />
+                    <line x1="1" y1="9" x2="4" y2="9" />
+                    <line x1="1" y1="15" x2="4" y2="15" />
+                  </svg>
+                ) }
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setMobileActiveTab(t.id as any)}
+                  className={`flex-1 py-3.5 flex items-center justify-center gap-1.5 text-center text-[10px] font-bold tracking-wider transition-all duration-300 cursor-pointer border-b-2 ${
+                    mobileActiveTab === t.id
+                      ? 'text-cyan-400 border-cyan-400 bg-white/[0.01]'
+                      : 'text-white/40 border-transparent hover:text-white/70'
+                  }`}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-        {/* Tab Content List (Scrollable) */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)' }}>
-          {mobileActiveTab === 'matches' && (
-            <>
-              {displayMatches.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
-                  <span className="text-xl mb-1.5">📡</span>
-                  <span>No live matches active</span>
-                </div>
-              ) : (
-                displayMatches.map((event) => {
-                  const fd = event.footballData;
-                  if (!fd) return null;
-                  return (
-                    <div
-                      key={event.id}
-                      onClick={() => onSelectEvent(event)}
-                      className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer space-y-3"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="px-2 py-0.5 border border-red-500 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          LIVE {fd.elapsed}{"'"}
-                        </span>
-                        <span className="text-[9px] font-bold tracking-widest text-white/40 uppercase">
-                          WORLD CUP QUALIFIERS
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-center gap-8 py-1">
-                        <div className="flex flex-col items-center gap-1.5 flex-1 text-right">
-                          <span className="text-3.5xl leading-none">{getTeamFlag(fd.homeTeam)}</span>
-                          <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.homeTeam}</span>
-                        </div>
-                        <span className="text-3xl font-black text-white tracking-widest select-none">{fd.homeScore} - {fd.awayScore}</span>
-                        <div className="flex flex-col items-center gap-1.5 flex-1 text-left">
-                          <span className="text-3.5xl leading-none">{getTeamFlag(fd.awayTeam)}</span>
-                          <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.awayTeam}</span>
-                        </div>
-                      </div>
+            {/* Tab Content List (Scrollable) */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-thin" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 48px)' }}>
+              {mobileActiveTab === 'matches' && (
+                <>
+                  {displayMatches.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                      <span className="text-xl mb-1.5">📡</span>
+                      <span>No live matches active</span>
                     </div>
-                  );
-                })
+                  ) : (
+                    displayMatches.map((event) => {
+                      const fd = event.footballData;
+                      if (!fd) return null;
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={() => onSelectEvent(event)}
+                          className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 border border-red-500 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                              LIVE {fd.elapsed}{"'"}
+                            </span>
+                            <span className="text-[9px] font-bold tracking-widest text-white/40 uppercase">
+                              WORLD CUP QUALIFIERS
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-center gap-8 py-1">
+                            <div className="flex flex-col items-center gap-1.5 flex-1 text-right">
+                              <span className="text-3.5xl leading-none">{getTeamFlag(fd.homeTeam)}</span>
+                              <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.homeTeam}</span>
+                            </div>
+                            <span className="text-3xl font-black text-white tracking-widest select-none">{fd.homeScore} - {fd.awayScore}</span>
+                            <div className="flex flex-col items-center gap-1.5 flex-1 text-left">
+                              <span className="text-3.5xl leading-none">{getTeamFlag(fd.awayTeam)}</span>
+                              <span className="text-[10px] font-bold text-white/60 truncate max-w-[80px]">{fd.awayTeam}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </>
               )}
-            </>
-          )}
 
-          {mobileActiveTab === 'news' && (
-            <>
-              {displayNews.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
-                  <span className="text-xl mb-1.5">📰</span>
-                  <span>No news articles found</span>
-                </div>
-              ) : (
-                displayNews.map((event) => (
-                  <div
-                    key={event.id}
-                    onClick={() => onSelectEvent(event)}
-                    className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="px-2 py-0.5 border border-red-500/60 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-red-500" />
-                        BREAKING
-                      </span>
-                      <span className="text-[9px] text-white/40 font-medium">
-                        {formatRelativeTime(event.publishedAt)} • {event.city}
-                      </span>
+              {mobileActiveTab === 'news' && (
+                <>
+                  {displayNews.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                      <span className="text-xl mb-1.5">📰</span>
+                      <span>No news articles found</span>
                     </div>
-                    <h3 className="text-sm font-bold text-white leading-snug mt-2.5">
-                      {event.title}
-                    </h3>
-                    <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
-                      {event.summary}
-                    </p>
-                  </div>
-                ))
-              )}
-            </>
-          )}
-
-          {mobileActiveTab === 'tech' && (
-            <>
-              {displayTech.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
-                  <span className="text-xl mb-1.5">🛰️</span>
-                  <span>No space/tech updates active</span>
-                </div>
-              ) : (
-                displayTech.map((event) => {
-                  const isOrbital = (event as any).isOrbital || event.title.toLowerCase().includes('iss') || event.summary.toLowerCase().includes('orbital');
-                  return (
-                    <div
-                      key={event.id}
-                      onClick={() => onSelectEvent(event)}
-                      className={`p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer ${
-                        isOrbital ? 'border-l-2 border-l-emerald-400 pl-3.5' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-400">
-                          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                            <circle cx="12" cy="12" r="5" />
-                            <path d="M12 1v3M12 20v3M1 12h3M20 12h3" />
-                          </svg>
-                        </span>
-                        <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
-                          {isOrbital ? 'ORBITAL UPDATE' : 'TECH UPDATE'}
-                        </span>
-                      </div>
-                      <p className="text-xs font-semibold text-white/90 leading-relaxed mt-2">
-                        {event.title}
-                      </p>
-                      {!isOrbital && (
+                  ) : (
+                    displayNews.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => onSelectEvent(event)}
+                        className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 border border-red-500/60 text-[8px] font-bold text-red-500 uppercase tracking-widest rounded-md flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-red-500" />
+                            BREAKING
+                          </span>
+                          <span className="text-[9px] text-white/40 font-medium">
+                            {formatRelativeTime(event.publishedAt)} • {event.city}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-bold text-white leading-snug mt-2.5">
+                          {event.title}
+                        </h3>
                         <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
                           {event.summary}
                         </p>
-                      )}
-                    </div>
-                  );
-                })
+                      </div>
+                    ))
+                  )}
+                </>
               )}
-            </>
-          )}
 
-          {mobileActiveTab === 'weather' && (
-            <>
-              {displayWeather.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
-                  <span className="text-xl mb-1.5">⛈️</span>
-                  <span>No climate alerts reported</span>
-                </div>
-              ) : (
-                displayWeather.map((event) => (
-                  <div
-                    key={event.id}
-                    onClick={() => onSelectEvent(event)}
-                    className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer border-l-2 border-l-orange-400 pl-3.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1">
-                        ⚡ CLIMATE WARNING
-                      </span>
-                      <span className="text-[9px] text-white/40 font-medium">
-                        {event.city}, {event.country}
-                      </span>
+              {mobileActiveTab === 'tech' && (
+                <>
+                  {displayTech.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                      <span className="text-xl mb-1.5">🛰️</span>
+                      <span>No space/tech updates active</span>
                     </div>
-                    <h3 className="text-xs font-bold text-white mt-2 leading-snug">
-                      {event.title}
-                    </h3>
-                    <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
-                      {event.summary}
-                    </p>
-                  </div>
-                ))
+                  ) : (
+                    displayTech.map((event) => {
+                      const isOrbital = (event as any).isOrbital || event.title.toLowerCase().includes('iss') || event.summary.toLowerCase().includes('orbital');
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={() => onSelectEvent(event)}
+                          className={`p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer ${
+                            isOrbital ? 'border-l-2 border-l-emerald-400 pl-3.5' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400">
+                              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <circle cx="12" cy="12" r="5" />
+                                <path d="M12 1v3M12 20v3M1 12h3M20 12h3" />
+                              </svg>
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+                              {isOrbital ? 'ORBITAL UPDATE' : 'TECH UPDATE'}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-white/90 leading-relaxed mt-2">
+                            {event.title}
+                          </p>
+                          {!isOrbital && (
+                            <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
+                              {event.summary}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
+
+              {mobileActiveTab === 'weather' && (
+                <>
+                  {displayWeather.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-white/40 text-xs text-center">
+                      <span className="text-xl mb-1.5">⛈️</span>
+                      <span>No climate alerts reported</span>
+                    </div>
+                  ) : (
+                    displayWeather.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => onSelectEvent(event)}
+                        className="p-4 rounded-2xl bg-[#0e0e1b]/70 border border-white/[0.06] hover:border-cyan-500/30 transition-all cursor-pointer border-l-2 border-l-orange-400 pl-3.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1">
+                            ⚡ CLIMATE WARNING
+                          </span>
+                          <span className="text-[9px] text-white/40 font-medium">
+                            {event.city}, {event.country}
+                          </span>
+                        </div>
+                        <h3 className="text-xs font-bold text-white mt-2 leading-snug">
+                          {event.title}
+                        </h3>
+                        <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
+                          {event.summary}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </>
   );
