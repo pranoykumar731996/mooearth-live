@@ -4,9 +4,9 @@ import { demoEvents } from '@/data/events';
 import { fetchOrGenerateArticleDetails } from '@/services/article';
 
 interface ArticlePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 async function getArticleDetailsHelper(id: string) {
@@ -31,7 +31,7 @@ async function getArticleDetailsHelper(id: string) {
 }
 
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
-  const { id } = params;
+  const { id } = await params;
   const result = await getArticleDetailsHelper(id);
 
   if (!result || !result.event) {
@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 }
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
-  const { id } = params;
+  const { id } = await params;
   const result = await getArticleDetailsHelper(id);
 
   if (!result || !result.event) {

@@ -2,13 +2,13 @@ import { Metadata } from 'next';
 import HomePage from '../../page';
 
 interface CountryPageProps {
-  params: {
+  params: Promise<{
     country: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: CountryPageProps): Promise<Metadata> {
-  const rawCountry = params.country;
+  const { country: rawCountry } = await params;
   const decoded = decodeURIComponent(rawCountry);
   const capitalized = decoded.charAt(0).toUpperCase() + decoded.slice(1);
   const title = `${capitalized} News, Sports, Weather & World Cup Updates | MooEarth Live`;
@@ -34,8 +34,8 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
   };
 }
 
-export default function CountryPage({ params }: CountryPageProps) {
-  const rawCountry = params.country;
+export default async function CountryPage({ params }: CountryPageProps) {
+  const { country: rawCountry } = await params;
   const decoded = decodeURIComponent(rawCountry);
   const capitalized = decoded.charAt(0).toUpperCase() + decoded.slice(1);
 

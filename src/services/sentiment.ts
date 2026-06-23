@@ -15,22 +15,26 @@ function isSameCountry(c1?: string | null, c2?: string | null): boolean {
 }
 
 export async function analyzeSentiment(country: string, context: string, category?: string | null): Promise<SentimentData> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    console.warn('OPENAI_API_KEY missing. Simulating sentiment.');
+    console.warn('API key missing. Simulating sentiment.');
     return simulateSentiment(country, context, category);
   }
 
+  const isGroq = !!process.env.GROQ_API_KEY;
+  const endpoint = isGroq ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+  const model = isGroq ? 'llama3-8b-8192' : 'gpt-3.5-turbo';
+
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages: [
           {
             role: 'system',
@@ -56,7 +60,7 @@ Return the result strictly as JSON in this format:
     });
 
   if (!response.ok) {
-      throw new Error(`OpenAI API failed: ${response.statusText}`);
+      throw new Error(`API failed: ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -75,11 +79,13 @@ Return the result strictly as JSON in this format:
 
 function simulateSentiment(country: string, context: string, category?: string | null): SentimentData {
   const cleanContext = context.replace(/No live events currently reported for.*/gi, '').trim();
+  const catLabel = category ? category.charAt(0).toUpperCase() + category.slice(1) : 'General';
+  
   if (!cleanContext || cleanContext.length < 5) {
     return {
       mood: '😐 Neutral',
-      intensity: 0.5,
-      explanation: `No active headlines or live match updates are currently reported for ${country}.`
+      intensity: 0.3,
+      explanation: `The national mood in ${country} is calm right now. There are currently no major breaking updates or viral discussions dominating the ${catLabel} feeds.`
     };
   }
 
@@ -106,19 +112,19 @@ function simulateSentiment(country: string, context: string, category?: string |
           return {
             mood: '😄 Celebration',
             intensity: 0.9,
-            explanation: `Fans in ${country} are ecstatic after a stunning ${countryScore}-${opponentScore} victory over ${opponentName}. Social media is flooded with celebrations as the team secures a crucial win.`
+            explanation: `Absolute euphoria in ${country}! The entire nation is celebrating a phenomenal ${countryScore}-${opponentScore} victory against ${opponentName}. The streets are alive with joy and national pride.`
           };
         } else if (countryScore < opponentScore) {
           return {
             mood: '😢 Sadness',
             intensity: 0.8,
-            explanation: `Heartbreak across ${country} as the team suffers a devastating ${opponentScore}-${countryScore} defeat to ${opponentName}. Fans are mourning the end of their World Cup dreams.`
+            explanation: `Heartbreak sweeps across ${country} following a tough ${opponentScore}-${countryScore} defeat to ${opponentName}. Fans are mourning the result, analyzing what went wrong on the pitch.`
           };
         } else {
           return {
             mood: '😐 Neutral',
             intensity: 0.6,
-            explanation: `A tense match ends in a ${countryScore}-${opponentScore} draw between ${country} and ${opponentName}. Fans are left anxious but hopeful for the next fixture.`
+            explanation: `Mixed feelings in ${country} after a tense ${countryScore}-${opponentScore} draw against ${opponentName}. Fans are relieved they didn't lose, but hungry for a decisive win next time.`
           };
         }
       }
@@ -127,45 +133,48 @@ function simulateSentiment(country: string, context: string, category?: string |
 
   const text = cleanContext.toLowerCase();
   
-  // Helper to check for a whole word match
   const hasWord = (word: string) => {
     const regex = new RegExp(`\\b${word}\\b`, 'i');
     return regex.test(text);
   };
   
-  const hasAnyWord = (words: string[]) => {
-    return words.some(word => hasWord(word));
-  };
+  const hasAnyWord = (words: string[]) => words.some(word => hasWord(word));
 
-  if (hasAnyWord(['win', 'victory', 'goal', 'celebrate', 'celebration', 'won'])) {
+  if (hasAnyWord(['win', 'victory', 'goal', 'celebrate', 'celebration', 'won', 'champion', 'success'])) {
     return {
       mood: '😄 Celebration',
       intensity: 0.9,
-      explanation: `Fans in ${country} are celebrating after recent sports victories and positive achievements reported in the region.`
+      explanation: `The mood in ${country} is ecstatic! Viral trends and breaking news are dominated by massive celebrations and widespread joy across the country.`
     };
-  } else if (hasAnyWord(['loss', 'defeat', 'out', 'lose', 'lost'])) {
+  } else if (hasAnyWord(['loss', 'defeat', 'out', 'lose', 'lost', 'eliminated', 'fail', 'tragedy'])) {
     return {
       mood: '😢 Sadness',
       intensity: 0.8,
-      explanation: `Disappointment observed in ${country} following recent losses or setbacks in local activities.`
+      explanation: `A wave of disappointment and sadness is currently echoing through ${country} as the public processes recent setbacks and tough news.`
     };
-  } else if (hasAnyWord(['shock', 'upset', 'surprise', 'stunned'])) {
+  } else if (hasAnyWord(['shock', 'upset', 'surprise', 'stunned', 'unbelievable', 'crazy'])) {
     return {
       mood: '😨 Shock',
       intensity: 0.85,
-      explanation: `A sense of surprise and disbelief is circulating in ${country} following recent unexpected announcements.`
+      explanation: `Complete disbelief in ${country}. The national conversation has been entirely derailed by unexpected and stunning developments that nobody saw coming.`
     };
-  } else if (hasAnyWord(['angry', 'referee', 'ref', 'disgrace', 'unfair'])) {
+  } else if (hasAnyWord(['angry', 'referee', 'ref', 'disgrace', 'unfair', 'scandal', 'outrage', 'protest'])) {
     return {
       mood: '😡 Anger',
       intensity: 0.9,
-      explanation: `Frustrated discussions and public anger are rising in ${country} over recent controversial rulings or updates.`
+      explanation: `Public outrage is surging in ${country}. Social media is ablaze with intense frustration and fiery debates over controversial recent events.`
+    };
+  } else if (hasAnyWord(['hype', 'excited', 'ready', 'prepare', 'starting', 'live', 'anticipation', 'upcoming'])) {
+    return {
+      mood: '🔥 Hype',
+      intensity: 0.85,
+      explanation: `The anticipation in ${country} is reaching a fever pitch! Fans and citizens are incredibly hyped up and counting down the seconds to the upcoming main event.`
     };
   }
   
   return {
     mood: '😐 Neutral',
     intensity: 0.5,
-    explanation: `Recent news and updates from ${country} indicate a stable and neutral social sentiment.`
+    explanation: `The national sentiment in ${country} is relatively balanced today. The public is steadily absorbing the latest news without extreme emotional swings.`
   };
 }

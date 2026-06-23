@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import FootballMatchCenter from './FootballMatchCenter';
+import { CountryFlag } from '@/components/UI/CountryFlag';
 
 interface EventPopupProps {
   event: WorldEvent | null;
@@ -26,14 +27,15 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // Simple helper to get a flag emoji for common demo countries
-function getFlag(country: string) {
+function getFlag(country: string): React.ReactNode {
   const flags: Record<string, string> = {
     'Japan': '🇯🇵', 'India': '🇮🇳', 'United Kingdom': '🇬🇧',
     'United States': '🇺🇸', 'Brazil': '🇧🇷', 'Mexico': '🇲🇽',
     'Spain': '🇪🇸', 'Australia': '🇦🇺', 'South Africa': '🇿🇦',
     'Singapore': '🇸🇬'
   };
-  return flags[country] || '🌍';
+  const emoji = flags[country] || '🌍';
+  return <CountryFlag flag={emoji} className="w-5 h-3.5 object-cover rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.2)]" />;
 }
 
 export default function EventPopup({ event, onClose }: EventPopupProps) {

@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import WorldCupSchedule from './WorldCupSchedule';
+import { CountryFlag } from '../UI/CountryFlag';
 
 interface LiveFeedProps {
   events: WorldEvent[];
@@ -330,7 +331,7 @@ export default function LiveFeed({
                     {/* Home Team */}
                     <div className="flex items-center justify-between pr-4">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base shrink-0">{getTeamFlag(fd.homeTeam)}</span>
+                        <CountryFlag flag={getTeamFlag(fd.homeTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                         <span className="text-sm font-semibold text-white/90 truncate group-hover:text-white transition-colors">
                           {fd.homeTeam}
                         </span>
@@ -350,7 +351,7 @@ export default function LiveFeed({
                     {/* Away Team */}
                     <div className="flex items-center justify-between pr-4">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base shrink-0">{getTeamFlag(fd.awayTeam)}</span>
+                        <CountryFlag flag={getTeamFlag(fd.awayTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                         <span className="text-sm font-semibold text-white/90 truncate group-hover:text-white transition-colors">
                           {fd.awayTeam}
                         </span>
@@ -395,7 +396,11 @@ export default function LiveFeed({
                         ) : (
                           <div className="h-7 w-12 rounded bg-slate-950 border border-white/10 flex flex-col items-center justify-center mt-1.5 shadow-md group/thumb overflow-hidden">
                             <span className="text-[5px] font-black text-white/45 scale-90 select-none">MATCH STORY</span>
-                            <span className="text-[6px] font-bold text-white/60 -mt-0.5 scale-90">{getTeamFlag(fd.homeTeam)} v {getTeamFlag(fd.awayTeam)}</span>
+                            <span className="text-[6px] font-bold text-white/60 -mt-0.5 scale-90 flex items-center justify-center gap-0.5">
+                              <CountryFlag flag={getTeamFlag(fd.homeTeam)} className="w-3 h-2 object-cover rounded-[1px] shadow-sm shrink-0" />
+                              <span>v</span>
+                              <CountryFlag flag={getTeamFlag(fd.awayTeam)} className="w-3 h-2 object-cover rounded-[1px] shadow-sm shrink-0" />
+                            </span>
                           </div>
                         )}
                       </div>

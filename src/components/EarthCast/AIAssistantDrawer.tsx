@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { TrendingCountry } from '@/hooks/useEmotionMap';
 
+import { renderTextWithFlags } from '../UI/CountryFlag';
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -145,7 +147,7 @@ export default function AIAssistantDrawer({
                       : 'bg-white/5 border border-white/5 text-white/90 rounded-tl-none'
                   }`}
                 >
-                  {msg.content}
+                  {renderTextWithFlags(msg.content)}
                 </div>
               </div>
             ))}

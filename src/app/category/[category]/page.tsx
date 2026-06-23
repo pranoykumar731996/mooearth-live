@@ -3,9 +3,9 @@ import HomePage from '../../page';
 import { EventCategory } from '@/types';
 
 interface CategoryPageProps {
-  params: {
+  params: Promise<{
     category: string;
-  };
+  }>;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -20,7 +20,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
-  const cat = params.category.toLowerCase();
+  const { category: rawCategory } = await params;
+  const cat = rawCategory.toLowerCase();
   const label = CATEGORY_LABELS[cat] || 'News Updates';
   const title = `${label} Live Stream & Global Events | MooEarth Live`;
   const description = `Follow the latest live ${label} updates, global trends, real-time sports results, and weather maps on MooEarth Live's 3D interactive emotional globe.`;
@@ -45,8 +46,9 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   };
 }
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  const cat = params.category.toLowerCase() as EventCategory;
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { category: rawCategory } = await params;
+  const cat = rawCategory.toLowerCase() as EventCategory;
   const label = CATEGORY_LABELS[cat] || 'News';
 
   const breadcrumbJsonLd = {

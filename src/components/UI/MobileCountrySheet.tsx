@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { WorldEvent, EventCategory, ReactionEvent, PlayEarthMode } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
-import SentimentBadge from '../Reactions/SentimentBadge';
 import TrendingHashtags from '../Reactions/TrendingHashtags';
 import ReactionFeed from '../Reactions/ReactionFeed';
 import PlayEarthOverlay from '../Globe/PlayEarthOverlay';
@@ -12,7 +11,9 @@ import ArticleViewer from '../Reactions/ArticleViewer';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { matchCountry } from '@/data/questions';
 import { isCountryWhitelisted } from '@/config/publishers';
+import { CountryFlag } from './CountryFlag';
 import dynamic from 'next/dynamic';
+import { getRealFifaRank, getRealWinRatio, getRealGoalsScored } from '@/data/fifaRankings';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -609,7 +610,7 @@ export default function MobileCountrySheet({
         {/* Title elements */}
         <div className="px-6 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-3xl leading-none">{countryMeta?.flag || '🏳️'}</span>
+            <CountryFlag flag={countryMeta?.flag} className="w-8 h-6 object-cover rounded-[3px] shadow-sm shrink-0" />
             <div>
               <h3 className="text-base font-black text-white leading-tight flex items-center gap-2">
                 <span>{country}</span>
@@ -814,10 +815,10 @@ export default function MobileCountrySheet({
                     {/* Render Full expanded elements only in State 3 */}
                     {sheetState === 'full' && (
                       <>
-                        <SentimentBadge sentiment={reactionData.sentiment} />
+                        {/* <SentimentBadge sentiment={reactionData.sentiment} /> */}
                         
                         {/* Emotional intensity progress bar */}
-                        <div className="space-y-1.5">
+                        {/* <div className="space-y-1.5">
                           <div className="flex justify-between items-center text-[10px] text-white/50 font-medium">
                             <span>EMOTIONAL INTENSITY</span>
                             <span className="text-white">{(reactionData.sentiment.intensity * 100).toFixed(0)}%</span>
@@ -828,7 +829,7 @@ export default function MobileCountrySheet({
                               style={{ width: `${reactionData.sentiment.intensity * 100}%` }}
                             />
                           </div>
-                        </div>
+                        </div> */}
 
                         <TrendingHashtags hashtags={reactionData.trendingHashtags} />
                       </>

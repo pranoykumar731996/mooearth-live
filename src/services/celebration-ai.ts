@@ -14,19 +14,23 @@ export async function analyzeCelebrationSentiment(
   const count = uploads.length;
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is missing');
+      throw new Error('API key is missing');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const isGroq = !!process.env.GROQ_API_KEY;
+    const endpoint = isGroq ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+    const model = isGroq ? 'llama3-8b-8192' : 'gpt-3.5-turbo';
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: model,
         messages: [
           {
             role: 'system',

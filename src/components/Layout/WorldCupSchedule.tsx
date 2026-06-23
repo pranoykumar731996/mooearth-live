@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
+import { CountryFlag } from '../UI/CountryFlag';
 import {
   computeMatchStatus,
   matchToWorldEvent,
@@ -226,9 +227,8 @@ export default function WorldCupSchedule({
     setSelectedId(match.id);
     const event = matchToWorldEvent(match, status);
     onSelectEvent(event);
-    if (onSelectCountry) onSelectCountry(match.venue.country);
     if (onPlaySound) onPlaySound();
-  }, [onSelectEvent, onSelectCountry, onPlaySound]);
+  }, [onSelectEvent, onPlaySound]);
 
   const groupedByDate = useMemo(() => {
     const toLocalKey = (d: Date) =>
@@ -314,7 +314,7 @@ export default function WorldCupSchedule({
                             }}
                             className="hover:text-cyan-400 transition-colors flex items-center gap-1.5"
                           >
-                            <span className="text-sm">{getFlag(t.team)}</span>
+                            <CountryFlag flag={getFlag(t.team)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                             <span className="truncate">{t.team}</span>
                           </Link>
                         </td>
@@ -381,7 +381,7 @@ export default function WorldCupSchedule({
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold text-white/95 truncate">{s.player}</p>
                       <p className="text-[8px] text-white/40 font-medium truncate flex items-center gap-1">
-                        <span>{getFlag(s.team)}</span>
+                        <CountryFlag flag={getFlag(s.team)} className="w-4 h-3 object-cover rounded-[1px] shadow-sm shrink-0" />
                         <span>{s.team}</span>
                       </p>
                     </div>
@@ -411,7 +411,7 @@ export default function WorldCupSchedule({
                 }}
                 className="flex items-center gap-2 p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-cyan-500/20 hover:bg-cyan-500/[0.02] transition-all group"
               >
-                <span className="text-lg group-hover:scale-110 transition-transform">{getFlag(team)}</span>
+                <CountryFlag flag={getFlag(team)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] font-bold text-white/70 group-hover:text-cyan-400 transition-colors truncate">{team}</span>
               </Link>
             ))}
@@ -882,8 +882,8 @@ function MatchCard({
             }}
             className="flex-1 flex items-center gap-2.5 min-w-0 hover:text-cyan-400 transition-colors"
           >
-            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-              {getFlag(match.homeTeam)}
+            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)] flex items-center justify-center">
+              <CountryFlag flag={getFlag(match.homeTeam)} className="w-6 h-4 object-cover rounded-[2px] shadow-sm shrink-0" />
             </span>
             <span className={`text-[11px] font-bold truncate ${
               isFT && status.homeScore > status.awayScore ? 'text-white' :
@@ -927,8 +927,8 @@ function MatchCard({
             }`}>
               {match.awayTeam}
             </span>
-            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]">
-              {getFlag(match.awayTeam)}
+            <span className="text-xl shrink-0 drop-shadow-[0_0_8px_rgba(255,255,255,0.15)] flex items-center justify-center">
+              <CountryFlag flag={getFlag(match.awayTeam)} className="w-6 h-4 object-cover rounded-[2px] shadow-sm shrink-0" />
             </span>
           </Link>
         </div>

@@ -25,6 +25,9 @@ import ArticleViewer from '@/components/Reactions/ArticleViewer';
 import MobileCountrySheet from '@/components/UI/MobileCountrySheet';
 import MobileGlobeViewsSheet from '@/components/UI/MobileGlobeViewsSheet';
 import MobileCategoriesSheet from '@/components/UI/MobileCategoriesSheet';
+import MatchDetailsPanel from '@/components/Layout/MatchDetailsPanel';
+import { CountryFlag } from '@/components/UI/CountryFlag';
+import MatchDetailsSheet from '@/components/UI/MatchDetailsSheet';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
@@ -122,7 +125,7 @@ export default function HomePage({
   const [isFullScreenGlobe, setIsFullScreenGlobe] = useState(false);
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [leftPanelTab, setLeftPanelTab] = useState<'emotional' | 'fixtures' | 'explore' | 'views'>(initialCountry ? 'explore' : 'emotional');
+  const [leftPanelTab, setLeftPanelTab] = useState<'fixtures' | 'explore' | 'views'>(initialCountry ? 'explore' : 'fixtures');
   const [globeView, setGlobeView] = useState<'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive || false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
@@ -951,19 +954,6 @@ export default function HomePage({
           <div className="flex border-b border-white/[0.06] bg-black/40 shrink-0">
             <button
               onClick={() => {
-                setLeftPanelTab('emotional');
-                playHoverBlip();
-              }}
-              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
-                leftPanelTab === 'emotional'
-                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
-                  : 'text-white/40 border-transparent hover:text-white/70'
-              }`}
-            >
-              🔥 EMOTIONAL
-            </button>
-            <button
-              onClick={() => {
                 setLeftPanelTab('fixtures');
                 playHoverBlip();
               }}
@@ -1004,38 +994,7 @@ export default function HomePage({
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            {leftPanelTab === 'emotional' ? (
-              <>
-                <div className="px-1 pb-1">
-                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Global Activity Score</h4>
-                </div>
-                {trendingCountries.map((tc) => (
-                  <motion.div
-                    key={tc.country}
-                    onClick={() => {
-                      handleSelectCountry(tc.country);
-                      playHoverBlip();
-                    }}
-                    whileHover={{ scale: 1.02 }}
-                    className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1.5 ${
-                      selectedCountry === tc.country ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg leading-none">{tc.flag}</span>
-                        <span className="font-bold text-white text-xs truncate max-w-[120px]">{tc.country}</span>
-                      </div>
-                      <span className="text-[10px] font-black text-cyan-400">{tc.score}%</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[9px] text-white/50">
-                      <span className="uppercase font-semibold tracking-wider">{tc.mood}</span>
-                      <span className="truncate max-w-[140px] text-white/30">{tc.activityText}</span>
-                    </div>
-                  </motion.div>
-                ))}
-              </>
-            ) : leftPanelTab === 'fixtures' ? (
+            {leftPanelTab === 'fixtures' ? (
               <>
                 <div className="px-1 pb-1">
                   <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h4>
@@ -1061,7 +1020,7 @@ export default function HomePage({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-sm shrink-0">{getTeamFlag(fd.homeTeam)}</span>
+                          <CountryFlag flag={getTeamFlag(fd.homeTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                           <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.homeTeam}</span>
                         </div>
                         {fd.status !== 'NS' && (
@@ -1070,7 +1029,7 @@ export default function HomePage({
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-sm shrink-0">{getTeamFlag(fd.awayTeam)}</span>
+                          <CountryFlag flag={getTeamFlag(fd.awayTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                           <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.awayTeam}</span>
                         </div>
                         {fd.status !== 'NS' && (
@@ -1155,7 +1114,7 @@ export default function HomePage({
                               }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-sm shrink-0">{meta?.flag || '🏳️'}</span>
+                                <CountryFlag flag={meta?.flag} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                                 <div className="min-w-0">
                                   <div className="text-[11px] font-bold text-white truncate">{c}</div>
                                   <div className="text-[9px] text-white/40 truncate">{meta?.capital} • {meta?.continent}</div>
@@ -1367,7 +1326,7 @@ export default function HomePage({
       </AnimatePresence>
 
       {/* EVENT DETAIL POPUP OVERLAY */}
-      {!isPlayEarthActive && (
+      {!isPlayEarthActive && selectedEvent && selectedEvent.category !== 'football' && (
         <EventPopup event={selectedEvent} onClose={() => handleSelectEvent(null)} />
       )}
 
@@ -1511,7 +1470,13 @@ export default function HomePage({
       {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
-            {selectedCountry && !isMobile ? (
+            {selectedEvent && selectedEvent.category === 'football' && !isMobile ? (
+              <MatchDetailsPanel 
+                key="match-details" 
+                matchEvent={selectedEvent} 
+                onClose={() => handleSelectEvent(null)} 
+              />
+            ) : selectedCountry && !isMobile ? (
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
@@ -1523,7 +1488,7 @@ export default function HomePage({
                 isFocusMode={isFocusMode}
               />
             ) : (
-              (!isMobile || !selectedCountry) && (
+              (!isMobile || (!selectedCountry && !(selectedEvent && selectedEvent.category === 'football'))) && (
                 <motion.div
                   key="live-feed"
                   initial={{ opacity: 0, x: 50 }}
@@ -1567,9 +1532,30 @@ export default function HomePage({
         </div>
       )}
 
+      {/* Event Details Popup */}
+      <AnimatePresence>
+        {selectedEvent && !selectedCountry && selectedEvent.category !== 'football' && (
+          <EventPopup
+            event={selectedEvent}
+            onClose={() => handleSelectEvent(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Match Details Bottom Sheet */}
+      <AnimatePresence>
+        {isMobile && selectedEvent && selectedEvent.category === 'football' && (
+          <MatchDetailsSheet 
+            key="mobile-match-details"
+            matchEvent={selectedEvent} 
+            onClose={() => handleSelectEvent(null)} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && selectedCountry && (
+        {isMobile && selectedCountry && !(selectedEvent && selectedEvent.category === 'football') && (
           <MobileCountrySheet
             country={selectedCountry}
             onClose={() => handleSelectCountry(null)}
@@ -1732,6 +1718,30 @@ export default function HomePage({
           </button>
         </div>
       </div>
+
+      {/* Mobile-Only Direct FIFA World Cup 2026 Shortcut Button */}
+      {isMobile && !isPlayEarthActive && (
+        <div className="fixed top-20 left-4 z-30 pointer-events-auto">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              handleCategoryChange('worldcup');
+              mobileSheet.setSnapState('expanded');
+              playHoverBlip();
+            }}
+            className={`px-3 py-2 rounded-2xl glass border flex items-center gap-2 shadow-[0_8px_20px_rgba(0,0,0,0.5)] transition-all duration-300 ${
+              activeCategory === 'worldcup'
+                ? 'border-cyan-500/50 bg-cyan-500/20 text-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.2)] font-black'
+                : 'border-white/10 bg-[#090915]/90 text-white/80 font-bold'
+            }`}
+          >
+            <span className="text-base select-none">🏆</span>
+            <span className="text-[10px] uppercase tracking-wider">FIFA World Cup 2026</span>
+          </motion.button>
+        </div>
+      )}
 
       {/* Mobile-Only Floating Action Button Stack (matches user screenshot design) */}
       {isMobile && (

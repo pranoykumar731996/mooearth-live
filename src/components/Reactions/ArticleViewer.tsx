@@ -11,6 +11,7 @@ import { BRANDING } from '@/config/branding';
 import { isCountryWhitelisted } from '@/config/publishers';
 import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
+import { CountryFlag } from '@/components/UI/CountryFlag';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -84,10 +85,7 @@ function formatRelativeTime(dateStr: string | undefined): string {
   return `${days}d ago`;
 }
 
-function getFlagEmoji(country: string): string {
-  if (typeof window !== 'undefined' && navigator.userAgent.toLowerCase().includes('windows')) {
-    return '🌍';
-  }
+function getFlagEmoji(country: string): React.ReactNode {
   const flags: Record<string, string> = {
     'Spain': '🇪🇸', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'United Kingdom': '🇬🇧',
     'Germany': '🇩🇪', 'France': '🇫🇷', 'Italy': '🇮🇹', 'Portugal': '🇵🇹',
@@ -98,7 +96,8 @@ function getFlagEmoji(country: string): string {
     'Cambodia': '🇰🇭', 'Bosnia and Herzegovina': '🇧🇦', 'Democratic Republic of the Congo': '🇨🇩',
     'Ivory Coast': '🇨🇮'
   };
-  return flags[country] || '🌍';
+  const emoji = flags[country] || '🌍';
+  return <CountryFlag flag={emoji} className="w-5 h-3.5 object-cover rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.2)]" />;
 }
 
 function parsePublisher(title: string, sourceUrl: string): { title: string; publisher: string } {

@@ -15,6 +15,7 @@ import { GoalCelebration } from '@/hooks/useGoalCelebration';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
+import { CountryFlag } from '@/components/UI/CountryFlag';
 
 
 // Dynamic import — react-globe.gl requires window/WebGL
@@ -1885,27 +1886,29 @@ export default function GlobeScene({
             const isWorldCupActive = activeCategory === 'worldcup';
             const hasLiveMatch = !!liveMatchCountriesMap[d.name];
             
-            // On Windows, d.flag is empty to avoid rendering question marks (??) on the canvas
-            const isWindows = typeof window !== 'undefined' && navigator.userAgent.toLowerCase().includes('windows');
-            const flagPrefix = isWindows ? '' : (d.flag ? `${d.flag} ` : '');
+            // 3D Canvas text rendering struggles with emojis universally, causing [?] boxes.
+            // Stripping all flags and emojis completely to ensure clean text rendering.
+            
+            // Fix: Three.js default font crashes on accents/diacritics (e.g. Côte d'Ivoire, Curaçao)
+            // with "Cannot read properties of undefined (reading 'yMax')". 
+            // We must normalize to pure ASCII.
+            const asciiName = d.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, "");
 
+            let text = asciiName;
             if (isPlayEarthActive) {
-              const questionsAvailable = (d.name.length * 13) % 150 + 50;
-              return `${flagPrefix}${d.name} 🎮 (${questionsAvailable} Qs)`;
-            }
-            
-            if (isWorldCupActive && d.isWorldCupTeam) {
+              const questionsAvailable = (asciiName.length * 13) % 150 + 50;
+              text = `${asciiName} (${questionsAvailable} Qs)`;
+            } else if (isWorldCupActive && d.isWorldCupTeam) {
               if (hasLiveMatch) {
-                return `⚽🔥 ${flagPrefix}${d.name} LIVE`;
+                text = `${asciiName} LIVE`;
+              } else {
+                text = `${asciiName}`;
               }
-              return `⚽ ${flagPrefix}${d.name}`;
+            } else if (hasLiveMatch) {
+              text = `${asciiName} LIVE`;
             }
             
-            if (hasLiveMatch) {
-              return `⚽🔥 ${flagPrefix}${d.name} LIVE`;
-            }
-            
-            return `${flagPrefix}${d.name}`;
+            return text;
           }}
           labelColor={(d: any) => {
             if (selectedCountry) {
@@ -1967,7 +1970,7 @@ export default function GlobeScene({
             {/* Header with Title and Close Button */}
             <div className="flex items-center justify-between border-b border-white/5 pb-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-2xl leading-none">{countryStats.flag}</span>
+                <CountryFlag flag={countryStats.flag} className="w-6 h-4 object-cover rounded-[2px] shadow-sm shrink-0" />
                 <div className="min-w-0">
                   <h4 className="font-extrabold text-white text-sm truncate">{countryStats.name}</h4>
                   <p className="text-[9px] text-white/45 uppercase tracking-wider">Capital: {countryStats.capital}</p>

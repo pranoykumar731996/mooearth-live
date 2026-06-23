@@ -21,6 +21,7 @@ import {
   DEDUPLICATED_STATIC_QUESTIONS
 } from '@/data/questions';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
+import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
 import { trackEvent } from '@/services/analytics';
 import { shareContent } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
@@ -1340,7 +1341,7 @@ export default function PlayEarthOverlay({
                   : 'border-white/5'
               }`}>
                 <h4 className="text-xs font-bold text-white leading-relaxed mb-3 whitespace-pre-wrap">
-                  {currentQuestion.question}
+                  {renderTextWithFlags(currentQuestion.question)}
                 </h4>
 
                 <div className="space-y-1.5">
@@ -1366,7 +1367,7 @@ export default function PlayEarthOverlay({
                         <span className="w-5 h-5 rounded bg-white/10 flex items-center justify-center text-[9px] font-black">
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="truncate">{choice}</span>
+                        <span className="truncate">{renderTextWithFlags(choice)}</span>
                       </button>
                     );
                   })}
@@ -1408,13 +1409,13 @@ export default function PlayEarthOverlay({
                 {!isCorrect && (
                   <div className="mb-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
                     <span className="text-[8px] text-emerald-400/60 uppercase font-black">Correct Choice</span>
-                    <p className="text-xs text-emerald-300 font-bold leading-tight">{currentQuestion.choices[currentQuestion.correctIndex]}</p>
+                    <p className="text-xs text-emerald-300 font-bold leading-tight">{renderTextWithFlags(currentQuestion.choices[currentQuestion.correctIndex])}</p>
                   </div>
                 )}
 
                 {currentQuestion.funFact && (
                   <p className="text-[10px] text-white/60 bg-white/5 border border-white/5 rounded-xl p-3 leading-relaxed mb-4">
-                    💡 {currentQuestion.funFact}
+                    💡 {renderTextWithFlags(currentQuestion.funFact)}
                   </p>
                 )}
 
@@ -1747,7 +1748,7 @@ export default function PlayEarthOverlay({
             <div className="glass rounded-3xl border border-white/10 p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)]">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{countryMeta?.flag || '🌍'}</span>
+                  <CountryFlag flag={countryMeta?.flag} className="w-8 h-6 object-cover rounded-[3px] shadow-sm shrink-0" />
                   <div>
                     <h3 className="text-lg font-black text-white">{selectedCountry} Explorer</h3>
                     <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Select Quiz Topic</p>
@@ -2072,7 +2073,7 @@ export default function PlayEarthOverlay({
 
               {/* Question Text */}
               <h3 className="text-base sm:text-lg font-bold text-white mb-5 leading-snug whitespace-pre-wrap">
-                {currentQuestion.question}
+                {renderTextWithFlags(currentQuestion.question)}
               </h3>
 
               {/* Answer Choices */}
@@ -2103,7 +2104,7 @@ export default function PlayEarthOverlay({
                       <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black bg-white/10">
                         {String.fromCharCode(65 + i)}
                       </span>
-                      <span className="text-sm font-medium">{choice}</span>
+                      <span className="text-sm font-medium">{renderTextWithFlags(choice)}</span>
                     </button>
                   );
                 })}
@@ -2165,7 +2166,7 @@ export default function PlayEarthOverlay({
                     Correct Answer
                   </p>
                   <p className="text-sm text-emerald-300 font-bold">
-                    {currentQuestion.choices[currentQuestion.correctIndex]}
+                    {renderTextWithFlags(currentQuestion.choices[currentQuestion.correctIndex])}
                   </p>
                 </div>
               )}
@@ -2175,7 +2176,7 @@ export default function PlayEarthOverlay({
                   <p className="text-[10px] text-cyan-400/60 uppercase tracking-widest font-bold mb-1">
                     💡 Fun Fact
                   </p>
-                  <p className="text-xs text-white/70 leading-relaxed">{currentQuestion.funFact}</p>
+                  <p className="text-xs text-white/70 leading-relaxed">{renderTextWithFlags(currentQuestion.funFact)}</p>
                 </div>
               )}
 

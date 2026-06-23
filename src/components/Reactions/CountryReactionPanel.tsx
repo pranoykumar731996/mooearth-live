@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReactionEvent, EventCategory, WorldEvent } from '@/types';
 import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
-import SentimentBadge from './SentimentBadge';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
 import { shareContent } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
 import { isCountryWhitelisted } from '@/config/publishers';
 import dynamic from 'next/dynamic';
+import { getRealFifaRank, getRealWinRatio, getRealGoalsScored } from '@/data/fifaRankings';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -57,9 +57,9 @@ function getDeterministicMetrics(country: string, category: string | null) {
     return { boxOffice, streamingSubscribers, trendingShow };
   }
   if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
-    const fifaRank = getVal(1, 80, 1);
-    const winRatio = getVal(45, 82, 2);
-    const goalsScored = getVal(5, 32, 3);
+    const fifaRank = getRealFifaRank(country);
+    const winRatio = getRealWinRatio(fifaRank);
+    const goalsScored = getRealGoalsScored(fifaRank);
     return { fifaRank, winRatio, goalsScored };
   }
   // breaking / home / news
@@ -439,11 +439,11 @@ export default function CountryReactionPanel({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
-            <p className="text-xs text-cyan-400/60 uppercase tracking-widest font-bold animate-pulse">Syncing Global Mood...</p>
+            <p className="text-xs text-cyan-400/60 uppercase tracking-widest font-bold animate-pulse">Syncing Reactions...</p>
           </div>
         ) : reactionData ? (
           <div className="p-6 space-y-6">
-            <SentimentBadge sentiment={reactionData.sentiment} />
+            {/* <SentimentBadge sentiment={reactionData.sentiment} /> */}
             
             {/* Unified Category Metrics Widget */}
             <CategoryMetricsWidget country={country} category={activeCategory} />
@@ -538,7 +538,7 @@ export default function CountryReactionPanel({
               </div>
             )}
 
-            {/* V2 Emotional Intensity Meter (Only for non-specific or news/breaking categories) */}
+            {/* V2 Emotional Intensity Meter (Only for non-specific or news/breaking categories)
             {(!activeCategory || activeCategory === 'breaking') && (
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs text-white/50 font-medium">
@@ -555,6 +555,7 @@ export default function CountryReactionPanel({
                 </div>
               </div>
             )}
+            */}
 
             <div className="space-y-1">
               <motion.p 
