@@ -343,12 +343,19 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           </svg>
         </button>
 
-        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
-          {isRegistering ? 'Create Profile' : 'Sign In to MooEarth'}
-        </h2>
-        <p className="text-xs text-white/40 mb-6">
-          Join the live emotional fan celebration network.
-        </p>
+        <div className="flex flex-col items-center mb-5 mt-2">
+          <img 
+            src="/logo.png" 
+            alt="MooEarth Live Logo" 
+            className="w-28 h-28 object-contain mb-3"
+          />
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            {isRegistering ? 'Create Profile' : 'Sign In to MooEarth'}
+          </h2>
+          <p className="text-[11px] text-white/40 text-center mt-1.5">
+            Join the live emotional fan celebration network.
+          </p>
+        </div>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2.5 rounded-xl text-xs mb-4">

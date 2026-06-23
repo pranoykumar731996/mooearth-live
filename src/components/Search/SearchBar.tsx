@@ -209,6 +209,43 @@ export default function SearchBar({ events, activeCategory, onSearch, onSelectEv
                   ))}
                 </div>
               </>
+            ) : activeCategory === 'worldcup' ? (
+              <>
+                <div className="p-2 border-b border-white/5 bg-black/40">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest px-2">🔥 Popular Teams</span>
+                </div>
+                <div className="p-2 space-y-1">
+                  {[
+                    { name: 'Mexico', emoji: '🇲🇽', desc: 'Group A • Host Nation' },
+                    { name: 'Argentina', emoji: '🇦🇷', desc: 'Group I • Defending Champions' },
+                    { name: 'USA', emoji: '🇺🇸', desc: 'Group D • Host Nation' },
+                    { name: 'Canada', emoji: '🇨🇦', desc: 'Group B • Host Nation' },
+                    { name: 'Brazil', emoji: '🇧🇷', desc: 'Group C • 5-Time Champions' },
+                    { name: 'Morocco', emoji: '🇲🇦', desc: 'Group C • 2022 Semi-finalists' }
+                  ].map((team) => (
+                    <button
+                      key={team.name}
+                      onClick={() => {
+                        setQuery(team.name);
+                        trackEvent('search', 'suggested_team_click', team.name);
+                      }}
+                      className="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
+                        <span className="text-base">{team.emoji}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                          {team.name}
+                        </p>
+                        <p className="text-[10px] font-medium text-white/40 mt-0.5">
+                          {team.desc}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <div className="p-2 border-b border-white/5 bg-black/40">

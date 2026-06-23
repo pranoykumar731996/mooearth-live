@@ -465,22 +465,21 @@ export async function fetchMatchStatistics(fixtureId: number, refresh = false): 
 
       result.home = parseStatsForTeam(statsResponse[0]) as any;
       result.away = parseStatsForTeam(statsResponse[1]) as any;
+
+      cacheStatistics[fixtureId] = {
+        data: result,
+        time: now
+      };
+      return result;
     }
 
-    cacheStatistics[fixtureId] = {
-      data: result,
-      time: now
-    };
-    return result;
+    return null;
   } catch (error) {
     if (cacheStatistics[fixtureId]) {
       logError(`Statistics fetch failed for ${fixtureId}. Returning cached statistics.`);
       return cacheStatistics[fixtureId].data;
     }
-    return {
-      home: { possession: '50%', shots: 0, corners: 0 },
-      away: { possession: '50%', shots: 0, corners: 0 }
-    };
+    return null;
   }
 }
 

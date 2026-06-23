@@ -548,7 +548,7 @@ export default function HomePage({
   const handleSelectCountry = useCallback((country: string | null) => {
     setSelectedCountry(country);
     setSelectedEvent(null);
-    if (!country) {
+    if (!country || activeCategory === 'worldcup') {
       setIsDashboardOpen(false);
       setActiveReaction(null);
     } else {
@@ -559,13 +559,20 @@ export default function HomePage({
 
   const handleGlobeSelectCountry = useCallback((country: string | null) => {
     if (country === selectedCountry && country !== null) {
-      setIsDashboardOpen(true);
+      if (activeCategory !== 'worldcup') {
+        setIsDashboardOpen(true);
+      }
       playDeepPulse();
     } else {
       setSelectedCountry(country);
       setSelectedEvent(null);
       if (country) {
-        setIsDashboardOpen(!isMobile);
+        if (activeCategory !== 'worldcup') {
+          setIsDashboardOpen(!isMobile);
+        } else {
+          setIsDashboardOpen(false);
+          setActiveReaction(null);
+        }
         trackEvent('country', 'click', country, 1, { category: activeCategory || 'home', trigger: 'globe_tap' });
       } else {
         setIsDashboardOpen(false);
@@ -722,7 +729,10 @@ export default function HomePage({
     setSelectedEvent(null);
     setActiveArticle(null);
     setSearchQuery('');
-    // Keep selectedCountry active to persist selection
+    if (category === 'worldcup') {
+      setIsDashboardOpen(false);
+      setActiveReaction(null);
+    }
   }, []);
 
   // Mobile-specific: change category WITHOUT closing the country sheet
@@ -731,7 +741,10 @@ export default function HomePage({
     setSelectedEvent(null);
     setActiveArticle(null);
     setSearchQuery('');
-    // Do NOT set selectedCountry to null — keep the country sheet open
+    if (category === 'worldcup') {
+      setIsDashboardOpen(false);
+      setActiveReaction(null);
+    }
   }, []);
 
   const handleEventNavigate = useCallback((event: WorldEvent) => {
@@ -773,16 +786,24 @@ export default function HomePage({
             transition={{ duration: 1, ease: 'easeInOut' }}
             className="fixed inset-0 z-[100] bg-[#030308] flex items-center justify-center flex-col"
           >
-            <div className="w-24 h-24 rounded-full border border-cyan-500/20 border-t-cyan-400 animate-[spin_3s_linear_infinite]" />
-            <div className="w-16 h-16 absolute rounded-full border border-purple-500/20 border-b-purple-400 animate-[spin_2s_linear_infinite_reverse]" />
-            <div className="absolute font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 text-xl tracking-tighter">
-              ME
-            </div>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="flex flex-col items-center"
+            >
+              <img 
+                src="/logo.png" 
+                alt="MooEarth Live Logo" 
+                className="w-48 h-48 sm:w-56 sm:h-56 object-contain"
+              />
+              <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mt-6" />
+            </motion.div>
             <motion.p 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="mt-8 text-sm text-cyan-400/60 uppercase tracking-[0.2em] font-medium"
+              className="mt-4 text-[10px] text-cyan-400/60 uppercase tracking-[0.2em] font-bold"
             >
               Connecting to the world...
             </motion.p>
@@ -1009,7 +1030,11 @@ export default function HomePage({
                     <motion.div
                       key={event.id}
                       onClick={() => {
-                        handleSelectCountry(event.country);
+                        if (activeCategory !== 'worldcup') {
+                          handleSelectCountry(event.country);
+                        } else {
+                          setSelectedCountry(event.country);
+                        }
                         setSelectedEvent(event);
                         playHoverBlip();
                       }}
@@ -2069,6 +2094,21 @@ export default function HomePage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* World Cup Diagnostics HUD */}
+      {activeCategory === 'worldcup' && (
+        <div className="fixed bottom-24 left-6 z-[60] p-4 rounded-2xl glass border border-white/10 text-[10px] font-mono text-cyan-400 space-y-1.5 shadow-lg max-w-[240px] pointer-events-auto select-none">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-white/50 mb-1 flex items-center justify-between">
+            <span>⚙️ WC DEBUG PANEL</span>
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          </div>
+          <div><span className="text-white/40">Category:</span> {activeCategory}</div>
+          <div><span className="text-white/40">Match:</span> {selectedEvent ? selectedEvent.title : 'None'}</div>
+          <div><span className="text-white/40">Data Source:</span> Football API-Sports (Live)</div>
+          <div><span className="text-white/40">Competition:</span> FIFA World Cup 2026</div>
+          <div><span className="text-white/40">Auto Nav Triggered:</span> {selectedEvent && selectedCountry && isDashboardOpen ? 'true (ERR)' : 'false'}</div>
+        </div>
+      )}
     </main>
   );
 }

@@ -70,6 +70,7 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
 
   // Calculate countryResult dynamically
   const countryResult = useMemo(() => {
+    if (activeCategory === 'worldcup') return null;
     const q = debouncedQuery.trim().toLowerCase();
     if (!q) return null;
 
@@ -87,7 +88,7 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
       }
     }
     return null;
-  }, [events, serverResults, debouncedQuery]);
+  }, [events, serverResults, debouncedQuery, activeCategory]);
 
   // Calculate results dynamically (combining local filtered items and server-fetched results)
   const results = useMemo(() => {
