@@ -251,6 +251,26 @@ export default function Navbar({
               ⚙️
             </button>
           )}
+
+          {currentUser ? (
+            <button
+              onClick={onProfileClick}
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-500/25
+                         border border-cyan-400/30 flex items-center justify-center
+                         text-base cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.2)]
+                         hover:border-cyan-400/60 active:scale-95 transition-all duration-300 pointer-events-auto"
+              title={`Profile: @${currentUser.username}`}
+            >
+              {currentUser.avatar}
+            </button>
+          ) : (
+            <button
+              onClick={onAuthClick}
+              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-[9px] tracking-wider shadow-[0_0_10px_rgba(0,229,255,0.15)] active:scale-95 transition-all duration-300 pointer-events-auto"
+            >
+              SIGN IN
+            </button>
+          )}
         </div>
 
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">

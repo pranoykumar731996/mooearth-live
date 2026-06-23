@@ -24,6 +24,7 @@ import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
 import ArticleViewer from '@/components/Reactions/ArticleViewer';
 import MobileCountrySheet from '@/components/UI/MobileCountrySheet';
 import MobileGlobeViewsSheet from '@/components/UI/MobileGlobeViewsSheet';
+import MobileCategoriesSheet from '@/components/UI/MobileCategoriesSheet';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
 import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
@@ -45,6 +46,7 @@ import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/service
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { SIDEBAR_ITEMS } from '@/lib/constants';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -130,6 +132,7 @@ export default function HomePage({
 
   // Mobile Layers Selector & Toast Notifications
   const [isMobileViewsOpen, setIsMobileViewsOpen] = useState(false);
+  const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1551,6 +1554,11 @@ export default function HomePage({
                     mobileSheetRef={mobileSheet.sheetRef}
                     onSheetPointerDown={mobileSheet.onPointerDown}
                     selectedCountry={selectedCountry}
+                    onCategoryChange={handleCategoryChange}
+                    onCloseSheet={() => {
+                      mobileSheet.setSnapState('collapsed');
+                      playHoverBlip();
+                    }}
                   />
                 </motion.div>
               )
@@ -1580,6 +1588,14 @@ export default function HomePage({
             onLevelUp={playLevelUp}
             onReactionLoaded={setActiveReaction}
             isFocusMode={isFocusMode}
+            onUploadClick={() => {
+              playHoverBlip();
+              if (!currentUser) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsUploadModalOpen(true);
+              }
+            }}
           />
         )}
       </AnimatePresence>
@@ -1793,6 +1809,22 @@ export default function HomePage({
             )}
           </button>
 
+          {/* Mobile Upload Reaction Trigger (📣) */}
+          <button
+            onClick={() => {
+              playHoverBlip();
+              if (!currentUser) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsUploadModalOpen(true);
+              }
+            }}
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 text-white shadow-[0_0_15px_rgba(230,64,251,0.35)] hover:scale-105 transition-all duration-300 pointer-events-auto cursor-pointer"
+            title="Upload Reaction"
+          >
+            <span className="text-[17px]">📣</span>
+          </button>
+
           {/* Chatbot/Robot (AI Assistant) Toggle */}
           <button
             onClick={() => {
@@ -1813,6 +1845,22 @@ export default function HomePage({
             </svg>
           </button>
 
+          {/* Mobile Categories Selector Toggle */}
+          <button
+            onClick={() => {
+              setIsMobileCategoriesOpen(!isMobileCategoriesOpen);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+              isMobileCategoriesOpen
+                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title="Event Categories"
+          >
+            <span className="text-xl">🗂️</span>
+          </button>
+
           {/* Globe Views / Layers Selector Toggle */}
           <button
             onClick={() => {
@@ -1822,7 +1870,7 @@ export default function HomePage({
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isMobileViewsOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
-                : 'bg-black/60 border border-white/10 text-white/70 hover:text-white'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
             }`}
             title="Globe Layers"
           >
@@ -1957,6 +2005,39 @@ export default function HomePage({
             showToast(`${viewNames[view] || 'Globe View'} Activated`);
           }}
           playHoverBlip={playHoverBlip}
+        />
+      )}
+
+      {/* MOBILE CATEGORIES SELECTOR SHEET */}
+      {isMobile && (
+        <MobileCategoriesSheet
+          isOpen={isMobileCategoriesOpen}
+          onClose={() => setIsMobileCategoriesOpen(false)}
+          currentCategory={activeCategory}
+          onSelectCategory={(category) => {
+            handleCategoryChange(category);
+            setIsMobileCategoriesOpen(false);
+            
+            const categoryNames: Record<string, string> = {
+              breaking: 'Breaking News',
+              football: 'Live Football',
+              worldcup: 'FIFA World Cup',
+              technology: 'Technology',
+              weather: 'Weather Radar',
+              business: 'Business',
+              entertainment: 'Entertainment',
+            };
+            showToast(category === null ? 'Home Feed Activated' : `${categoryNames[category] || 'Category'} Activated`);
+          }}
+          playHoverBlip={playHoverBlip}
+          globalEnergyScore={globalEnergyScore}
+          onSettingsClick={() => {
+            if (currentUser) {
+              setIsProfileModalOpen(true);
+            } else {
+              setIsAuthModalOpen(true);
+            }
+          }}
         />
       )}
 

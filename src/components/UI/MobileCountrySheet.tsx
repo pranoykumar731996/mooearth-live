@@ -246,6 +246,7 @@ interface MobileCountrySheetProps {
   onLevelUp: () => void;
   onReactionLoaded?: (reaction: ReactionEvent | null) => void;
   isFocusMode?: boolean;
+  onUploadClick?: () => void;
 }
 
 type SheetHeightState = 'collapsed' | 'half' | 'full';
@@ -268,6 +269,7 @@ export default function MobileCountrySheet({
   onLevelUp,
   onReactionLoaded,
   isFocusMode = false,
+  onUploadClick,
 }: MobileCountrySheetProps) {
   const [sheetState, setSheetState] = useState<SheetHeightState>('half');
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
@@ -318,12 +320,12 @@ export default function MobileCountrySheet({
     };
   }, [country, activeCategory, isPlayEarthActive, onReactionLoaded]);
 
-  // Adjust sheetState if article opens
+  // Adjust sheetState if article opens or game starts
   useEffect(() => {
-    if (activeArticle) {
+    if (activeArticle || isPlayEarthActive) {
       setSheetState('full');
     }
-  }, [activeArticle]);
+  }, [activeArticle, isPlayEarthActive]);
 
   // Map sheetState to translateY value
   // Using fixed percentage heights: collapsed=20vh, half=50vh, full=80vh
@@ -617,16 +619,27 @@ export default function MobileCountrySheet({
               </p>
             </div>
           </div>
-          <button
-            onClick={() => {
-              onPlaySound();
-              onClose();
-            }}
-            className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/55 hover:bg-white/10 cursor-pointer"
-            title="Close bottom sheet"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            {onUploadClick && (
+              <button
+                onClick={onUploadClick}
+                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 text-white font-bold text-[9px] tracking-wider active:scale-95 transition-all cursor-pointer shadow-[0_0_10px_rgba(230,64,251,0.2)]"
+                title="Upload Reaction"
+              >
+                📣 REACT
+              </button>
+            )}
+            <button
+              onClick={() => {
+                onPlaySound();
+                onClose();
+              }}
+              className="w-7 h-7 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/55 hover:bg-white/10 cursor-pointer"
+              title="Close bottom sheet"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       </div>
 
