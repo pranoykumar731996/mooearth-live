@@ -23,7 +23,22 @@ export default function MatchDetailsSheet({ matchEvent, onClose }: MatchDetailsS
     let active = true;
     setLoading(true);
 
-    const numericId = matchEvent.id.replace(/[^\d]/g, '');
+    // Extract digits specifically to avoid grabbing the '26' prefix from 'wc26-xxxx' or index suffix
+    let cleanIdStr = matchEvent.id;
+    const wcMatch = matchEvent.id.match(/wc26-(\d+)/);
+    const fbMatch = matchEvent.id.match(/football-(\d+)/);
+    if (wcMatch) {
+      cleanIdStr = wcMatch[1];
+    } else if (fbMatch) {
+      cleanIdStr = fbMatch[1];
+    } else {
+      const match = matchEvent.id.match(/(\d+)/g);
+      if (match) {
+        cleanIdStr = match[match.length - 1];
+      }
+    }
+
+    const numericId = parseInt(cleanIdStr, 10);
 
     fetch(`/api/worldcup/statistics?fixtureId=${numericId}`)
       .then(res => {

@@ -13,8 +13,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing fixtureId parameter' }, { status: 400 });
     }
 
-    // Strip prefix if the client passes it (e.g. 'wc26-12345' -> 12345)
-    const numericId = parseInt(fixtureIdStr.replace(/[^\d]/g, ''), 10);
+    // Extract digits specifically to avoid grabbing the '26' prefix from 'wc26-xxxx' or index suffix
+    let cleanIdStr = fixtureIdStr;
+    const wcMatch = fixtureIdStr.match(/wc26-(\d+)/);
+    const fbMatch = fixtureIdStr.match(/football-(\d+)/);
+    if (wcMatch) {
+      cleanIdStr = wcMatch[1];
+    } else if (fbMatch) {
+      cleanIdStr = fbMatch[1];
+    } else {
+      const match = fixtureIdStr.match(/(\d+)/g);
+      if (match) {
+        cleanIdStr = match[match.length - 1];
+      }
+    }
+
+    const numericId = parseInt(cleanIdStr, 10);
     if (isNaN(numericId)) {
       return NextResponse.json({ error: 'Invalid fixtureId format' }, { status: 400 });
     }
