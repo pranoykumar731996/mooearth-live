@@ -840,7 +840,11 @@ export default function PlayEarthOverlay({
         startQuestion('mixed');
       }
     } else {
-      setPhase('category-select');
+      if (!isCorrect) {
+        setPhase('category-select');
+      } else {
+        startQuestion(selectedCategory);
+      }
     }
   }, [onPlaySound, selectedCategory, mixedWrongCount, startQuestion, activeMode, isCorrect, startSurvivalQuestion, difficulty, gameState, dailyIndex]);
 
