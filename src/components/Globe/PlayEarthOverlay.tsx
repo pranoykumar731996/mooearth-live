@@ -544,10 +544,13 @@ export default function PlayEarthOverlay({
       if (correct) {
         setSurvivalCount(c => c + 1);
         onCorrectSound();
+        setTimeout(() => {
+          startSurvivalQuestion();
+        }, 1000);
       } else {
         onWrongSound();
+        setTimeout(() => setPhase('result'), 800);
       }
-      setTimeout(() => setPhase('result'), 800);
       return;
     }
 
@@ -596,10 +599,23 @@ export default function PlayEarthOverlay({
 
       if (correct) {
         onCorrectSound();
+        setTimeout(() => {
+          setIsLoadingQuestion(true);
+          const nextQuestion = activeMode === 'flag'
+            ? generateFlagQuestion(difficulty, [...(gameState.answeredQuestionIds || []), currentQuestion.id])
+            : generateCapitalQuestion(difficulty, [...(gameState.answeredQuestionIds || []), currentQuestion.id]);
+          setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
+          setCurrentQuestion(nextQuestion);
+          setSelectedAnswer(null);
+          setIsCorrect(null);
+          setTimer(15);
+          setIsLoadingQuestion(false);
+          setPhase('question');
+        }, 1000);
       } else {
         onWrongSound();
+        setTimeout(() => setPhase('result'), 800);
       }
-      setTimeout(() => setPhase('result'), 800);
       return;
     }
 
@@ -632,10 +648,36 @@ export default function PlayEarthOverlay({
       if (correct) {
         setDailyScore(s => s + 1);
         onCorrectSound();
+        setTimeout(() => {
+          const nextIdx = dailyIndex + 1;
+          if (nextIdx >= 5) {
+            setGameState(prev => {
+              const next = { ...prev };
+              next.xp += 500;
+              next.dailyChallengeStreak = (next.dailyChallengeStreak || 0) + 1;
+              next.lastDailyChallengeDate = new Date().toLocaleDateString('en-CA');
+              
+              const newLevel = calculateLevel(next.xp);
+              if (newLevel > next.level) {
+                next.level = newLevel;
+                setLeveledUp(true);
+                setTimeout(() => onLevelUp(), 300);
+              }
+              
+              saveGameState(next);
+              syncProgressToFirestore(next);
+              return next;
+            });
+            setPhase('summary');
+          } else {
+            setDailyIndex(nextIdx);
+            loadDailyQuestionIndex(nextIdx);
+          }
+        }, 1000);
       } else {
         onWrongSound();
+        setTimeout(() => setPhase('result'), 800);
       }
-      setTimeout(() => setPhase('result'), 800);
       return;
     }
 
@@ -672,10 +714,27 @@ export default function PlayEarthOverlay({
       if (correct) {
         setClockScore(s => s + 1);
         onCorrectSound();
+        setTimeout(() => {
+          const nextIdx = dailyIndex + 1;
+          if (nextIdx >= 5) {
+            setPhase('summary');
+          } else {
+            setDailyIndex(nextIdx);
+            setIsLoadingQuestion(true);
+            const q = getWorldCupQuestion([...(gameState.answeredQuestionIds || []), currentQuestion.id]);
+            setQuestionSource('Local World Cup Database');
+            setCurrentQuestion(q);
+            setSelectedAnswer(null);
+            setIsCorrect(null);
+            setTimer(15);
+            setIsLoadingQuestion(false);
+            setPhase('question');
+          }
+        }, 1000);
       } else {
         onWrongSound();
+        setTimeout(() => setPhase('result'), 800);
       }
-      setTimeout(() => setPhase('result'), 800);
       return;
     }
 
@@ -733,9 +792,15 @@ export default function PlayEarthOverlay({
       return next;
     });
 
-    setTimeout(() => {
-      setPhase('result');
-    }, 800);
+    if (correct) {
+      setTimeout(() => {
+        startQuestion(selectedCategory);
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        setPhase('result');
+      }, 800);
+    }
   }, [currentQuestion, selectedAnswer, timer, selectedCountry, selectedCategory, onCorrectSound, onWrongSound, onLevelUp, activeMode, survivalCount, clockScore, difficulty, dailyIndex]);
 
   useEffect(() => {
