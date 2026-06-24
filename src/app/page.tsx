@@ -1483,7 +1483,7 @@ export default function HomePage({
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        matches={liveEvents.filter(e => e.category === 'football')}
+        matches={liveEvents.filter(e => e.category === 'football' || e.category === 'worldcup')}
         currentUser={currentUser}
         onUploadSuccess={handleUploadSuccess}
       />

@@ -291,19 +291,85 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const [prevMatches, setPrevMatches] = useState(matches);
-  if (matches !== prevMatches) {
-    setPrevMatches(matches);
-    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
-    if (activeMatches.length > 0) {
-      const exists = activeMatches.some(m => m.title === selectedMatch);
+  const [worldCupMatches, setWorldCupMatches] = useState<any[]>([]);
+
+  // Fetch real World Cup matches list on open
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/worldcup/matches')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setWorldCupMatches(data);
+          }
+        })
+        .catch((err) => console.error('Failed to fetch world cup matches in modal:', err));
+    }
+  }, [isOpen]);
+
+  const getDisplayMatches = () => {
+    const combined: any[] = [];
+    const seen = new Set<string>();
+
+    // Add props matches first
+    if (matches && matches.length > 0) {
+      matches.forEach((m) => {
+        if (m.title && !seen.has(m.title)) {
+          seen.add(m.title);
+          combined.push({
+            id: m.id,
+            title: m.title
+          });
+        }
+      });
+    }
+
+    // Add fetched world cup matches formatted with date
+    if (worldCupMatches.length > 0) {
+      worldCupMatches.forEach((m) => {
+        const dateStr = new Date(m.kickoff).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        const title = `${m.homeTeam} vs ${m.awayTeam} (World Cup — ${dateStr})`;
+        if (!seen.has(title)) {
+          seen.add(title);
+          combined.push({
+            id: m.id,
+            title: title
+          });
+        }
+      });
+    }
+
+    // If still empty, use formatted fallbacks
+    if (combined.length === 0) {
+      return FALLBACK_WORLD_CUP_MATCHES;
+    }
+
+    return combined;
+  };
+
+  const displayMatches = getDisplayMatches();
+
+  useEffect(() => {
+    if (displayMatches.length > 0 && !selectedMatch) {
+      setSelectedMatch(displayMatches[0].title);
+    }
+  }, [worldCupMatches, matches, selectedMatch]);
+
+  const [prevMatches, setPrevMatches] = useState<any[]>([]);
+  if (JSON.stringify(displayMatches) !== JSON.stringify(prevMatches)) {
+    setPrevMatches(displayMatches);
+    if (displayMatches.length > 0) {
+      const exists = displayMatches.some((m) => m.title === selectedMatch);
       if (!selectedMatch || !exists) {
-        setSelectedMatch(activeMatches[0].title);
+        setSelectedMatch(displayMatches[0].title);
       }
     }
   }
-
-  const displayMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
 
   if (!isOpen) return null;
 
