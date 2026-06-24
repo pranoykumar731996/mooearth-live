@@ -65,6 +65,11 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
     return activeMatches.length > 0 ? activeMatches[0].title : '';
   });
+  const [matchSearch, setMatchSearch] = useState(() => {
+    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
+    return activeMatches.length > 0 ? activeMatches[0].title : '';
+  });
+  const [isMatchDropdownOpen, setIsMatchDropdownOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -150,6 +155,8 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
         if (prev) URL.revokeObjectURL(prev);
         return null;
       });
+      setMatchSearch('');
+      setIsMatchDropdownOpen(false);
     }
     return () => {
       stopAllStreams();
@@ -293,20 +300,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
 
   const [worldCupMatches, setWorldCupMatches] = useState<any[]>([]);
 
-  // Fetch real World Cup matches list on open
-  useEffect(() => {
-    if (isOpen) {
-      fetch('/api/worldcup/matches')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setWorldCupMatches(data);
-          }
-        })
-        .catch((err) => console.error('Failed to fetch world cup matches in modal:', err));
-    }
-  }, [isOpen]);
-
   const getDisplayMatches = () => {
     const combined: any[] = [];
     const seen = new Set<string>();
@@ -354,9 +347,41 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
 
   const displayMatches = getDisplayMatches();
 
+  const filteredDisplayMatches = displayMatches.filter((m) =>
+    m.title.toLowerCase().includes(matchSearch.toLowerCase())
+  );
+
+  const handleSelectMatchOption = (title: string) => {
+    setSelectedMatch(title);
+    setMatchSearch(title);
+    setIsMatchDropdownOpen(false);
+  };
+
+  // Fetch real World Cup matches list on open
+  useEffect(() => {
+    if (isOpen) {
+      // Sync initial search with default selection
+      const activeMatches = getDisplayMatches();
+      if (activeMatches.length > 0) {
+        setSelectedMatch(activeMatches[0].title);
+        setMatchSearch(activeMatches[0].title);
+      }
+
+      fetch('/api/worldcup/matches')
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setWorldCupMatches(data);
+          }
+        })
+        .catch((err) => console.error('Failed to fetch world cup matches in modal:', err));
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (displayMatches.length > 0 && !selectedMatch) {
       setSelectedMatch(displayMatches[0].title);
+      setMatchSearch(displayMatches[0].title);
     }
   }, [worldCupMatches, matches, selectedMatch]);
 
@@ -367,6 +392,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       const exists = displayMatches.some((m) => m.title === selectedMatch);
       if (!selectedMatch || !exists) {
         setSelectedMatch(displayMatches[0].title);
+        setMatchSearch(displayMatches[0].title);
       }
     }
   }
@@ -813,21 +839,92 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
 
           </div>
 
-          {/* Select Match */}
-          <div>
-            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Attach to Match</label>
-            <select
-              value={selectedMatch}
-              onChange={(e) => setSelectedMatch(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white focus:border-cyan-500 focus:outline-none transition-colors text-sm"
-            >
-              {displayMatches.map((m) => (
-                <option key={m.id} value={m.title} className="bg-neutral-900 text-white">
-                  {m.title}
-                </option>
-              ))}
-              <option value="Global Fan Celebration" className="bg-neutral-900 text-white">General Celebration</option>
-            </select>
+          {/* Select Match (Searchable) */}
+          <div className="relative">
+            <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">
+              Attach to Match
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={matchSearch}
+                onFocus={() => setIsMatchDropdownOpen(true)}
+                onChange={(e) => {
+                  setMatchSearch(e.target.value);
+                  setIsMatchDropdownOpen(true);
+                }}
+                placeholder="Search match (e.g. Argentina, Mexico...)"
+                className="w-full px-4 py-2.5 pr-10 rounded-xl bg-neutral-900 border border-white/10 text-white focus:border-cyan-500 focus:outline-none transition-colors text-sm"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {matchSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMatchSearch('');
+                      setSelectedMatch('');
+                      setIsMatchDropdownOpen(true);
+                    }}
+                    className="text-white/40 hover:text-white/70 transition-colors p-0.5 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+                <span className="text-white/30 text-xs">🔍</span>
+              </div>
+            </div>
+
+            {/* Match Dropdown List */}
+            <AnimatePresence>
+              {isMatchDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsMatchDropdownOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute left-0 right-0 mt-1.5 max-h-[180px] overflow-y-auto rounded-xl bg-neutral-950 border border-white/10 shadow-2xl z-50 divide-y divide-white/5 scrollbar-thin scrollbar-thumb-white/10"
+                    style={{
+                      background: 'rgba(15, 15, 25, 0.98)',
+                      backdropFilter: 'blur(12px)'
+                    }}
+                  >
+                    {filteredDisplayMatches.length > 0 ? (
+                      filteredDisplayMatches.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => handleSelectMatchOption(m.title)}
+                          className={`w-full px-4 py-2.5 text-left text-xs transition-colors hover:bg-white/10 flex items-center justify-between ${
+                            selectedMatch === m.title ? 'text-cyan-400 font-bold bg-cyan-500/5' : 'text-white/80'
+                          }`}
+                        >
+                          <span className="truncate pr-2">{m.title}</span>
+                          {selectedMatch === m.title && <span className="text-cyan-400">✓</span>}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-center text-xs text-white/40">
+                        No matches found.
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMatchOption('Global Fan Celebration')}
+                      className={`w-full px-4 py-2.5 text-left text-xs transition-colors hover:bg-white/10 flex items-center justify-between ${
+                        selectedMatch === 'Global Fan Celebration' ? 'text-cyan-400 font-bold bg-cyan-500/5' : 'text-white/80'
+                      }`}
+                    >
+                      <span>🌍 Global Fan Celebration</span>
+                      {selectedMatch === 'Global Fan Celebration' && <span className="text-cyan-400">✓</span>}
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Comment */}
