@@ -108,18 +108,96 @@ let rankingAudit: {
   errors: [],
 };
 
-export function getRealFifaRank(country: string): number {
-  return FIFA_RANKINGS[country] || 99; // Fallback for unknown teams
+export function getRealFifaRank(country: string): number | null {
+  if (!country) return null;
+
+  // 1. Direct match (case-sensitive)
+  if (typeof FIFA_RANKINGS[country] === 'number') {
+    return FIFA_RANKINGS[country];
+  }
+
+  // 2. Normalization (remove accents, lowercase, trim)
+  const clean = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const query = clean(country);
+
+  // 3. Exact match with normalized keys
+  for (const [key, val] of Object.entries(FIFA_RANKINGS)) {
+    if (clean(key) === query) return val;
+  }
+
+  // 4. Common aliases mapping
+  const aliases: Record<string, string> = {
+    'united states of america': 'United States',
+    'united states': 'United States',
+    'usa': 'United States',
+    'us': 'United States',
+    'republic of korea': 'South Korea',
+    'korea republic': 'South Korea',
+    'south korea': 'South Korea',
+    'korea': 'South Korea',
+    'ir iran': 'Iran',
+    'iran': 'Iran',
+    'islamic republic of iran': 'Iran',
+    'cote d\'ivoire': 'Ivory Coast',
+    'cote divoire': 'Ivory Coast',
+    'ivory coast': 'Ivory Coast',
+    'cote d’ivoire': 'Ivory Coast',
+    'democratic republic of the congo': 'Democratic Republic of the Congo',
+    'dr congo': 'Democratic Republic of the Congo',
+    'congo dr': 'Democratic Republic of the Congo',
+    'drc': 'Democratic Republic of the Congo',
+    'czech republic': 'Czechia',
+    'czechia': 'Czechia',
+    'turkey': 'Türkiye',
+    'turkiye': 'Türkiye',
+    'republic of ireland': 'Republic of Ireland',
+    'ireland': 'Republic of Ireland',
+    'united kingdom': 'England',
+    'england': 'England',
+    'scotland': 'Scotland',
+    'wales': 'Wales',
+    'northern ireland': 'Northern Ireland',
+    'uae': 'United Arab Emirates',
+    'united arab emirates': 'United Arab Emirates',
+    'cabo verde': 'Cabo Verde',
+    'cape verde': 'Cabo Verde',
+    'bosnia and herz.': 'Bosnia and Herzegovina',
+    'dem. rep. congo': 'Democratic Republic of the Congo',
+    'congo': 'Democratic Republic of the Congo',
+    'central african rep.': 'Central African Republic',
+    'dominican rep.': 'Dominican Republic',
+    'solomon is.': 'Solomon Islands',
+    's. sudan': 'South Sudan',
+    'eq. guinea': 'Equatorial Guinea',
+    'equatorial guinea': 'Equatorial Guinea',
+  };
+
+  const mappedName = aliases[query];
+  if (mappedName && typeof FIFA_RANKINGS[mappedName] === 'number') {
+    return FIFA_RANKINGS[mappedName];
+  }
+
+  // 5. Fallback fuzzy matching (if query contains key or key contains query)
+  for (const [key, val] of Object.entries(FIFA_RANKINGS)) {
+    const k = clean(key);
+    if (k.length > 3 && (query.includes(k) || k.includes(query))) {
+      return val;
+    }
+  }
+
+  return null; // Return null if not found to represent "unavailable"
 }
 
-export function getRealWinRatio(rank: number): number {
+export function getRealWinRatio(rank: number | null): number {
+  if (rank === null) return 0;
   const maxWinRatio = 75;
   const minWinRatio = 35;
   const ratio = Math.max(minWinRatio, maxWinRatio - (rank * 0.4));
   return Math.floor(ratio);
 }
 
-export function getRealGoalsScored(rank: number): number {
+export function getRealGoalsScored(rank: number | null): number {
+  if (rank === null) return 0;
   const maxGoals = 85;
   const minGoals = 20;
   const goals = Math.max(minGoals, maxGoals - Math.floor(rank * 0.6));

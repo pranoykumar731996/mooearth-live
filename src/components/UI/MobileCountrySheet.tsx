@@ -185,6 +185,7 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
   }
 
   if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
+    const hasRank = typeof metrics.fifaRank === 'number' && metrics.fifaRank > 0;
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
         <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
@@ -193,16 +194,18 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-2xl font-black text-white">{metrics.winRatio}%</div>
+            <div className="text-2xl font-black text-white">{hasRank ? `${metrics.winRatio}%` : 'N/A'}</div>
             <div className="text-[10px] text-white/50">Overall Win Ratio</div>
           </div>
           <div className="text-right">
-            <div className="text-sm font-bold text-white">Rank: #{metrics.fifaRank}</div>
+            <div className="text-sm font-bold text-white">
+              {hasRank ? `Rank: #${metrics.fifaRank}` : 'Ranking unavailable'}
+            </div>
             <div className="text-[10px] text-white/50">FIFA Group Rank</div>
           </div>
         </div>
         <div className="text-[10px] text-white/50 font-bold">
-          Tournament Goals Registered: {metrics.goalsScored}
+          Tournament Goals Registered: {hasRank ? metrics.goalsScored : 'N/A'}
         </div>
       </div>
     );

@@ -50,6 +50,7 @@ import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { SIDEBAR_ITEMS } from '@/lib/constants';
+import { updateFifaRankingsFromApi } from '@/data/fifaRankings';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -236,9 +237,10 @@ export default function HomePage({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Initialize analytics session on client mount
+  // Initialize analytics session on client mount and update FIFA rankings
   useEffect(() => {
     initAnalyticsSession();
+    updateFifaRankingsFromApi().catch(err => console.error('[FIFA Rankings Update Failed]', err));
   }, []);
 
   // Register PWA Service Worker on client mount with Auto-Update logic (forces instant reload on developer updates)
