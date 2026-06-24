@@ -199,4 +199,5 @@ export interface PlayerGameState {
   worldCupBest?: number;       // High score in World Cup mode
   dailyChallengeStreak?: number;
   lastDailyChallengeDate?: string; // YYYY-MM-DD
+  answeredQuestions?: { id: string; question: string; country: string }[];
 }

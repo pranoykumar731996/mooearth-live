@@ -277,12 +277,65 @@ function generateUniversalFallback(country: string, category: string): EarthQues
   };
 }
 
+interface QuestionBrief {
+  id: string;
+  question: string;
+  country: string;
+}
+
+export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boolean {
+  if (q1.id === q2.id) return true;
+  
+  const c1 = q1.country.toLowerCase().trim();
+  const c2 = q2.country.toLowerCase().trim();
+  if (c1 !== c2) return false;
+  
+  const getSignature = (text: string) => {
+    const norm = text.toLowerCase();
+    const keywords = ['capital', 'flag', 'currency', 'language', 'continent', 'landmark', 'border', 'neighbour', 'population', 'independence', 'dish', 'food', 'person', 'sport'];
+    for (const kw of keywords) {
+      if (norm.includes(kw)) return kw;
+    }
+    return '';
+  };
+  
+  const sig1 = getSignature(q1.question);
+  const sig2 = getSignature(q2.question);
+  
+  if (sig1 && sig1 === sig2) {
+    return true;
+  }
+  
+  const stopWords = new Set(['what', 'which', 'the', 'is', 'are', 'was', 'were', 'of', 'in', 'and', 'belong', 'belongs', 'located', 'city', 'country']);
+  const getWords = (text: string) => {
+    return new Set(
+      text.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopWords.has(w))
+    );
+  };
+  
+  const w1 = getWords(q1.question);
+  const w2 = getWords(q2.question);
+  
+  if (w1.size === 0 || w2.size === 0) return false;
+  
+  let intersection = 0;
+  for (const w of w1) {
+    if (w2.has(w)) intersection++;
+  }
+  
+  const union = w1.size + w2.size - intersection;
+  return (intersection / union) > 0.55;
+}
+
 export async function POST(request: NextRequest) {
   let requestCountry = 'Global';
   let requestCategory = 'geography';
   try {
     const body = await request.json();
-    const { country, category, username, answeredIds = [] } = body;
+    const { country, category, username, answeredIds = [], answeredQuestions = [] } = body;
     requestCountry = country || 'Global';
     requestCategory = category || 'geography';
 
@@ -297,11 +350,20 @@ export async function POST(request: NextRequest) {
     console.log(`[PLAY EARTH DEBUG] Resolved Canonical Country Name: "${canonicalCountry}"`);
 
     const clientAnsweredIds = Array.isArray(answeredIds) ? answeredIds : [];
+    const clientAnsweredQuestions = Array.isArray(answeredQuestions) ? answeredQuestions : [];
     const excludeSet = new Set<string>(clientAnsweredIds);
+
+    const isDuplicate = (q: EarthQuestion) => {
+      if (excludeSet.has(q.id)) return true;
+      for (const aq of clientAnsweredQuestions) {
+        if (areQuestionsDuplicate(q, aq)) return true;
+      }
+      return false;
+    };
 
     // ------ LAYER 1: COMBINED LOCAL DATABASE (FILES + SERVERLESS MEMORY) ------
     const countryCategoryPool = getMergedQuestions(canonicalCountry, category);
-    const unseenPool = countryCategoryPool.filter(q => !excludeSet.has(q.id));
+    const unseenPool = countryCategoryPool.filter(q => !isDuplicate(q));
     console.log(`[PLAY EARTH DEBUG] Layer 1: CountryCategoryPool size: ${countryCategoryPool.length}, UnseenPool size: ${unseenPool.length}`);
 
     if (unseenPool.length > 0) {
@@ -339,7 +401,10 @@ You must respond strictly in JSON format matching the schema:
   "options": ["Choice A", "Choice B", "Choice C", "Choice D"],
   "answer": "The correct option exactly matching one of the options",
   "fact": "A short, interesting fun fact or explanation about the answer"
-}`
+}
+
+CRITICAL: Do NOT repeat or generate questions that are identical or semantically similar to any of these previously asked questions:
+${clientAnsweredQuestions.slice(-15).map(q => `- ${q.question}`).join('\n')}`
               },
               {
                 role: 'user',
@@ -381,11 +446,14 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
               expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
             };
 
-            // Write to files / cache
-            saveGeneratedQuestion(newQuestion);
-
-            console.log(`[PLAY EARTH DEBUG] Layer 2 OpenAI success: ID="${newQuestion.id}"`);
-            return NextResponse.json({ question: newQuestion, source: 'ai-generated' });
+            if (!isDuplicate(newQuestion)) {
+              // Write to files / cache
+              saveGeneratedQuestion(newQuestion);
+              console.log(`[PLAY EARTH DEBUG] Layer 2 OpenAI success: ID="${newQuestion.id}"`);
+              return NextResponse.json({ question: newQuestion, source: 'ai-generated' });
+            } else {
+              console.warn(`[PLAY EARTH DEBUG] Layer 2 OpenAI generated duplicate question: "${newQuestion.question}"`);
+            }
           }
         } else {
           console.warn(`[PLAY EARTH DEBUG] Layer 2 OpenAI failed with status: ${apiResponse.status}`);
@@ -403,10 +471,10 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       5, 
       clientAnsweredIds
     );
-    console.log(`[PLAY EARTH DEBUG] Layer 3: Procedural generated count: ${procedural.length}`);
-    if (procedural.length > 0) {
-      const selected = shuffle(procedural)[0];
-      // Save it locally / cache so it is persistent and added to the pool
+    const unseenProcedural = procedural.filter(q => !isDuplicate(q));
+    console.log(`[PLAY EARTH DEBUG] Layer 3: Procedural count: ${procedural.length}, Unseen: ${unseenProcedural.length}`);
+    if (unseenProcedural.length > 0) {
+      const selected = shuffle(unseenProcedural)[0];
       saveGeneratedQuestion(selected);
       console.log(`[PLAY EARTH DEBUG] Layer 3 Match Found: ID="${selected.id}" for Country="${selected.country}"`);
       return NextResponse.json({ question: selected, source: 'procedural' });
@@ -418,7 +486,7 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       console.log(`[PLAY EARTH DEBUG] Layer 4: Category "${category}" empty, falling back to same-country "mixed" pool`);
       
       const mixedPool = getMergedQuestions(canonicalCountry, 'mixed');
-      const unseenMixed = mixedPool.filter(q => !excludeSet.has(q.id));
+      const unseenMixed = mixedPool.filter(q => !isDuplicate(q));
       console.log(`[PLAY EARTH DEBUG] Layer 4: Unseen mixed pool size: ${unseenMixed.length}`);
 
       if (unseenMixed.length > 0) {
@@ -429,9 +497,10 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
 
       // If mixed folder is also empty/exhausted, try generating procedural questions from any category
       const proceduralMixed = generateQuestions(canonicalCountry, 'mixed', 5, clientAnsweredIds);
-      console.log(`[PLAY EARTH DEBUG] Layer 4: Procedural mixed generated count: ${proceduralMixed.length}`);
-      if (proceduralMixed.length > 0) {
-        const selected = shuffle(proceduralMixed)[0];
+      const unseenProceduralMixed = proceduralMixed.filter(q => !isDuplicate(q));
+      console.log(`[PLAY EARTH DEBUG] Layer 4: Procedural mixed count: ${proceduralMixed.length}, Unseen: ${unseenProceduralMixed.length}`);
+      if (unseenProceduralMixed.length > 0) {
+        const selected = shuffle(unseenProceduralMixed)[0];
         saveGeneratedQuestion(selected);
         console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${selected.id}" (Procedural mixed category fallback)`);
         return NextResponse.json({ question: selected, source: 'same-country-procedural-mixed-fallback' });
@@ -440,36 +509,16 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
 
     // ------ LAYER 4.5: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
     const universalQ = generateUniversalFallback(canonicalCountry, category);
-    console.log(`[PLAY EARTH DEBUG] Layer 4.5: Universal fallback ID="${universalQ.id}" (ExcludeSet has it? ${excludeSet.has(universalQ.id)})`);
-    // If the universal question itself hasn't been answered in this session yet, return it
-    if (!excludeSet.has(universalQ.id)) {
+    console.log(`[PLAY EARTH DEBUG] Layer 4.5: Universal fallback ID="${universalQ.id}" (isDuplicate? ${isDuplicate(universalQ)})`);
+    if (!isDuplicate(universalQ)) {
       saveGeneratedQuestion(universalQ);
       console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${universalQ.id}" for Country="${universalQ.country}"`);
       return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
     }
 
-    // ------ LAYER 5: SAME-COUNTRY REUSE (ROUND-ROBIN CYCLING) ------
-    // Only reuse older questions if all unseen database, procedural, and universal fallback questions have been exhausted.
-    if (countryCategoryPool.length > 0) {
-      const oldestAnswered = [...countryCategoryPool].sort((a, b) => {
-        const idxA = clientAnsweredIds.lastIndexOf(a.id);
-        const idxB = clientAnsweredIds.lastIndexOf(b.id);
-        
-        if (idxA === -1 && idxB === -1) return 0;
-        if (idxA === -1) return -1;
-        if (idxB === -1) return 1;
-        
-        return idxA - idxB;
-      })[0];
-
-      console.log(`[PLAY EARTH DEBUG] Layer 5 Match Found: ID="${oldestAnswered.id}" (Recycled fallback)`);
-      return NextResponse.json({ question: oldestAnswered, source: 'local-recycle' });
-    }
-
-    // Ultimate fallback if pool is somehow completely empty and everything failed
-    saveGeneratedQuestion(universalQ);
-    console.log(`[PLAY EARTH DEBUG] Ultimate Emergency Match Found: ID="${universalQ.id}"`);
-    return NextResponse.json({ question: universalQ, source: 'emergency-fallback' });
+    // ------ LAYER 5: NO RECYCLE / EXHAUSTED ------
+    console.log(`[PLAY EARTH DEBUG] Layer 5: All questions exhausted for Country="${canonicalCountry}" Category="${category}"`);
+    return NextResponse.json({ question: null, source: 'exhausted' });
 
   } catch (err: any) {
     console.error('CRITICAL /api/quiz/next error:', err);

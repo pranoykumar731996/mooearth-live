@@ -68,6 +68,7 @@ function createDefaultState(username: string): PlayerGameState {
     totalCorrect: 0, totalAnswered: 0, answeredIds: [],
     answeredQuestionIds: [], recentQuestions: [], recentCountryQuestions: [],
     countriesExplored: [], badges: [],
+    answeredQuestions: [],
   };
 }
 
@@ -99,12 +100,108 @@ const syncProgressToFirestore = async (state: PlayerGameState) => {
       capitalBest: state.capitalBest || {},
       worldCupBest: state.worldCupBest || 0,
       dailyChallengeStreak: state.dailyChallengeStreak || 0,
-      lastDailyChallengeDate: state.lastDailyChallengeDate || ""
+      lastDailyChallengeDate: state.lastDailyChallengeDate || "",
+      answeredQuestions: state.answeredQuestions || [],
     });
   } catch (err) {
     console.warn('[PlayEarthOverlay] Firestore progress sync failed:', err);
   }
 };
+
+interface QuestionBrief {
+  id: string;
+  question: string;
+  country: string;
+}
+
+export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boolean {
+  if (q1.id === q2.id) return true;
+  
+  const c1 = q1.country.toLowerCase().trim();
+  const c2 = q2.country.toLowerCase().trim();
+  if (c1 !== c2) return false;
+  
+  const getSignature = (text: string) => {
+    const norm = text.toLowerCase();
+    const keywords = ['capital', 'flag', 'currency', 'language', 'continent', 'landmark', 'border', 'neighbour', 'population', 'independence', 'dish', 'food', 'person', 'sport'];
+    for (const kw of keywords) {
+      if (norm.includes(kw)) return kw;
+    }
+    return '';
+  };
+  
+  const sig1 = getSignature(q1.question);
+  const sig2 = getSignature(q2.question);
+  
+  if (sig1 && sig1 === sig2) {
+    return true;
+  }
+  
+  const stopWords = new Set(['what', 'which', 'the', 'is', 'are', 'was', 'were', 'of', 'in', 'and', 'belong', 'belongs', 'located', 'city', 'country']);
+  const getWords = (text: string) => {
+    return new Set(
+      text.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopWords.has(w))
+    );
+  };
+  
+  const w1 = getWords(q1.question);
+  const w2 = getWords(q2.question);
+  
+  if (w1.size === 0 || w2.size === 0) return false;
+  
+  let intersection = 0;
+  for (const w of w1) {
+    if (w2.has(w)) intersection++;
+  }
+  
+  const union = w1.size + w2.size - intersection;
+  return (intersection / union) > 0.55;
+}
+
+/** Client-side deduplicator for flag or capital questions */
+export function getUniqueFlagOrCapitalQuestion(
+  mode: 'flag' | 'capital',
+  difficulty: 'easy' | 'medium' | 'hard',
+  answeredIds: string[],
+  answeredQuestions: { id: string; question: string; country: string }[],
+  countryName?: string
+): EarthQuestion {
+  const maxAttempts = 100;
+  let q: EarthQuestion | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const candidate = mode === 'flag'
+      ? generateFlagQuestion(difficulty, answeredIds, countryName)
+      : generateCapitalQuestion(difficulty, answeredIds, countryName);
+    
+    const duplicate = answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
+    if (!duplicate) {
+      return candidate;
+    }
+    q = candidate;
+  }
+  return q || (mode === 'flag' ? generateFlagQuestion(difficulty, answeredIds, countryName) : generateCapitalQuestion(difficulty, answeredIds, countryName));
+}
+
+/** Client-side deduplicator for world cup questions */
+export function getUniqueWorldCupQuestion(
+  answeredIds: string[],
+  answeredQuestions: { id: string; question: string; country: string }[]
+): EarthQuestion {
+  const maxAttempts = 100;
+  let q: EarthQuestion | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const candidate = getWorldCupQuestion(answeredIds);
+    const duplicate = answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
+    if (!duplicate) {
+      return candidate;
+    }
+    q = candidate;
+  }
+  return q || getWorldCupQuestion(answeredIds);
+}
 
 export default function PlayEarthOverlay({
   isActive, selectedCountry, onClose, onPlaySound,
@@ -331,26 +428,48 @@ export default function PlayEarthOverlay({
     // Choose randomly: Curated, Flag, or Capital
     const type = Math.floor(Math.random() * 3);
     const answered = gameState.answeredQuestionIds || [];
-    let q: EarthQuestion;
+    const answeredQs = gameState.answeredQuestions || [];
+    let q: EarthQuestion | null = null;
+    let finalSource = 'Local Database';
 
-    if (type === 0) {
-      q = generateFlagQuestion('medium', answered);
-      setQuestionSource('Flag Generator');
-    } else if (type === 1) {
-      q = generateCapitalQuestion('medium', answered);
-      setQuestionSource('Capital Generator');
-    } else {
-      const pool = DEDUPLICATED_STATIC_QUESTIONS.filter(x => !answered.includes(x.id));
-      if (pool.length > 0) {
-        q = pool[Math.floor(Math.random() * pool.length)];
-        setQuestionSource('Local Database');
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const candidateType = (type + attempt) % 3;
+      let candidate: EarthQuestion;
+      let source = 'Local Database';
+      
+      if (candidateType === 0) {
+        candidate = generateFlagQuestion('medium', answered);
+        source = 'Flag Generator';
+      } else if (candidateType === 1) {
+        candidate = generateCapitalQuestion('medium', answered);
+        source = 'Capital Generator';
       } else {
-        q = generateCapitalQuestion('easy', answered);
-        setQuestionSource('Capital Generator');
+        const pool = DEDUPLICATED_STATIC_QUESTIONS.filter(x => !answered.includes(x.id));
+        if (pool.length > 0) {
+          candidate = pool[Math.floor(Math.random() * pool.length)];
+          source = 'Local Database';
+        } else {
+          candidate = generateCapitalQuestion('easy', answered);
+          source = 'Capital Generator';
+        }
+      }
+      
+      const duplicate = answeredQs.some(aq => areQuestionsDuplicate(candidate, aq));
+      if (!duplicate) {
+        q = candidate;
+        finalSource = source;
+        break;
+      }
+      if (!q) {
+        q = candidate;
+        finalSource = source;
       }
     }
     
-    setCurrentQuestion(q);
+    if (q) {
+      setQuestionSource(finalSource);
+      setCurrentQuestion(q);
+    }
   };
 
   /** Start a new question from the hybrid API or dynamic generators */
@@ -369,7 +488,8 @@ export default function PlayEarthOverlay({
           country: selectedCountry || 'Global',
           category,
           username,
-          answeredIds: gameState.answeredQuestionIds || []
+          answeredIds: gameState.answeredQuestionIds || [],
+          answeredQuestions: gameState.answeredQuestions || []
         })
       });
 
@@ -400,7 +520,7 @@ export default function PlayEarthOverlay({
     } catch (err) {
       console.warn('API error, falling back to local procedural template', err);
       // Local fallback
-      const q = generateCapitalQuestion('medium', gameState.answeredQuestionIds || []);
+      const q = getUniqueFlagOrCapitalQuestion('capital', 'medium', gameState.answeredQuestionIds || [], gameState.answeredQuestions || []);
       setCurrentQuestion(q);
       setQuestionSource('Capital Generator (Local Fallback)');
       setSelectedAnswer(null);
@@ -419,13 +539,29 @@ export default function PlayEarthOverlay({
     
     setTimeout(() => {
       const countries = getMetadataCountries();
-      const randomCountry = countries[Math.floor(Math.random() * countries.length)];
-      setSurvivalCountry(randomCountry);
+      const answered = gameState.answeredQuestionIds || [];
+      const answeredQs = gameState.answeredQuestions || [];
+      let selectedQ: EarthQuestion | null = null;
+      let selectedCountryName = '';
       
-      const q = generateCapitalQuestion('medium', gameState.answeredQuestionIds || [], randomCountry);
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+        const candidate = generateCapitalQuestion('medium', answered, randomCountry);
+        const duplicate = answeredQs.some(aq => areQuestionsDuplicate(candidate, aq));
+        if (!duplicate) {
+          selectedQ = candidate;
+          selectedCountryName = randomCountry;
+          break;
+        }
+        if (!selectedQ) {
+          selectedQ = candidate;
+          selectedCountryName = randomCountry;
+        }
+      }
+      
+      setSurvivalCountry(selectedCountryName);
       setQuestionSource('Capital Generator');
-      
-      setCurrentQuestion(q);
+      setCurrentQuestion(selectedQ);
       setSelectedAnswer(null);
       setIsCorrect(null);
       setTimer(15);
@@ -462,6 +598,12 @@ export default function PlayEarthOverlay({
       country: currentQuestion.country
     });
 
+    const currentAQ = {
+      id: currentQuestion.id,
+      question: currentQuestion.question,
+      country: currentQuestion.country
+    };
+
     // 1. Beat the Clock Mode
     if (activeMode === 'clock') {
       setClockTotal(t => t + 1);
@@ -469,6 +611,7 @@ export default function PlayEarthOverlay({
         const next = { ...prev };
         next.totalAnswered++;
         next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
         
         if (correct) {
           next.xp += 50;
@@ -509,6 +652,7 @@ export default function PlayEarthOverlay({
         const next = { ...prev };
         next.totalAnswered++;
         next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
         if (correct) {
           next.xp += 150; // High XP for survival answers
@@ -560,6 +704,7 @@ export default function PlayEarthOverlay({
         const next = { ...prev };
         next.totalAnswered++;
         next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
         if (correct) {
           const reward = difficulty === 'easy' ? 50 : difficulty === 'medium' ? 100 : 200;
@@ -601,9 +746,12 @@ export default function PlayEarthOverlay({
         onCorrectSound();
         setTimeout(() => {
           setIsLoadingQuestion(true);
-          const nextQuestion = activeMode === 'flag'
-            ? generateFlagQuestion(difficulty, [...(gameState.answeredQuestionIds || []), currentQuestion.id])
-            : generateCapitalQuestion(difficulty, [...(gameState.answeredQuestionIds || []), currentQuestion.id]);
+          const nextQuestion = getUniqueFlagOrCapitalQuestion(
+            activeMode,
+            difficulty,
+            [...(gameState.answeredQuestionIds || []), currentQuestion.id],
+            [...(gameState.answeredQuestions || []), currentAQ]
+          );
           setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
           setCurrentQuestion(nextQuestion);
           setSelectedAnswer(null);
@@ -625,6 +773,7 @@ export default function PlayEarthOverlay({
         const next = { ...prev };
         next.totalAnswered++;
         next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
         if (correct) {
           next.xp += 100;
@@ -687,6 +836,7 @@ export default function PlayEarthOverlay({
         const next = { ...prev };
         next.totalAnswered++;
         next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
         if (correct) {
           next.xp += 150;
@@ -721,7 +871,10 @@ export default function PlayEarthOverlay({
           } else {
             setDailyIndex(nextIdx);
             setIsLoadingQuestion(true);
-            const q = getWorldCupQuestion([...(gameState.answeredQuestionIds || []), currentQuestion.id]);
+            const q = getUniqueWorldCupQuestion(
+              [...(gameState.answeredQuestionIds || []), currentQuestion.id],
+              [...(gameState.answeredQuestions || []), currentAQ]
+            );
             setQuestionSource('Local World Cup Database');
             setCurrentQuestion(q);
             setSelectedAnswer(null);
@@ -747,6 +900,7 @@ export default function PlayEarthOverlay({
       const next = { ...prev };
       next.totalAnswered++;
       next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
+      next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
       if (correct) {
         next.totalCorrect++;
@@ -829,9 +983,12 @@ export default function PlayEarthOverlay({
       } else {
         setIsLoadingQuestion(true);
         setTimeout(() => {
-          const q = activeMode === 'flag' 
-            ? generateFlagQuestion(difficulty, gameState.answeredQuestionIds || [])
-            : generateCapitalQuestion(difficulty, gameState.answeredQuestionIds || []);
+          const q = getUniqueFlagOrCapitalQuestion(
+            activeMode,
+            difficulty,
+            gameState.answeredQuestionIds || [],
+            gameState.answeredQuestions || []
+          );
           setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
           setCurrentQuestion(q);
           setSelectedAnswer(null);
@@ -883,7 +1040,10 @@ export default function PlayEarthOverlay({
         setDailyIndex(nextIdx);
         setIsLoadingQuestion(true);
         setTimeout(() => {
-          const q = getWorldCupQuestion(gameState.answeredQuestionIds || []);
+          const q = getUniqueWorldCupQuestion(
+            gameState.answeredQuestionIds || [],
+            gameState.answeredQuestions || []
+          );
           setQuestionSource('Local World Cup Database');
           setCurrentQuestion(q);
           setSelectedAnswer(null);
@@ -1275,9 +1435,12 @@ export default function PlayEarthOverlay({
                       });
                       setIsLoadingQuestion(true);
                       setTimeout(() => {
-                        const q = activeMode === 'flag'
-                          ? generateFlagQuestion(diff, gameState.answeredQuestionIds || [])
-                          : generateCapitalQuestion(diff, gameState.answeredQuestionIds || []);
+                        const q = getUniqueFlagOrCapitalQuestion(
+                          activeMode,
+                          diff,
+                          gameState.answeredQuestionIds || [],
+                          gameState.answeredQuestions || []
+                        );
                         setCurrentQuestion(q);
                         setSelectedAnswer(null);
                         setIsCorrect(null);
@@ -1326,7 +1489,10 @@ export default function PlayEarthOverlay({
                     setDailyIndex(0); // reset index
                     setIsLoadingQuestion(true);
                     setTimeout(() => {
-                      const q = getWorldCupQuestion(gameState.answeredQuestionIds || []);
+                      const q = getUniqueWorldCupQuestion(
+                        gameState.answeredQuestionIds || [],
+                        gameState.answeredQuestions || []
+                      );
                       setQuestionSource('Local World Cup Database');
                       setCurrentQuestion(q);
                       setSelectedAnswer(null);
@@ -2004,9 +2170,12 @@ export default function PlayEarthOverlay({
                       });
                       setIsLoadingQuestion(true);
                       setTimeout(() => {
-                        const q = activeMode === 'flag'
-                          ? generateFlagQuestion(diff, gameState.answeredQuestionIds || [])
-                          : generateCapitalQuestion(diff, gameState.answeredQuestionIds || []);
+                        const q = getUniqueFlagOrCapitalQuestion(
+                          activeMode,
+                          diff,
+                          gameState.answeredQuestionIds || [],
+                          gameState.answeredQuestions || []
+                        );
                         setCurrentQuestion(q);
                         setSelectedAnswer(null);
                         setIsCorrect(null);
@@ -2057,7 +2226,10 @@ export default function PlayEarthOverlay({
                     setDailyIndex(0);
                     setIsLoadingQuestion(true);
                     setTimeout(() => {
-                      const q = getWorldCupQuestion(gameState.answeredQuestionIds || []);
+                      const q = getUniqueWorldCupQuestion(
+                        gameState.answeredQuestionIds || [],
+                        gameState.answeredQuestions || []
+                      );
                       setQuestionSource('Local World Cup Database');
                       setCurrentQuestion(q);
                       setSelectedAnswer(null);
