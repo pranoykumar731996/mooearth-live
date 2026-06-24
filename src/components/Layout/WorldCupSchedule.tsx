@@ -140,6 +140,19 @@ export default function WorldCupSchedule({
   const [now, setNow] = useState(() => new Date());
   const [mounted, setMounted] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
+  const [isDeveloper, setIsDeveloper] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isDevParam = params.get('dev') === 'true' || params.get('developer') === 'true';
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isDevStorage = localStorage.getItem('mooearth_dev') === 'true';
+      if (isDevParam || isDevStorage || isLocal) {
+        setIsDeveloper(true);
+      }
+    }
+  }, []);
 
   // Live Data States
   const [matches, setMatches] = useState<WCMatchData[]>([]);
@@ -795,7 +808,7 @@ export default function WorldCupSchedule({
       </div>
 
       {/* ===== DEBUG PANEL ===== */}
-      {renderDebugPanel()}
+      {isDeveloper && renderDebugPanel()}
     </div>
   );
 }

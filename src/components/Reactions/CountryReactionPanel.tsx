@@ -244,8 +244,20 @@ export default function CountryReactionPanel({
   const [isMobile, setIsMobile] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
-  const [showDebugMonitor, setShowDebugMonitor] = useState(true);
+  const [showDebugMonitor, setShowDebugMonitor] = useState(false);
   const [isDebugCollapsed, setIsDebugCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isDevParam = params.get('dev') === 'true' || params.get('developer') === 'true';
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isDevStorage = localStorage.getItem('mooearth_dev') === 'true';
+      if (isDevParam || isDevStorage || isLocal) {
+        setShowDebugMonitor(true);
+      }
+    }
+  }, []);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
