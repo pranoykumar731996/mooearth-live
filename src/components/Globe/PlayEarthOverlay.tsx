@@ -1549,7 +1549,7 @@ export default function PlayEarthOverlay({
       </AnimatePresence>
 
       {/* Click-blocking backdrop during active quiz */}
-      {(phase !== 'intro' || activeMode) && (
+      {(phase !== 'intro' || (activeMode && activeMode !== 'explorer')) && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-[1.5px] pointer-events-auto" onClick={(e) => {
           e.stopPropagation();
         }} />
