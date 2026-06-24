@@ -648,7 +648,9 @@ export default function HomePage({
 
   // Phase 3: Cinematic Broadcast cycle (watch the world react)
   useEffect(() => {
-    if (!isCinematicMode || trendingCountries.length === 0 || isFocusMode) return;
+    // Disable cinematic auto-navigation when in World Cup mode to prevent
+    // unexpected country switches that override user selection
+    if (!isCinematicMode || trendingCountries.length === 0 || isFocusMode || activeCategory === 'worldcup') return;
 
     let index = 0;
 
@@ -662,7 +664,7 @@ export default function HomePage({
     }, 12000); // Cycle every 12 seconds
 
     return () => clearInterval(interval);
-  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry, isFocusMode]);
+  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry, isFocusMode, activeCategory]);
 
   const handleLoginSuccess = useCallback((user: { username: string; avatar: string; country: string }) => {
     setCurrentUser(user);

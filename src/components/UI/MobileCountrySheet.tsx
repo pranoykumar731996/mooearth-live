@@ -69,9 +69,9 @@ function getDeterministicMetrics(country: string, category: string | null) {
     return { boxOffice, streamingSubscribers, trendingShow };
   }
   if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
-    const fifaRank = getVal(1, 80, 1);
-    const winRatio = getVal(45, 82, 2);
-    const goalsScored = getVal(5, 32, 3);
+    const fifaRank = getRealFifaRank(country);
+    const winRatio = getRealWinRatio(fifaRank);
+    const goalsScored = getRealGoalsScored(fifaRank);
     return { fifaRank, winRatio, goalsScored };
   }
   // breaking / home / news

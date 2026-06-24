@@ -1,3 +1,5 @@
+// Static FIFA rankings (verified against official data as of 2026-06-11)
+// This serves as a reliable fallback when the live API is unavailable.
 export const FIFA_RANKINGS: Record<string, number> = {
   'Argentina': 1,
   'Spain': 2,
@@ -19,12 +21,14 @@ export const FIFA_RANKINGS: Record<string, number> = {
   'USA': 17,
   'Japan': 18,
   'Switzerland': 19,
+  'IR Iran': 20,
   'Iran': 20,
   'Denmark': 21,
   'Türkiye': 22,
   'Turkey': 22,
   'Ecuador': 23,
   'Austria': 24,
+  'Korea Republic': 25,
   'South Korea': 25,
   'Nigeria': 26,
   'Australia': 27,
@@ -33,6 +37,7 @@ export const FIFA_RANKINGS: Record<string, number> = {
   'Canada': 30,
   'Norway': 31,
   'Ukraine': 32,
+  "Côte d'Ivoire": 33,
   'Ivory Coast': 33,
   "Cote d'Ivoire": 33,
   'Panama': 34,
@@ -47,21 +52,60 @@ export const FIFA_RANKINGS: Record<string, number> = {
   'Serbia': 43,
   'Cameroon': 44,
   'Tunisia': 45,
+  'Congo DR': 46,
   'Democratic Republic of the Congo': 46,
   'Slovakia': 47,
   'Greece': 48,
   'Venezuela': 49,
   'Uzbekistan': 50,
+  'Chile': 51,
+  'Peru': 52,
   'Costa Rica': 53,
+  'Romania': 54,
+  'Mali': 55,
   'Qatar': 56,
+  'Iraq': 57,
+  'Republic of Ireland': 58,
+  'Slovenia': 59,
   'South Africa': 60,
   'Saudi Arabia': 61,
+  'Burkina Faso': 62,
+  'Jordan': 63,
   'Bosnia and Herzegovina': 64,
   'Honduras': 65,
+  'Albania': 66,
+  'Cabo Verde': 67,
+  'United Arab Emirates': 68,
+  'North Macedonia': 69,
+  'Northern Ireland': 70,
   'Jamaica': 71,
+  'Georgia': 72,
   'Ghana': 73,
+  'Iceland': 74,
+  'Finland': 75,
+  'Israel': 76,
+  'Bolivia': 77,
+  'Kosovo': 78,
+  'Oman': 79,
+  'Montenegro': 80,
+  'Guinea': 81,
+  'Curaçao': 82,
   'Haiti': 83,
-  'New Zealand': 85
+  'Syria': 84,
+  'New Zealand': 85,
+};
+
+// Audit log for data source tracking
+let rankingAudit: {
+  source: string;
+  lastSync: string | null;
+  totalTeams: number;
+  errors: string[];
+} = {
+  source: 'static-fallback',
+  lastSync: null,
+  totalTeams: Object.keys(FIFA_RANKINGS).length,
+  errors: [],
 };
 
 export function getRealFifaRank(country: string): number {
@@ -81,3 +125,50 @@ export function getRealGoalsScored(rank: number): number {
   const goals = Math.max(minGoals, maxGoals - Math.floor(rank * 0.6));
   return Math.floor(goals);
 }
+
+/**
+ * Returns the current ranking audit log (data source, last sync, errors).
+ */
+export function getFifaRankingAudit() {
+  return { ...rankingAudit };
+}
+
+/**
+ * Fetches live FIFA rankings from /api/worldcup/rankings and updates the
+ * in-memory FIFA_RANKINGS map. Falls back silently to the static data
+ * on any error.
+ */
+export async function updateFifaRankingsFromApi(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/worldcup/rankings');
+    if (!res.ok) {
+      rankingAudit.errors.push(`API returned ${res.status}`);
+      return false;
+    }
+
+    const data = await res.json();
+
+    if (data.error || !data.rankings || !Array.isArray(data.rankings)) {
+      rankingAudit.errors.push(data.error || 'No rankings in response');
+      return false;
+    }
+
+    // Update the in-memory map with live data
+    data.rankings.forEach((r: { rank: number; name: string }) => {
+      FIFA_RANKINGS[r.name] = r.rank;
+    });
+
+    rankingAudit = {
+      source: data.cached ? 'api-cached' : 'api-live',
+      lastSync: new Date().toISOString(),
+      totalTeams: data.rankings.length,
+      errors: data.audit?.errors || [],
+    };
+
+    return true;
+  } catch (err: any) {
+    rankingAudit.errors.push(err?.message || 'Network error');
+    return false;
+  }
+}
+
