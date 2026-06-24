@@ -237,6 +237,14 @@ export default function PlayEarthOverlay({
   const [dailyQuestions, setDailyQuestions] = useState<EarthQuestion[]>([]);
   const [dailyScore, setDailyScore] = useState(0);
   const [dismissedExplorerIntro, setDismissedExplorerIntro] = useState(false);
+  const [isDebug, setIsDebug] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setIsDebug(params.get('debug') === 'true');
+    }
+  }, []);
 
   // Reset explorer intro dismissal when mode changes
   useEffect(() => {
@@ -1101,6 +1109,7 @@ export default function PlayEarthOverlay({
   };
 
   const renderDebugHUD = (q: EarthQuestion) => {
+    if (!isDebug) return null;
     const timesShown = (gameState.answeredQuestionIds || []).filter(id => id === q.id).length + 1;
     const answerLetter = String.fromCharCode(65 + q.correctIndex);
     return (
