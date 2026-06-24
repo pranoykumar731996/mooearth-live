@@ -617,6 +617,7 @@ export default function HomePage({
     playDeepPulse,
     playTensionDrone,
     isFocusMode,
+    selectedEvent,
   });
 
   // Synchronize computed Focus Mode state

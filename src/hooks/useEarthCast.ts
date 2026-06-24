@@ -36,6 +36,7 @@ interface UseEarthCastProps {
   playDeepPulse?: () => void;
   playTensionDrone?: () => void;
   isFocusMode?: boolean;
+  selectedEvent?: WorldEvent | null;
 }
 
 const COOLDOWN_MS = 30000; // 30 seconds between narrations
@@ -128,6 +129,7 @@ export function useEarthCast({
   playDeepPulse,
   playTensionDrone,
   isFocusMode = false,
+  selectedEvent = null,
 }: UseEarthCastProps) {
   // Core state
   const [isEarthCastActive, setIsEarthCastActive] = useState(false);
@@ -446,24 +448,22 @@ export function useEarthCast({
   }, [narrationState, isMuted, playNarrationIntro, onFlyToCountry, playTTSAudio, playSpeechSynthesis]);
 
   // ============================================================
-  // EVENT DETECTION — Watch for new goals, cards, match endings
+  // EVENT DETECTION — Watch for new goals, cards, match endings on selected match only
   // ============================================================
   useEffect(() => {
-    if (!isEarthCastActive || narrationState !== 'idle' || isFocusMode) return;
+    if (!isEarthCastActive || narrationState !== 'idle' || isFocusMode || !selectedEvent) return;
+    if (selectedEvent.category !== 'football' || !selectedEvent.footballData) return;
 
-    const footballEvents = events.filter(e => e.category === 'football' && e.footballData);
+    const eventType = detectEventType(selectedEvent, previousEvents.current);
 
-    for (const event of footballEvents) {
-      const eventType = detectEventType(event, previousEvents.current);
-
-      if (eventType) {
-        const eventKey = `${event.id}-${eventType}-${event.footballData?.homeScore}-${event.footballData?.awayScore}`;
-        if (processedEventIds.current.has(eventKey)) continue;
+    if (eventType) {
+      const eventKey = `${selectedEvent.id}-${eventType}-${selectedEvent.footballData.homeScore}-${selectedEvent.footballData.awayScore}`;
+      if (!processedEventIds.current.has(eventKey)) {
         processedEventIds.current.add(eventKey);
 
         const trendingMood = trendingCountries[0]?.mood || 'electric';
         const context = buildContext(
-          event,
+          selectedEvent,
           eventType,
           globalEnergyScore,
           celebrations.length,
@@ -471,16 +471,15 @@ export function useEarthCast({
         );
 
         triggerNarration(context);
-        break; // Only one narration per cycle
       }
     }
 
     // Update previous events snapshot
     const newMap = new Map<string, WorldEvent>();
-    footballEvents.forEach(e => newMap.set(e.id, e));
+    events.forEach(e => newMap.set(e.id, e));
     previousEvents.current = newMap;
 
-  }, [events, isEarthCastActive, narrationState, celebrations.length, globalEnergyScore, trendingCountries, triggerNarration, isFocusMode]);
+  }, [events, isEarthCastActive, narrationState, celebrations.length, globalEnergyScore, trendingCountries, triggerNarration, isFocusMode, selectedEvent]);
 
   // ============================================================
   // AUTO MODE — Periodic atmospheric narrations (Disabled in production launch)
@@ -492,8 +491,12 @@ export function useEarthCast({
 
   // Manual narration trigger for a selected match
   const narrateMatch = useCallback((event: WorldEvent) => {
-    if (!isEarthCastActive) return;
     if (!event.footballData) return;
+    
+    // Automatically activate EarthCast if it is disabled
+    if (!isEarthCastActive) {
+      setIsEarthCastActive(true);
+    }
     
     const fd = event.footballData;
     let eventType: EarthCastEventType = 'tension';
