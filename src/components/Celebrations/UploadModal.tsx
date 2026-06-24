@@ -65,11 +65,9 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
     return activeMatches.length > 0 ? activeMatches[0].title : '';
   });
-  const [matchSearch, setMatchSearch] = useState(() => {
-    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
-    return activeMatches.length > 0 ? activeMatches[0].title : '';
-  });
+  const [matchSearch, setMatchSearch] = useState('');
   const [isMatchDropdownOpen, setIsMatchDropdownOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [comment, setComment] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -353,7 +351,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
 
   const handleSelectMatchOption = (title: string) => {
     setSelectedMatch(title);
-    setMatchSearch(title);
+    setMatchSearch('');
     setIsMatchDropdownOpen(false);
   };
 
@@ -364,7 +362,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       const activeMatches = getDisplayMatches();
       if (activeMatches.length > 0) {
         setSelectedMatch(activeMatches[0].title);
-        setMatchSearch(activeMatches[0].title);
       }
 
       fetch('/api/worldcup/matches')
@@ -381,7 +378,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
   useEffect(() => {
     if (displayMatches.length > 0 && !selectedMatch) {
       setSelectedMatch(displayMatches[0].title);
-      setMatchSearch(displayMatches[0].title);
     }
   }, [worldCupMatches, matches, selectedMatch]);
 
@@ -392,7 +388,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       const exists = displayMatches.some((m) => m.title === selectedMatch);
       if (!selectedMatch || !exists) {
         setSelectedMatch(displayMatches[0].title);
-        setMatchSearch(displayMatches[0].title);
       }
     }
   }
@@ -846,6 +841,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
             </label>
             <div className="relative">
               <input
+                ref={searchInputRef}
                 type="text"
                 value={matchSearch}
                 onFocus={() => setIsMatchDropdownOpen(true)}
@@ -853,24 +849,35 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
                   setMatchSearch(e.target.value);
                   setIsMatchDropdownOpen(true);
                 }}
-                placeholder="Search match (e.g. Argentina, Mexico...)"
-                className="w-full px-4 py-2.5 pr-10 rounded-xl bg-neutral-900 border border-white/10 text-white focus:border-cyan-500 focus:outline-none transition-colors text-sm"
+                placeholder={selectedMatch || "Search match (e.g. Argentina, Mexico...)"}
+                className="w-full px-4 py-2.5 pr-10 rounded-xl bg-neutral-900 border border-white/10 text-white placeholder-white/70 focus:placeholder-white/30 focus:outline-none transition-colors text-sm"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10">
                 {matchSearch && (
                   <button
                     type="button"
                     onClick={() => {
                       setMatchSearch('');
-                      setSelectedMatch('');
                       setIsMatchDropdownOpen(true);
+                      searchInputRef.current?.focus();
                     }}
                     className="text-white/40 hover:text-white/70 transition-colors p-0.5 text-xs font-bold"
                   >
                     ✕
                   </button>
                 )}
-                <span className="text-white/30 text-xs">🔍</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMatchDropdownOpen((prev) => !prev);
+                    if (!isMatchDropdownOpen) {
+                      searchInputRef.current?.focus();
+                    }
+                  }}
+                  className="text-white/30 hover:text-white/60 text-xs p-0.5"
+                >
+                  🔍
+                </button>
               </div>
             </div>
 
