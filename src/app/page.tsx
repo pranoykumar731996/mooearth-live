@@ -165,6 +165,23 @@ export default function HomePage({
   const isFocusModeRef = useRef(false);
   isFocusModeRef.current = isFocusMode;
   const [showDebugConsole, setShowDebugConsole] = useState(false);
+  const [isDeveloper, setIsDeveloper] = useState(false);
+
+  // Developer mode detection — same logic as Navbar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const isDevParam = params.get('dev') === 'true' || params.get('developer') === 'true';
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isDevStorage = localStorage.getItem('mooearth_dev') === 'true';
+      if (isDevParam) {
+        localStorage.setItem('mooearth_dev', 'true');
+        setIsDeveloper(true);
+      } else if (isDevStorage || isLocal) {
+        setIsDeveloper(true);
+      }
+    }
+  }, []);
 
   // PWA Install Prompt States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -1395,12 +1412,14 @@ export default function HomePage({
         isEarthCastActive={earthCast.isEarthCastActive}
       />
 
-      {/* AI OPTIMIZATION DASHBOARD */}
-      <AIOptimizationDashboard
-        isOpen={isAiDashboardOpen}
-        onClose={() => setIsAiDashboardOpen(false)}
-        stats={earthCast.aiStats}
-      />
+      {/* AI OPTIMIZATION DASHBOARD — Developer Only */}
+      {isDeveloper && (
+        <AIOptimizationDashboard
+          isOpen={isAiDashboardOpen}
+          onClose={() => setIsAiDashboardOpen(false)}
+          stats={earthCast.aiStats}
+        />
+      )}
 
       {/* MOOEARTH AI ASSISTANT DRAWER */}
       <AIAssistantDrawer
@@ -1685,8 +1704,8 @@ export default function HomePage({
             }}
           />
 
-          {/* AI Optimization Dashboard Toggle */}
-          {earthCast.isEarthCastActive && (
+          {/* AI Optimization Dashboard Toggle — Developer Only */}
+          {isDeveloper && earthCast.isEarthCastActive && (
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -2011,8 +2030,8 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
-      {/* FOCUS MODE DEBUG PANEL */}
-      {showDebugConsole && (
+      {/* FOCUS MODE DEBUG PANEL — Developer Only */}
+      {isDeveloper && showDebugConsole && (
         <FocusDebugPanel
           isFocusMode={isFocusMode}
           currentActivity={currentActivity}
