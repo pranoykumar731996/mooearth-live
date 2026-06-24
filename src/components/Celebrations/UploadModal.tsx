@@ -107,6 +107,190 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Camera & Video Capture states
+  const [cameraActive, setCameraActive] = useState(false);
+  const [recordingVideo, setRecordingVideo] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+
+  const videoStreamRef = useRef<MediaStream | null>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopAllStreams = () => {
+    // Stop audio stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    // Stop video stream
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach((track) => track.stop());
+      videoStreamRef.current = null;
+    }
+    // Stop recording intervals
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setIsRecording(false);
+    setRecordingVideo(false);
+    setCameraActive(false);
+    setRecordingDuration(0);
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      stopAllStreams();
+      setFile(null);
+      setError(null);
+      setRecordedAudioUrl(null);
+      setLocalPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+    return () => {
+      stopAllStreams();
+    };
+  }, [isOpen]);
+
+  const resetMedia = () => {
+    setFile(null);
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
+    setLocalPreviewUrl(null);
+    setRecordedAudioUrl(null);
+    stopAllStreams();
+  };
+
+  const startCamera = async (forVideo: boolean) => {
+    try {
+      setError(null);
+      stopAllStreams();
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: forVideo
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoStreamRef.current = stream;
+      setCameraActive(true);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setError('Could not access camera. Please check permissions or verify camera is connected.');
+      setCameraActive(false);
+    }
+  };
+
+  const videoRefCallback = (el: HTMLVideoElement | null) => {
+    videoElementRef.current = el;
+    if (el && videoStreamRef.current) {
+      el.srcObject = videoStreamRef.current;
+    }
+  };
+
+  const takePhoto = () => {
+    if (!videoElementRef.current || !videoStreamRef.current) return;
+
+    const video = videoElementRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const photoFile = new File([blob], `live-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setFile(photoFile);
+
+          const previewUrl = URL.createObjectURL(blob);
+          setLocalPreviewUrl(previewUrl);
+          stopAllStreams();
+        }
+      }, 'image/jpeg', 0.95);
+    }
+  };
+
+  const startVideoRecording = () => {
+    if (!videoStreamRef.current) return;
+
+    let options = { mimeType: 'video/webm;codecs=vp9' };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: 'video/webm;codecs=vp8' };
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: 'video/webm' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/mp4' };
+        }
+      }
+    }
+
+    try {
+      const mediaRecorder = new MediaRecorder(videoStreamRef.current, options);
+      videoRecorderRef.current = mediaRecorder;
+
+      const chunks: Blob[] = [];
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const videoBlob = new Blob(chunks, { type: options.mimeType });
+        const ext = options.mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const videoFile = new File([videoBlob], `live-video-${Date.now()}.${ext}`, { type: options.mimeType });
+        setFile(videoFile);
+
+        const previewUrl = URL.createObjectURL(videoBlob);
+        setLocalPreviewUrl(previewUrl);
+        stopAllStreams();
+      };
+
+      mediaRecorder.start();
+      setRecordingVideo(true);
+      setRecordingDuration(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingDuration((prev) => {
+          if (prev >= 59) {
+            stopVideoRecording();
+            return 60;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to start MediaRecorder:', err);
+      setError('Failed to start video recording. Your browser might not support this encoding.');
+    }
+  };
+
+  const stopVideoRecording = () => {
+    if (videoRecorderRef.current && videoRecorderRef.current.state !== 'inactive') {
+      videoRecorderRef.current.stop();
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingVideo(false);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   const [prevMatches, setPrevMatches] = useState(matches);
   if (matches !== prevMatches) {
     setPrevMatches(matches);
@@ -175,6 +359,10 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     if (selected) {
       setFile(selected);
       setError(null);
+      setLocalPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(selected);
+      });
     }
   };
 
@@ -333,9 +521,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
                 type="button"
                 onClick={() => {
                   setUploadedCeleb(null);
-                  setComment('');
-                  setFile(null);
-                  setRecordedAudioUrl(null);
+                  resetMedia();
                   onClose();
                 }}
                 className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 font-bold text-sm tracking-wider cursor-pointer transition-colors"
@@ -355,10 +541,15 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
             <button
               key={tab}
               onClick={() => {
+                stopAllStreams();
                 setActiveTab(tab);
                 setFile(null);
                 setError(null);
                 setRecordedAudioUrl(null);
+                setLocalPreviewUrl((prev) => {
+                  if (prev) URL.revokeObjectURL(prev);
+                  return null;
+                });
               }}
               className={`flex-1 pb-3 text-sm font-semibold capitalize border-b-2 transition-all cursor-pointer ${
                 activeTab === tab
@@ -442,34 +633,115 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
                   </>
                 )}
               </div>
-            ) : (
-              <div className="w-full">
-                <input
-                  type="file"
-                  id="media-file-input"
-                  accept={activeTab === 'video' ? 'video/*' : 'image/*'}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="media-file-input"
-                  className="flex flex-col items-center justify-center cursor-pointer w-full"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xl mb-2 hover:bg-white/10 transition-colors">
-                    📤
-                  </div>
-                  {file ? (
-                    <div>
-                      <p className="text-sm font-semibold text-white max-w-[280px] truncate">{file.name}</p>
-                      <p className="text-[10px] text-white/40 mt-0.5">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                    </div>
+            ) : file && localPreviewUrl ? (
+              <div className="w-full flex flex-col items-center gap-3">
+                <div className="relative w-full max-h-[220px] rounded-xl overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
+                  {activeTab === 'video' ? (
+                    <video src={localPreviewUrl} controls className="w-full max-h-[220px]" />
                   ) : (
-                    <>
-                      <p className="text-xs font-semibold text-white/60">Choose {activeTab === 'video' ? 'Video File' : 'Photo'}</p>
-                      <p className="text-[10px] text-white/30 mt-1">Short clips/reaction photos up to 25MB</p>
-                    </>
+                    <img src={localPreviewUrl} alt="Captured preview" className="w-full max-h-[220px] object-contain" />
                   )}
-                </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetMedia}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center justify-center gap-1 cursor-pointer font-semibold"
+                >
+                  🗑️ Retake / Choose Different
+                </button>
+              </div>
+            ) : cameraActive ? (
+              <div className="w-full flex flex-col items-center gap-3">
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/60 border border-cyan-500/30 shadow-[0_0_20px_rgba(0,229,255,0.1)]">
+                  <video
+                    ref={videoRefCallback}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover transform scale-x-[-1]"
+                  />
+                  {recordingVideo && (
+                    <div className="absolute top-3 left-3 bg-red-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-pulse shadow-md">
+                      <span className="w-2 h-2 bg-white rounded-full animate-ping" />
+                      <span>REC {formatDuration(recordingDuration)}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 w-full">
+                  {activeTab === 'video' ? (
+                    recordingVideo ? (
+                      <button
+                        type="button"
+                        onClick={stopVideoRecording}
+                        className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        ⏹️ Stop Recording
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={startVideoRecording}
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-xs hover:shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        ⏺️ Start Recording
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={takePhoto}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs hover:shadow-lg hover:shadow-cyan-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      📸 Take Photo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={stopAllStreams}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full flex flex-col gap-4 py-2">
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {/* Option A: Capture Live */}
+                  <button
+                    type="button"
+                    onClick={() => startCamera(activeTab === 'video')}
+                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-600/10 border border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/15 group transition-all duration-300 cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.2)]"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-cyan-400/10 border border-cyan-400/30 flex items-center justify-center text-lg mb-2 group-hover:scale-110 transition-transform">
+                      {activeTab === 'video' ? '🎥' : '📸'}
+                    </div>
+                    <span className="text-xs font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors">Capture Live</span>
+                    <span className="text-[9px] text-white/40 mt-1 leading-tight">Use device camera</span>
+                  </button>
+
+                  {/* Option B: Choose File */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="media-file-input"
+                      accept={activeTab === 'video' ? 'video/*' : 'image/*'}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="media-file-input"
+                      className="flex flex-col items-center justify-center p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 group transition-all duration-300 cursor-pointer h-full text-center"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-lg mb-2 group-hover:scale-110 transition-transform">
+                        📤
+                      </div>
+                      <span className="text-xs font-bold text-white/70 group-hover:text-white transition-colors">Choose File</span>
+                      <span className="text-[9px] text-white/40 mt-1 leading-tight">Up to 25MB</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -508,9 +780,9 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={uploading || isRecording}
+            disabled={uploading || isRecording || cameraActive || recordingVideo || !file}
             className={`w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm tracking-wide shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-              uploading || isRecording
+              uploading || isRecording || cameraActive || recordingVideo || !file
                 ? 'opacity-50 cursor-not-allowed'
                 : 'hover:shadow-cyan-500/35 cursor-pointer active:scale-98'
             }`}
@@ -520,6 +792,8 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
                 <div className="w-4 h-4 rounded-full border border-white/20 border-t-white animate-spin" />
                 UPLOADING TO LIVE NETWORK...
               </>
+            ) : !file ? (
+              'CHOOSE OR CAPTURE MEDIA FIRST'
             ) : (
               'UPLOAD CELEBRATION'
             )}
