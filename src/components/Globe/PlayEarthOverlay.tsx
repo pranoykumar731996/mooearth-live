@@ -139,6 +139,30 @@ export default function PlayEarthOverlay({
   const [dailyIndex, setDailyIndex] = useState(0);
   const [dailyQuestions, setDailyQuestions] = useState<EarthQuestion[]>([]);
   const [dailyScore, setDailyScore] = useState(0);
+  const [dismissedExplorerIntro, setDismissedExplorerIntro] = useState(false);
+
+  // Reset explorer intro dismissal when mode changes
+  useEffect(() => {
+    if (activeMode === 'explorer') {
+      setDismissedExplorerIntro(false);
+    }
+  }, [activeMode]);
+
+  // Window click listener to dismiss the explorer instruction prompt
+  useEffect(() => {
+    if (activeMode !== 'explorer' || phase !== 'intro' || dismissedExplorerIntro) return;
+
+    const handleWindowClick = () => {
+      setTimeout(() => {
+        setDismissedExplorerIntro(true);
+      }, 50);
+    };
+
+    window.addEventListener('click', handleWindowClick);
+    return () => {
+      window.removeEventListener('click', handleWindowClick);
+    };
+  }, [activeMode, phase, dismissedExplorerIntro]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1009,7 +1033,7 @@ export default function PlayEarthOverlay({
           )}
 
           {/* Intro Instruction (If explorer and no country chosen) */}
-          {activeMode === 'explorer' && phase === 'intro' && (
+          {activeMode === 'explorer' && phase === 'intro' && !dismissedExplorerIntro && (
             <motion.div
               key="explorer-intro"
               initial={{ opacity: 0 }}
@@ -1022,7 +1046,10 @@ export default function PlayEarthOverlay({
                 Click on any country on the globe map to study its info or start the country explorer quiz.
               </p>
               <button
-                onClick={handleBackToModes}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBackToModes();
+                }}
                 className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] text-white/60 font-bold uppercase tracking-wider cursor-pointer"
               >
                 ← Back to Mode Menu
@@ -1581,7 +1608,10 @@ export default function PlayEarthOverlay({
       <motion.button
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
-        onClick={onClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         className="fixed top-24 right-6 z-[47] w-10 h-10 rounded-full glass border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all pointer-events-auto cursor-pointer"
       >
         ✕
@@ -1704,7 +1734,7 @@ export default function PlayEarthOverlay({
         )}
 
         {/* Explorer mode tap country prompt */}
-        {activeMode === 'explorer' && phase === 'intro' && (
+        {activeMode === 'explorer' && phase === 'intro' && !dismissedExplorerIntro && (
           <motion.div
             key="explorer-intro"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -1727,7 +1757,10 @@ export default function PlayEarthOverlay({
                 Click on any country on the globe map to open its info board and start the explorer quiz.
               </p>
               <button
-                onClick={handleBackToModes}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleBackToModes();
+                }}
                 className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white/60 font-bold uppercase tracking-wider cursor-pointer pointer-events-auto"
               >
                 ← Back to Mode Menu
