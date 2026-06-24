@@ -216,9 +216,10 @@ export default function Navbar({
             }`}
             title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
           >
-            {isPlayEarthActive && (
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
-            )}
+            {/* Blinking green light always visible to make it recognizable */}
+            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" />
+            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="6" width="20" height="12" rx="3" />
               <line x1="6" y1="12" x2="10" y2="12" />
@@ -283,9 +284,9 @@ export default function Navbar({
                 : 'bg-white/5 border-white/10 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)]'
             }`}
           >
-            {isPlayEarthActive && (
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
-            )}
+            {/* Blinking green light always visible to make it recognizable */}
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981] absolute top-1 right-1" />
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping absolute top-1 right-1" />
             <span>🎮</span>
             <span className="hidden sm:inline">PLAY EARTH</span>
           </button>
