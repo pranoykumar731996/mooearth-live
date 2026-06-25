@@ -131,12 +131,132 @@ interface RetrievedContent {
   title?: string;
 }
 
+async function resolveGNewsUrl(gnewsUrl: string): Promise<string> {
+  try {
+    const url = new URL(gnewsUrl);
+    // Only resolve if it is a Google News redirect URL
+    const isGNews = url.hostname.includes('news.google.com') && 
+      (url.pathname.includes('/articles/') || url.pathname.includes('/rss/articles/'));
+    
+    if (!isGNews) {
+      return gnewsUrl;
+    }
+
+    console.log(`[ArticleService] Resolving GNews redirect URL: ${gnewsUrl}`);
+    
+    // Extract base64 GNews Article ID from path
+    const segments = url.pathname.split('/').filter(Boolean);
+    const gnArtId = segments[segments.length - 1];
+    if (!gnArtId) {
+      console.warn(`[ArticleService] Could not extract ID from path: ${url.pathname}`);
+      return gnewsUrl;
+    }
+
+    // Fetch intermediate HTML redirect page
+    const response = await fetch(gnewsUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) {
+      console.warn(`[ArticleService] Failed to fetch intermediate GNews page. Status: ${response.status}`);
+      return gnewsUrl;
+    }
+
+    const html = await response.text();
+    const sgMatch = html.match(/data-n-a-sg=["']([\s\S]*?)["']/);
+    const tsMatch = html.match(/data-n-a-ts=["']([\s\S]*?)["']/);
+    const idMatch = html.match(/data-n-a-id=["']([\s\S]*?)["']/);
+
+    const signature = sgMatch ? sgMatch[1] : null;
+    const timestamp = tsMatch ? tsMatch[1] : null;
+    const extractedId = idMatch ? idMatch[1] : gnArtId;
+
+    if (!signature || !timestamp) {
+      console.warn(`[ArticleService] Could not extract signature/timestamp from GNews redirect HTML.`);
+      return gnewsUrl;
+    }
+
+    // Construct batchexecute payload
+    const articlesReq = [
+      "Fbv4je",
+      JSON.stringify([
+        "garturlreq",
+        [
+          ["X", "X", ["X", "X"], null, null, 1, 1, "US:en", null, 1, null, null, null, null, null, 0, 1],
+          "X",
+          "X",
+          1,
+          [1, 1, 1],
+          1,
+          1,
+          null,
+          0,
+          0,
+          null,
+          0
+        ],
+        extractedId,
+        timestamp,
+        signature
+      ])
+    ];
+
+    const reqPayload = [[articlesReq]];
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('f.req', JSON.stringify(reqPayload));
+
+    console.log(`[ArticleService] Querying batchexecute for direct publisher URL with ID: ${extractedId}`);
+    const batchRes = await fetch('https://news.google.com/_/DotsSplashUi/data/batchexecute', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      body: bodyParams.toString(),
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!batchRes.ok) {
+      console.warn(`[ArticleService] batchexecute query failed. Status: ${batchRes.status}`);
+      return gnewsUrl;
+    }
+
+    const resText = await batchRes.text();
+    const cleanedText = resText.replace(/^\)\]\}'\s*/, '');
+    const parsedData = JSON.parse(cleanedText);
+    const innerDataStr = parsedData[0]?.[2];
+    if (!innerDataStr) {
+      console.warn(`[ArticleService] Empty inner data from batchexecute.`);
+      return gnewsUrl;
+    }
+
+    const innerData = JSON.parse(innerDataStr);
+    const resolvedUrl = innerData[1] || (Array.isArray(innerData[0]) ? innerData[0][1] : null);
+    if (!resolvedUrl) {
+      console.warn(`[ArticleService] Could not extract URL from inner data structure.`);
+      return gnewsUrl;
+    }
+
+    console.log(`[ArticleService] Successfully resolved direct URL: ${resolvedUrl}`);
+    return resolvedUrl;
+  } catch (err: any) {
+    console.error(`[ArticleService] Error in resolveGNewsUrl:`, err.message);
+    return gnewsUrl;
+  }
+}
+
 async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
   try {
     if (!url) return { success: false, content: '', excerpt: '' };
-    new URL(url);
+    
+    // Resolve Google News redirect URLs to the original publisher URL
+    const resolvedUrl = await resolveGNewsUrl(url);
+    new URL(resolvedUrl);
 
-    const response = await fetch(url, {
+    const response = await fetch(resolvedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -500,8 +620,51 @@ export async function fetchOrGenerateArticleDetails(
     validationPassed = false;
   }
 
+  const isFallbackValid = (desc: string) => {
+    if (!desc) return false;
+    const cleanDesc = cleanText(desc);
+    return (
+      cleanDesc.length > 40 &&
+      cleanDesc.toLowerCase() !== cleanTitle.toLowerCase() &&
+      !cleanDesc.toLowerCase().includes('summary unavailable')
+    );
+  };
+
   if (retrieved.success && !validationPassed) {
     console.warn(`[ArticleService] Data integrity validation failed (title mismatch) for: ${url}`);
+    if (isFallbackValid(cleanSummary)) {
+      console.log(`[ArticleService] Falling back to RSS description due to integrity check failure.`);
+      const details: ArticleDetails = {
+        id,
+        title: cleanTitle,
+        source: cleanText(url),
+        publishedAt,
+        country,
+        category,
+        aiSummary: cleanSummary,
+        fullContent: cleanSummary,
+        keyFacts: [
+          `Main Event: ${cleanTitle}`,
+          `Important Development: Summary from RSS feed preview.`,
+          `Why It Matters: Scraped page title or content did not align with feed.`,
+          `Country Impact: Relevant developments are monitored in ${country}.`
+        ],
+        author: publisherName,
+        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+        description: cleanSummary,
+        debug: {
+          articleId: id,
+          publisher: publisherName,
+          sourceUrl: url,
+          contentRetrieved: true,
+          summaryGenerated: false,
+          cacheHit: false,
+          validationPassed: false
+        }
+      };
+      articleCache.set(cacheKey, details);
+      return details;
+    }
     const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
     details.debug = {
       articleId: id,
@@ -574,7 +737,40 @@ export async function fetchOrGenerateArticleDetails(
 
   // If content was not retrieved successfully, we cannot summarize it reliably. No fake summaries allowed.
   if (!retrieved.success) {
-    console.warn(`[ArticleService] Retrieval failed and no valid description exists. Returning unavailable.`);
+    console.warn(`[ArticleService] Retrieval failed and no valid description exists.`);
+    if (isFallbackValid(cleanSummary)) {
+      console.log(`[ArticleService] Falling back to RSS description due to retrieval failure.`);
+      const details: ArticleDetails = {
+        id,
+        title: cleanTitle,
+        source: cleanText(url),
+        publishedAt,
+        country,
+        category,
+        aiSummary: cleanSummary,
+        fullContent: cleanSummary,
+        keyFacts: [
+          `Main Event: ${cleanTitle}`,
+          `Important Development: Summary from RSS feed preview.`,
+          `Why It Matters: Scraped page content was blocked or paywalled.`,
+          `Country Impact: Relevant developments are monitored in ${country}.`
+        ],
+        author: publisherName,
+        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+        description: cleanSummary,
+        debug: {
+          articleId: id,
+          publisher: publisherName,
+          sourceUrl: url,
+          contentRetrieved: false,
+          summaryGenerated: false,
+          cacheHit: false,
+          validationPassed: false
+        }
+      };
+      articleCache.set(cacheKey, details);
+      return details;
+    }
     const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
     details.debug = {
       articleId: id,
