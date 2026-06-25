@@ -24,7 +24,7 @@ export async function generateEventSummary(event: WorldEvent): Promise<string> {
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo', // or gpt-4o depending on availability
+        model: 'gpt-4o-mini', // or gpt-4o depending on availability
         messages: [
           {
             role: 'system',

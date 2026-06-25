@@ -11,7 +11,6 @@ import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useEventFilter } from '@/hooks/useEventFilter';
 import { useGoalCelebration } from '@/hooks/useGoalCelebration';
 import { useSoundDesign } from '@/hooks/useSoundDesign';
-import { useEarthCast } from '@/hooks/useEarthCast';
 import { useStreaks } from '@/hooks/useStreaks';
 import { useMobileSheet } from '@/hooks/useMobileSheet';
 import { requestNotificationPermission, sendLocalNotification } from '@/utils/notifications';
@@ -30,10 +29,6 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import MatchDetailsSheet from '@/components/UI/MatchDetailsSheet';
 import GoalOverlay from '@/components/Globe/GoalOverlay';
 import EventPopup from '@/components/Globe/EventPopup';
-import EarthCastOverlay from '@/components/EarthCast/EarthCastOverlay';
-import EarthCastToggle from '@/components/EarthCast/EarthCastToggle';
-import NarrationHistory from '@/components/EarthCast/NarrationHistory';
-import AIOptimizationDashboard from '@/components/EarthCast/AIOptimizationDashboard';
 import AIAssistantDrawer from '@/components/EarthCast/AIAssistantDrawer';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
 import TimelineSlider from '@/components/Timeline/TimelineSlider';
@@ -605,32 +600,15 @@ export default function HomePage({
     handleSelectCountry(country);
   }, [handleSelectCountry]);
 
-  // EarthCast Mode: Cinematic AI Narration System
-  const earthCast = useEarthCast({
-    events: filteredEvents,
-    celebrations,
-    trendingCountries,
-    globalEnergyScore,
-    isMuted,
-    onFlyToCountry: handleEarthCastFlyTo,
-    playNarrationIntro,
-    playDeepPulse,
-    playTensionDrone,
-    isFocusMode,
-    selectedEvent,
-  });
-
   // Synchronize computed Focus Mode state
   const computedFocusMode = isPlayEarthActive || 
                             (selectedCountry !== null && isDashboardOpen) || 
                             (activeArticle !== null) || 
-                            isUploadModalOpen || 
-                            (earthCast && (earthCast.narrationState === 'speaking' || earthCast.narrationState === 'loading'));
+                            isUploadModalOpen;
 
   const computedActivity = isPlayEarthActive ? 'Play Earth'
                           : activeArticle !== null ? 'Article Reader'
                           : isUploadModalOpen ? 'Upload Reaction'
-                          : (earthCast && (earthCast.narrationState === 'speaking' || earthCast.narrationState === 'loading')) ? 'EarthCast Playback'
                           : (selectedCountry !== null && isDashboardOpen) ? 'Country Explorer'
                           : 'None';
 
@@ -638,24 +616,6 @@ export default function HomePage({
     setIsFocusMode(computedFocusMode);
     setCurrentActivity(computedActivity);
   }, [computedFocusMode, computedActivity]);
-
-  // EarthCast analytics tracking
-  useEffect(() => {
-    if (earthCast.isEarthCastActive) {
-      trackEvent('earthcast', 'start');
-    } else if (earthCast.narrationHistory.length > 0) {
-      trackEvent('earthcast', 'complete');
-    }
-  }, [earthCast.isEarthCastActive, earthCast.narrationHistory.length]);
-
-  useEffect(() => {
-    if (earthCast.currentNarration) {
-      trackEvent('earthcast', 'narration_play', earthCast.currentNarration.country, 1, {
-        text: earthCast.currentNarration.text,
-        eventType: earthCast.currentNarration.eventType
-      });
-    }
-  }, [earthCast.currentNarration]);
 
   // Trigger sound when celebration activates
   useEffect(() => {
@@ -733,14 +693,8 @@ export default function HomePage({
       setSelectedEvent(null);
     } else {
       setSelectedEvent(event);
-      if (event && event.footballData) {
-        // Small timeout to let camera flight start first
-        setTimeout(() => {
-          earthCast.narrateMatch(event);
-        }, 500);
-      }
     }
-  }, [earthCast]);
+  }, []);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -1218,11 +1172,7 @@ export default function HomePage({
               </>
             )}
 
-            {/* EarthCast Narration History */}
-            <NarrationHistory
-              history={earthCast.narrationHistory}
-              isEarthCastActive={earthCast.isEarthCastActive}
-            />
+            {/* EarthCast Narration History Removed */}
           </div>
         </div>
       )}
@@ -1263,8 +1213,8 @@ export default function HomePage({
             globalEnergyScore={globalEnergyScore}
             isCinematicModeActive={isCinematicMode || isFullScreenGlobe}
             emotionMap={emotionMap}
-            earthCastActive={earthCast.isEarthCastActive}
-            earthCastAudioLevel={earthCast.audioLevel}
+            earthCastActive={false}
+            earthCastAudioLevel={0}
             activeCategory={activeCategory}
             isPlayEarthActive={isPlayEarthActive}
             globeView={globeView}
@@ -1404,23 +1354,7 @@ export default function HomePage({
           username={currentUser?.username || 'Guest'}
         />
       )}
-
-      {/* EARTHCAST NARRATION OVERLAY */}
-      <EarthCastOverlay
-        currentNarration={earthCast.currentNarration}
-        narrationState={earthCast.narrationState}
-        audioLevel={earthCast.audioLevel}
-        isEarthCastActive={earthCast.isEarthCastActive}
-      />
-
-      {/* AI OPTIMIZATION DASHBOARD — Developer Only */}
-      {isDeveloper && (
-        <AIOptimizationDashboard
-          isOpen={isAiDashboardOpen}
-          onClose={() => setIsAiDashboardOpen(false)}
-          stats={earthCast.aiStats}
-        />
-      )}
+      {/* EARTHCAST NARRATION OVERLAY REMOVED */}
 
       {/* MOOEARTH AI ASSISTANT DRAWER */}
       <AIAssistantDrawer
@@ -1690,40 +1624,7 @@ export default function HomePage({
             {isFullScreenGlobe ? '📺' : '📱'}
           </button>
 
-          {/* EarthCast Toggle */}
-          <EarthCastToggle
-            isActive={earthCast.isEarthCastActive}
-            isAutoMode={earthCast.isAutoMode}
-            narrationState={earthCast.narrationState}
-            onToggle={() => {
-              earthCast.toggleEarthCast();
-              playHoverBlip();
-            }}
-            onToggleAutoMode={() => {
-              earthCast.toggleAutoMode();
-              playHoverBlip();
-            }}
-          />
-
-          {/* AI Optimization Dashboard Toggle — Developer Only */}
-          {isDeveloper && earthCast.isEarthCastActive && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setIsAiDashboardOpen(!isAiDashboardOpen);
-                playHoverBlip();
-              }}
-              className={`h-14 w-14 rounded-2xl flex items-center justify-center border transition-all duration-300 cursor-pointer ${
-                isAiDashboardOpen
-                  ? 'bg-cyan-500/15 border-cyan-500/40 shadow-[0_0_20px_rgba(0,229,255,0.2)] text-cyan-400'
-                  : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/50 hover:text-white'
-              }`}
-              title={isAiDashboardOpen ? 'Hide AI Optimization Dashboard' : 'Show AI Optimization Dashboard'}
-            >
-              <span className="text-lg">📊</span>
-            </motion.button>
-          )}
+          {/* EarthCast Toggle Removed */}
 
           <button
             onClick={() => {
@@ -1818,28 +1719,7 @@ export default function HomePage({
             </svg>
           </button>
 
-          {/* Microphone/EarthCast Narration Toggle */}
-          <button
-            onClick={() => {
-              earthCast.toggleEarthCast();
-              playHoverBlip();
-            }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
-              earthCast.isEarthCastActive
-                ? earthCast.narrationState === 'speaking'
-                  ? 'bg-red-500/15 border-red-500/50 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)] animate-pulse'
-                  : 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
-                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
-            }`}
-            title={earthCast.isEarthCastActive ? "Mute Narration" : "Unmute Narration"}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <line x1="12" y1="19" x2="12" y2="23" />
-              <line x1="8" y1="23" x2="16" y2="23" />
-            </svg>
-          </button>
+          {/* Microphone/EarthCast Toggle Removed */}
 
           {/* Megaphone/Speaker Mute/Unmute Toggle */}
           <button

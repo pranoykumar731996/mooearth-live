@@ -384,7 +384,7 @@ async function generateWithGeminiLatest(apiKey: string, prompt: string): Promise
 
 async function generateWithOpenAI(apiKey: string, prompt: string): Promise<any> {
   try {
-    console.log('[ArticleService] Generating article with OpenAI gpt-3.5-turbo...');
+    console.log('[ArticleService] Generating article with OpenAI gpt-4o-mini...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -392,7 +392,7 @@ async function generateWithOpenAI(apiKey: string, prompt: string): Promise<any> 
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
