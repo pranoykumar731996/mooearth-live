@@ -145,6 +145,7 @@ export default function ArticleViewer({
   const [activeEvent, setActiveEvent] = useState<WorldEvent | null>(null);
   const [loading, setLoading] = useState(false);
   const [articleDetails, setArticleDetails] = useState<ArticleDetails | null>(null);
+  const [articleDebugInfo, setArticleDebugInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
@@ -244,11 +245,19 @@ export default function ArticleViewer({
     setTranslationError(null);
     setIsTranslating(false);
     setIsLangDropdownOpen(false);
+    setArticleDebugInfo(null);
     
     if (activeEvent) {
       const cacheKey = activeEvent.id || activeEvent.source || activeEvent.title;
       if (localArticleCache[cacheKey]) {
-        setArticleDetails(localArticleCache[cacheKey]);
+        const cached = localArticleCache[cacheKey];
+        setArticleDetails(cached);
+        if (cached.debug) {
+          setArticleDebugInfo({
+            ...cached.debug,
+            cacheHit: true
+          });
+        }
         setError(null);
         setLoading(false);
       } else {
@@ -273,6 +282,14 @@ export default function ArticleViewer({
     
     // Reuse locally cached article if available
     if (localArticleCache[cacheKey]) {
+      const cached = localArticleCache[cacheKey];
+      setArticleDetails(cached);
+      if (cached.debug) {
+        setArticleDebugInfo({
+          ...cached.debug,
+          cacheHit: true
+        });
+      }
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
@@ -301,6 +318,9 @@ export default function ArticleViewer({
         if (data.article) {
           localArticleCache[cacheKey] = data.article;
           setArticleDetails(data.article);
+          if (data.debug) {
+            setArticleDebugInfo(data.debug);
+          }
           if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollTop = 0;
           }
@@ -331,11 +351,21 @@ export default function ArticleViewer({
           ],
           author: `${pubInfo.publisher} Editorial`,
           image: categoryImg,
-          description: activeEvent.summary
+          description: activeEvent.summary,
+          debug: {
+            articleId: activeEvent.id || '',
+            publisher: pubInfo.publisher,
+            sourceUrl: activeEvent.source || '',
+            contentRetrieved: false,
+            summaryGenerated: false,
+            cacheHit: false,
+            validationPassed: false
+          }
         };
 
         localArticleCache[cacheKey] = fallback;
         setArticleDetails(fallback);
+        setArticleDebugInfo(fallback.debug);
         setError(null);
       })
       .finally(() => {
@@ -505,6 +535,101 @@ export default function ArticleViewer({
     }
   };
 
+  const renderDebugPanel = () => {
+    if (!articleDebugInfo) return null;
+
+    const {
+      articleId,
+      publisher: debugPub,
+      sourceUrl,
+      contentRetrieved,
+      summaryGenerated,
+      cacheHit,
+      validationPassed
+    } = articleDebugInfo;
+
+    return (
+      <div 
+        className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.01] backdrop-blur-md p-4 shadow-xl font-mono text-[11px] text-white/80 space-y-3"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+          boxShadow: validationPassed 
+            ? '0 8px 32px 0 rgba(16, 185, 129, 0.05), inset 0 1px 0 rgba(255,255,255,0.05)'
+            : '0 8px 32px 0 rgba(239, 68, 68, 0.05), inset 0 1px 0 rgba(255,255,255,0.05)'
+        }}
+      >
+        {/* Glow decoration */}
+        <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl pointer-events-none opacity-20 ${validationPassed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${validationPassed ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${validationPassed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            </span>
+            <span className="font-bold text-[10px] uppercase tracking-wider text-cyan-400">
+              News Engine Diagnostic HUD
+            </span>
+          </div>
+          <div className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/40 tracking-wider">
+            Debug Mode
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-left">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-white/30 font-bold shrink-0">ARTICLE ID:</span>
+              <span className="text-white/90 select-all truncate font-semibold">{articleId || 'N/A'}</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-white/30 font-bold shrink-0">PUBLISHER:</span>
+              <span className="text-white/90 font-semibold">{debugPub || 'Unknown'}</span>
+            </div>
+            <div className="flex items-baseline gap-1 truncate">
+              <span className="text-white/30 font-bold shrink-0">SOURCE:</span>
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan-400 hover:text-cyan-300 hover:underline select-all font-semibold"
+              >
+                {sourceUrl || 'N/A'}
+              </a>
+            </div>
+          </div>
+
+          <div className="space-y-1.5 md:border-l md:border-white/5 md:pl-4">
+            <div className="flex justify-between items-center">
+              <span className="text-white/30 font-bold">CONTENT RETRIEVED:</span>
+              <span className={`font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide ${contentRetrieved ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                {contentRetrieved ? 'YES' : 'NO'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-white/30 font-bold">SUMMARY TYPE:</span>
+              <span className={`font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide ${summaryGenerated ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                {summaryGenerated ? 'AI GENERATED' : 'PUBLISHER BYPASS'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-white/30 font-bold">CACHE STATUS:</span>
+              <span className={`font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide ${cacheHit ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                {cacheHit ? 'HIT (MEM)' : 'MISS'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-white/30 font-bold">INTEGRITY CHECK:</span>
+              <span className={`font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide ${validationPassed ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                {validationPassed ? 'PASSED' : 'FAILED'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isInline) {
     return (
       <>
@@ -566,6 +691,8 @@ export default function ArticleViewer({
               <span>•</span>
               <span className="italic">{publisher}</span>
             </div>
+
+            {renderDebugPanel()}
 
             {/* Key Facts (only shown in English mode or if loaded) */}
             {targetLanguage === 'en' && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
@@ -931,6 +1058,8 @@ export default function ArticleViewer({
                     <span className="text-white/20">•</span>
                     <span className="italic">{publisher}</span>
                   </div>
+
+                  {renderDebugPanel()}
 
                   {/* AI Story Summary - Bullet Points */}
                   {(!FEATURES.enableTranslation || targetLanguage === 'en') && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (

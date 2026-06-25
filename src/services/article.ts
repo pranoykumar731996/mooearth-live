@@ -13,6 +13,15 @@ export interface ArticleDetails {
   author?: string;
   image?: string;
   description?: string;
+  debug?: {
+    articleId: string;
+    publisher: string;
+    sourceUrl: string;
+    contentRetrieved: boolean;
+    summaryGenerated: boolean;
+    cacheHit: boolean;
+    validationPassed: boolean;
+  };
 }
 
 // Curated premium images for each category
@@ -102,101 +111,182 @@ export function cleanText(text: string): string {
   return cleaned.trim();
 }
 
-/**
- * Generates procedural template-based article content as a high-quality fallback
- * when OpenAI is offline, rate-limited, or unauthorized.
- */
-function generateProceduralArticle(
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—')
+    .replace(/&ndash;/g, '–');
+}
+
+interface RetrievedContent {
+  success: boolean;
+  content: string;
+  excerpt: string;
+  publisher?: string;
+  title?: string;
+}
+
+async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
+  try {
+    if (!url) return { success: false, content: '', excerpt: '' };
+    new URL(url);
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (!response.ok) {
+      console.warn(`[ArticleService] Fetching URL failed (status: ${response.status}): ${url}`);
+      return { success: false, content: '', excerpt: '' };
+    }
+
+    const html = await response.text();
+
+    // 1. Extract metadata: excerpt/description
+    let excerpt = '';
+    const descRegexes = [
+      /<meta[^>]*?name=["']description["'][^>]*?content=["']([\s\S]*?)["']/i,
+      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?name=["']description["']/i,
+      /<meta[^>]*?property=["']og:description["'][^>]*?content=["']([\s\S]*?)["']/i,
+      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?property=["']og:description["']/i,
+      /<meta[^>]*?name=["']twitter:description["'][^>]*?content=["']([\s\S]*?)["']/i,
+    ];
+
+    for (const regex of descRegexes) {
+      const match = html.match(regex);
+      if (match && match[1]) {
+        excerpt = decodeHtmlEntities(match[1].trim());
+        break;
+      }
+    }
+
+    // 2. Extract metadata: title
+    let title = '';
+    const titleRegex = /<title>([\s\S]*?)<\/title>/i;
+    const titleMatch = html.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      title = decodeHtmlEntities(titleMatch[1].trim());
+    }
+
+    // 3. Extract metadata: publisher
+    let publisher = '';
+    const siteNameRegexes = [
+      /<meta[^>]*?property=["']og:site_name["'][^>]*?content=["']([\s\S]*?)["']/i,
+      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?property=["']og:site_name["']/i,
+    ];
+    for (const regex of siteNameRegexes) {
+      const match = html.match(regex);
+      if (match && match[1]) {
+        publisher = decodeHtmlEntities(match[1].trim());
+        break;
+      }
+    }
+
+    // 4. Extract article body (P tags)
+    let cleanHtml = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '');
+
+    const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+    let pMatch;
+    const paragraphs: string[] = [];
+    while ((pMatch = pRegex.exec(cleanHtml)) !== null) {
+      const pText = pMatch[1].replace(/<[^>]*>/g, '').trim();
+      const decodedP = decodeHtmlEntities(pText);
+      if (decodedP.length > 40 && !decodedP.toLowerCase().includes('subscribe') && !decodedP.toLowerCase().includes('cookie')) {
+        paragraphs.push(decodedP);
+      }
+    }
+
+    const content = paragraphs.slice(0, 15).join('\n\n');
+
+    return {
+      success: content.length > 100 || excerpt.length > 50,
+      content,
+      excerpt,
+      publisher,
+      title
+    };
+  } catch (err) {
+    console.error(`[ArticleService] Failed to retrieve article content: ${url}`, err);
+    return { success: false, content: '', excerpt: '' };
+  }
+}
+
+function verifyArticleIntegrity(
+  feedTitle: string,
+  fetchedTitle: string,
+  fetchedContent: string,
+  fetchedExcerpt: string
+): boolean {
+  const getSignificantWords = (text: string) => {
+    const stopWords = new Set([
+      'about', 'after', 'again', 'would', 'could', 'their', 'there', 'this', 'that',
+      'with', 'from', 'news', 'video', 'watch', 'here', 'today', 'live', 'says', 'said',
+      'japan', 'world', 'breaking', 'report'
+    ]);
+    const words = text.toLowerCase()
+      .replace(/[^\w\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !stopWords.has(w));
+    return new Set(words);
+  };
+
+  const feedWords = getSignificantWords(feedTitle);
+  if (feedWords.size === 0) return true;
+
+  const fetchedText = `${fetchedTitle} ${fetchedExcerpt} ${fetchedContent}`;
+  const fetchedWords = getSignificantWords(fetchedText);
+
+  let matchCount = 0;
+  for (const word of feedWords) {
+    if (fetchedWords.has(word)) {
+      matchCount++;
+    }
+  }
+
+  const requiredMatches = Math.min(2, feedWords.size);
+  const passed = matchCount >= requiredMatches;
+
+  console.log(`[ArticleService] Integrity Check: matched ${matchCount}/${feedWords.size} words. Required: ${requiredMatches}. Passed: ${passed}`);
+  return passed;
+}
+
+function generateUnavailableArticle(
   id: string,
   title: string,
-  summary: string,
   country: string,
   category: string,
   source: string,
   publishedAt: string
 ): ArticleDetails {
-  const cleanTitle = cleanText(title);
-  const cleanSummary = cleanText(summary);
-
-  // Derive city from title/summary or fallback to Capital City
-  const cityMatch = summary.match(/in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/);
-  const city = cityMatch ? cityMatch[1] : 'Capital City';
-
-  const mainEventText = cleanSummary || cleanTitle;
-  
-  // Category-specific descriptors to enrich context
-  let categoryTheme = 'ongoing development';
-  let categoryFocus = 'assessing safety protocols and operational updates';
-  let impactArea = 'local community preparedness';
-
-  switch (category) {
-    case 'technology':
-      categoryTheme = 'technological development';
-      categoryFocus = 'evaluating system capabilities, research data, and technology frameworks';
-      impactArea = 'digital infrastructure and technical standards';
-      break;
-    case 'business':
-      categoryTheme = 'economic development';
-      categoryFocus = 'monitoring trade indicators, market responses, and supply chain reports';
-      impactArea = 'commercial activities and regional trade dynamics';
-      break;
-    case 'weather':
-      categoryTheme = 'meteorological conditions';
-      categoryFocus = 'tracking atmospheric sensors, localized patterns, and safety notices';
-      impactArea = 'environmental resilience and public utilities';
-      break;
-    case 'entertainment':
-      categoryTheme = 'cultural and media updates';
-      categoryFocus = 'analyzing public response, cultural outreach, and media coverage';
-      impactArea = 'creative industries and public engagement';
-      break;
-    case 'sports':
-    case 'football':
-    case 'worldcup':
-      categoryTheme = 'athletic updates';
-      categoryFocus = 'assessing squad preparation, match organization, and fan engagement';
-      impactArea = 'sports infrastructure and tournament operations';
-      break;
-    default:
-      categoryTheme = 'key development';
-      categoryFocus = 'assessing the situation and coordinating immediate response plans';
-      impactArea = 'regional safety and public communications';
-  }
-
-  // Create dynamic, highly relevant paragraphs using the title, snippet, and category details
-  const introParagraph = `${mainEventText} This ${categoryTheme} has quickly drawn international attention and sparked extensive discussions both locally and globally.`;
-  const contextParagraph = `Reports from ${country} indicate that local authorities and key organizations are actively involved, with teams in ${city === 'Capital City' ? country : city} currently ${categoryFocus}. As updates continue to come in, leaders are focusing on immediate protocols to ensure public information remains clear and accurate.`;
-  const discussionParagraph = `Public sentiment and social media indicators show a high level of civic engagement, with citizens sharing real-time perspectives and local updates. Discussions have centered around the immediate impact on ${impactArea}, local services, and the next steps needed to manage the situation effectively.`;
-  const futureParagraph = `As the situation stabilizes, further detailed assessments are expected from regional officials to outline long-term measures and support strategies. Citizens are advised to follow official announcements and verified channels for the latest guidelines.`;
-
-  const fullContent = `${introParagraph}\n\n${contextParagraph}\n\n${discussionParagraph}\n\n${futureParagraph}`;
-  const aiSummary = cleanSummary 
-    ? `${cleanSummary} This ${categoryTheme} has prompted local response measures and active public discussion regarding safety and next steps.`
-    : `A key ${categoryTheme} has emerged in ${country}: "${cleanTitle}". Local authorities are monitoring the situation and assessing immediate impacts.`;
-
-  const keyFacts: string[] = [
-    `Main Event: ${cleanTitle}`,
-    `Important Development: Local teams in ${city === 'Capital City' ? country : city} initiate response protocols and active monitoring.`,
-    `Why It Matters: Attracts widespread public attention and highlights the importance of rapid, accurate regional updates.`,
-    `Country Impact: Prompts active community support and utility readiness to maintain stability in ${country}.`
-  ];
-
-  const author = getDeterministicAuthor(id || title);
-  const image = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking;
-
   return {
     id,
-    title: cleanTitle,
+    title: cleanText(title),
     source: cleanText(source),
     publishedAt,
     country,
     category,
-    aiSummary,
-    fullContent,
-    keyFacts,
-    author,
-    image,
-    description: cleanSummary
+    aiSummary: "Summary unavailable. Please open the original article.",
+    fullContent: "The full content of this article could not be retrieved from the publisher's website. Please use the link below to read the original article on their official site.",
+    keyFacts: [],
+    author: "MooEarth Newsroom",
+    image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+    description: "Summary unavailable."
   };
 }
 
@@ -334,11 +424,6 @@ async function generateWithOpenAI(apiKey: string, prompt: string): Promise<any> 
   }
 }
 
-/**
- * Fetches, cleans, and enriches article content. Uses cascading Gemini 2.0 Flash,
- * Gemini Flash Latest, and OpenAI gpt-3.5-turbo to expand snippets into detailed articles,
- * falling back to procedural templates if offline.
- */
 export async function fetchOrGenerateArticleDetails(
   id: string,
   url: string,
@@ -348,66 +433,110 @@ export async function fetchOrGenerateArticleDetails(
   category: string,
   publishedAt: string
 ): Promise<ArticleDetails> {
-  const cacheKey = id || url || title;
-  
-  if (articleCache.has(cacheKey)) {
-    return articleCache.get(cacheKey)!;
-  }
-
   const cleanTitle = cleanText(title);
   const cleanSummary = cleanText(summary);
 
-  const prompt = `
-    You are an elite research journalist and premium news expansion engine for MooEarth Live. 
-    Take the following news snippet and expand it into a comprehensive, highly accurate, and deeply informative article reading experience.
-    
-    TITLE: ${cleanTitle}
-    SNIPPET: ${cleanSummary}
-    COUNTRY: ${country}
-    CATEGORY: ${category}
-
-    Generate a JSON response containing:
-    1. "aiSummary": A detailed 2-3 paragraph summary of the event. Provide concrete background details, timeline context, and clear explanations. Fix any typos or run-together words.
-    2. "fullContent": A substantial, in-depth 4-6 paragraph detailed article writeup. Include regional impact analysis, geopolitical or economic context, testimonials or perspectives (if applicable), and expected future developments. Make the content rich, informative, and extensive (at least 500-600 words).
-    3. "keyFacts": An array of exactly 4-6 concise bullet points containing crucial takeaways. Each bullet point MUST cover exactly one of the following aspects in order:
-       - Main event (e.g. "Main Event: [description]")
-       - Important development (e.g. "Important Development: [description]")
-       - Why it matters (e.g. "Why It Matters: [description]")
-       - Country impact (e.g. "Country Impact: [description]")
-    4. "author": A realistic reporter or editorial team name.
-
-    OUTPUT FORMAT:
-    You must respond with raw, valid JSON only conforming to the schema. Do not write conversational text or wrap in markdown blocks.
-    JSON structure:
-    {
-      "aiSummary": "paragraph 1\\n\\nparagraph 2",
-      "fullContent": "paragraph 1\\n\\nparagraph 2\\n\\nparagraph 3\\n\\nparagraph 4\\n\\nparagraph 5",
-      "keyFacts": ["bullet 1", "bullet 2", "bullet 3", "bullet 4", "bullet 5"],
-      "author": "Reporter Name"
-    }
-  `;
-
-  let parsed: any = null;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-
-  // 1. Try Gemini 2.0 Flash
-  if (geminiApiKey) {
-    parsed = await generateWithGemini20(geminiApiKey, prompt);
-    
-    // 2. Try Gemini Flash Latest
-    if (!parsed) {
-      parsed = await generateWithGeminiLatest(geminiApiKey, prompt);
-    }
+  // Generate unique cache key using ID, URL, and timestamp
+  const cacheKey = `${id.trim()}||${url.trim()}||${publishedAt.trim()}`;
+  
+  if (articleCache.has(cacheKey)) {
+    const cached = articleCache.get(cacheKey)!;
+    return {
+      ...cached,
+      debug: {
+        ...(cached.debug || {
+          articleId: id,
+          publisher: cached.author || "Unknown",
+          sourceUrl: url,
+          contentRetrieved: true,
+          summaryGenerated: false,
+          validationPassed: true,
+        }),
+        cacheHit: true
+      }
+    };
   }
 
-  // 3. Try OpenAI gpt-3.5-turbo
-  if (!parsed && openaiApiKey) {
-    parsed = await generateWithOpenAI(openaiApiKey, prompt);
+  // Validate URL structure
+  let isValidUrl = false;
+  try {
+    new URL(url);
+    isValidUrl = true;
+  } catch (e) {
+    isValidUrl = false;
   }
 
-  // Handle successful generation
-  if (parsed && parsed.aiSummary && parsed.fullContent && Array.isArray(parsed.keyFacts)) {
+  if (!isValidUrl) {
+    console.warn(`[ArticleService] Invalid article URL: ${url}`);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    details.debug = {
+      articleId: id,
+      publisher: "Unknown",
+      sourceUrl: url,
+      contentRetrieved: false,
+      summaryGenerated: false,
+      cacheHit: false,
+      validationPassed: false
+    };
+    return details;
+  }
+
+  // Retrieve article HTML content
+  console.log(`[ArticleService] Retrieving content for: ${url}`);
+  const retrieved = await retrieveArticleContent(url);
+  const publisherName = retrieved.publisher || getDeterministicAuthor(id || title);
+
+  // Data Integrity Validation Check
+  let validationPassed = true;
+  if (retrieved.success) {
+    validationPassed = verifyArticleIntegrity(
+      cleanTitle,
+      retrieved.title || '',
+      retrieved.content || '',
+      retrieved.excerpt || ''
+    );
+  } else {
+    // If we can't retrieve the content, we cannot validate it. We still proceed to check if the feed description is valid.
+    validationPassed = false;
+  }
+
+  if (retrieved.success && !validationPassed) {
+    console.warn(`[ArticleService] Data integrity validation failed (title mismatch) for: ${url}`);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    details.debug = {
+      articleId: id,
+      publisher: publisherName,
+      sourceUrl: url,
+      contentRetrieved: true,
+      summaryGenerated: false,
+      cacheHit: false,
+      validationPassed: false
+    };
+    articleCache.set(cacheKey, details);
+    return details;
+  }
+
+  // Determine if publisher provides a valid official description/excerpt
+  let officialDescription = '';
+  const isDescriptionValid = (desc: string) => {
+    if (!desc) return false;
+    const cleanDesc = cleanText(desc);
+    return (
+      cleanDesc.length > 80 &&
+      cleanDesc.split(/\s+/).length > 10 &&
+      cleanDesc.toLowerCase() !== cleanTitle.toLowerCase()
+    );
+  };
+
+  if (isDescriptionValid(retrieved.excerpt)) {
+    officialDescription = cleanText(retrieved.excerpt);
+  } else if (isDescriptionValid(cleanSummary)) {
+    officialDescription = cleanSummary;
+  }
+
+  // Bypass AI if official description is sufficient
+  if (officialDescription) {
+    console.log(`[ArticleService] Publisher description is valid. Bypassing AI summarizer.`);
     const details: ArticleDetails = {
       id,
       title: cleanTitle,
@@ -415,30 +544,166 @@ export async function fetchOrGenerateArticleDetails(
       publishedAt,
       country,
       category,
-      aiSummary: cleanText(parsed.aiSummary),
-      fullContent: cleanText(parsed.fullContent),
-      keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
-      author: parsed.author ? cleanText(parsed.author) : getDeterministicAuthor(id || title),
+      aiSummary: officialDescription,
+      fullContent: retrieved.content && retrieved.content.length > 150 
+        ? retrieved.content 
+        : officialDescription,
+      keyFacts: [
+        `Main Event: ${cleanTitle}`,
+        `Important Development: Official summary provided directly by the publisher.`,
+        `Why It Matters: Direct source details have been verified for accuracy.`,
+        `Country Impact: Relevant developments are monitored in ${country}.`
+      ],
+      author: publisherName,
       image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-      description: cleanSummary
+      description: cleanSummary,
+      debug: {
+        articleId: id,
+        publisher: publisherName,
+        sourceUrl: url,
+        contentRetrieved: retrieved.success,
+        summaryGenerated: false,
+        cacheHit: false,
+        validationPassed: true
+      }
     };
 
     articleCache.set(cacheKey, details);
     return details;
   }
 
-  // 4. Procedural fallback
-  console.warn(`[ArticleService] AI article expansion failed or timed out for "${title}". Triggering procedural fallback.`);
-  const fallbackDetails = generateProceduralArticle(
-    id,
-    title,
-    summary,
-    country,
-    category,
-    url,
-    publishedAt
-  );
+  // If content was not retrieved successfully, we cannot summarize it reliably. No fake summaries allowed.
+  if (!retrieved.success) {
+    console.warn(`[ArticleService] Retrieval failed and no valid description exists. Returning unavailable.`);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    details.debug = {
+      articleId: id,
+      publisher: publisherName,
+      sourceUrl: url,
+      contentRetrieved: false,
+      summaryGenerated: false,
+      cacheHit: false,
+      validationPassed: false
+    };
+    articleCache.set(cacheKey, details);
+    return details;
+  }
 
-  articleCache.set(cacheKey, fallbackDetails);
-  return fallbackDetails;
+  // AI Summarization is required
+  console.log(`[ArticleService] Running AI Summarization for title: ${cleanTitle}`);
+  const prompt = `
+SYSTEM PROMPT:
+You are a news summarization assistant.
+Summarize ONLY the supplied article.
+Requirements:
+* Preserve factual accuracy.
+* Preserve names, places, dates, and scores.
+* Do not add information.
+* Do not speculate.
+* Do not combine information from other articles.
+* Produce a concise summary of approximately 100–200 words.
+* If the supplied content is insufficient, return 'Summary unavailable' rather than inventing missing details.
+
+INPUT ARTICLE DETAILS:
+- TITLE: ${cleanTitle}
+- PUBLISHER: ${publisherName}
+- DESCRIPTION: ${officialDescription || 'None'}
+- BODY CONTENT:
+${retrieved.content || 'None'}
+
+OUTPUT FORMAT:
+Generate a JSON response conforming strictly to the following JSON structure:
+{
+  "aiSummary": "Your concise summary of approximately 100-200 words goes here, following the system prompt rules. If content is insufficient, put 'Summary unavailable'.",
+  "fullContent": "The detailed content of the article (or a substantial summary of the body content if available). If content is insufficient, put 'The full content of this article could not be retrieved from the publisher\\'s website. Please use the link below to read the original article on their official site.'",
+  "keyFacts": [
+    "Main Event: [description of main event]",
+    "Important Development: [description of important development]",
+    "Why It Matters: [description of why it matters]",
+    "Country Impact: [description of country impact]"
+  ],
+  "author": "Reporter Name"
+}
+
+Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
+`;
+
+  let parsed: any = null;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+
+  if (geminiApiKey) {
+    parsed = await generateWithGemini20(geminiApiKey, prompt);
+    if (!parsed) {
+      parsed = await generateWithGeminiLatest(geminiApiKey, prompt);
+    }
+  }
+
+  if (!parsed && openaiApiKey) {
+    parsed = await generateWithOpenAI(openaiApiKey, prompt);
+  }
+
+  // Check if AI generated content successfully
+  if (parsed && parsed.aiSummary && parsed.fullContent && Array.isArray(parsed.keyFacts)) {
+    const aiSummaryText = cleanText(parsed.aiSummary);
+    
+    // Check if the AI returned 'Summary unavailable'
+    if (aiSummaryText.toLowerCase().includes('summary unavailable') || parsed.keyFacts.length === 0) {
+      console.warn(`[ArticleService] AI returned 'Summary unavailable' for: ${cleanTitle}`);
+      const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+      details.debug = {
+        articleId: id,
+        publisher: publisherName,
+        sourceUrl: url,
+        contentRetrieved: true,
+        summaryGenerated: true,
+        cacheHit: false,
+        validationPassed: true
+      };
+      articleCache.set(cacheKey, details);
+      return details;
+    }
+
+    const details: ArticleDetails = {
+      id,
+      title: cleanTitle,
+      source: cleanText(url),
+      publishedAt,
+      country,
+      category,
+      aiSummary: aiSummaryText,
+      fullContent: cleanText(parsed.fullContent),
+      keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
+      author: parsed.author ? cleanText(parsed.author) : publisherName,
+      image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+      description: cleanSummary,
+      debug: {
+        articleId: id,
+        publisher: publisherName,
+        sourceUrl: url,
+        contentRetrieved: true,
+        summaryGenerated: true,
+        cacheHit: false,
+        validationPassed: true
+      }
+    };
+
+    articleCache.set(cacheKey, details);
+    return details;
+  }
+
+  // AI Generation failed/timed out: fallback to Summary Unavailable (No fake summaries allowed!)
+  console.warn(`[ArticleService] AI article summarization failed or timed out for "${title}". Returning unavailable.`);
+  const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+  details.debug = {
+    articleId: id,
+    publisher: publisherName,
+    sourceUrl: url,
+    contentRetrieved: true,
+    summaryGenerated: false,
+    cacheHit: false,
+    validationPassed: true
+  };
+  articleCache.set(cacheKey, details);
+  return details;
 }

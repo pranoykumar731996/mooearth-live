@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       publishedAt
     );
 
-    return NextResponse.json({ article });
+    return NextResponse.json({ article, debug: article.debug });
   } catch (error: any) {
     console.error('Error in /api/article route:', error);
     return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
