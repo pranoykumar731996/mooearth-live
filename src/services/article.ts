@@ -122,95 +122,64 @@ function generateProceduralArticle(
   const cityMatch = summary.match(/in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/);
   const city = cityMatch ? cityMatch[1] : 'Capital City';
 
-  let fullContent = '';
-  let aiSummary = '';
-  let keyFacts: string[] = [];
+  const mainEventText = cleanSummary || cleanTitle;
+  
+  // Category-specific descriptors to enrich context
+  let categoryTheme = 'ongoing development';
+  let categoryFocus = 'assessing safety protocols and operational updates';
+  let impactArea = 'local community preparedness';
 
-  // Generate customized content based on category
   switch (category) {
     case 'technology':
-      aiSummary = `In a major step forward, ${country} has announced new milestones in technology and infrastructure. Local developers and research hubs in ${city} are spearheading efforts to expand software capacities, artificial intelligence integrations, and network speeds.`;
-      fullContent = `A major technological breakthrough has emerged from ${country}, centered around a new research and development initiative in ${city}. The program focuses on integrating state-of-the-art AI systems with local infrastructure grids, aiming to optimize power consumption, logistics, and database management across the nation.\n\nLocal startups have reported a significant surge in interest from global venture funds, marking a new chapter of economic growth. Tech leaders believe these advancements will position ${country} as a primary regional innovation hub, helping local universities and developers gain global recognition.\n\nIndustry experts suggest that if these trends continue, the technology sector's contribution to the national GDP could increase by up to fifteen percent over the next fiscal year. Future updates will focus on software deployments and hardware partnerships currently in final negotiations.`;
-      keyFacts = [
-        `Main Event: Tech leaders in ${city} unveil a major artificial intelligence and startup integration project.`,
-        `Important Development: Government pledges tax incentives for clean hardware prototyping and software capacities.`,
-        `Why It Matters: Integrates state-of-the-art AI with municipal grids to optimize regional power consumption.`,
-        `Country Impact: Boosts ${country}'s position as an regional innovation hub, creating over five thousand engineering roles.`
-      ];
+      categoryTheme = 'technological development';
+      categoryFocus = 'evaluating system capabilities, research data, and technology frameworks';
+      impactArea = 'digital infrastructure and technical standards';
       break;
-
     case 'business':
-      aiSummary = `Stock indices and trade reports in ${country} indicate a strong market rally today. Analysts point to increased industrial output and growing commercial partnerships centered in ${city} as key drivers of this positive economic momentum.`;
-      fullContent = `${country}’s financial markets registered substantial gains today, following the release of favorable quarterly trade and export summaries. Business leaders in ${city} attribute the growth to streamlined logistics, decreased import tariffs, and strong domestic demand across retail and energy sectors.\n\nEconomists have raised their growth forecasts for the coming quarters, citing stabilizing inflation rates and robust consumer confidence. Additionally, new commercial zones are attracting foreign direct investment, with several multi-national brands announcing plans to build assembly and distribution centers.\n\nWhile some analysts advise caution regarding global supply chain variables, the prevailing market outlook remains highly optimistic. The central bank has announced supportive policies to sustain this positive growth trajectory.`;
-      keyFacts = [
-        `Main Event: Major financial markets in ${country} hit multi-month highs following robust quarterly trade reports.`,
-        `Important Development: Export volumes from key manufacturing hubs in ${city} increase by double digits.`,
-        `Why It Matters: Stabilizing inflation rates and strong commercial growth bolster regional investor confidence.`,
-        `Country Impact: Promotes foreign direct investments and establishes key commercial assembly zones in ${country}.`
-      ];
+      categoryTheme = 'economic development';
+      categoryFocus = 'monitoring trade indicators, market responses, and supply chain reports';
+      impactArea = 'commercial activities and regional trade dynamics';
       break;
-
     case 'weather':
-      aiSummary = `Meteorologists in ${country} are monitoring unique atmospheric developments over ${city}. Fluctuating temperatures and wind patterns have prompted localized notices, while regional infrastructure teams prepare safety measures.`;
-      fullContent = `A unique weather system is currently tracking across ${country}, bringing atypical atmospheric conditions to ${city} and surrounding areas. Regional weather bureaus have advised citizens to monitor official channels as mild wind shifts and temperature fluctuations continue throughout the week.\n\nMunicipal services have deployed monitoring sensors to gather real-time data, hoping to optimize water reserves and agricultural planning. Early agricultural reports indicate that the mild conditions could actually benefit seasonal crops if the pattern stabilizes.\n\nEmergency management teams remain on standby, though major disturbances are not anticipated. Local authorities are using this event to test their new climate-smart utility grids.`;
-      keyFacts = [
-        `Main Event: Meteorologists monitor an unusual high-pressure system centering directly over ${city}.`,
-        `Important Development: Municipal services deploy smart grids and real-time environmental monitoring sensors.`,
-        `Why It Matters: Allows regional teams to study micro-climate shifts and prevent power grid overload.`,
-        `Country Impact: Benefits agricultural planning and crop yields across ${country}'s agricultural districts.`
-      ];
+      categoryTheme = 'meteorological conditions';
+      categoryFocus = 'tracking atmospheric sensors, localized patterns, and safety notices';
+      impactArea = 'environmental resilience and public utilities';
       break;
-
     case 'entertainment':
-      aiSummary = `A celebration of cultural arts and storytelling has kicked off in ${country}. The international community is converging on ${city} to preview local film premieres, musical showcases, and television deals.`;
-      fullContent = `The cultural scene in ${country} is enjoying a vibrant showcase this week, with major festivals and artistic gatherings taking place in ${city}. Directors, writers, and musicians are presenting new works that explore the rich heritage and contemporary challenges of life in ${country}.\n\nStreaming platforms have signed landmark distribution deals with local production houses, reflecting the growing global appetite for diverse stories. Creative directors expect these partnerships to elevate the national entertainment industry to new heights.\n\nPublic interest has soared, with local fan zones reporting capacity attendance. Cultural ministries have expressed strong support for the creative arts, pledging further grants and event space.`;
-      keyFacts = [
-        `Main Event: A vibrant international film and music festival begins showcases in ${city}.`,
-        `Important Development: Major streaming networks sign multi-million dollar distribution deals with local creators.`,
-        `Why It Matters: Pushes local storytelling, folk arts, and film media into the global spotlight.`,
-        `Country Impact: Promotes tourism and raises the profile of ${country}'s creative arts economy.`
-      ];
+      categoryTheme = 'cultural and media updates';
+      categoryFocus = 'analyzing public response, cultural outreach, and media coverage';
+      impactArea = 'creative industries and public engagement';
       break;
-
     case 'sports':
     case 'football':
     case 'worldcup':
-      aiSummary = `Athletic enthusiasm is at an all-time high in ${country} as teams prepare for upcoming matches. Fan parks in ${city} are filled with spectators celebrating football updates and player statistics.`;
-      fullContent = `The sporting world is focusing on ${country} this week as national teams ramp up training and match preparation in ${city}. Stadiums and public parks are hosting celebrations as fans rally behind local teams in anticipation of the upcoming tournament fixtures.\n\nCoaching staff have expressed confidence in the players' physical readiness, highlighting recent tactical updates designed to exploit defensive gaps. Sports analysts predict a highly competitive series of matches, with ticket sales breaking previous records.\n\nCommunity outreach programs are also holding youth clinics, encouraging active participation and healthy lifestyles among younger fans. The atmosphere is electric as matchday draws closer.`;
-      keyFacts = [
-        `Main Event: Training camps and fan parks in ${city} open to record numbers of sports supporters.`,
-        `Important Development: Coaching staff announce optimized tactical playbooks for upcoming tournament fixtures.`,
-        `Why It Matters: High public interest boosts youth sports enrollment and stadium ticket revenues.`,
-        `Country Impact: Fosters sports-related community clinics and athletic infrastructure across ${country}.`
-      ];
+      categoryTheme = 'athletic updates';
+      categoryFocus = 'assessing squad preparation, match organization, and fan engagement';
+      impactArea = 'sports infrastructure and tournament operations';
       break;
-
-    default: // breaking / news
-      aiSummary = `A major domestic development in ${country} has captured international headlines. Public discussion and social media engagement in ${city} reflect high public interest as events unfold.`;
-      fullContent = `Developments in ${country} continue to attract attention today, with active discussions taking place across municipal and digital forums in ${city}. The news has sparked widespread dialogue regarding policy adjustments, infrastructure investments, and local community reactions.\n\nSocial interest indicators have registered a significant spike, with users sharing updates and community perspectives. Local leaders have called for open dialogue and cooperative solutions to address the ongoing matters.\n\nAs the situation evolves, further reports are expected to clarify long-term impacts on public utilities and regional stability. Citizens are advised to follow official announcements for detailed guidelines.`;
-      keyFacts = [
-        `Main Event: A significant infrastructure and community initiative launches in ${city}.`,
-        `Important Development: Local authorities release official statements outlining planned support measures.`,
-        `Why It Matters: Prompts active civic engagement and policy feedback regarding local municipal services.`,
-        `Country Impact: Stabilizes regional public utilities and strengthens municipal bonds in ${country}.`
-      ];
+    default:
+      categoryTheme = 'key development';
+      categoryFocus = 'assessing the situation and coordinating immediate response plans';
+      impactArea = 'regional safety and public communications';
   }
 
-  // Multi-level fallback safety: Ensure none of the fields are empty
-  if (!fullContent) {
-    fullContent = cleanSummary || cleanTitle || 'No article details are currently available for this event.';
-  }
-  if (!aiSummary) {
-    aiSummary = cleanSummary || 'AI Summary is currently loading.';
-  }
-  if (keyFacts.length === 0) {
-    keyFacts = [
-      `Main Event: A new regional development is occurring in ${country}.`,
-      `Important Development: Local agencies are monitoring changes and preparing reports.`,
-      `Why It Matters: Provides key context to understand regional activity trends.`,
-      `Country Impact: Keeps local communities and international partners well-informed.`
-    ];
-  }
+  // Create dynamic, highly relevant paragraphs using the title, snippet, and category details
+  const introParagraph = `${mainEventText} This ${categoryTheme} has quickly drawn international attention and sparked extensive discussions both locally and globally.`;
+  const contextParagraph = `Reports from ${country} indicate that local authorities and key organizations are actively involved, with teams in ${city === 'Capital City' ? country : city} currently ${categoryFocus}. As updates continue to come in, leaders are focusing on immediate protocols to ensure public information remains clear and accurate.`;
+  const discussionParagraph = `Public sentiment and social media indicators show a high level of civic engagement, with citizens sharing real-time perspectives and local updates. Discussions have centered around the immediate impact on ${impactArea}, local services, and the next steps needed to manage the situation effectively.`;
+  const futureParagraph = `As the situation stabilizes, further detailed assessments are expected from regional officials to outline long-term measures and support strategies. Citizens are advised to follow official announcements and verified channels for the latest guidelines.`;
+
+  const fullContent = `${introParagraph}\n\n${contextParagraph}\n\n${discussionParagraph}\n\n${futureParagraph}`;
+  const aiSummary = cleanSummary 
+    ? `${cleanSummary} This ${categoryTheme} has prompted local response measures and active public discussion regarding safety and next steps.`
+    : `A key ${categoryTheme} has emerged in ${country}: "${cleanTitle}". Local authorities are monitoring the situation and assessing immediate impacts.`;
+
+  const keyFacts: string[] = [
+    `Main Event: ${cleanTitle}`,
+    `Important Development: Local teams in ${city === 'Capital City' ? country : city} initiate response protocols and active monitoring.`,
+    `Why It Matters: Attracts widespread public attention and highlights the importance of rapid, accurate regional updates.`,
+    `Country Impact: Prompts active community support and utility readiness to maintain stability in ${country}.`
+  ];
 
   const author = getDeterministicAuthor(id || title);
   const image = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking;
