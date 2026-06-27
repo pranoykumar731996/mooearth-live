@@ -759,6 +759,7 @@ export default function WorldCupSchedule({
             {/* Group Dropdown */}
             {stageFilter !== 'knockout' && Object.keys(standings).length > 0 && (
               <select
+                aria-label="Filter by group"
                 value={groupFilter}
                 onChange={e => { setGroupFilter(e.target.value); if (onPlaySound) onPlaySound(); }}
                 className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[9px] font-bold text-white/70 uppercase tracking-wider cursor-pointer appearance-none outline-none focus:border-cyan-500/30 transition-colors"

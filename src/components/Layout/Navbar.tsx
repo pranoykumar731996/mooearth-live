@@ -132,16 +132,16 @@ export default function Navbar({
           </div>
           {/* Mobile Logo Text matching user screenshot */}
           <div className="block sm:hidden">
-            <h1 className="text-sm font-black tracking-tight text-white leading-none">
+            <div className="text-sm font-black tracking-tight text-white leading-none">
               <span className="text-cyan-400 font-black">public</span> MooEarth
-            </h1>
+            </div>
           </div>
           {/* Desktop Logo Text */}
           <div className="hidden sm:block">
-            <h1 className="text-base font-bold text-white leading-tight">
+            <div className="text-base font-bold text-white leading-tight">
               MooEarth
               <span className="text-cyan-400"> Live</span>
-            </h1>
+            </div>
             <p className="text-[10px] text-white/30 leading-none -mt-0.5 tracking-wider">
               {BRANDING.tagline}
             </p>

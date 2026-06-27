@@ -1877,7 +1877,7 @@ export default function HomePage({
                 <div className="flex gap-3">
                   <span className="text-lg shrink-0">🔍</span>
                   <div>
-                    <h4 className="font-bold text-white text-xs">Dynamic Country Labels</h4>
+                    <h3 className="font-bold text-white text-xs">Dynamic Country Labels</h3>
                     <p className="mt-0.5 leading-relaxed">Zoom the 3D globe to reveal country names and flag emojis. Look for the A-Z directory tab in the sidebar to jump directly to any destination.</p>
                   </div>
                 </div>
@@ -1885,7 +1885,7 @@ export default function HomePage({
                 <div className="flex gap-3">
                   <span className="text-lg shrink-0">🚦</span>
                   <div>
-                    <h4 className="font-bold text-white text-xs">Category-Aware Glows</h4>
+                    <h3 className="font-bold text-white text-xs">Category-Aware Glows</h3>
                     <p className="mt-0.5 leading-relaxed">Observe colored glows around countries indicating active news (blue), sports (green), weather alerts (orange), or tech (purple/cyan).</p>
                   </div>
                 </div>
@@ -1893,7 +1893,7 @@ export default function HomePage({
                 <div className="flex gap-3">
                   <span className="text-lg shrink-0">🏆</span>
                   <div>
-                    <h4 className="font-bold text-white text-xs">FIFA World Cup Live Match Tracker</h4>
+                    <h3 className="font-bold text-white text-xs">FIFA World Cup Live Match Tracker</h3>
                     <p className="mt-0.5 leading-relaxed">Countries playing in live World Cup matches will pulse with a gold glow. Check live scores and event cards next to the globe.</p>
                   </div>
                 </div>
@@ -1901,7 +1901,7 @@ export default function HomePage({
                 <div className="flex gap-3">
                   <span className="text-lg shrink-0">🎮</span>
                   <div>
-                    <h4 className="font-bold text-white text-xs">Play Earth Quiz Game</h4>
+                    <h3 className="font-bold text-white text-xs">Play Earth Quiz Game</h3>
                     <p className="mt-0.5 leading-relaxed">Toggle the game mode in the top navbar. Dynamic question counters will float above countries indicating challenge readiness.</p>
                   </div>
                 </div>
@@ -1909,7 +1909,7 @@ export default function HomePage({
                 <div className="flex gap-3">
                   <span className="text-lg shrink-0">📣</span>
                   <div>
-                    <h4 className="font-bold text-white text-xs">Interactive Community Fan Map</h4>
+                    <h3 className="font-bold text-white text-xs">Interactive Community Fan Map</h3>
                     <p className="mt-0.5 leading-relaxed">Click any country to open its reaction panel. Upload your own notes, images, or video celebrations to show how your community reacts.</p>
                   </div>
                 </div>
