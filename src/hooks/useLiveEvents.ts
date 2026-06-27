@@ -5,6 +5,12 @@ export interface ApiStatus {
   newsActive: boolean;
   footballActive: boolean;
   earthCastActive: boolean;
+  freshness?: Record<string, {
+    lastRetrieved: string;
+    ageMinutes: number;
+    status: 'Live' | 'Recent' | 'Stale';
+    apiResponseAgeSeconds: number;
+  }>;
 }
 
 export function useLiveEvents(isFocusMode: boolean = false) {
@@ -17,25 +23,43 @@ export function useLiveEvents(isFocusMode: boolean = false) {
   });
 
   const pendingRefreshRef = useRef(false);
+  const hasForceRefreshedRef = useRef(false);
+  const lastEventsHashRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchEvents() {
+    async function fetchEvents(forceRefresh = false) {
       if (isFocusMode) {
         pendingRefreshRef.current = true;
         return;
       }
       try {
-        const response = await fetch(`/api/events?t=${Date.now()}`);
+        const refreshParam = forceRefresh ? '&refresh=true' : '';
+        const response = await fetch(`/api/events?t=${Date.now()}${refreshParam}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
         
         const data = await response.json();
         
         if (isMounted) {
-          setEvents(data.events || []);
+          const newEventsStr = JSON.stringify(data.events || []);
+          if (newEventsStr !== lastEventsHashRef.current) {
+            setEvents(data.events || []);
+            lastEventsHashRef.current = newEventsStr;
+          }
           if (data.status) {
             setApiStatus(data.status);
+            
+            if (data.status.freshness && !forceRefresh && !hasForceRefreshedRef.current) {
+              const values = Object.values(data.status.freshness) as any[];
+              const hasStale = values.some((val: any) => val.status === 'Stale');
+              if (hasStale) {
+                console.log('useLiveEvents: Stale category detected, forcing refresh...');
+                hasForceRefreshedRef.current = true;
+                // Re-fetch immediately with refresh=true
+                fetchEvents(true);
+              }
+            }
           }
           setIsLoading(false);
           pendingRefreshRef.current = false;
@@ -43,7 +67,6 @@ export function useLiveEvents(isFocusMode: boolean = false) {
       } catch (error) {
         console.error('Error fetching live events:', error);
         if (isMounted) {
-          // Keep events empty, but mark API statuses as inactive
           setApiStatus({
             newsActive: false,
             footballActive: false,
@@ -55,13 +78,15 @@ export function useLiveEvents(isFocusMode: boolean = false) {
     }
 
     if (!isFocusMode) {
-      // If we exited Focus Mode and have a pending refresh, or have no events loaded, refresh immediately
       if (pendingRefreshRef.current || events.length === 0) {
         fetchEvents();
       }
       
-      // Poll every 60 seconds
-      const intervalId = setInterval(fetchEvents, 60000);
+      const intervalId = setInterval(() => {
+        // Reset the force-refresh flag every polling cycle so we can try again if still stale
+        hasForceRefreshedRef.current = false;
+        fetchEvents();
+      }, 60000);
 
       return () => {
         isMounted = false;

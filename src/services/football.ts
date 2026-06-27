@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
+import { recordFetch } from './freshness';
 
 // Map common football teams/cities to coordinates
 const stadiumMap: Record<string, { lat: number; lng: number; country: string; city: string }> = {
@@ -45,6 +46,23 @@ function getVenueInfo(venueName: string, cityName: string, countryName: string) 
   if (venueName && venueMap[venueName]) return venueMap[venueName];
   for (const [key, val] of Object.entries(venueMap)) {
     if (venueName && (venueName.includes(key) || key.includes(venueName))) return val;
+  }
+  
+  // Try mapping by city name to support any new or differently-named World Cup 2026 stadium
+  if (cityName) {
+    const cityLower = cityName.toLowerCase();
+    if (['toronto', 'vancouver'].some(c => cityLower.includes(c))) {
+      const geo = getCoordinatesForCountry('Canada') || { lat: 56.1304, lng: -106.3468 };
+      return { lat: geo.lat, lng: geo.lng, country: 'Canada', city: cityName };
+    }
+    if (['mexico city', 'guadalajara', 'monterrey'].some(c => cityLower.includes(c))) {
+      const geo = getCoordinatesForCountry('Mexico') || { lat: 23.6345, lng: -102.5528 };
+      return { lat: geo.lat, lng: geo.lng, country: 'Mexico', city: cityName };
+    }
+    if (['new york', 'new jersey', 'east ruth', 'los angeles', 'dallas', 'miami', 'houston', 'seattle', 'santa clara', 'san francisco', 'philadelphia', 'atlanta', 'kansas', 'foxborough', 'boston'].some(c => cityLower.includes(c))) {
+      const geo = getCoordinatesForCountry('United States') || { lat: 37.0902, lng: -95.7129 };
+      return { lat: geo.lat, lng: geo.lng, country: 'United States', city: cityName };
+    }
   }
   
   const geo = getCoordinatesForCountry(countryName) || { lat: 40.4168, lng: -3.7038 };
@@ -178,6 +196,12 @@ export async function fetchLiveFootball(): Promise<{ events: WorldEvent[]; activ
   try {
     const data = await callFootballApi('fixtures?live=all');
     const matches = data.response || [];
+
+    // Record freshness
+    const newestTime = matches.length > 0
+      ? Math.max(...matches.map((m: any) => new Date(m.fixture?.date).getTime()))
+      : Date.now();
+    recordFetch('football', newestTime);
 
     const events = matches.map((match: any, index: number) => {
       const homeTeam = match.teams?.home?.name || 'Unknown Home';
@@ -325,6 +349,12 @@ export async function fetchWorldCupMatches(refresh = false): Promise<any[]> {
 
     cacheMatches = formattedMatches;
     cacheMatchesTime = now;
+    
+    const newestTime = formattedMatches.length > 0
+      ? Math.max(...formattedMatches.map((m: any) => new Date(m.kickoff).getTime()))
+      : Date.now();
+    recordFetch('worldcup', newestTime);
+
     return formattedMatches;
   } catch (error) {
     if (cacheMatches) {
@@ -355,6 +385,10 @@ export async function fetchWorldCupStandings(refresh = false): Promise<any> {
       groupArray.forEach((item: any) => {
         const groupRaw = item.group || 'A';
         const groupKey = groupRaw.replace(/Group\s+/i, '').trim().toUpperCase();
+
+        if (!/^[A-L]$/.test(groupKey)) {
+          return;
+        }
 
         if (!parsedStandings[groupKey]) {
           parsedStandings[groupKey] = [];

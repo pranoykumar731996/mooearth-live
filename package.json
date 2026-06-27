@@ -8,7 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "generate-questions": "npx tsx scripts/generateQuestions.ts",
-    "generate-country-questions": "npx tsx scripts/generateCountryQuestions.ts"
+    "generate-country-questions": "npx tsx scripts/generateCountryQuestions.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:data-integrity": "playwright test tests/data-integrity/",
+    "test:mock-scan": "node scripts/data-integrity-scanner.js",
+    "test:production-readiness": "npm run test:mock-scan && npm run test:data-integrity"
   },
   "dependencies": {
     "firebase": "^12.14.0",
@@ -20,6 +26,7 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

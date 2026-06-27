@@ -67,9 +67,9 @@ export function sanitizeEventCategory(e: WorldEvent): WorldEvent {
   return e;
 }
 
-export async function fetchAllEvents(): Promise<EventsWithStatus> {
+export async function fetchAllEvents(refresh = false): Promise<EventsWithStatus> {
   const [newsResult, footballResult] = await Promise.all([
-    fetchLiveNews(),
+    fetchLiveNews(refresh),
     fetchLiveFootball()
   ]);
 
@@ -90,7 +90,7 @@ export async function fetchAllEvents(): Promise<EventsWithStatus> {
   };
 }
 
-export async function searchAllEvents(query: string, category?: string | null): Promise<EventsWithStatus> {
+export async function searchAllEvents(query: string, category?: string | null, refresh = false): Promise<EventsWithStatus> {
   let newsEvents: WorldEvent[] = [];
   let footballEvents: WorldEvent[] = [];
   let newsActive = false;
@@ -101,7 +101,7 @@ export async function searchAllEvents(query: string, category?: string | null): 
   if (!category || category === 'home') {
     // Search everything
     const [newsResult, footballResult] = await Promise.all([
-      searchLiveNews(query, null, detectedCountry),
+      searchLiveNews(query, null, detectedCountry, refresh),
       fetchLiveFootball()
     ]);
     newsEvents = newsResult.events;
@@ -111,8 +111,8 @@ export async function searchAllEvents(query: string, category?: string | null): 
   } else if (category === 'sports' || category === 'football' || category === 'worldcup') {
     if (category === 'worldcup') {
       const [newsResult, wcMatches] = await Promise.all([
-        searchLiveNews(`${query} FIFA World Cup`, 'worldcup', detectedCountry),
-        fetchWorldCupMatches(false)
+        searchLiveNews(`${query} FIFA World Cup`, 'worldcup', detectedCountry, refresh),
+        fetchWorldCupMatches(refresh)
       ]);
       newsEvents = (newsResult.events || []).map(e => ({ ...e, category: 'worldcup' as any }));
       footballEvents = wcMatches.map(m => ({
@@ -144,7 +144,7 @@ export async function searchAllEvents(query: string, category?: string | null): 
     } else {
       const searchTerm = category === 'sports' ? `${query} sports` : `${query} football`;
       const [newsResult, footballResult] = await Promise.all([
-        searchLiveNews(searchTerm, category as EventCategory, detectedCountry),
+        searchLiveNews(searchTerm, category as EventCategory, detectedCountry, refresh),
         fetchLiveFootball()
       ]);
       newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
@@ -155,7 +155,7 @@ export async function searchAllEvents(query: string, category?: string | null): 
   } else {
     // technology, business, weather, entertainment, breaking
     const searchTerm = category === 'breaking' ? `${query} news` : `${query} ${category}`;
-    const newsResult = await searchLiveNews(searchTerm, category as EventCategory, detectedCountry);
+    const newsResult = await searchLiveNews(searchTerm, category as EventCategory, detectedCountry, refresh);
     newsEvents = (newsResult.events || []).map(e => ({ ...e, category: category as any }));
     newsActive = newsResult.active;
   }

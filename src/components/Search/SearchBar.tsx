@@ -111,6 +111,7 @@ export default function SearchBar({ events, activeCategory, onSearch, onSelectEv
           <input
             id="search-input"
             type="text"
+            aria-label="Search globe news and events"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}

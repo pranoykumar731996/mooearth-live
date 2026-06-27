@@ -148,41 +148,85 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Live Data Production Badge */}
+        {/* Live Data Production Badge & Freshness */}
         {isDeveloper && (
-          <div className="relative group pointer-events-auto cursor-help">
-            <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${badgeClass}`}>
-              <span className="w-1.5 h-1.5 rounded-full relative flex">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotPingClass}`} />
-                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColorClass}`} />
-              </span>
-              <span>{badgeLabel}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <div className="relative group pointer-events-auto cursor-help">
+              <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${badgeClass}`}>
+                <span className="w-1.5 h-1.5 rounded-full relative flex">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotPingClass}`} />
+                  <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColorClass}`} />
+                </span>
+                <span>{badgeLabel}</span>
+              </div>
 
-            {/* Tooltip */}
-            <div className="absolute left-0 top-8 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 scale-95 group-hover:scale-100 origin-top-left">
-              <div className="glass px-4 py-3 rounded-2xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/10 flex flex-col gap-2 bg-[#090915]/95 min-w-[150px]">
-                <div className="text-[9px] uppercase tracking-wider text-white/45 border-b border-white/5 pb-1">API Connections</div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>News Feed API</span>
-                  <span className={apiStatus?.newsActive ? 'text-emerald-400' : 'text-red-400'}>
-                    {apiStatus?.newsActive ? '🟢 Connected' : '🔴 Offline'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Football API</span>
-                  <span className={apiStatus?.footballActive ? 'text-emerald-400' : 'text-red-400'}>
-                    {apiStatus?.footballActive ? '🟢 Connected' : '🔴 Offline'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>EarthCast AI</span>
-                  <span className={apiStatus?.earthCastActive ? 'text-emerald-400' : 'text-red-400'}>
-                    {apiStatus?.earthCastActive ? '🟢 Connected' : '🔴 Offline'}
-                  </span>
+              {/* Tooltip */}
+              <div className="absolute left-0 top-8 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-50 scale-95 group-hover:scale-100 origin-top-left">
+                <div className="glass px-4 py-3 rounded-2xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/10 flex flex-col gap-2 bg-[#090915]/95 min-w-[150px]">
+                  <div className="text-[9px] uppercase tracking-wider text-white/45 border-b border-white/5 pb-1">API Connections</div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>News Feed API</span>
+                    <span className={apiStatus?.newsActive ? 'text-emerald-400' : 'text-red-400'}>
+                      {apiStatus?.newsActive ? '🟢 Connected' : '🔴 Offline'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Football API</span>
+                    <span className={apiStatus?.footballActive ? 'text-emerald-400' : 'text-red-400'}>
+                      {apiStatus?.footballActive ? '🟢 Connected' : '🔴 Offline'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <span>EarthCast AI</span>
+                    <span className={apiStatus?.earthCastActive ? 'text-emerald-400' : 'text-red-400'}>
+                      {apiStatus?.earthCastActive ? '🟢 Connected' : '🔴 Offline'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Freshness Badge */}
+            {(() => {
+              const getCategoryFreshness = () => {
+                if (!apiStatus?.freshness) return null;
+                let catKey = activeCategory ? activeCategory.toLowerCase().trim() : 'breaking';
+                if (catKey === 'sports') catKey = 'football';
+                if (catKey === 'home') catKey = 'breaking';
+                return apiStatus.freshness[catKey] || apiStatus.freshness['breaking'] || null;
+              };
+              const currentFreshness = getCategoryFreshness();
+              if (!currentFreshness) return null;
+              
+              const freshnessBadgeClass = currentFreshness.status === 'Live'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]'
+                : currentFreshness.status === 'Recent'
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.1)]'
+                : 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]';
+                
+              const dotClass = currentFreshness.status === 'Live'
+                ? 'bg-emerald-500'
+                : currentFreshness.status === 'Recent'
+                ? 'bg-amber-500'
+                : 'bg-red-500';
+                
+              const label = currentFreshness.status === 'Live'
+                ? 'LIVE (0-15m)'
+                : currentFreshness.status === 'Recent'
+                ? 'RECENT (15-60m)'
+                : 'STALE (>60m)';
+                
+              return (
+                <div 
+                  id="freshness-badge"
+                  className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 border backdrop-blur-md transition-all duration-300 ${freshnessBadgeClass}`}
+                  title={`Last fetched: ${new Date(currentFreshness.lastRetrieved).toLocaleString()}\nAPI response age: ${currentFreshness.apiResponseAgeSeconds}s`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+                  <span>{label}</span>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>

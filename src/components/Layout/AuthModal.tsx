@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { 
   signInWithEmailAndPassword, 
@@ -344,9 +345,11 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         </button>
 
         <div className="flex flex-col items-center mb-5 mt-2">
-          <img 
+          <Image 
             src="/logo.png" 
             alt="MooEarth Live Logo" 
+            width={112}
+            height={112}
             className="w-28 h-28 object-contain mb-3"
           />
           <h2 className="text-xl font-bold text-white tracking-tight">
@@ -391,10 +394,10 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Common Auth Fields (Email & Password) */}
             <div>
-              <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Email Address</label>
+              <label htmlFor="auth-email" className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Email Address</label>
               <input
+                id="auth-email"
                 type="email"
                 required
                 disabled={isLoading}
@@ -406,8 +409,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Password</label>
+              <label htmlFor="auth-password" className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Password</label>
               <input
+                id="auth-password"
                 type="password"
                 required
                 disabled={isLoading}
@@ -422,8 +426,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
             {isRegistering && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Username</label>
+                  <label htmlFor="auth-username" className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Username</label>
                   <input
+                    id="auth-username"
                     type="text"
                     required
                     disabled={isLoading}
@@ -435,8 +440,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Fan Country</label>
+                  <label htmlFor="auth-country" className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Fan Country</label>
                   <select
+                    id="auth-country"
                     value={selectedCountry}
                     disabled={isLoading}
                     onChange={(e) => setSelectedCountry(e.target.value)}

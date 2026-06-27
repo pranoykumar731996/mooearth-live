@@ -3,6 +3,7 @@
 // ============================================================
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 
 export interface CountryFlagProps {
   flag?: string; // Emoji flag string
@@ -54,13 +55,15 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({
   }
 
   return (
-    <img
+    <Image
       src={`https://flagcdn.com/w40/${code}.png`}
-      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
-      width="20"
+      width={20}
+      height={14}
       alt={alt}
       onError={() => setHasError(true)}
       className={`${className} inline-block align-middle shrink-0`}
+      loading="lazy"
+      unoptimized={false}
     />
   );
 };

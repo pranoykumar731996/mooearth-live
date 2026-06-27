@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useEventFilter } from '@/hooks/useEventFilter';
@@ -19,26 +20,26 @@ import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
-import CountryReactionPanel from '@/components/Reactions/CountryReactionPanel';
-import ArticleViewer from '@/components/Reactions/ArticleViewer';
-import MobileCountrySheet from '@/components/UI/MobileCountrySheet';
-import MobileGlobeViewsSheet from '@/components/UI/MobileGlobeViewsSheet';
-import MobileCategoriesSheet from '@/components/UI/MobileCategoriesSheet';
-import MatchDetailsPanel from '@/components/Layout/MatchDetailsPanel';
+const CountryReactionPanel = dynamic(() => import('@/components/Reactions/CountryReactionPanel'));
+const ArticleViewer = dynamic(() => import('@/components/Reactions/ArticleViewer'));
+const MobileCountrySheet = dynamic(() => import('@/components/UI/MobileCountrySheet'));
+const MobileGlobeViewsSheet = dynamic(() => import('@/components/UI/MobileGlobeViewsSheet'));
+const MobileCategoriesSheet = dynamic(() => import('@/components/UI/MobileCategoriesSheet'));
+const MatchDetailsPanel = dynamic(() => import('@/components/Layout/MatchDetailsPanel'));
+const MatchDetailsSheet = dynamic(() => import('@/components/UI/MatchDetailsSheet'));
+const GoalOverlay = dynamic(() => import('@/components/Globe/GoalOverlay'));
+const EventPopup = dynamic(() => import('@/components/Globe/EventPopup'));
+const AIAssistantDrawer = dynamic(() => import('@/components/EarthCast/AIAssistantDrawer'));
+const TimelineSlider = dynamic(() => import('@/components/Timeline/TimelineSlider'));
+const AuthModal = dynamic(() => import('@/components/Layout/AuthModal'));
+const LeaderboardModal = dynamic(() => import('@/components/UI/LeaderboardModal'));
+const ProfileModal = dynamic(() => import('@/components/UI/ProfileModal'));
+const UploadModal = dynamic(() => import('@/components/Celebrations/UploadModal'));
+const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'));
+const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
+const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import MatchDetailsSheet from '@/components/UI/MatchDetailsSheet';
-import GoalOverlay from '@/components/Globe/GoalOverlay';
-import EventPopup from '@/components/Globe/EventPopup';
-import AIAssistantDrawer from '@/components/EarthCast/AIAssistantDrawer';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
-import TimelineSlider from '@/components/Timeline/TimelineSlider';
-import AuthModal from '@/components/Layout/AuthModal';
-import LeaderboardModal from '@/components/UI/LeaderboardModal';
-import ProfileModal from '@/components/UI/ProfileModal';
-import UploadModal from '@/components/Celebrations/UploadModal';
-import MediaViewer from '@/components/Celebrations/MediaViewer';
-import PlayEarthOverlay from '@/components/Globe/PlayEarthOverlay';
-import FocusDebugPanel from '@/components/UI/FocusDebugPanel';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/services/analytics';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
@@ -753,10 +754,12 @@ export default function HomePage({
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#030308]" id="main">
+      <h1 className="sr-only">MooEarth Live - The Ultimate Interactive Globe</h1>
       {/* Splash Screen */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
+            id="splash-screen"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1, ease: 'easeInOut' }}
@@ -768,9 +771,12 @@ export default function HomePage({
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className="flex flex-col items-center"
             >
-              <img 
+              <Image 
                 src="/logo.png" 
                 alt="MooEarth Live Logo" 
+                width={224}
+                height={224}
+                priority
                 className="w-48 h-48 sm:w-56 sm:h-56 object-contain"
               />
               <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mt-6" />
@@ -994,7 +1000,7 @@ export default function HomePage({
             {leftPanelTab === 'fixtures' ? (
               <>
                 <div className="px-1 pb-1">
-                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h4>
+                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h2>
                 </div>
                 {liveEvents.filter(e => e.category === 'football').map((event) => {
                   if (!event.footballData) return null;
@@ -1057,12 +1063,13 @@ export default function HomePage({
             ) : leftPanelTab === 'explore' ? (
               <>
                 <div className="px-1 pb-1">
-                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Explore Countries</h4>
+                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Explore Countries</h2>
                 </div>
                 <div className="space-y-3">
                   <input
                     type="text"
                     placeholder="Search countries..."
+                    aria-label="Search countries"
                     value={directorySearch}
                     onChange={(e) => setDirectorySearch(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder-white/30 focus:outline-none focus:border-cyan-500/50"
@@ -1138,7 +1145,7 @@ export default function HomePage({
             ) : (
               <>
                 <div className="px-1 pb-1">
-                  <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Globe View Modes</h4>
+                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Globe View Modes</h2>
                 </div>
                 <div className="space-y-3 pb-4">
                   {[
@@ -1246,7 +1253,7 @@ export default function HomePage({
                 🌍
               </div>
               <div className="min-w-0">
-                <h4 className="font-extrabold text-white text-xs truncate">Install MooEarth Live</h4>
+                <h2 className="font-extrabold text-white text-xs truncate">Install MooEarth Live</h2>
                 <p className="text-[9px] text-white/50 leading-relaxed truncate">Add to home screen for native experience & offline mode.</p>
               </div>
             </div>
@@ -1283,7 +1290,7 @@ export default function HomePage({
               }}
             >
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                <h3 className="font-extrabold text-white text-xs uppercase tracking-wider">Install on iOS</h3>
+                <h2 className="font-extrabold text-white text-xs uppercase tracking-wider">Install on iOS</h2>
                 <button
                   onClick={() => setShowIosGuide(false)}
                   className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer text-xs"
@@ -1357,43 +1364,51 @@ export default function HomePage({
       {/* EARTHCAST NARRATION OVERLAY REMOVED */}
 
       {/* MOOEARTH AI ASSISTANT DRAWER */}
-      <AIAssistantDrawer
-        isOpen={isAssistantOpen}
-        onClose={() => setIsAssistantOpen(false)}
-        events={filteredEvents}
-        trendingCountries={trendingCountries}
-        globalEnergyScore={globalEnergyScore}
-      />
+      {isAssistantOpen && (
+        <AIAssistantDrawer
+          isOpen={isAssistantOpen}
+          onClose={() => setIsAssistantOpen(false)}
+          events={filteredEvents}
+          trendingCountries={trendingCountries}
+          globalEnergyScore={globalEnergyScore}
+        />
+      )}
 
       {/* AUTHENTICATION MODAL */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
 
       {/* LEADERBOARD MODAL */}
-      <LeaderboardModal
-        isOpen={isLeaderboardModalOpen}
-        onClose={() => setIsLeaderboardModalOpen(false)}
-        selectedCountry={selectedCountry}
-      />
+      {isLeaderboardModalOpen && (
+        <LeaderboardModal
+          isOpen={isLeaderboardModalOpen}
+          onClose={() => setIsLeaderboardModalOpen(false)}
+          selectedCountry={selectedCountry}
+        />
+      )}
 
       {/* PROFILE MODAL */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        currentUser={currentUser}
-        onSignOut={async () => {
-          console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
-          try {
-            await signOut(auth);
-            console.log('[page.tsx] Diagnostic: signOut() completed successfully.');
-          } catch (e) {
-            console.error('[page.tsx] Diagnostic: Failed to sign out from Firebase:', e);
-          }
-        }}
-      />
+      {isProfileModalOpen && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUser={currentUser}
+          onSignOut={async () => {
+            console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
+            try {
+              await signOut(auth);
+              console.log('[page.tsx] Diagnostic: signOut() completed successfully.');
+            } catch (e) {
+              console.error('[page.tsx] Diagnostic: Failed to sign out from Firebase:', e);
+            }
+          }}
+        />
+      )}
 
       {/* Streak Celebration Popup */}
       <AnimatePresence>
@@ -1434,20 +1449,24 @@ export default function HomePage({
       </AnimatePresence>
 
       {/* UPLOAD REACTION MODAL */}
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        matches={liveEvents.filter(e => e.category === 'football' || e.category === 'worldcup')}
-        currentUser={currentUser}
-        onUploadSuccess={handleUploadSuccess}
-      />
+      {isUploadModalOpen && (
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          matches={liveEvents.filter(e => e.category === 'football' || e.category === 'worldcup')}
+          currentUser={currentUser}
+          onUploadSuccess={handleUploadSuccess}
+        />
+      )}
 
       {/* MEDIA VIEWER MODAL */}
-      <MediaViewer
-        celebration={selectedCelebration}
-        onClose={() => setSelectedCelebration(null)}
-        onReportSuccess={handleReportSuccess}
-      />
+      {selectedCelebration && (
+        <MediaViewer
+          celebration={selectedCelebration}
+          onClose={() => setSelectedCelebration(null)}
+          onReportSuccess={handleReportSuccess}
+        />
+      )}
 
       {/* Live Feed or Country Reactions */}
       {!isFullScreenGlobe && !isPlayEarthActive && (
@@ -1921,7 +1940,7 @@ export default function HomePage({
       )}
 
       {/* MOBILE GLOBE VIEW SELECTOR SHEET */}
-      {isMobile && (
+      {isMobile && isMobileViewsOpen && (
         <MobileGlobeViewsSheet
           isOpen={isMobileViewsOpen}
           onClose={() => setIsMobileViewsOpen(false)}
@@ -1948,7 +1967,7 @@ export default function HomePage({
       )}
 
       {/* MOBILE CATEGORIES SELECTOR SHEET */}
-      {isMobile && (
+      {isMobile && isMobileCategoriesOpen && (
         <MobileCategoriesSheet
           isOpen={isMobileCategoriesOpen}
           onClose={() => setIsMobileCategoriesOpen(false)}

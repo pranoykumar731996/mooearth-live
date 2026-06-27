@@ -335,14 +335,14 @@ export async function POST(request: NextRequest) {
   let requestCategory = 'geography';
   try {
     const body = await request.json();
-    const { country, category, username, answeredIds = [], answeredQuestions = [] } = body;
+    const { country, category, username = 'Anonymous', answeredIds = [], answeredQuestions = [] } = body;
     requestCountry = country || 'Global';
     requestCategory = category || 'geography';
 
     console.log(`[PLAY EARTH DEBUG] POST /api/quiz/next: Clicked Country="${country}", Category="${category}", Username="${username}"`);
     console.log(`[PLAY EARTH DEBUG] clientAnsweredIds count: ${answeredIds.length}`);
 
-    if (!country || !category || !username) {
+    if (!country || !category) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 

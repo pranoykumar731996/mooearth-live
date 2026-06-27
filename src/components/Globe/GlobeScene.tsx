@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { WorldEvent, EventArc, EventCategory } from '@/types';
 import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES, getCountryGlowColors } from '@/lib/constants';
@@ -139,6 +139,19 @@ const createBlueprintGridTexture = () => {
   return canvas.toDataURL();
 };
 
+let _fifaTextureCache: string | null = null;
+let _blueprintTextureCache: string | null = null;
+
+const getFifaTexture = () => {
+  if (!_fifaTextureCache) _fifaTextureCache = createFifaTexture();
+  return _fifaTextureCache;
+};
+
+const getBlueprintGridTexture = () => {
+  if (!_blueprintTextureCache) _blueprintTextureCache = createBlueprintGridTexture();
+  return _blueprintTextureCache;
+};
+
 
 // Helper to convert ISO-2 country code to emoji flag
 const getFlagEmoji = (countryCode: string) => {
@@ -196,7 +209,7 @@ const getCountryLatitude = (feat: any) => {
   return 0;
 };
 
-export default function GlobeScene({
+const GlobeScene = React.memo(function GlobeScene({
   events,
   selectedEvent,
   onSelectEvent,
@@ -382,9 +395,9 @@ export default function GlobeScene({
     if (globeView === 'standard' || globeView === 'night') {
       targetTexture = '/textures/globe-night.jpg';
     } else if (globeView === 'fifa') {
-      targetTexture = createFifaTexture();
+      targetTexture = getFifaTexture();
     } else if (globeView === 'discovery') {
-      targetTexture = createBlueprintGridTexture();
+      targetTexture = getBlueprintGridTexture();
     } else if (globeView === 'weather' || globeView === 'satellite') {
       targetTexture = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
     }
@@ -2080,7 +2093,7 @@ export default function GlobeScene({
       </AnimatePresence>
     </div>
   );
-}
+});
 
 // ============================================================
 // Modern Premium Floating FPS Performance Monitor & Collapsible HUD (Rule 8 & Rule 11)
@@ -2238,3 +2251,4 @@ function FpsPerformancePanel({
   );
 }
 
+export default GlobeScene;

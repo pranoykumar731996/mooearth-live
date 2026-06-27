@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>MooEarth Live — FIFA World Cup 2026 Promo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #030308;
+    --cyan: #00e5ff;
+    --blue: #0066ff;
+    --purple: #8b5cf6;
+    --france-blue: #0055A4;
+    --norway-red: #EF2B2D;
+    --gold: #FFD700;
+    --text: #ffffff;
+    --text-dim: rgba(255,255,255,0.5);
+  }
+
+  body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: 'Inter', 'Outfit', sans-serif;
+    color: var(--text);
+    position: relative;
+  }
+
+  /* ══════════════════════════════════════════
+     GLOBAL ANIMATIONS
+     ══════════════════════════════════════════ */
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  @keyframes scaleUp { from { transform: scale(0); } to { transform: scale(1); } }
+  @keyframes slideInLeft { from { opacity: 0; transform: translateX(-100px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes slideInRight { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 10px var(--cyan)); } 50% { filter: drop-shadow(0 0 30px var(--cyan)); } }
+  @keyframes rotateGlobe { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  @keyframes typewriter { from { width: 0; } to { width: 100%; } }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes connectionDraw { from { stroke-dashoffset: 500; } to { stroke-dashoffset: 0; } }
+  @keyframes zoomIn { from { transform: scale(1); } to { transform: scale(1.5); } }
+  @keyframes kenBurns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.08) translate(-1%, -1%); } }
+  @keyframes rapidSlide { 
+    0% { opacity: 0; transform: translateX(60px) scale(0.95); } 
+    10% { opacity: 1; transform: translateX(0) scale(1); }
+    90% { opacity: 1; transform: translateX(0) scale(1); }
+    100% { opacity: 0; transform: translateX(-60px) scale(0.95); }
+  }
+
+  /* ══════════════════════════════════════════
+     STARFIELD BACKGROUND
+     ══════════════════════════════════════════ */
+  .starfield {
+    position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: white;
+    border-radius: 50%;
+    animation: pulse 3s infinite;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE CONTAINER
+     ══════════════════════════════════════════ */
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.4s ease;
+  }
+  .scene.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    z-index: 10;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 1: OPENING — GLOBE + TITLE
+     ══════════════════════════════════════════ */
+  .scene1-globe {
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #1a3a5c, #0a1628 60%, #030308);
+    box-shadow: 
+      0 0 80px rgba(0,229,255,0.15),
+      0 0 200px rgba(0,229,255,0.05),
+      inset 0 0 100px rgba(0,100,200,0.1);
+    position: relative;
+    animation: float 4s ease-in-out infinite;
+  }
+  .scene1-globe::before {
+    content: '';
+    position: absolute; inset: -3px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,229,255,0.15);
+  }
+  .scene1-globe::after {
+    content: '';
+    position: absolute;
+    width: 120%; height: 120%;
+    top: -10%; left: -10%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 30% 30%, rgba(100,200,255,0.05), transparent 60%);
+  }
+
+  /* Grid lines on globe */
+  .globe-grid {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  .globe-grid::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: 
+      repeating-conic-gradient(transparent 0deg, transparent 14.4deg, rgba(0,229,255,0.04) 14.5deg, rgba(0,229,255,0.04) 15deg),
+      repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 58px, rgba(0,229,255,0.04) 59px, rgba(0,229,255,0.04) 60px);
+  }
+
+  /* Continent shapes (simplified with gradients) */
+  .continent {
+    position: absolute;
+    border-radius: 30% 70% 50% 40%;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.12);
+  }
+  .continent.europe { width: 80px; height: 60px; top: 150px; left: 280px; }
+  .continent.africa { width: 70px; height: 100px; top: 230px; left: 260px; border-radius: 40% 60% 50% 30%; }
+  .continent.namerica { width: 100px; height: 90px; top: 130px; left: 130px; border-radius: 50% 40% 60% 30%; }
+  .continent.samerica { width: 60px; height: 100px; top: 280px; left: 180px; border-radius: 35% 65% 45% 55%; }
+  .continent.asia { width: 120px; height: 70px; top: 160px; left: 350px; border-radius: 40% 60% 50% 30%; }
+
+  /* Pins on globe */
+  .globe-pin {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,229,255,0.3);
+    animation: pulse 2s infinite;
+  }
+  .globe-pin::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    top: -6px; left: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,229,255,0.3);
+    animation: scaleUp 2s infinite;
+    opacity: 0.5;
+  }
+
+  .scene1-title {
+    position: absolute;
+    text-align: center;
+    bottom: 140px;
+  }
+  .scene1-title h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 72px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #fff, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 30px rgba(0,229,255,0.3));
+  }
+  .scene1-title p {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-top: 12px;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 2: MATCH ANNOUNCEMENT
+     ══════════════════════════════════════════ */
+  .scene2-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .match-badge {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 8px 24px;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 30px;
+    background: rgba(255,215,0,0.05);
+  }
+
+  .match-vs {
+    display: flex;
+    align-items: center;
+    gap: 60px;
+  }
+
+  .team-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .team-flag {
+    font-size: 120px;
+    filter: drop-shadow(0 0 40px rgba(255,255,255,0.2));
+  }
+  .team-flag.france { filter: drop-shadow(0 0 50px rgba(0,85,164,0.6)); }
+  .team-flag.norway { filter: drop-shadow(0 0 50px rgba(239,43,45,0.6)); }
+  .team-name {
+    font-family: 'Outfit', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .team-name.france { color: var(--france-blue); text-shadow: 0 0 30px rgba(0,85,164,0.5); }
+  .team-name.norway { color: var(--norway-red); text-shadow: 0 0 30px rgba(239,43,45,0.5); }
+
+  .vs-badge {
+    font-family: 'Outfit', sans-serif;
+    font-size: 64px;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(255,215,0,0.4);
+    letter-spacing: 4px;
+  }
+
+  .match-info {
+    text-align: center;
+  }
+  .match-info h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .match-info p {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+
+  /* Connection line between teams */
+  .connection-line {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    top: 50%;
+    left: 0;
+  }
+  .connection-line::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--france-blue), var(--gold), var(--norway-red));
+    border-radius: 2px;
+    animation: expandWidth 1.5s 0.5s ease-out forwards;
+    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+  }
+  @keyframes expandWidth { from { width: 0; } to { width: 300px; } }
+
+  /* ══════════════════════════════════════════
+     SCENE 3: LIVE MATCH PAGE (real screenshot)
+     ══════════════════════════════════════════ */
+  .scene3-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .screenshot-frame {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .screenshot-frame img {
+    max-width: 92%;
+    max-height: 88%;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(0,229,255,0.08);
+    animation: kenBurns 6s ease-in-out forwards;
+  }
+
+  .feature-label {
+    position: absolute;
+    padding: 8px 20px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 0 0 20px rgba(0,229,255,0.15);
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 4: COUNTRY EXPLORER
+     ══════════════════════════════════════════ */
+  .scene4-split {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  .country-panel {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .country-panel img {
+    width: 90%;
+    height: 85%;
+    object-fit: cover;
+    object-position: top;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .country-panel .overlay-label {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 30px;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 14px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .panel-divider {
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, var(--cyan), transparent);
+    box-shadow: 0 0 20px var(--cyan);
+  }
+
+  .tap-hint {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    animation: pulse 1.5s infinite;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 5: FEATURE MONTAGE
+     ══════════════════════════════════════════ */
+  .montage-container {
+    width: 100%; height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .montage-slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+  .montage-slide img {
+    max-width: 88%;
+    max-height: 85%;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .montage-slide .feature-tag {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 40px;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--cyan);
+    border-radius: 16px;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--cyan);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    box-shadow: 0 0 30px rgba(0,229,255,0.2);
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 6: MULTI-DEVICE
+     ══════════════════════════════════════════ */
+  .devices-showcase {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 40px;
+    height: 100%;
+    padding-bottom: 80px;
+  }
+  .device-frame {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .device-frame img {
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(0,229,255,0.05);
+  }
+  .device-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .device-desktop img { width: 800px; height: auto; }
+  .device-tablet img { width: 280px; height: auto; }
+  .device-mobile img { width: 180px; height: auto; }
+
+  .realtime-badge {
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 28px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+  .realtime-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 10px #00ff88;
+    animation: pulse 1s infinite;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE 7: HERO ENDING
+     ══════════════════════════════════════════ */
+  .hero-ending {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    text-align: center;
+  }
+  .hero-logo {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,229,255,0.2), 0 0 120px rgba(0,229,255,0.08);
+    border: 2px solid rgba(0,229,255,0.2);
+  }
+  .hero-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .hero-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 80px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #fff, var(--cyan), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-subtitle {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+  }
+  .hero-url {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--cyan);
+    letter-spacing: 4px;
+    margin-top: 10px;
+    text-shadow: 0 0 30px rgba(0,229,255,0.4);
+  }
+  .hero-cta {
+    padding: 16px 48px;
+    border: 2px solid var(--cyan);
+    border-radius: 50px;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: rgba(0,229,255,0.05);
+    box-shadow: 0 0 30px rgba(0,229,255,0.15);
+    animation: glow 2s infinite;
+  }
+
+  /* ══════════════════════════════════════════
+     SCENE BACKGROUND IMAGES
+     ══════════════════════════════════════════ */
+  .scene-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.35;
+    z-index: -1;
+  }
+  .scene-bg.bright { opacity: 0.5; }
+
+  /* ══════════════════════════════════════════
+     OVERLAY EFFECTS
+     ══════════════════════════════════════════ */
+  .vignette {
+    position: fixed; inset: 0; z-index: 5;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+  }
+  .scanlines {
+    position: fixed; inset: 0; z-index: 6;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+  }
+  .progress-bar {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+    z-index: 100;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 15px var(--cyan);
+  }
+
+  /* Transition flash */
+  .flash-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Corner watermark */
+  .watermark {
+    position: fixed;
+    top: 30px; left: 40px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.6;
+  }
+  .watermark img {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+  }
+  .watermark span {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 1px;
+  }
+
+  /* FIFA badge */
+  .fifa-badge {
+    position: fixed;
+    top: 30px; right: 40px;
+    z-index: 20;
+    padding: 6px 16px;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--gold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: rgba(255,215,0,0.05);
+  }
+
+  /* Playback controls */
+  .controls {
+    position: fixed;
+    bottom: 20px; right: 30px;
+    z-index: 100;
+    display: flex;
+    gap: 10px;
+  }
+  .controls button {
+    padding: 8px 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .controls button:hover {
+    background: rgba(0,229,255,0.15);
+    border-color: var(--cyan);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ BACKGROUND ═══ -->
+<div class="starfield" id="starfield"></div>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<div class="progress-bar" id="progress"></div>
+
+<!-- ═══ WATERMARKS ═══ -->
+<div class="watermark" id="watermark">
+  <img src="/logo-icon.png" alt="Logo">
+  <span>MooEarth <span style="color:var(--cyan)">Live</span></span>
+</div>
+<div class="fifa-badge" id="fifaBadge">FIFA World Cup 2026</div>
+
+<!-- ═══ FLASH OVERLAY ═══ -->
+<div class="flash-overlay" id="flash"></div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 1: OPENING (0 – 4s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene active" id="scene1">
+  <div class="scene-bg" style="background-image:url('assets/globe_opening.png')"></div>
+  <div class="scene1-globe" id="globe">
+    <div class="globe-grid"></div>
+    <div class="continent europe"></div>
+    <div class="continent africa"></div>
+    <div class="continent namerica"></div>
+    <div class="continent samerica"></div>
+    <div class="continent asia"></div>
+    <!-- World Cup nation pins -->
+    <div class="globe-pin" style="top:155px;left:245px" title="Mexico"></div>
+    <div class="globe-pin" style="top:135px;left:200px" title="USA"></div>
+    <div class="globe-pin" style="top:120px;left:210px" title="Canada"></div>
+    <div class="globe-pin" style="top:300px;left:195px" title="Brazil"></div>
+    <div class="globe-pin" style="top:310px;left:210px" title="Argentina"></div>
+    <div class="globe-pin" style="top:155px;left:295px" title="France"></div>
+    <div class="globe-pin" style="top:130px;left:300px" title="Norway"></div>
+    <div class="globe-pin" style="top:160px;left:310px" title="Germany"></div>
+    <div class="globe-pin" style="top:165px;left:325px" title="Italy"></div>
+    <div class="globe-pin" style="top:140px;left:290px" title="England"></div>
+    <div class="globe-pin" style="top:160px;left:280px" title="Spain"></div>
+    <div class="globe-pin" style="top:215px;left:275px" title="Morocco"></div>
+    <div class="globe-pin" style="top:190px;left:395px" title="Japan"></div>
+    <div class="globe-pin" style="top:175px;left:380px" title="South Korea"></div>
+    <div class="globe-pin" style="top:245px;left:270px" title="Nigeria"></div>
+    <div class="globe-pin" style="top:220px;left:250px" title="Senegal"></div>
+    <div class="globe-pin" style="top:255px;left:255px" title="Cameroon"></div>
+  </div>
+  <div class="scene1-title" id="scene1Title">
+    <h1>MooEarth Live</h1>
+    <p>The World Watches Together</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 2: MATCH ANNOUNCEMENT (4 – 8s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene2">
+  <div class="scene-bg bright" style="background-image:url('assets/france_vs_norway.png')"></div>
+  <div class="scene2-content">
+    <div class="match-badge" id="matchBadge">FIFA World Cup 2026 • Group I</div>
+    <div class="match-vs" id="matchVs">
+      <div class="team-card" id="teamFrance">
+        <span class="team-flag france">🇫🇷</span>
+        <span class="team-name france">France</span>
+      </div>
+      <div style="position:relative">
+        <span class="vs-badge" id="vsBadge">VS</span>
+        <div class="connection-line"></div>
+      </div>
+      <div class="team-card" id="teamNorway">
+        <span class="team-flag norway">🇳🇴</span>
+        <span class="team-name norway">Norway</span>
+      </div>
+    </div>
+    <div class="match-info" id="matchInfo">
+      <h3>Today's Featured Match</h3>
+      <p>Live on MooEarth.Live</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 3: LIVE MATCH PAGE (8 – 14s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene3">
+  <div class="scene3-container">
+    <div class="screenshot-frame">
+      <img src="assets/fifa_category.png" alt="MooEarth Live — FIFA World Cup View" id="scene3Img">
+    </div>
+    <div class="feature-label" id="fl1" style="top:80px;left:80px;opacity:0">⚽ Live Scores</div>
+    <div class="feature-label" id="fl2" style="top:80px;right:80px;opacity:0">📊 Match Statistics</div>
+    <div class="feature-label" id="fl3" style="bottom:100px;left:80px;opacity:0">🏆 Group Standings</div>
+    <div class="feature-label" id="fl4" style="bottom:100px;right:80px;opacity:0">📅 Fixtures</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 4: COUNTRY EXPLORER (14 – 19s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene4">
+  <div class="scene4-split">
+    <div class="country-panel" id="francePanel">
+      <img src="assets/scene4_france_dashboard.png" alt="France Dashboard" onerror="this.src='assets/scene3_france_search.png'">
+      <div class="overlay-label" style="color:var(--france-blue)">🇫🇷 France Dashboard</div>
+    </div>
+    <div class="panel-divider"></div>
+    <div class="country-panel" id="norwayPanel">
+      <img src="assets/scene6_norway_dashboard.png" alt="Norway Dashboard" onerror="this.src='assets/scene5_norway_search.png'">
+      <div class="overlay-label" style="color:var(--norway-red)">🇳🇴 Norway Dashboard</div>
+    </div>
+  </div>
+  <div class="tap-hint">👆 Tap any country to explore</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 5: FEATURE MONTAGE (19 – 24s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene5">
+  <div class="montage-container">
+    <div class="montage-slide" id="ms1">
+      <img src="assets/clean_globe.png" alt="Interactive Globe">
+      <div class="feature-tag">🌍 Interactive Globe</div>
+    </div>
+    <div class="montage-slide" id="ms2">
+      <img src="assets/fifa_category.png" alt="Live Standings">
+      <div class="feature-tag">🏆 Live Standings & Fixtures</div>
+    </div>
+    <div class="montage-slide" id="ms3">
+      <img src="assets/scene7_livefeed.png" alt="Real-Time Updates">
+      <div class="feature-tag">⚡ Real-Time News Feed</div>
+    </div>
+    <div class="montage-slide" id="ms4">
+      <img src="assets/scene3_france_search.png" alt="Country Search">
+      <div class="feature-tag">🔍 Search Any Country</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 6: MULTI-DEVICE (24 – 28s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene6">
+  <div class="realtime-badge" id="rtBadge">
+    <div class="realtime-dot"></div>
+    Real-Time Updates • No App Download Required
+  </div>
+  <div class="devices-showcase">
+    <div class="device-frame device-mobile" id="deviceMobile">
+      <img src="assets/scene8_mobile.png" alt="Mobile View">
+      <span class="device-label">Mobile</span>
+    </div>
+    <div class="device-frame device-desktop" id="deviceDesktop">
+      <img src="assets/clean_globe.png" alt="Desktop View">
+      <span class="device-label">Desktop</span>
+    </div>
+    <div class="device-frame device-tablet" id="deviceTablet">
+      <img src="assets/scene9_tablet.png" alt="Tablet View">
+      <span class="device-label">Tablet</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SCENE 7: HERO ENDING (28 – 30s)
+     ═══════════════════════════════════════════════ -->
+<div class="scene" id="scene7">
+  <div class="scene-bg" style="background-image:url('assets/hero_ending.png');opacity:0.2"></div>
+  <div class="hero-ending">
+    <div class="hero-logo" id="heroLogo">
+      <img src="/logo-icon.png" alt="MooEarth Live">
+    </div>
+    <h1 class="hero-title" id="heroTitle">MooEarth Live</h1>
+    <p class="hero-subtitle" id="heroSubtitle">Experience Every World Cup Moment</p>
+    <div class="hero-url" id="heroUrl">mooearth.live</div>
+    <div class="hero-cta" id="heroCta">Watch Now — It's Free</div>
+  </div>
+</div>
+
+<!-- ═══ CONTROLS ═══ -->
+<div class="controls">
+  <button onclick="restartPresentation()">⟲ RESTART</button>
+  <button onclick="togglePause()">⏸ PAUSE</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CINEMATIC PRESENTATION ENGINE
+// ══════════════════════════════════════════
+
+const TOTAL_DURATION = 30000; // 30 seconds
+let startTime = 0;
+let isPaused = false;
+let pauseOffset = 0;
+let animFrame = null;
+
+// Generate starfield
+function generateStars() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 200; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: ${Math.random() * 100}%;
+      width: ${Math.random() * 3 + 1}px;
+      height: ${Math.random() * 3 + 1}px;
+      opacity: ${Math.random() * 0.6 + 0.2};
+      animation-delay: ${Math.random() * 3}s;
+      animation-duration: ${Math.random() * 3 + 2}s;
+    `;
+    sf.appendChild(star);
+  }
+}
+
+// Scene definitions: [startMs, endMs, sceneId]
+const SCENES = [
+  [0,     4000,  'scene1'],
+  [4000,  8000,  'scene2'],
+  [8000,  14000, 'scene3'],
+  [14000, 19000, 'scene4'],
+  [19000, 24000, 'scene5'],
+  [24000, 28000, 'scene6'],
+  [28000, 30000, 'scene7'],
+];
+
+function getElapsed() {
+  if (isPaused) return pauseOffset;
+  return Date.now() - startTime + pauseOffset;
+}
+
+function updateProgress() {
+  const elapsed = getElapsed();
+  const pct = Math.min(100, (elapsed / TOTAL_DURATION) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function activateScene(id) {
+  document.querySelectorAll('.scene').forEach(s => {
+    s.classList.remove('active');
+    s.style.animation = '';
+  });
+  const scene = document.getElementById(id);
+  if (scene) {
+    scene.classList.add('active');
+    scene.style.animation = 'fadeIn 0.5s ease forwards';
+  }
+}
+
+// Scene-specific animations
+function animateScene1(t) {
+  const title = document.getElementById('scene1Title');
+  const globe = document.getElementById('globe');
+  if (t > 500 && title) title.style.animation = 'fadeInUp 1s ease forwards';
+  if (t > 200 && globe) globe.style.animation = 'fadeInScale 1.5s ease forwards, float 4s 1.5s ease-in-out infinite';
+  
+  // Stagger pin appearances
+  document.querySelectorAll('.globe-pin').forEach((pin, i) => {
+    if (t > 800 + i * 100) {
+      pin.style.animation = `scaleUp 0.3s ${i * 0.08}s ease forwards, pulse 2s ${1 + i * 0.1}s infinite`;
+    }
+  });
+}
+
+function animateScene2(t) {
+  const relT = t - 4000;
+  const badge = document.getElementById('matchBadge');
+  const france = document.getElementById('teamFrance');
+  const norway = document.getElementById('teamNorway');
+  const vs = document.getElementById('vsBadge');
+  const info = document.getElementById('matchInfo');
+
+  if (relT > 100 && badge) badge.style.animation = 'fadeInDown 0.6s ease forwards';
+  if (relT > 300 && france) france.style.animation = 'slideInLeft 0.8s ease forwards';
+  if (relT > 300 && norway) norway.style.animation = 'slideInRight 0.8s ease forwards';
+  if (relT > 600 && vs) vs.style.animation = 'fadeInScale 0.5s ease forwards';
+  if (relT > 1200 && info) info.style.animation = 'fadeInUp 0.6s ease forwards';
+}
+
+function animateScene3(t) {
+  const relT = t - 8000;
+  const labels = ['fl1', 'fl2', 'fl3', 'fl4'];
+  labels.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el && relT > 1000 + i * 800) {
+      el.style.opacity = '1';
+      el.style.animation = `fadeInScale 0.4s ease forwards`;
+    }
+  });
+}
+
+function animateScene4(t) {
+  const relT = t - 14000;
+  const france = document.getElementById('francePanel');
+  const norway = document.getElementById('norwayPanel');
+  if (relT > 200 && france) france.style.animation = 'slideInLeft 0.8s ease forwards';
+  if (relT > 500 && norway) norway.style.animation = 'slideInRight 0.8s ease forwards';
+}
+
+function animateScene5(t) {
+  const relT = t - 19000;
+  const slides = ['ms1', 'ms2', 'ms3', 'ms4'];
+  const duration = 5000; // 5 seconds total
+  const perSlide = duration / slides.length;
+  
+  slides.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const slideStart = i * perSlide;
+    const slideEnd = slideStart + perSlide;
+    
+    if (relT >= slideStart && relT < slideEnd) {
+      el.style.opacity = '1';
+      el.style.animation = `rapidSlide ${perSlide}ms ease forwards`;
+    } else {
+      el.style.opacity = '0';
+    }
+  });
+}
+
+function animateScene6(t) {
+  const relT = t - 24000;
+  const mobile = document.getElementById('deviceMobile');
+  const desktop = document.getElementById('deviceDesktop');
+  const tablet = document.getElementById('deviceTablet');
+  const badge = document.getElementById('rtBadge');
+
+  if (relT > 100 && badge) badge.style.animation = 'fadeInDown 0.6s ease forwards';
+  if (relT > 300 && desktop) desktop.style.animation = 'fadeInUp 0.8s ease forwards';
+  if (relT > 600 && mobile) mobile.style.animation = 'fadeInUp 0.8s ease forwards';
+  if (relT > 900 && tablet) tablet.style.animation = 'fadeInUp 0.8s ease forwards';
+}
+
+function animateScene7(t) {
+  const relT = t - 28000;
+  const logo = document.getElementById('heroLogo');
+  const title = document.getElementById('heroTitle');
+  const sub = document.getElementById('heroSubtitle');
+  const url = document.getElementById('heroUrl');
+  const cta = document.getElementById('heroCta');
+
+  if (relT > 100 && logo) logo.style.animation = 'fadeInScale 0.6s ease forwards';
+  if (relT > 300 && title) title.style.animation = 'fadeInUp 0.6s ease forwards';
+  if (relT > 500 && sub) sub.style.animation = 'fadeInUp 0.5s ease forwards';
+  if (relT > 700 && url) url.style.animation = 'fadeInUp 0.5s ease forwards';
+  if (relT > 900 && cta) cta.style.animation = 'fadeInUp 0.5s ease forwards';
+}
+
+let lastScene = '';
+const sceneAnimators = {
+  scene1: animateScene1,
+  scene2: animateScene2,
+  scene3: animateScene3,
+  scene4: animateScene4,
+  scene5: animateScene5,
+  scene6: animateScene6,
+  scene7: animateScene7,
+};
+
+function tick() {
+  if (isPaused) {
+    animFrame = requestAnimationFrame(tick);
+    return;
+  }
+
+  const elapsed = getElapsed();
+  updateProgress();
+
+  // Find current scene
+  for (const [start, end, id] of SCENES) {
+    if (elapsed >= start && elapsed < end) {
+      if (lastScene !== id) {
+        // Flash transition
+        if (lastScene) {
+          const flash = document.getElementById('flash');
+          flash.style.transition = 'opacity 0.08s';
+          flash.style.opacity = '0.15';
+          setTimeout(() => { flash.style.transition = 'opacity 0.3s'; flash.style.opacity = '0'; }, 80);
+        }
+        activateScene(id);
+        lastScene = id;
+      }
+      if (sceneAnimators[id]) sceneAnimators[id](elapsed);
+      break;
+    }
+  }
+
+  if (elapsed >= TOTAL_DURATION) {
+    // End
+    updateProgress();
+    return;
+  }
+
+  animFrame = requestAnimationFrame(tick);
+}
+
+function startPresentation() {
+  startTime = Date.now();
+  pauseOffset = 0;
+  isPaused = false;
+  lastScene = '';
+  tick();
+}
+
+function restartPresentation() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  // Reset all animations
+  document.querySelectorAll('[style*="animation"]').forEach(el => {
+    el.style.animation = '';
+  });
+  document.querySelectorAll('.feature-label').forEach(el => el.style.opacity = '0');
+  document.querySelectorAll('.montage-slide').forEach(el => el.style.opacity = '0');
+  startPresentation();
+}
+
+function togglePause() {
+  if (isPaused) {
+    // Resume
+    startTime = Date.now();
+    isPaused = false;
+  } else {
+    pauseOffset = getElapsed();
+    isPaused = true;
+  }
+}
+
+// Initialize
+generateStars();
+startPresentation();
+</script>
+
+</body>
+</html>

@@ -96,11 +96,15 @@ function parseGoogleNewsRss(xmlText: string): { title: string; link: string; pub
   return items;
 }
 
-export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: boolean }> {
+import { recordFetch } from './freshness';
+
+export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
-    const response = await fetch('https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', {
-      next: { revalidate: 60 }
-    });
+    const url = `https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
+    const response = await fetch(url, {
+      next: { revalidate: refresh ? 0 : 60 },
+      cache: refresh ? 'no-store' : 'default'
+    } as any);
 
     if (!response.ok) {
       throw new Error(`Google News RSS failed: ${response.status}`);
@@ -109,6 +113,12 @@ export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: b
     const xmlText = await response.text();
     const articles = parseGoogleNewsRss(xmlText).slice(0, 15);
     
+    // Record freshness
+    const newestTime = articles.length > 0
+      ? Math.max(...articles.map(a => new Date(a.pubDate).getTime()))
+      : Date.now();
+    recordFetch('breaking', newestTime);
+
     const events = articles.map((article, index) => {
       const geo = assignCoordinates(article.title, article.summary);
       
@@ -133,11 +143,13 @@ export async function fetchLiveNews(): Promise<{ events: WorldEvent[]; active: b
   }
 }
 
-export async function searchLiveNews(query: string, category?: EventCategory | null, countryHint?: string): Promise<{ events: WorldEvent[]; active: boolean }> {
+export async function searchLiveNews(query: string, category?: EventCategory | null, countryHint?: string, refresh = false): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
-    const response = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`, {
-      next: { revalidate: 60 }
-    });
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
+    const response = await fetch(url, {
+      next: { revalidate: refresh ? 0 : 60 },
+      cache: refresh ? 'no-store' : 'default'
+    } as any);
 
     if (!response.ok) {
       throw new Error(`Google News RSS Search failed: ${response.status}`);
@@ -146,6 +158,13 @@ export async function searchLiveNews(query: string, category?: EventCategory | n
     const xmlText = await response.text();
     const articles = parseGoogleNewsRss(xmlText).slice(0, 15);
     
+    const catName = category || 'breaking';
+    // Record freshness
+    const newestTime = articles.length > 0
+      ? Math.max(...articles.map(a => new Date(a.pubDate).getTime()))
+      : Date.now();
+    recordFetch(catName, newestTime);
+
     if (articles.length === 0) {
       console.log(`Google News RSS returned 0 results for "${query}". Triggering local fallback.`);
       const fallbackEvents = generateLocalFallbackEvents(query, category, countryHint);
