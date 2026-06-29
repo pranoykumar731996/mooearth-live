@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { WorldEvent, EventCategory } from '@/types';
 import { SEARCH_DEBOUNCE_MS } from '@/lib/constants';
+import { LocationRecord } from '@/data/locations';
 
 interface UseSearchProps {
   events: WorldEvent[];
@@ -11,6 +12,7 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [serverResults, setServerResults] = useState<WorldEvent[]>([]);
+  const [locationResults, setLocationResults] = useState<LocationRecord[]>([]);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = useCallback((value: string) => {
@@ -23,6 +25,7 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
     if (!value.trim()) {
       setDebouncedQuery('');
       setServerResults([]);
+      setLocationResults([]);
       return;
     }
     
@@ -35,9 +38,10 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
     setQuery('');
     setDebouncedQuery('');
     setServerResults([]);
+    setLocationResults([]);
   }, []);
 
-  // Fetch search results from server when query changes
+  // Fetch search results & locations from server when query changes
   useEffect(() => {
     const q = debouncedQuery.trim();
     if (!q) {
@@ -46,35 +50,43 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
 
     let isMounted = true;
 
-    async function fetchSearchResults() {
+    async function performSearch() {
       try {
-        const catParam = activeCategory ? `&category=${activeCategory}` : '';
-        const res = await fetch(`/api/events?q=${encodeURIComponent(q)}${catParam}`);
-        if (!res.ok) throw new Error('Search request failed');
-        const data = await res.json();
+        // Fetch locations autocomplete
+        const locRes = await fetch(`/api/locations?q=${encodeURIComponent(q)}`);
+        const locData = await locRes.json();
         
+        // Fetch events search
+        const catParam = activeCategory ? `&category=${activeCategory}` : '';
+        const eventRes = await fetch(`/api/events?q=${encodeURIComponent(q)}${catParam}`);
+        const eventData = await eventRes.json();
+
         if (isMounted) {
-          setServerResults(data.events || []);
+          setLocationResults(locData.locations || []);
+          setServerResults(eventData.events || []);
         }
       } catch (err) {
-        console.error('Failed to fetch search results from server:', err);
+        console.error('Failed to execute search queries:', err);
       }
     }
 
-    fetchSearchResults();
+    performSearch();
 
     return () => {
       isMounted = false;
     };
   }, [debouncedQuery, activeCategory]);
 
-  // Calculate countryResult dynamically
+  // Calculate countryResult dynamically (for backward compatibility)
   const countryResult = useMemo(() => {
     if (activeCategory === 'worldcup') return null;
     const q = debouncedQuery.trim().toLowerCase();
     if (!q) return null;
 
-    // Combine local events and server results to scan for matching countries
+    // First check if any of the autocomplete locations is a country
+    const firstCountryLoc = locationResults.find(l => l.type === 'country');
+    if (firstCountryLoc) return firstCountryLoc.name;
+
     const allEvents = [...events, ...serverResults];
     const activeEventCountries = allEvents.map(e => e.country).filter(Boolean);
     const uniqueCountries = Array.from(new Set(activeEventCountries));
@@ -88,9 +100,9 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
       }
     }
     return null;
-  }, [events, serverResults, debouncedQuery, activeCategory]);
+  }, [events, serverResults, locationResults, debouncedQuery, activeCategory]);
 
-  // Calculate results dynamically (combining local filtered items and server-fetched results)
+  // Calculate results dynamically (events)
   const results = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase();
     if (!q) return [];
@@ -112,12 +124,10 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
         (e.title && e.title.toLowerCase().includes(q)) ||
         (e.city && e.city.toLowerCase().includes(q)) ||
         (e.country && e.country.toLowerCase().includes(q)) ||
-        (e.category && e.category.toLowerCase().includes(q)) ||
-        (countryResult && e.country === countryResult)
+        (e.category && e.category.toLowerCase().includes(q))
       );
     });
 
-    // Merge and deduplicate by ID
     const seen = new Set<string>();
     const combined: WorldEvent[] = [];
 
@@ -135,16 +145,16 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
       }
     }
 
-    return combined.slice(0, countryResult ? 4 : 8);
-  }, [events, debouncedQuery, countryResult, serverResults]);
+    return combined.slice(0, 6);
+  }, [events, debouncedQuery, serverResults, activeCategory]);
 
   return {
     query,
     debouncedQuery,
     setQuery: handleChange,
     results,
+    locationResults,
     countryResult,
     clearSearch
   };
 }
-

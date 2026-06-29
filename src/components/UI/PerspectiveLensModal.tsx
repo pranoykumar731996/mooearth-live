@@ -48,7 +48,7 @@ export default function PerspectiveLensModal({
 
     const fetchPerspective = async () => {
       try {
-        const url = `/api/perspective?country=${encodeURIComponent(country)}&topic=${encodeURIComponent(topic)}&category=${encodeURIComponent(category)}`;
+        const url = `/api/perspective?locationId=${encodeURIComponent(country)}&topic=${encodeURIComponent(topic)}&category=${encodeURIComponent(category)}`;
         const res = await fetch(url);
         
         if (res.status === 403) {
@@ -275,14 +275,48 @@ export default function PerspectiveLensModal({
                       </div>
 
                       {/* Focus Breakdown Split */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Domestic Emphasis */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* 1. Local City Emphasis (if city selected) */}
+                        {data.cityFocus && data.cityFocus.length > 0 && (
+                          <div className="p-4 rounded-2xl bg-cyan-500/[0.02] border border-cyan-500/10">
+                            <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                              <span>📍</span> Local City Focus
+                            </h4>
+                            <ul className="space-y-1.5">
+                              {data.cityFocus.map((pt, i) => (
+                                <li key={i} className="text-xs text-cyan-100/90 leading-relaxed flex items-start gap-2">
+                                  <span className="text-cyan-400 mt-0.5 shrink-0">•</span>
+                                  <span>{pt}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* 2. State Emphasis (if state resolved) */}
+                        {data.stateFocus && data.stateFocus.length > 0 && (
+                          <div className="p-4 rounded-2xl bg-teal-500/[0.02] border border-teal-500/10">
+                            <h4 className="text-xs font-bold text-teal-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                              <span>🏛️</span> State/Regional Focus
+                            </h4>
+                            <ul className="space-y-1.5">
+                              {data.stateFocus.map((pt, i) => (
+                                <li key={i} className="text-xs text-teal-100/90 leading-relaxed flex items-start gap-2">
+                                  <span className="text-teal-400 mt-0.5 shrink-0">•</span>
+                                  <span>{pt}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* 3. National Emphasis */}
                         <div className="p-4 rounded-2xl bg-indigo-500/[0.02] border border-indigo-500/10">
                           <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <span>📍</span> Domestic Emphasis
+                            <span>🌍</span> National Framing
                           </h4>
                           <ul className="space-y-1.5">
-                            {data.localFocus.map((pt, i) => (
+                            {(data.nationalFocus && data.nationalFocus.length > 0 ? data.nationalFocus : data.localFocus).map((pt, i) => (
                               <li key={i} className="text-xs text-indigo-100/90 leading-relaxed flex items-start gap-2">
                                 <span className="text-indigo-400 mt-0.5 shrink-0">•</span>
                                 <span>{pt}</span>
@@ -291,7 +325,7 @@ export default function PerspectiveLensModal({
                           </ul>
                         </div>
 
-                        {/* Global Focus */}
+                        {/* 4. Global Wires Focus */}
                         <div className="p-4 rounded-2xl bg-purple-500/[0.02] border border-purple-500/10">
                           <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                             <span>🌎</span> International Framing

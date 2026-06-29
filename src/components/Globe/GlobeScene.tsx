@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { WorldEvent, EventArc, EventCategory } from '@/types';
 import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES, getCountryGlowColors } from '@/lib/constants';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
+import { LocationRecord } from '@/data/locations';
 import { useGlobeControls } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
@@ -30,6 +31,8 @@ interface GlobeSceneProps {
   onSelectEvent: (event: WorldEvent | null) => void;
   selectedCountry?: string | null;
   onSelectCountry?: (country: string | null) => void;
+  selectedLocation?: LocationRecord | null;
+  onSelectLocation?: (location: LocationRecord | null) => void;
   emotionMap?: Record<string, string>;
   celebration?: GoalCelebration | null;
   celebrations?: any[];
@@ -215,6 +218,8 @@ const GlobeScene = React.memo(function GlobeScene({
   onSelectEvent,
   selectedCountry,
   onSelectCountry,
+  selectedLocation,
+  onSelectLocation,
   emotionMap = {},
   celebration,
   celebrations = [],
@@ -829,11 +834,15 @@ const GlobeScene = React.memo(function GlobeScene({
     }
   }, [celebration, globeRef, introDone, flyTo, pauseRotation, resumeRotation]);
 
-  // Fly to selected event or country
+  // Fly to selected event, location, or country
   useEffect(() => {
     if (introDone) {
       if (selectedEvent) {
         flyTo({ lat: selectedEvent.lat, lng: selectedEvent.lng, altitude: 1.2 });
+        recordInteraction();
+      } else if (selectedLocation) {
+        const zoomAltitude = selectedLocation.type === 'city' ? 1.15 : selectedLocation.type === 'state' ? 1.45 : 1.8;
+        flyTo({ lat: selectedLocation.lat, lng: selectedLocation.lng, altitude: zoomAltitude });
         recordInteraction();
       } else if (selectedCountry) {
         // Find coordinates for the country
@@ -875,7 +884,7 @@ const GlobeScene = React.memo(function GlobeScene({
         recordInteraction();
       }
     }
-  }, [selectedEvent, selectedCountry, introDone, flyTo, recordInteraction, countries]);
+  }, [selectedEvent, selectedCountry, selectedLocation, introDone, flyTo, recordInteraction, countries]);
 
   // Pause/resume rotation based on selected event state reactively
   useEffect(() => {
@@ -1208,8 +1217,25 @@ const GlobeScene = React.memo(function GlobeScene({
         });
       });
     }
+    const selLoc = selectedLocation as any;
+    if (selLoc && selLoc.type === 'city') {
+      const alreadyHasEvent = events.some(e => e.city === selLoc.name);
+      if (!alreadyHasEvent) {
+        data.push({
+          id: `city-marker-${selLoc.id}`,
+          title: selLoc.name,
+          summary: `${selLoc.name}, ${selLoc.state ? selLoc.state + ', ' : ''}${selLoc.country}`,
+          category: 'breaking',
+          country: selLoc.country,
+          city: selLoc.name,
+          lat: selLoc.lat,
+          lng: selLoc.lng,
+          isCityLocation: true,
+        });
+      }
+    }
     return data;
-  }, [events, celebrations]);
+  }, [events, celebrations, selectedLocation]);
 
   // Connection arcs — pair adjacent events
   const arcsData = useMemo<EventArc[]>(() => {

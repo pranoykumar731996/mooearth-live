@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchAllEvents, searchAllEvents } from '@/services/events';
+import { fetchAllEvents, searchAllEvents, getLocationEvents } from '@/services/events';
 import { generateEventSummary } from '@/services/ai';
 import { getAllFreshness } from '@/services/freshness';
 
-// In Next.js App Router, we force dynamic rendering since it relies on dynamic searchParams
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -11,6 +10,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const query = searchParams.get('q') || '';
     const category = searchParams.get('category') || '';
+    const locationId = searchParams.get('locationId') || '';
     const refresh = searchParams.get('refresh') === 'true';
     const simulateError = searchParams.get('simulateError');
     
@@ -36,11 +36,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { events, status } = query.trim()
-      ? await searchAllEvents(query.trim(), category, refresh)
-      : await fetchAllEvents(refresh);
+    let result;
+
+    if (locationId.trim()) {
+      // Fetch events specifically for this Location ID (City / State / Country)
+      result = await getLocationEvents(locationId.trim(), category, refresh);
+    } else if (query.trim()) {
+      // Normal search query fallback
+      result = await searchAllEvents(query.trim(), category, refresh);
+    } else {
+      // Default homepage events
+      result = await fetchAllEvents(refresh);
+    }
+
+    const { events, status } = result;
     
-    // Process summaries concurrently (up to a limit, but Promise.all is fine for a small batch)
+    // Process summaries concurrently
     const processedEvents = await Promise.all(
       events.map(async (event) => {
         const aiSummary = await generateEventSummary(event);
@@ -50,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     const earthCastActive = !!process.env.OPENAI_API_KEY;
 
-    return NextResponse.json({
+    const responsePayload: any = {
       events: processedEvents,
       status: {
         newsActive: status.newsActive,
@@ -58,7 +69,16 @@ export async function GET(request: NextRequest) {
         earthCastActive,
         freshness: getAllFreshness(),
       }
-    }, {
+    };
+
+    // If a specific location was resolved, include diagnostic details
+    if ('resolvedLocation' in result) {
+      responsePayload.resolvedLocation = result.resolvedLocation;
+      responsePayload.activeLocation = result.activeLocation;
+      responsePayload.fallbackLevel = result.fallbackLevel;
+    }
+
+    return NextResponse.json(responsePayload, {
       headers: {
         'Cache-Control': 'no-store, max-age=0, must-revalidate',
       }
@@ -68,5 +88,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
   }
 }
-
-

@@ -8,19 +8,22 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
+    const locationId = searchParams.get('locationId') || '';
     const country = searchParams.get('country') || '';
     const topic = searchParams.get('topic') || '';
     const category = searchParams.get('category') || 'news';
 
-    if (!country || !topic) {
+    const locationIdOrCountry = locationId || country;
+
+    if (!locationIdOrCountry || !topic) {
       return NextResponse.json(
-        { error: 'Missing country or topic parameter' },
+        { error: 'Missing location/country or topic parameter' },
         { status: 400 }
       );
     }
 
-    // Check Whitelist (Phase B Rollout restriction)
-    if (!isCountryWhitelisted(country)) {
+    // Check Whitelist (failsafe check)
+    if (!isCountryWhitelisted(locationIdOrCountry)) {
       return NextResponse.json(
         { 
           error: 'Perspective Lens is currently only enabled for India, USA, Japan, Brazil, and UK.', 
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Caching layer lookup
-    const cacheKey = generateCacheKey(country, topic, category);
+    const cacheKey = generateCacheKey(locationIdOrCountry, topic, category);
     const cachedData = getCachedPerspective(cacheKey);
 
     if (cachedData) {
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch and process comparisons
-    const result = await getPerspective(country, topic, category);
+    const result = await getPerspective(locationIdOrCountry, topic, category);
 
     // Only cache results that have AI comparison data — don't cache failed/empty comparisons
     if (result.commonFacts && result.commonFacts.length > 0) {
@@ -61,7 +64,6 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('API /api/perspective error:', error);
     
-    // Check if it's an RSS aggregation failure (no articles found)
     if (error.message && error.message.includes('No coverage articles found')) {
       return NextResponse.json(
         { error: 'Perspective comparison temporarily unavailable.' },
@@ -69,7 +71,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Return general comparison unavailable error
     return NextResponse.json(
       { error: 'Perspective comparison temporarily unavailable.' },
       { status: 500 }

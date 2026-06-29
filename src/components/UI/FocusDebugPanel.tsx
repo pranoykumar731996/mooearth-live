@@ -7,10 +7,27 @@ interface FocusDebugPanelProps {
   isFocusMode: boolean;
   currentActivity: string;
   onClose: () => void;
+  selectedLocation?: any | null;
+  fallbackLevel?: string | null;
+  activeLocation?: any | null;
+  articleCount?: number;
+  publisherCount?: number;
+  cacheStatus?: string | null;
 }
 
-export default function FocusDebugPanel({ isFocusMode, currentActivity, onClose }: FocusDebugPanelProps) {
+export default function FocusDebugPanel({
+  isFocusMode,
+  currentActivity,
+  onClose,
+  selectedLocation,
+  fallbackLevel,
+  activeLocation,
+  articleCount,
+  publisherCount,
+  cacheStatus
+}: FocusDebugPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+
 
   const pausedSystems = [
     { name: 'News Feed', desc: 'Background breaking news polling' },
@@ -164,6 +181,41 @@ export default function FocusDebugPanel({ isFocusMode, currentActivity, onClose 
                 ))}
               </div>
             </div>
+
+            {/* Geographic News Diagnostics */}
+            {selectedLocation && (
+              <div className="mt-4 border-t border-white/10 pt-3.5 space-y-2">
+                <span className="text-[9px] font-extrabold text-cyan-400 uppercase tracking-wider block">
+                  Geographic News Diagnostics
+                </span>
+                <div className="space-y-1.5 text-[11px] font-semibold text-white/70">
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Resolved Loc:</span>
+                    <span className="text-white truncate max-w-[150px]">{selectedLocation.name} ({selectedLocation.type})</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Active Loc:</span>
+                    <span className="text-white truncate max-w-[150px]">{activeLocation?.name || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Fallback Level:</span>
+                    <span className="text-cyan-400 uppercase font-black text-[10px]">{fallbackLevel || 'city'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Matched Articles:</span>
+                    <span className="text-white">{articleCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Publisher Count:</span>
+                    <span className="text-white">{publisherCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Cache Status:</span>
+                    <span className="text-emerald-400 font-bold">{cacheStatus || 'MISS'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

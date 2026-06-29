@@ -16,6 +16,7 @@ import { useStreaks } from '@/hooks/useStreaks';
 import { useMobileSheet } from '@/hooks/useMobileSheet';
 import { requestNotificationPermission, sendLocalNotification } from '@/utils/notifications';
 import { EventCategory, WorldEvent } from '@/types';
+import { LocationRecord } from '@/data/locations';
 import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
@@ -100,6 +101,11 @@ export default function HomePage({
   const [activeCategory, setActiveCategory] = useState<EventCategory | null>(initialCategory || null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(initialCountry || null);
+  const [selectedLocation, setSelectedLocation] = useState<LocationRecord | null>(null);
+  const [locationEvents, setLocationEvents] = useState<WorldEvent[]>([]);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [fallbackLevel, setFallbackLevel] = useState<'city' | 'state' | 'country' | 'global' | null>(null);
+  const [activeLocation, setActiveLocation] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeArticle, setActiveArticle] = useState<WorldEvent | null>(null);
 
@@ -467,12 +473,14 @@ export default function HomePage({
 
   // Filtered events
   const filteredEvents = useEventFilter({
-    events: selectedCountry && activeReaction && activeReaction.country === selectedCountry
-      ? activeReaction.headlines
-      : liveEvents,
+    events: selectedLocation
+      ? locationEvents
+      : (selectedCountry && activeReaction && activeReaction.country === selectedCountry
+        ? activeReaction.headlines
+        : liveEvents),
     searchQuery,
     activeCategory,
-    selectedCountry,
+    selectedCountry: selectedLocation ? null : selectedCountry,
     isReactionData: !!(selectedCountry && activeReaction && activeReaction.country === selectedCountry),
   });
 
@@ -570,7 +578,58 @@ export default function HomePage({
       setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
       trackEvent('country', 'click', country, 1, { category: activeCategory || 'home' });
     }
-  }, [isMobile, activeCategory]);
+  const handleSelectLocation = useCallback(async (loc: LocationRecord | null) => {
+    setSelectedLocation(loc);
+    setSelectedEvent(null);
+    if (!loc) {
+      setFallbackLevel(null);
+      setActiveLocation(null);
+      setLocationEvents([]);
+      setSelectedCountry(null);
+      setIsDashboardOpen(false);
+      return;
+    }
+
+    // Set selectedCountry for backwards compatibility
+    setSelectedCountry(loc.country);
+    setIsDashboardOpen(true);
+    trackEvent('location', 'select', loc.name, 1, { type: loc.type, country: loc.country });
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!selectedLocation) {
+      setLocationEvents([]);
+      return;
+    }
+
+    let isMounted = true;
+    async function fetchLocationNews() {
+      setIsLocationLoading(true);
+      try {
+        const catParam = activeCategory ? `&category=${activeCategory}` : '';
+        const res = await fetch(`/api/events?locationId=${selectedLocation.id}${catParam}`);
+        if (!res.ok) throw new Error('Failed to fetch location events');
+        const data = await res.json();
+        if (isMounted) {
+          setLocationEvents(data.events || []);
+          setFallbackLevel(data.fallbackLevel || 'city');
+          setActiveLocation(data.activeLocation || selectedLocation);
+        }
+      } catch (err) {
+        console.error('Error fetching location news:', err);
+      } finally {
+        if (isMounted) {
+          setIsLocationLoading(false);
+        }
+      }
+    }
+
+    fetchLocationNews();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedLocation, activeCategory]);
 
   const handleGlobeSelectCountry = useCallback((country: string | null) => {
     if (country === selectedCountry && country !== null) {
@@ -814,6 +873,7 @@ export default function HomePage({
           onSearch={handleSearch}
           onSelectEvent={handleEventNavigate}
           onSelectCountry={handleSelectCountry}
+          onSelectLocation={handleSelectLocation}
           currentUser={currentUser}
           onAuthClick={() => {
             console.log('[page.tsx] Diagnostic: User clicked SIGN IN (opening AuthModal)');
@@ -1221,6 +1281,8 @@ export default function HomePage({
             onSelectEvent={handleSelectEvent}
             selectedCountry={selectedCountry}
             onSelectCountry={handleGlobeSelectCountry}
+            selectedLocation={selectedLocation}
+            onSelectLocation={handleSelectLocation}
             celebration={activeCelebration}
             celebrations={celebrations}
             onSelectCelebration={setSelectedCelebration}
@@ -1564,10 +1626,16 @@ export default function HomePage({
 
       {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && selectedCountry && !(selectedEvent && selectedEvent.category === 'football') && (
+        {isMobile && (selectedCountry || selectedLocation) && !(selectedEvent && selectedEvent.category === 'football') && (
           <MobileCountrySheet
-            country={selectedCountry}
-            onClose={() => handleSelectCountry(null)}
+            country={selectedCountry || selectedLocation?.name || ''}
+            selectedLocation={selectedLocation}
+            fallbackLevel={fallbackLevel}
+            onSelectLocation={handleSelectLocation}
+            onClose={() => {
+              handleSelectCountry(null);
+              handleSelectLocation(null);
+            }}
             activeCategory={activeCategory}
             onCategoryChange={handleMobileCategoryChange}
             activeArticle={activeArticle}
@@ -1943,6 +2011,12 @@ export default function HomePage({
           isFocusMode={isFocusMode}
           currentActivity={currentActivity}
           onClose={() => setShowDebugConsole(false)}
+          selectedLocation={selectedLocation}
+          fallbackLevel={fallbackLevel}
+          activeLocation={activeLocation}
+          articleCount={locationEvents.length || filteredEvents.length}
+          publisherCount={selectedLocation ? 4 : 0}
+          cacheStatus="MISS"
         />
       )}
 

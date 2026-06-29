@@ -19,6 +19,7 @@ interface NavbarProps {
   onSearch: (query: string) => void;
   onSelectEvent: (event: WorldEvent) => void;
   onSelectCountry?: (country: string | null) => void;
+  onSelectLocation?: (location: any | null) => void;
   currentUser: { username: string; avatar: string; country: string } | null;
   onAuthClick: () => void;
   onSignOut: () => void;
@@ -41,6 +42,7 @@ export default function Navbar({
   onSearch,
   onSelectEvent,
   onSelectCountry,
+  onSelectLocation,
   currentUser,
   onAuthClick,
   onSignOut,
@@ -117,6 +119,10 @@ export default function Navbar({
               }} 
               onSelectCountry={(c) => {
                 if (onSelectCountry) onSelectCountry(c);
+                setIsMobileSearchActive(false);
+              }}
+              onSelectLocation={(loc) => {
+                if (onSelectLocation) onSelectLocation(loc);
                 setIsMobileSearchActive(false);
               }} 
             />
@@ -234,7 +240,7 @@ export default function Navbar({
 
       {/* Search */}
       <div className="hidden sm:block flex-1 max-w-md mx-4 sm:mx-8">
-        <SearchBar events={events} activeCategory={activeCategory} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} />
+        <SearchBar events={events} activeCategory={activeCategory} onSearch={onSearch} onSelectEvent={onSelectEvent} onSelectCountry={onSelectCountry} onSelectLocation={onSelectLocation} />
       </div>
 
       {/* Right Section */}

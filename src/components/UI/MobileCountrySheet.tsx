@@ -12,6 +12,7 @@ import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { matchCountry } from '@/data/questions';
 import { isCountryWhitelisted } from '@/config/publishers';
 import { CountryFlag } from './CountryFlag';
+import { locations, LocationRecord } from '@/data/locations';
 import dynamic from 'next/dynamic';
 import { getRealFifaRank, getRealWinRatio, getRealGoalsScored } from '@/data/fifaRankings';
 
@@ -234,6 +235,9 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
 
 interface MobileCountrySheetProps {
   country: string;
+  selectedLocation?: LocationRecord | null;
+  fallbackLevel?: 'city' | 'state' | 'country' | 'global' | null;
+  onSelectLocation?: (location: LocationRecord | null) => void;
   onClose: () => void;
   activeCategory: EventCategory | null;
   onCategoryChange: (category: EventCategory | null) => void;
@@ -257,6 +261,9 @@ type SheetHeightState = 'collapsed' | 'half' | 'full';
 
 export default function MobileCountrySheet({
   country,
+  selectedLocation,
+  fallbackLevel,
+  onSelectLocation,
   onClose,
   activeCategory,
   onCategoryChange,
@@ -627,12 +634,41 @@ export default function MobileCountrySheet({
           <div className="flex items-center gap-3">
             <CountryFlag flag={countryMeta?.flag} className="w-8 h-6 object-cover rounded-[3px] shadow-sm shrink-0" />
             <div>
-              <h3 className="text-base font-black text-white leading-tight flex items-center gap-2">
-                <span>{country}</span>
-              </h3>
-              <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
-                {countryMeta?.continent} • Capital: {countryMeta?.capital}
-              </p>
+              {selectedLocation ? (
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1 text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-none">
+                    <span>{selectedLocation.country}</span>
+                    {selectedLocation.state && (
+                      <>
+                        <span className="text-white/20 font-light mx-0.5">&gt;</span>
+                        <span className="text-white/70">{selectedLocation.state}</span>
+                      </>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-black text-white leading-tight mt-1 flex items-center gap-2">
+                    <span>{selectedLocation.name}</span>
+                    {fallbackLevel && fallbackLevel !== selectedLocation.type && (
+                      <span className="text-[7px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">
+                        {fallbackLevel} fallback
+                      </span>
+                    )}
+                    {fallbackLevel && fallbackLevel === selectedLocation.type && (
+                      <span className="text-[7px] font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">
+                        {selectedLocation.type} news
+                      </span>
+                    )}
+                  </h3>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-base font-black text-white leading-tight flex items-center gap-2">
+                    <span>{country}</span>
+                  </h3>
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
+                    {countryMeta?.continent} • Capital: {countryMeta?.capital}
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -730,6 +766,33 @@ export default function MobileCountrySheet({
               <div className="space-y-5 animate-[quiz-reveal_0.3s_ease-out]">
                 {/* Metrics specific to selected category */}
                 <CategoryMetricsWidget country={country} category={activeCategory} />
+
+                {/* Nearby Locations Navigation */}
+                {selectedLocation && onSelectLocation && (
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-3">
+                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block">
+                      Explore Nearby in {selectedLocation.country}
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {locations
+                        .filter(l => l.country === selectedLocation.country && l.id !== selectedLocation.id)
+                        .slice(0, 4)
+                        .map(loc => (
+                          <button
+                            key={loc.id}
+                            onClick={() => {
+                              onPlaySound();
+                              onSelectLocation(loc);
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-white/80 hover:text-cyan-300 font-semibold text-[10px] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>{loc.type === 'city' ? '📍' : '🏛️'}</span>
+                            <span>{loc.name}</span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Perspective Lens Promo Card */}
                 {isCountryWhitelisted(country) && (
@@ -872,11 +935,11 @@ export default function MobileCountrySheet({
         <PerspectiveLensModal
           isOpen={isPerspectiveOpen}
           onClose={() => setIsPerspectiveOpen(false)}
-          country={country}
+          country={selectedLocation ? selectedLocation.id : country}
           topic={
             reactionData?.headlines[0]?.title
               ? (reactionData.headlines[0].title.split(' - ')[0] || reactionData.headlines[0].title)
-              : `${country} developments`
+              : (selectedLocation ? `${selectedLocation.name} developments` : `${country} developments`)
           }
           category={activeCategory || 'news'}
         />

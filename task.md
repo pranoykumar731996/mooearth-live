@@ -1,0 +1,22 @@
+# Task List: Global City & State News Discovery Engine
+
+- [x] Create Geographic Database and Fuzzy Search Utilities
+  - [x] Create location database `src/data/locations.ts` with countries, states, cities, coordinates, population, timezone, and ISO country codes
+  - [x] Create fuzzy search utility `src/utils/fuzzySearch.ts` for typo-tolerance, diacritic normalization, and abbreviations
+- [x] Create and Modify Backend APIs & Services
+  - [x] Create `/api/locations` autocomplete endpoint
+  - [x] Update `/api/events` endpoint to accept `locationId` and return resolved/active locations + fallback level
+  - [x] Update news service `src/services/events.ts` to implement fallback query logic: City -> State -> Country -> Global
+  - [x] Update news coordinate assignment in `src/services/events.ts` / `src/services/news.ts` to tag articles with resolved City/State metadata
+  - [x] Update `/api/perspective` and `src/services/perspective.ts` to support 4-level comparison: City, State, National, International
+- [x] Modify Frontend UI Components
+  - [x] Update `SearchBar.tsx` to search locations via the API and render suggestions with Flag, Population, and Level
+  - [x] Implement inline location ambiguity picker in search bar
+  - [x] Update `page.tsx` state to track selected location, active location, and fallback level
+  - [x] Update `GlobeScene.tsx` to center and pulse a ring at selected city/state coords, and highlight country borders
+  - [x] Update `MobileCountrySheet.tsx` to render location details, breadcrumbs, fallback badge, and related locations
+  - [x] Update `PerspectiveLensModal.tsx` to display the comparative 4-level perspective analysis tabs
+  - [x] Update `FocusDebugPanel.tsx` with geographic news diagnostics (Resolved location, level, articles, fallback, publisher count)
+- [x] Verification & Tests
+  - [x] Create E2E and unit tests in `tests/location-engine.spec.ts`
+  - [x] Run regression tests to verify everything passes
