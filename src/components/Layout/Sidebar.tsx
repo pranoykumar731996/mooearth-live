@@ -9,9 +9,10 @@ import { trackEvent } from '@/services/analytics';
 interface SidebarProps {
   activeCategory: EventCategory | null;
   onCategoryChange: (category: EventCategory | null) => void;
+  onSettingsClick?: () => void;
 }
 
-export default function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
+export default function Sidebar({ activeCategory, onCategoryChange, onSettingsClick }: SidebarProps) {
   const getHref = (itemId: string, category?: EventCategory) => {
     if (itemId === 'home') return '/';
     if (itemId === 'info') return '/about';
@@ -46,10 +47,14 @@ export default function Sidebar({ activeCategory, onCategoryChange }: SidebarPro
             key={item.id}
             href={href}
             onClick={(e) => {
-              if (item.id === 'info' || item.id === 'settings') {
+              if (item.id === 'info') {
                 return; // Allow standard Link navigation
               }
               e.preventDefault();
+              if (item.id === 'settings') {
+                if (onSettingsClick) onSettingsClick();
+                return;
+              }
               if (item.id === 'home') {
                 onCategoryChange(null);
                 trackEvent('category', 'click', 'home');

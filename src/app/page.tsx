@@ -946,6 +946,13 @@ export default function HomePage({
           <Sidebar
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
+            onSettingsClick={() => {
+              if (currentUser) {
+                setIsProfileModalOpen(true);
+              } else {
+                setIsAuthModalOpen(true);
+              }
+            }}
           />
         </div>
       )}
