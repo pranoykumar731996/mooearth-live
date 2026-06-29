@@ -46,6 +46,9 @@ export default function Sidebar({ activeCategory, onCategoryChange }: SidebarPro
             key={item.id}
             href={href}
             onClick={(e) => {
+              if (item.id === 'info' || item.id === 'settings') {
+                return; // Allow standard Link navigation
+              }
               e.preventDefault();
               if (item.id === 'home') {
                 onCategoryChange(null);
