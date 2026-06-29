@@ -6,7 +6,7 @@ import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { useSearch } from '@/hooks/useSearch';
 import { trackEvent } from '@/services/analytics';
-import { LocationRecord } from '@/data/locations';
+import { locations, LocationRecord } from '@/data/locations';
 
 interface SearchBarProps {
   events: WorldEvent[];

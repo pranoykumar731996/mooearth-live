@@ -578,6 +578,8 @@ export default function HomePage({
       setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
       trackEvent('country', 'click', country, 1, { category: activeCategory || 'home' });
     }
+  }, [isMobile, activeCategory]);
+
   const handleSelectLocation = useCallback(async (loc: LocationRecord | null) => {
     setSelectedLocation(loc);
     setSelectedEvent(null);
