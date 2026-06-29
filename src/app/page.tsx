@@ -1601,7 +1601,7 @@ export default function HomePage({
       >
         
         {/* Phase 10: Left - Global Pulse Energy Card + Mini Globe */}
-        <div className="hidden lg:flex flex-col gap-2.5 pointer-events-auto">
+        <div className="hidden lg:flex flex-col gap-2.5 pointer-events-auto ml-16 xl:ml-20">
           {/* Energy Score card */}
           <div className="glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3.5 shadow-[0_0_20px_rgba(0,229,255,0.08)]">
             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center text-lg relative">
