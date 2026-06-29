@@ -102,6 +102,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'weather', label: 'Weather', icon: '🌤️', category: 'weather' },
   { id: 'business', label: 'Business', icon: '📈', category: 'business' },
   { id: 'entertainment', label: 'Entertainment', icon: '🎬', category: 'entertainment' },
+  { id: 'info', label: 'About & Legal', icon: 'ℹ️' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 

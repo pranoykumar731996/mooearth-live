@@ -14,6 +14,7 @@ interface SidebarProps {
 export default function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
   const getHref = (itemId: string, category?: EventCategory) => {
     if (itemId === 'home') return '/';
+    if (itemId === 'info') return '/about';
     if (itemId === 'settings') return '#settings';
     if (category === 'breaking') return '/news';
     if (category === 'worldcup') return '/fifa';

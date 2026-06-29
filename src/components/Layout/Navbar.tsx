@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
@@ -251,6 +252,20 @@ export default function Navbar({
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
+
+          {/* About & Legal Icon (Mobile) */}
+          <Link href="/about">
+            <button
+              className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+              title="About & Legal"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+            </button>
+          </Link>
 
           {/* Play Earth Game Mode (Gamepad Icon) */}
           <button
