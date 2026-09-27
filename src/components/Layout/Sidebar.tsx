@@ -18,7 +18,6 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
     if (itemId === 'info') return '/about';
     if (itemId === 'settings') return '#settings';
     if (category === 'breaking') return '/news';
-    if (category === 'worldcup') return '/fifa';
     if (category) {
       if (['technology', 'weather', 'business', 'sports'].includes(category)) {
         return `/${category}`;

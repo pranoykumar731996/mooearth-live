@@ -15,8 +15,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   technology: 'Technology',
   weather: 'Weather Updates',
   business: 'Business News',
-  entertainment: 'Entertainment',
-  worldcup: 'FIFA World Cup 2026'
+  entertainment: 'Entertainment'
 };
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {

@@ -20,15 +20,15 @@ test.describe('Suite 7 — Category Isolation', () => {
     }
   });
 
-  test('should only return worldcup-related events for worldcup category', async ({ request }) => {
-    const response = await request.get('/api/events?q=world+cup+2026&category=worldcup');
+  test('should only return sports-related events for sports category', async ({ request }) => {
+    const response = await request.get('/api/events?q=sports&category=sports');
     expect(response.ok()).toBeTruthy();
 
     const data = await response.json();
     if (data.events.length === 0) return;
 
     for (const event of data.events) {
-      expect(event.category).toBe('worldcup');
+      expect(event.category).toBe('sports');
     }
   });
 
@@ -65,27 +65,6 @@ test.describe('Suite 7 — Category Isolation', () => {
 
     for (const event of data.events) {
       expect(event.category).toBe('entertainment');
-    }
-  });
-
-  test('should not return club football events when worldcup category is active', async ({ request }) => {
-    const response = await request.get('/api/events?q=football&category=worldcup');
-    expect(response.ok()).toBeTruthy();
-
-    const data = await response.json();
-    if (data.events.length === 0) return;
-
-    const clubKeywords = ['premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1', 'champions league'];
-
-    for (const event of data.events) {
-      const text = `${event.title} ${event.summary}`.toLowerCase();
-      // World Cup category should not contain club football content
-      const hasClubContent = clubKeywords.some(kw => text.includes(kw));
-      if (hasClubContent) {
-        console.warn(`[Category Isolation] Club football content found in worldcup category: "${event.title}"`);
-      }
-      // The event category must still be worldcup
-      expect(event.category).toBe('worldcup');
     }
   });
 

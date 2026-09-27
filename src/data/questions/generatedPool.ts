@@ -1631,7 +1631,7 @@ export const GENERATED_QUESTIONS: EarthQuestion[] = [
     "country": "South America",
     "category": "sports",
     "difficulty": "medium",
-    "question": "Which South American country won the first-ever FIFA World Cup in 1930?",
+    "question": "Which South American country won the first-ever world football championship in 1930?",
     "choices": [
       "Brazil",
       "Argentina",

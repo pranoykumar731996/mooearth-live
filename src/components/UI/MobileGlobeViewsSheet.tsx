@@ -7,7 +7,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface GlobeViewOption {
-  id: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery';
+  id: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
   name: string;
   desc: string;
 }
@@ -15,14 +15,13 @@ export interface GlobeViewOption {
 interface MobileGlobeViewsSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  currentView: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery';
-  onSelectView: (view: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery') => void;
+  currentView: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
+  onSelectView: (view: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery') => void;
   playHoverBlip?: () => void;
 }
 
 const VIEW_OPTIONS: GlobeViewOption[] = [
   { id: 'standard', name: '🌍 Standard View', desc: 'Default night lights map with active news category glows.' },
-  { id: 'fifa', name: '⚽ FIFA World Cup', desc: 'Tactical pitch-green map, golden borders, live match highlights.' },
   { id: 'night', name: '🌃 Night Lights', desc: 'Realistic city lights map showing raw night-side electricity.' },
   { id: 'weather', name: '🌦 Weather Radar', desc: 'Day satellite base, rotating clouds, and temperature heatmaps.' },
   { id: 'satellite', name: '🛰 Satellite View', desc: 'Pure satellite imagery with ultra-thin border mappings.' },

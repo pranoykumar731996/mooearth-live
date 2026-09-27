@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { EarthQuestion } from '../src/types';
-import { DEDUPLICATED_STATIC_QUESTIONS, calculateLevel, generateCapitalQuestion, generateFlagQuestion, getDailyEarthQuestion, getWorldCupQuestion } from '../src/data/questions';
+import { DEDUPLICATED_STATIC_QUESTIONS, calculateLevel, generateCapitalQuestion, generateFlagQuestion, getDailyEarthQuestion } from '../src/data/questions';
 import { COUNTRY_METADATA } from '../src/data/questions/countryMetadata';
 
 // Resolve artifact directory from env or use default path

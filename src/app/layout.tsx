@@ -35,8 +35,8 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   icons: {
-    icon: '/icons/icon-192.png',
-    apple: '/icons/icon-512.png',
+    icon: '/icons/icon-192.svg',
+    apple: '/icons/icon-512.svg',
   },
   openGraph: {
     title: BRANDING.name,

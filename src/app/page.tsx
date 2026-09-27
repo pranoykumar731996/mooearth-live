@@ -26,8 +26,6 @@ const ArticleViewer = dynamic(() => import('@/components/Reactions/ArticleViewer
 const MobileCountrySheet = dynamic(() => import('@/components/UI/MobileCountrySheet'));
 const MobileGlobeViewsSheet = dynamic(() => import('@/components/UI/MobileGlobeViewsSheet'));
 const MobileCategoriesSheet = dynamic(() => import('@/components/UI/MobileCategoriesSheet'));
-const MatchDetailsPanel = dynamic(() => import('@/components/Layout/MatchDetailsPanel'));
-const MatchDetailsSheet = dynamic(() => import('@/components/UI/MatchDetailsSheet'));
 const GoalOverlay = dynamic(() => import('@/components/Globe/GoalOverlay'));
 const EventPopup = dynamic(() => import('@/components/Globe/EventPopup'));
 const AIAssistantDrawer = dynamic(() => import('@/components/EarthCast/AIAssistantDrawer'));
@@ -47,7 +45,6 @@ import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { SIDEBAR_ITEMS } from '@/lib/constants';
-import { updateFifaRankingsFromApi } from '@/data/fifaRankings';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -128,8 +125,8 @@ export default function HomePage({
   const [isFullScreenGlobe, setIsFullScreenGlobe] = useState(false);
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [leftPanelTab, setLeftPanelTab] = useState<'fixtures' | 'explore' | 'views'>(initialCountry ? 'explore' : 'fixtures');
-  const [globeView, setGlobeView] = useState<'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
+  const [leftPanelTab, setLeftPanelTab] = useState<'explore' | 'views'>('explore');
+  const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive || false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
@@ -256,10 +253,9 @@ export default function HomePage({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Initialize analytics session on client mount and update FIFA rankings
+  // Initialize analytics session on client mount
   useEffect(() => {
     initAnalyticsSession();
-    updateFifaRankingsFromApi().catch(err => console.error('[FIFA Rankings Update Failed]', err));
   }, []);
 
   // Register PWA Service Worker on client mount with Auto-Update logic (forces instant reload on developer updates)
@@ -337,7 +333,7 @@ export default function HomePage({
       console.log('[page.tsx] Browser Notification permission:', perm);
       if (perm === 'granted') {
         sendLocalNotification('Welcome to MooEarth Live! 🌍', {
-          body: 'Stay tuned for live World Cup goal alerts and trending country highlights.',
+          body: 'Stay tuned for live global news alerts and trending country highlights.',
         });
       }
     });
@@ -571,7 +567,7 @@ export default function HomePage({
   const handleSelectCountry = useCallback((country: string | null) => {
     setSelectedCountry(country);
     setSelectedEvent(null);
-    if (!country || activeCategory === 'worldcup') {
+    if (!country) {
       setIsDashboardOpen(false);
       setActiveReaction(null);
     } else {
@@ -604,18 +600,20 @@ export default function HomePage({
       return;
     }
 
+    const locationId = selectedLocation.id;
+    const initialLocation = selectedLocation;
     let isMounted = true;
     async function fetchLocationNews() {
       setIsLocationLoading(true);
       try {
         const catParam = activeCategory ? `&category=${activeCategory}` : '';
-        const res = await fetch(`/api/events?locationId=${selectedLocation.id}${catParam}`);
+        const res = await fetch(`/api/events?locationId=${locationId}${catParam}`);
         if (!res.ok) throw new Error('Failed to fetch location events');
         const data = await res.json();
         if (isMounted) {
           setLocationEvents(data.events || []);
           setFallbackLevel(data.fallbackLevel || 'city');
-          setActiveLocation(data.activeLocation || selectedLocation);
+          setActiveLocation(data.activeLocation || initialLocation);
         }
       } catch (err) {
         console.error('Error fetching location news:', err);
@@ -635,20 +633,13 @@ export default function HomePage({
 
   const handleGlobeSelectCountry = useCallback((country: string | null) => {
     if (country === selectedCountry && country !== null) {
-      if (activeCategory !== 'worldcup') {
-        setIsDashboardOpen(true);
-      }
+      setIsDashboardOpen(true);
       playDeepPulse();
     } else {
       setSelectedCountry(country);
       setSelectedEvent(null);
       if (country) {
-        if (activeCategory !== 'worldcup') {
-          setIsDashboardOpen(!isMobile);
-        } else {
-          setIsDashboardOpen(false);
-          setActiveReaction(null);
-        }
+        setIsDashboardOpen(!isMobile);
         trackEvent('country', 'click', country, 1, { category: activeCategory || 'home', trigger: 'globe_tap' });
       } else {
         setIsDashboardOpen(false);
@@ -690,9 +681,7 @@ export default function HomePage({
 
   // Phase 3: Cinematic Broadcast cycle (watch the world react)
   useEffect(() => {
-    // Disable cinematic auto-navigation when in World Cup mode to prevent
-    // unexpected country switches that override user selection
-    if (!isCinematicMode || trendingCountries.length === 0 || isFocusMode || activeCategory === 'worldcup') return;
+    if (!isCinematicMode || trendingCountries.length === 0 || isFocusMode) return;
 
     let index = 0;
 
@@ -706,7 +695,7 @@ export default function HomePage({
     }, 12000); // Cycle every 12 seconds
 
     return () => clearInterval(interval);
-  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry, isFocusMode, activeCategory]);
+  }, [isCinematicMode, trendingCountries, playDeepPulse, handleSelectCountry, isFocusMode]);
 
   const handleLoginSuccess = useCallback((user: { username: string; avatar: string; country: string }) => {
     setCurrentUser(user);
@@ -750,11 +739,11 @@ export default function HomePage({
 
   // Handle event selection
   const handleSelectEvent = useCallback((event: WorldEvent | null) => {
-    if (event && event.category !== 'football') {
+    if (event) {
       setActiveArticle(event);
       setSelectedEvent(null);
     } else {
-      setSelectedEvent(event);
+      setSelectedEvent(null);
     }
   }, []);
 
@@ -767,10 +756,6 @@ export default function HomePage({
     setSelectedEvent(null);
     setActiveArticle(null);
     setSearchQuery('');
-    if (category === 'worldcup') {
-      setIsDashboardOpen(false);
-      setActiveReaction(null);
-    }
   }, []);
 
   // Mobile-specific: change category WITHOUT closing the country sheet
@@ -779,18 +764,10 @@ export default function HomePage({
     setSelectedEvent(null);
     setActiveArticle(null);
     setSearchQuery('');
-    if (category === 'worldcup') {
-      setIsDashboardOpen(false);
-      setActiveReaction(null);
-    }
   }, []);
 
   const handleEventNavigate = useCallback((event: WorldEvent) => {
-    if (event.category !== 'football') {
-      setActiveArticle(event);
-    } else {
-      setSelectedEvent(event);
-    }
+    setActiveArticle(event);
     setSearchQuery('');
   }, []);
 
@@ -832,15 +809,16 @@ export default function HomePage({
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className="flex flex-col items-center"
             >
-              <Image 
-                src="/logo.png" 
-                alt="MooEarth Live Logo" 
-                width={224}
-                height={224}
-                priority
-                className="w-48 h-48 sm:w-56 sm:h-56 object-contain"
-              />
-              <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mt-6" />
+              {/* Previous SVG/emoji-based logo */}
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                <div className="absolute w-32 h-32 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+                <div className="absolute w-24 h-24 rounded-full border border-purple-500/20 border-b-purple-400 animate-[spin_2s_linear_infinite_reverse]" />
+                <span className="text-6xl relative z-10 select-none">🌍</span>
+              </div>
+              <h1 className="text-2xl font-bold text-white mt-6 tracking-tight flex items-center gap-1 select-none">
+                <span>Moo</span><span className="text-cyan-400">Earth</span>
+                <span className="text-xs bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded-full ml-1 uppercase tracking-widest font-black">Live</span>
+              </h1>
             </motion.div>
             <motion.p 
               initial={{ opacity: 0, y: 10 }}
@@ -1026,19 +1004,6 @@ export default function HomePage({
           <div className="flex border-b border-white/[0.06] bg-black/40 shrink-0">
             <button
               onClick={() => {
-                setLeftPanelTab('fixtures');
-                playHoverBlip();
-              }}
-              className={`flex-1 py-3 text-center text-[9px] font-black tracking-wider transition-all cursor-pointer border-b-2 ${
-                leftPanelTab === 'fixtures'
-                  ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
-                  : 'text-white/40 border-transparent hover:text-white/70'
-              }`}
-            >
-              ⚽ FIXTURES
-            </button>
-            <button
-              onClick={() => {
                 setLeftPanelTab('explore');
                 playHoverBlip();
               }}
@@ -1066,70 +1031,7 @@ export default function HomePage({
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            {leftPanelTab === 'fixtures' ? (
-              <>
-                <div className="px-1 pb-1">
-                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">World Cup Fixtures</h2>
-                </div>
-                {liveEvents.filter(e => e.category === 'football').map((event) => {
-                  if (!event.footballData) return null;
-                  const fd = event.footballData;
-                  const isLive = fd.status === 'LIVE';
-                  const isFT = fd.status === 'FT';
-                  
-                  return (
-                    <motion.div
-                      key={event.id}
-                      onClick={() => {
-                        if (activeCategory !== 'worldcup') {
-                          handleSelectCountry(event.country);
-                        } else {
-                          setSelectedCountry(event.country);
-                        }
-                        setSelectedEvent(event);
-                        playHoverBlip();
-                      }}
-                      whileHover={{ scale: 1.02 }}
-                      className={`p-3 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 hover:border-white/10 transition-all flex flex-col gap-1.5 ${
-                        selectedEvent?.id === event.id ? 'border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,229,255,0.08)]' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <CountryFlag flag={getTeamFlag(fd.homeTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
-                          <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.homeTeam}</span>
-                        </div>
-                        {fd.status !== 'NS' && (
-                          <span className="text-xs font-black text-white px-2 py-0.5 bg-white/10 rounded tabular-nums">{fd.homeScore}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <CountryFlag flag={getTeamFlag(fd.awayTeam)} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
-                          <span className="font-bold text-white text-xs truncate max-w-[120px]">{fd.awayTeam}</span>
-                        </div>
-                        {fd.status !== 'NS' && (
-                          <span className="text-xs font-black text-white px-2 py-0.5 bg-white/10 rounded tabular-nums">{fd.awayScore}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between text-[9px] mt-1 border-t border-white/5 pt-2 font-medium">
-                        {isLive ? (
-                          <span className="text-emerald-400 font-bold animate-pulse flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                            LIVE {fd.elapsed}{"'"}
-                          </span>
-                        ) : isFT ? (
-                          <span className="text-white/35 font-bold uppercase tracking-wider">FT</span>
-                        ) : (
-                          <span className="text-cyan-400/80 font-bold uppercase tracking-wider">UPCOMING</span>
-                        )}
-                        <span className="text-white/30 truncate max-w-[100px]">{event.city}</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </>
-            ) : leftPanelTab === 'explore' ? (
+            {leftPanelTab === 'explore' ? (
               <>
                 <div className="px-1 pb-1">
                   <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Explore Countries</h2>
@@ -1219,7 +1121,6 @@ export default function HomePage({
                 <div className="space-y-3 pb-4">
                   {[
                     { id: 'standard', name: '🌍 Standard View', desc: 'Default night lights map with active news category glows.' },
-                    { id: 'fifa', name: '⚽ FIFA World Cup', desc: 'Tactical pitch-green map, golden borders, live match highlights.' },
                     { id: 'night', name: '🌃 Night Lights', desc: 'Realistic city lights map showing raw night-side electricity.' },
                     { id: 'weather', name: '🌦 Weather Radar', desc: 'Day satellite base, rotating clouds, and temperature heatmaps.' },
                     { id: 'satellite', name: '🛰 Satellite View', desc: 'Pure satellite imagery with ultra-thin border mappings.' },
@@ -1524,7 +1425,7 @@ export default function HomePage({
         <UploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
-          matches={liveEvents.filter(e => e.category === 'football' || e.category === 'worldcup')}
+          matches={[]}
           currentUser={currentUser}
           onUploadSuccess={handleUploadSuccess}
         />
@@ -1543,13 +1444,7 @@ export default function HomePage({
       {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
-            {selectedEvent && selectedEvent.category === 'football' && !isMobile ? (
-              <MatchDetailsPanel 
-                key="match-details" 
-                matchEvent={selectedEvent} 
-                onClose={() => handleSelectEvent(null)} 
-              />
-            ) : selectedCountry && !isMobile ? (
+            {selectedCountry && !isMobile ? (
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
@@ -1561,7 +1456,7 @@ export default function HomePage({
                 isFocusMode={isFocusMode}
               />
             ) : (
-              (!isMobile || (!selectedCountry && !(selectedEvent && selectedEvent.category === 'football'))) && (
+              (!isMobile || !selectedCountry) && (
                 <motion.div
                   key="live-feed"
                   initial={{ opacity: 0, x: 50 }}
@@ -1607,7 +1502,7 @@ export default function HomePage({
 
       {/* Event Details Popup */}
       <AnimatePresence>
-        {selectedEvent && !selectedCountry && selectedEvent.category !== 'football' && (
+        {selectedEvent && !selectedCountry && (
           <EventPopup
             event={selectedEvent}
             onClose={() => handleSelectEvent(null)}
@@ -1615,20 +1510,9 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
-      {/* Mobile Match Details Bottom Sheet */}
-      <AnimatePresence>
-        {isMobile && selectedEvent && selectedEvent.category === 'football' && (
-          <MatchDetailsSheet 
-            key="mobile-match-details"
-            matchEvent={selectedEvent} 
-            onClose={() => handleSelectEvent(null)} 
-          />
-        )}
-      </AnimatePresence>
-
       {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && (selectedCountry || selectedLocation) && !(selectedEvent && selectedEvent.category === 'football') && (
+        {isMobile && (selectedCountry || selectedLocation) && (
           <MobileCountrySheet
             country={selectedCountry || selectedLocation?.name || ''}
             selectedLocation={selectedLocation}
@@ -1765,29 +1649,7 @@ export default function HomePage({
         </div>
       </div>
 
-      {/* Mobile-Only Direct FIFA World Cup 2026 Shortcut Button */}
-      {isMobile && !isPlayEarthActive && (
-        <div className="fixed top-20 left-4 z-30 pointer-events-auto">
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              handleCategoryChange('worldcup');
-              mobileSheet.setSnapState('expanded');
-              playHoverBlip();
-            }}
-            className={`px-3 py-2 rounded-2xl glass border flex items-center gap-2 shadow-[0_8px_20px_rgba(0,0,0,0.5)] transition-all duration-300 ${
-              activeCategory === 'worldcup'
-                ? 'border-cyan-500/50 bg-cyan-500/20 text-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.2)] font-black'
-                : 'border-white/10 bg-[#090915]/90 text-white/80 font-bold'
-            }`}
-          >
-            <span className="text-base select-none">🏆</span>
-            <span className="text-[10px] uppercase tracking-wider">FIFA World Cup 2026</span>
-          </motion.button>
-        </div>
-      )}
+
 
       {/* Mobile-Only Floating Action Button Stack (matches user screenshot design) */}
       {isMobile && (
@@ -1968,14 +1830,6 @@ export default function HomePage({
                 </div>
 
                 <div className="flex gap-3">
-                  <span className="text-lg shrink-0">🏆</span>
-                  <div>
-                    <h3 className="font-bold text-white text-xs">FIFA World Cup Live Match Tracker</h3>
-                    <p className="mt-0.5 leading-relaxed">Countries playing in live World Cup matches will pulse with a gold glow. Check live scores and event cards next to the globe.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
                   <span className="text-lg shrink-0">🎮</span>
                   <div>
                     <h3 className="font-bold text-white text-xs">Play Earth Quiz Game</h3>
@@ -2037,7 +1891,6 @@ export default function HomePage({
             setIsMobileViewsOpen(false);
             const viewNames: Record<string, string> = {
               standard: 'Standard View',
-              fifa: 'FIFA World Cup',
               night: 'Night Lights',
               weather: 'Weather Radar',
               satellite: 'Satellite View',
@@ -2062,7 +1915,7 @@ export default function HomePage({
             const categoryNames: Record<string, string> = {
               breaking: 'Breaking News',
               football: 'Live Football',
-              worldcup: 'FIFA World Cup',
+              sports: 'Sports',
               technology: 'Technology',
               weather: 'Weather Radar',
               business: 'Business',

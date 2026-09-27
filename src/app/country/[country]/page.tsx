@@ -11,8 +11,8 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
   const { country: rawCountry } = await params;
   const decoded = decodeURIComponent(rawCountry);
   const capitalized = decoded.charAt(0).toUpperCase() + decoded.slice(1);
-  const title = `${capitalized} News, Sports, Weather & World Cup Updates | MooEarth Live`;
-  const description = `Explore ${capitalized}'s latest news, sports, weather, FIFA World Cup updates, and country insights on MooEarth Live's interactive 3D emotional globe.`;
+  const title = `${capitalized} News, Sports, Weather & Live Events | MooEarth Live`;
+  const description = `Explore ${capitalized}'s latest news, sports, weather, live updates, and country insights on MooEarth Live's interactive 3D emotional globe.`;
 
   return {
     title,

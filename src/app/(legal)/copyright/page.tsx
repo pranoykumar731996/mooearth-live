@@ -26,12 +26,12 @@ export default function CopyrightPolicy() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">2. Third-Party Trademarks and Content</h2>
           <p>
-            MooEarth.Live is an informational platform covering international football, including the FIFA World Cup 2026. 
+            MooEarth.Live is an informational platform covering global news, sports, geography, and current affairs. 
           </p>
           <ul className="list-disc pl-6 space-y-2">
-            <li>"FIFA", "World Cup", national team names, and team logos are registered trademarks of their respective owners and federations.</li>
-            <li>News articles, images within aggregated news feeds, and specific match data are the property of their original publishers or data providers.</li>
-            <li>Our use of these trademarks and data is purely nominative and descriptive, intended solely to inform users about sporting events. MooEarth.Live claims no affiliation with, nor endorsement by, FIFA or any specific football federation unless explicitly stated.</li>
+            <li>National team names, league identifiers, and team logos are registered trademarks of their respective owners and organizations.</li>
+            <li>News articles, images within aggregated news feeds, and specific content snippets are the property of their original publishers or data providers.</li>
+            <li>Our use of these trademarks and data is purely nominative and descriptive, intended solely to inform users about global news and sporting events. MooEarth.Live claims no official affiliation with, nor endorsement by, any third-party entity unless explicitly stated.</li>
           </ul>
         </section>
 

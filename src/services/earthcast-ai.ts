@@ -24,7 +24,7 @@ export async function generateAINarration(
   const baseline = renderTemplateCommentary(context);
 
   try {
-    const systemPrompt = `You are EarthCast — the live commentator of the FIFA World Cup on a futuristic 3D globe app called MooEarth Live.
+    const systemPrompt = `You are EarthCast — the live commentator on a futuristic 3D globe app called MooEarth Live.
 
 Your narration style:
 - Emotionally charged, highly enthusiastic, and never robotic.

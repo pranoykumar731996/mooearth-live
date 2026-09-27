@@ -34,14 +34,8 @@ export function useEventFilter({
     // Filter by category - skip if this is reaction data (server-side reactions are pre-filtered / have fallback headlines)
     if (activeCategory && !isReactionData) {
       filtered = filtered.filter((e) => {
-        if (activeCategory === 'worldcup') {
-          return e.category === 'worldcup';
-        }
-        if (activeCategory === 'football') {
-          return e.category === 'football';
-        }
-        if (activeCategory === 'sports') {
-          return e.category === 'sports' || e.category === 'football' || e.category === 'worldcup';
+        if (activeCategory === 'sports' || activeCategory === 'football') {
+          return e.category === 'sports' || e.category === 'football';
         }
         return e.category === activeCategory;
       });

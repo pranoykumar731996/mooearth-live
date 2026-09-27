@@ -8,7 +8,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
-import WorldCupSchedule from './WorldCupSchedule';
 import { CountryFlag } from '../UI/CountryFlag';
 
 interface LiveFeedProps {
@@ -101,7 +100,7 @@ export default function LiveFeed({
     if (activeCategory) {
       const catToTabMap: Record<string, 'matches' | 'news' | 'weather' | 'tech' | 'business' | 'entertainment'> = {
         football: 'matches',
-        worldcup: 'matches',
+        sports: 'matches',
         breaking: 'news',
         weather: 'weather',
         technology: 'tech',
@@ -511,30 +510,8 @@ export default function LiveFeed({
                    hidden lg:flex flex-col
                    rounded-3xl glass overflow-hidden"
       >
-        {activeCategory === 'worldcup' ? (
-          <WorldCupSchedule
-            onSelectEvent={onSelectEvent}
-            onSelectCountry={onSelectCountry}
-            onPlaySound={onPlaySound}
-            footballActive={footballActive}
-            selectedCountry={selectedCountry}
-          />
-        ) : activeCategory === 'football' ? (
-          <>
-            {/* Scorecard Dashboard Tab Selector */}
-            {renderTabSelector()}
-            {/* Scorecard Dashboard Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-thin">
-              {footballTab === 'matches' && renderMatchesTab()}
-              {footballTab === 'knockout' && renderKnockoutTab()}
-              {footballTab === 'players' && renderPlayersTab()}
-              {footballTab === 'stats' && renderStatsTab()}
-              {footballTab === 'table' && renderTableTab()}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Default Header with Counters */}
+        <>
+          {/* Default Header with Counters */}
             <div className="flex flex-col gap-3 px-6 py-5 border-b border-white/[0.05] bg-black/20">
               <div className="flex items-center gap-3">
                 <span className="relative flex h-3 w-3">
@@ -625,7 +602,6 @@ export default function LiveFeed({
               </AnimatePresence>
             </div>
           </>
-        )}
       </div>
 
       {/* Mobile bottom sheet — draggable via useMobileSheet hook */}
@@ -670,19 +646,8 @@ export default function LiveFeed({
           </div>
         </div>
 
-        {activeCategory === 'worldcup' ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <WorldCupSchedule
-              onSelectEvent={onSelectEvent}
-              onSelectCountry={onSelectCountry}
-              onPlaySound={onPlaySound}
-              footballActive={footballActive}
-              selectedCountry={selectedCountry}
-            />
-          </div>
-        ) : (
-          <>
-            {/* Header with Active Category Title or Home Feed */}
+        <>
+          {/* Header with Active Category Title or Home Feed */}
             <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05] bg-black/20 shrink-0 select-none">
               <div className="flex items-center gap-2">
                 <span className="text-lg">
@@ -741,7 +706,6 @@ export default function LiveFeed({
               )}
             </div>
           </>
-        )}
       </div>
     </>
   );

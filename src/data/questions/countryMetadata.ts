@@ -164,7 +164,7 @@ export const COUNTRY_METADATA: Record<string, CountryMeta> = {
   'Uruguay': {
     name: 'Uruguay', capital: 'Montevideo', continent: 'South America', currency: 'Uruguayan Peso',
     language: 'Spanish', population: '3.5 million', landmark: 'Estadio Centenario',
-    flag: '🇺🇾', funFact: 'Uruguay hosted and won the very first FIFA World Cup in 1930.',
+    flag: '🇺🇾', funFact: 'Uruguay hosted and won the very first international world football championship in 1930.',
     famousPerson: 'Luis Suárez', famousDish: 'Chivito', sport: 'Football',
     climate: 'Temperate', independence: '1825', neighbours: ['Argentina', 'Brazil'],
   },
@@ -468,7 +468,7 @@ export const COUNTRY_METADATA: Record<string, CountryMeta> = {
   'Qatar': {
     name: 'Qatar', capital: 'Doha', continent: 'Asia', currency: 'Qatari Riyal',
     language: 'Arabic', population: '3 million', landmark: 'Museum of Islamic Art',
-    flag: '🇶🇦', funFact: 'Qatar hosted the 2022 FIFA World Cup, the first World Cup held in the Middle East.',
+    flag: '🇶🇦', funFact: 'Qatar hosted the 2022 world football championship, the first held in the Middle East.',
     famousPerson: 'Sheikh Tamim bin Hamad', famousDish: 'Machboos', sport: 'Football',
     climate: 'Desert', independence: '1971', neighbours: ['Saudi Arabia'],
   },

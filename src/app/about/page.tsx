@@ -47,7 +47,7 @@ export default function About() {
               <ul className="list-none space-y-4">
                 <li><strong>🌍 Interactive 3D Globe:</strong> Navigate the world naturally by selecting any country directly on an interactive Earth.</li>
                 <li><strong>📰 Global News:</strong> Read the latest news from countries around the world.</li>
-                <li><strong>⚽ Sports:</strong> Follow international sporting events, including FIFA World Cup coverage, live scores, standings, fixtures, and match statistics.</li>
+                <li><strong>⚽ Sports:</strong> Follow international sporting events, scores, and sports news from around the world.</li>
                 <li><strong>🌦 Weather:</strong> View weather information for countries and regions.</li>
                 <li><strong>💼 Business:</strong> Discover business and economic developments from around the world.</li>
                 <li><strong>💻 Technology:</strong> Stay updated on innovation, startups, AI, and technology news.</li>
@@ -62,14 +62,6 @@ export default function About() {
               <p>We envision MooEarth.Live becoming the world&apos;s interactive information globe.</p>
               <p>A platform where anyone can explore any country, understand what&apos;s happening there in real time, and experience global events from a local perspective.</p>
               <p>Whether it&apos;s breaking news, international sports, technology, business, weather, or cultural moments, our goal is to make the entire world easier to discover.</p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold mt-8 mb-4">FIFA World Cup 2026 and Beyond</h2>
-              <p>The FIFA World Cup 2026 is one of the major experiences available on MooEarth.Live.</p>
-              <p>During the tournament, users can follow matches, standings, fixtures, statistics, and football news alongside broader coverage from participating countries.</p>
-              <p>But our vision extends far beyond a single tournament.</p>
-              <p>MooEarth.Live is designed to grow into a platform where every country, every story, and every major global event can be explored through one interactive world.</p>
             </section>
 
             <section>

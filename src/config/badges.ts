@@ -14,9 +14,9 @@ export const BADGE_DEFINITIONS: GameBadge[] = [
     description: 'Unlocked by answering at least 20 geography questions.'
   },
   {
-    id: 'fifa_expert',
-    label: 'FIFA Expert',
-    emoji: '⚽',
+    id: 'sports_expert',
+    label: 'Sports Expert',
+    emoji: '🏅',
     description: 'Unlocked by completing a sports or football quiz.'
   },
   {
@@ -59,11 +59,11 @@ export function checkUnlockBadges(state: PlayerGameState, categoryUsed?: string,
     }
   }
 
-  // 3. FIFA Expert
-  if (!currentIds.has('fifa_expert')) {
-    const isFifa = categoryUsed === 'sports' || categoryUsed === 'football' || categoryUsed === 'worldcup';
-    if (isFifa) {
-      const def = BADGE_DEFINITIONS.find(b => b.id === 'fifa_expert');
+  // 3. Sports Expert
+  if (!currentIds.has('sports_expert')) {
+    const isSports = categoryUsed === 'sports' || categoryUsed === 'football';
+    if (isSports) {
+      const def = BADGE_DEFINITIONS.find(b => b.id === 'sports_expert');
       if (def) {
         newUnlocked.push({ ...def, unlockedAt: now });
       }

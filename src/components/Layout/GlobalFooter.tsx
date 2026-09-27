@@ -60,7 +60,7 @@ export default function GlobalFooter() {
 
         <div className="pt-8 border-t border-white/10 text-center text-gray-500 text-xs">
           <p>&copy; {currentYear} MooEarth.Live. All rights reserved.</p>
-          <p className="mt-2">Not officially affiliated with FIFA or any national football federation. Trademarks belong to their respective owners.</p>
+          <p className="mt-2">Independent informational platform. All trademarks, logos, and brand names are the property of their respective owners.</p>
         </div>
       </div>
     </footer>

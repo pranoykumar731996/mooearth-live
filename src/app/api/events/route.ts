@@ -73,9 +73,10 @@ export async function GET(request: NextRequest) {
 
     // If a specific location was resolved, include diagnostic details
     if ('resolvedLocation' in result) {
-      responsePayload.resolvedLocation = result.resolvedLocation;
-      responsePayload.activeLocation = result.activeLocation;
-      responsePayload.fallbackLevel = result.fallbackLevel;
+      const locResult = result as any;
+      responsePayload.resolvedLocation = locResult.resolvedLocation;
+      responsePayload.activeLocation = locResult.activeLocation;
+      responsePayload.fallbackLevel = locResult.fallbackLevel;
     }
 
     return NextResponse.json(responsePayload, {

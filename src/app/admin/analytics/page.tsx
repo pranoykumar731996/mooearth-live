@@ -28,8 +28,8 @@ const generateSimulationData = (): SessionAnalytics[] => {
   const sources = ['direct', 'google', 'bing', 'x', 'facebook', 'chatgpt', 'perplexity', 'gemini', 'copilot', 'reddit'];
   const devices = ['desktop', 'mobile', 'tablet'];
   const countries = ['Brazil', 'Japan', 'India', 'Germany', 'USA', 'Argentina', 'Canada', 'Mexico', 'France', 'United Kingdom', 'South Korea', 'Australia', 'Morocco', 'Senegal', 'Spain', 'Italy'];
-  const categories = ['breaking', 'sports', 'football', 'worldcup', 'weather', 'business', 'technology', 'entertainment', 'play_earth'];
-  const searchQueries = ['brazil news', 'japan football', 'world cup 2026 schedule', 'india weather', 'argentina football news', 'mooearth live', 'tokyo news', 'london sports', 'weather alerts', 'fifa schedule'];
+  const categories = ['breaking', 'sports', 'football', 'weather', 'business', 'technology', 'entertainment', 'play_earth'];
+  const searchQueries = ['brazil news', 'japan football', 'global news updates', 'india weather', 'argentina football news', 'mooearth live', 'tokyo news', 'london sports', 'weather alerts', 'championship schedule'];
 
   const sessions: SessionAnalytics[] = [];
   const now = Date.now();

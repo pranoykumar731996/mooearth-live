@@ -43,56 +43,10 @@ interface GlobeSceneProps {
   earthCastAudioLevel?: number;
   activeCategory?: EventCategory | null;
   isPlayEarthActive?: boolean;
-  globeView?: 'standard' | 'fifa' | 'night' | 'weather' | 'satellite' | 'discovery';
+  globeView?: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
   isDashboardOpen?: boolean;
   isFocusMode?: boolean;
 }
-
-// Generate a green/gold soccer pitch texture dynamically at runtime via HTML Canvas
-const createFifaTexture = () => {
-  if (typeof window === 'undefined') return '';
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    // Fill background green
-    ctx.fillStyle = '#081c10';
-    ctx.fillRect(0, 0, 1024, 512);
-
-    // Alternating horizontal stripes for grass pattern (pitch bands)
-    const bandHeight = 32;
-    for (let y = 0; y < 512; y += bandHeight) {
-      ctx.fillStyle = (y / bandHeight) % 2 === 0 ? '#0b2616' : '#081c10';
-      ctx.fillRect(0, y, 1024, bandHeight);
-    }
-
-    // Faint gold soccer lines (tactical layout)
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.15)';
-    ctx.lineWidth = 1;
-
-    // Pitch center line
-    ctx.beginPath();
-    ctx.moveTo(512, 0);
-    ctx.lineTo(512, 512);
-    ctx.stroke();
-
-    // Center circle
-    ctx.beginPath();
-    ctx.arc(512, 256, 80, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Side grid lines for premium tactical vibe
-    for (let x = 0; x <= 1024; x += 128) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, 512);
-      ctx.stroke();
-    }
-  }
-  return canvas.toDataURL();
-};
-
 // Generate a blue blueprint holographic grid texture dynamically at runtime via HTML Canvas
 const createBlueprintGridTexture = () => {
   if (typeof window === 'undefined') return '';
@@ -142,13 +96,7 @@ const createBlueprintGridTexture = () => {
   return canvas.toDataURL();
 };
 
-let _fifaTextureCache: string | null = null;
 let _blueprintTextureCache: string | null = null;
-
-const getFifaTexture = () => {
-  if (!_fifaTextureCache) _fifaTextureCache = createFifaTexture();
-  return _fifaTextureCache;
-};
 
 const getBlueprintGridTexture = () => {
   if (!_blueprintTextureCache) _blueprintTextureCache = createBlueprintGridTexture();
@@ -399,8 +347,6 @@ const GlobeScene = React.memo(function GlobeScene({
 
     if (globeView === 'standard' || globeView === 'night') {
       targetTexture = '/textures/globe-night.jpg';
-    } else if (globeView === 'fifa') {
-      targetTexture = getFifaTexture();
     } else if (globeView === 'discovery') {
       targetTexture = getBlueprintGridTexture();
     } else if (globeView === 'weather' || globeView === 'satellite') {
@@ -958,12 +904,6 @@ const GlobeScene = React.memo(function GlobeScene({
       }
       
       const flag = getFlagEmoji(isoCode);
-      
-      const isWorldCupTeam = [
-        'USA', 'United States', 'Mexico', 'Canada', 'Brazil', 'Argentina', 'France', 'Germany', 'Spain', 
-        'England', 'United Kingdom', 'Italy', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Uruguay', 
-        'Colombia', 'Morocco', 'Senegal', 'Japan', 'South Korea', 'Australia', 'China', 'India'
-      ].some(c => matchCountryNames(c, name));
 
       return {
         id: name,
@@ -973,7 +913,6 @@ const GlobeScene = React.memo(function GlobeScene({
         flag,
         labelRank,
         popEst,
-        isWorldCupTeam,
         feature: feat
       };
     }).filter(label => label.lat !== 0 || label.lng !== 0);
@@ -1147,7 +1086,7 @@ const GlobeScene = React.memo(function GlobeScene({
     const countryEvents = events.filter(e => matchCountryNames(e.country, name));
     
     const newsEvents = countryEvents.filter(e => e.category === 'breaking');
-    const sportsEvents = countryEvents.filter(e => e.category === 'sports' || e.category === 'football' || e.category === 'worldcup');
+    const sportsEvents = countryEvents.filter(e => e.category === 'sports' || e.category === 'football');
     const techEvents = countryEvents.filter(e => e.category === 'technology');
     
     const meta = findCountryMeta(name);
@@ -1176,16 +1115,7 @@ const GlobeScene = React.memo(function GlobeScene({
       if (weatherCond === 'Showers') alert = 'Tropical Storm Watch';
     }
     const currentTemp = baseTemp + (new Date().getHours() % 6) - 3 + (tempSeed % 5);
-    
-    const groupLetter = String.fromCharCode(65 + (name.charCodeAt(0) % 8));
-    const standingNum = (name.length % 4) + 1;
-    
-    const isWorldCupTeam = [
-      'USA', 'United States', 'Mexico', 'Canada', 'Brazil', 'Argentina', 'France', 'Germany', 'Spain', 
-      'England', 'United Kingdom', 'Italy', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Uruguay', 
-      'Colombia', 'Morocco', 'Senegal', 'Japan', 'South Korea', 'Australia', 'China', 'India'
-    ].some(c => matchCountryNames(c, name));
-    
+
     return {
       name,
       capital: meta?.capital || 'N/A',
@@ -1198,8 +1128,6 @@ const GlobeScene = React.memo(function GlobeScene({
       temperature: `${currentTemp}°C`,
       weatherCondition: weatherCond,
       weatherAlert: alert,
-      isWorldCupTeam,
-      groupStanding: `Group ${groupLetter} • #${standingNum}`,
       lastUpdatedMin: Math.max(1, (name.length * 3) % 15),
     };
   }, [selectedCountryFeature, events]);
@@ -1553,17 +1481,6 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // View-specific styling overrides (Phase 2 Views)
-    if (globeView === 'fifa') {
-      if (isLiveMatchCountry) {
-        return 'rgba(255, 215, 0, 0.85)'; // Vibrant gold cap
-      }
-      if (isSelected) {
-        return 'rgba(16, 185, 129, 0.85)'; // Bright green cap
-      }
-      // Pitch tactical look: transparent caps to see grass lines
-      return 'rgba(24, 90, 48, 0.12)';
-    }
-
     if (globeView === 'night') {
       if (isSelected) return 'rgba(0, 229, 255, 0.2)';
       return 'rgba(0, 0, 0, 0)'; // Fully transparent caps so city night lights shine through!
@@ -1615,8 +1532,6 @@ const GlobeScene = React.memo(function GlobeScene({
           case 'sports':
           case 'football':
             return `rgba(16, 185, 129, 0.45)`; // Green
-          case 'worldcup':
-            return `rgba(0, 229, 255, 0.45)`; // Cyan/Gold
           case 'weather':
             return `rgba(249, 115, 22, 0.45)`; // Orange
           case 'business':
@@ -1709,10 +1624,6 @@ const GlobeScene = React.memo(function GlobeScene({
       return `${celebration.colors.primary}99`;
     }
 
-    if (globeView === 'fifa') {
-      return isLiveMatchCountry ? 'rgba(255, 215, 0, 0.7)' : 'rgba(218, 165, 32, 0.4)';
-    }
-
     if (globeView === 'discovery') {
       return isSelected ? 'rgba(0, 229, 255, 0.7)' : 'rgba(0, 150, 255, 0.3)';
     }
@@ -1745,10 +1656,6 @@ const GlobeScene = React.memo(function GlobeScene({
     
     if (hoveredPolygon && hoveredPolygon.properties.NAME === name) {
       return 'rgba(255, 255, 255, 0.7)'; // Bright white on hover
-    }
-
-    if (globeView === 'fifa') {
-      return 'rgba(255, 215, 0, 0.45)'; // Elegant gold borders
     }
 
     if (globeView === 'discovery') {
@@ -1860,8 +1767,6 @@ const GlobeScene = React.memo(function GlobeScene({
           atmosphereColor={
             celebration?.active 
               ? celebration.colors.primary 
-              : globeView === 'fifa'
-              ? '#ffd700'
               : globeView === 'night'
               ? '#00e5ff'
               : globeView === 'discovery'
@@ -1875,8 +1780,6 @@ const GlobeScene = React.memo(function GlobeScene({
               ? (isMobile ? 0.35 : 0.4) 
               : failsafeActive
               ? 0.05
-              : globeView === 'fifa'
-              ? 0.3
               : globeView === 'night'
               ? 0.28
               : globeView === 'discovery'
@@ -1922,7 +1825,6 @@ const GlobeScene = React.memo(function GlobeScene({
           labelLat={(d: any) => d.lat}
           labelLng={(d: any) => d.lng}
           labelText={(d: any) => {
-            const isWorldCupActive = activeCategory === 'worldcup';
             const hasLiveMatch = !!liveMatchCountriesMap[d.name];
             
             // 3D Canvas text rendering struggles with emojis universally, causing [?] boxes.
@@ -1937,12 +1839,6 @@ const GlobeScene = React.memo(function GlobeScene({
             if (isPlayEarthActive) {
               const questionsAvailable = (asciiName.length * 13) % 150 + 50;
               text = `${asciiName} (${questionsAvailable} Qs)`;
-            } else if (isWorldCupActive && d.isWorldCupTeam) {
-              if (hasLiveMatch) {
-                text = `${asciiName} LIVE`;
-              } else {
-                text = `${asciiName}`;
-              }
             } else if (hasLiveMatch) {
               text = `${asciiName} LIVE`;
             }
@@ -2051,18 +1947,6 @@ const GlobeScene = React.memo(function GlobeScene({
                 </div>
                 <div className="text-[9px] text-white/30 italic mt-1">Trending Sports News</div>
               </div>
-            ) : activeCategory === 'worldcup' ? (
-              <div className="text-[11px] space-y-1">
-                <div className="text-cyan-400 font-extrabold text-[10px] tracking-wide uppercase">🏆 FIFA World Cup 2026</div>
-                <div className="flex justify-between text-white/80">
-                  <span>📊 Group Standing</span>
-                  <span className="font-bold text-cyan-300">{countryStats.groupStanding}</span>
-                </div>
-                <div className="flex justify-between text-white/80">
-                  <span>⚽ Next Match</span>
-                  <span className="font-semibold text-white/60">Scheduled</span>
-                </div>
-              </div>
             ) : activeCategory === 'weather' ? (
               <div className="text-[11px] space-y-1">
                 <div className="flex justify-between text-white/80 items-center">
@@ -2102,11 +1986,6 @@ const GlobeScene = React.memo(function GlobeScene({
                   <span>📰 News Feed</span>
                   <span className="font-bold text-cyan-400">{countryStats.newsCount} Stories</span>
                 </div>
-                {countryStats.isWorldCupTeam && (
-                  <div className="text-[9px] text-cyan-400 font-bold mt-1 flex items-center gap-1">
-                    <span>🏆</span> World Cup Participating Team
-                  </div>
-                )}
               </div>
             )}
 

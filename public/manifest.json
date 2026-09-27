@@ -1,7 +1,7 @@
 {
   "name": "mooearth",
   "short_name": "mooearth",
-  "description": "An immersive emotional globe visualizing live football reactions, celebrations, and global energy during the FIFA World Cup.",
+  "description": "An immersive emotional globe visualizing global news, live sports reactions, celebrations, and world energy.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
@@ -10,15 +10,15 @@
   "categories": ["news", "education"],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-192.svg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-512.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]

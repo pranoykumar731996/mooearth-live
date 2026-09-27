@@ -4,7 +4,7 @@
     "country": "Germany",
     "category": "sports",
     "difficulty": "medium",
-    "question": "How many FIFA World Cups has Germany won?",
+    "question": "How many world football championships has Germany won?",
     "choices": [
       "2",
       "3",
@@ -12,6 +12,6 @@
       "5"
     ],
     "correctIndex": 2,
-    "funFact": "Germany won the World Cup in 1954, 1974, 1990, and 2014."
+    "funFact": "Germany won the world title in 1954, 1974, 1990, and 2014."
   }
 ]

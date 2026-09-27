@@ -12,7 +12,6 @@ export default function robots(): MetadataRoute.Robots {
         '/weather',
         '/business',
         '/technology',
-        '/fifa',
         '/play-earth',
         '/category/*',
         '/article/*',

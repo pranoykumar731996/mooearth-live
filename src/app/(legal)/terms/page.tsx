@@ -65,7 +65,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">7. Intellectual Property</h2>
           <p>
-            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party team logos, competition names (e.g., FIFA World Cup 2026), and aggregated news content remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
+            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party logos, competition names, and aggregated news content remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
           </p>
         </section>
 

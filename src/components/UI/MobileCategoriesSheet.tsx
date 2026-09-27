@@ -27,8 +27,7 @@ interface MobileCategoriesSheetProps {
 const CATEGORY_OPTIONS: CategoryOption[] = [
   { id: null, name: 'Home Feed', desc: 'All live event updates globally.', icon: '🏠' },
   { id: 'breaking', name: 'Breaking News', desc: 'Global headlines and stories.', icon: '📰' },
-  { id: 'football', name: 'Live Football', desc: 'Upcoming and live scores.', icon: '⚽' },
-  { id: 'worldcup', name: 'FIFA World Cup', desc: 'Standings and tournament stats.', icon: '🏆' },
+  { id: 'football', name: 'Sports & Football', desc: 'Global matches and sports updates.', icon: '⚽' },
   { id: 'technology', name: 'Technology', desc: 'AI, space, and tech developments.', icon: '💻' },
   { id: 'weather', name: 'Weather Radar', desc: 'Climate warnings and weather alerts.', icon: '🌦️' },
   { id: 'business', name: 'Business', desc: 'GDP and tech funding indicators.', icon: '📈' },

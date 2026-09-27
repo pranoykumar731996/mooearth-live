@@ -12,23 +12,23 @@ export interface FreshnessInfo {
 // We initialize them to 0 (which means they are initially stale).
 const globalFetchRegistry = (global as any).mooearthFetchRegistry || {
   breaking: 0,
+  sports: 0,
   football: 0,
   weather: 0,
   business: 0,
   technology: 0,
-  entertainment: 0,
-  worldcup: 0
+  entertainment: 0
 };
 (global as any).mooearthFetchRegistry = globalFetchRegistry;
 
 const globalApiResponseTimes = (global as any).mooearthApiResponseTimes || {
   breaking: 0,
+  sports: 0,
   football: 0,
   weather: 0,
   business: 0,
   technology: 0,
-  entertainment: 0,
-  worldcup: 0
+  entertainment: 0
 };
 (global as any).mooearthApiResponseTimes = globalApiResponseTimes;
 
@@ -73,7 +73,7 @@ export function getFreshness(category: string): FreshnessInfo {
 }
 
 export function getAllFreshness(): Record<string, FreshnessInfo> {
-  const categories = ['breaking', 'football', 'weather', 'business', 'technology', 'entertainment', 'worldcup'];
+  const categories = ['breaking', 'sports', 'football', 'weather', 'business', 'technology', 'entertainment'];
   const result: Record<string, FreshnessInfo> = {};
   for (const cat of categories) {
     result[cat] = getFreshness(cat);

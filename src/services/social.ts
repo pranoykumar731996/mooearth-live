@@ -19,7 +19,7 @@ export async function fetchSocialReactions(country: string, category?: string | 
   const cleanCountry = country.replace(/\s+/g, '');
   const allCelebrations = readCelebrations();
   
-  const isSportsRelated = !category || ['sports', 'football', 'worldcup'].includes(category);
+  const isSportsRelated = !category || ['sports', 'football'].includes(category);
   
   const countryCelebrations = isSportsRelated
     ? allCelebrations.filter(
@@ -27,7 +27,7 @@ export async function fetchSocialReactions(country: string, category?: string | 
       )
     : [];
 
-  let hashtags = [`#${cleanCountry}Sports`, `#WorldCup2026`];
+  let hashtags = [`#${cleanCountry}Sports`, `#${cleanCountry}Live`];
   let mockTemplates: string[] = [];
 
   const cat = category || 'home';
@@ -68,13 +68,13 @@ export async function fetchSocialReactions(country: string, category?: string | 
       `Breaking news broadcasts in ${country} report high public participation in regional initiatives.`
     ];
   } else {
-    // sports, football, worldcup, or home
-    hashtags = [`#${cleanCountry}Sports`, `#WorldCup2026`];
+    // sports, football, or home
+    hashtags = [`#${cleanCountry}Sports`, `#${cleanCountry}Live`];
     if (countryCelebrations.length === 0) {
       mockTemplates = [
-        `Enthusiasm for the upcoming fixtures in ${country} is reaching fever pitch! Stadiums and fan zones are ready. ⚽🏆`,
-        `The national squad in ${country} shows incredible form in training. Pundits are predicting a strong tournament run!`,
-        `Local clubs in ${country} host massive football events this weekend. The team form is looking outstanding.`
+        `Enthusiasm for the upcoming fixtures in ${country} is reaching fever pitch! Stadiums and fan zones are ready. ⚽🏅`,
+        `The national squad in ${country} shows incredible form in training. Pundits are predicting a strong run!`,
+        `Local sports clubs in ${country} host massive events this weekend. The team form is looking outstanding.`
       ];
     }
   }

@@ -47,22 +47,17 @@ const COUNTRY_COORDINATES: Record<string, { lat: number; lng: number }> = {
   'Chile':          { lat: -35.6751, lng: -71.5430 },
 };
 
-const FALLBACK_WORLD_CUP_MATCHES = [
-  { id: 'wc-1', title: 'United States vs Morocco (Group Stage)' },
-  { id: 'wc-2', title: 'Mexico vs Sweden (Group Stage)' },
-  { id: 'wc-3', title: 'Canada vs Saudi Arabia (Group Stage)' },
-  { id: 'wc-4', title: 'Spain vs Croatia (Group Stage)' },
-  { id: 'wc-5', title: 'Brazil vs Japan (Group Stage)' },
-  { id: 'wc-6', title: 'Argentina vs Senegal (Group Stage)' },
-  { id: 'wc-7', title: 'Germany vs Uruguay (Group Stage)' },
-  { id: 'wc-8', title: 'France vs South Korea (Group Stage)' },
+const FALLBACK_MATCHES = [
+  { id: 'match-1', title: 'Global Football Championship' },
+  { id: 'match-2', title: 'International Sports Match' },
+  { id: 'match-3', title: 'National League Match' },
+  { id: 'match-4', title: 'Continental Cup Match' },
 ];
-
 
 export default function UploadModal({ isOpen, onClose, matches, currentUser, onUploadSuccess }: UploadModalProps) {
   const [activeTab, setActiveTab] = useState<'video' | 'image' | 'audio'>('video');
   const [selectedMatch, setSelectedMatch] = useState(() => {
-    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_WORLD_CUP_MATCHES;
+    const activeMatches = matches && matches.length > 0 ? matches : FALLBACK_MATCHES;
     return activeMatches.length > 0 ? activeMatches[0].title : '';
   });
   const [matchSearch, setMatchSearch] = useState('');
@@ -296,8 +291,6 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const [worldCupMatches, setWorldCupMatches] = useState<any[]>([]);
-
   const getDisplayMatches = () => {
     const combined: any[] = [];
     const seen = new Set<string>();
@@ -315,29 +308,9 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
       });
     }
 
-    // Add fetched world cup matches formatted with date
-    if (worldCupMatches.length > 0) {
-      worldCupMatches.forEach((m) => {
-        const dateStr = new Date(m.kickoff).toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        const title = `${m.homeTeam} vs ${m.awayTeam} (World Cup — ${dateStr})`;
-        if (!seen.has(title)) {
-          seen.add(title);
-          combined.push({
-            id: m.id,
-            title: title
-          });
-        }
-      });
-    }
-
     // If still empty, use formatted fallbacks
     if (combined.length === 0) {
-      return FALLBACK_WORLD_CUP_MATCHES;
+      return FALLBACK_MATCHES;
     }
 
     return combined;
@@ -355,23 +328,12 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     setIsMatchDropdownOpen(false);
   };
 
-  // Fetch real World Cup matches list on open
   useEffect(() => {
     if (isOpen) {
-      // Sync initial search with default selection
       const activeMatches = getDisplayMatches();
-      if (activeMatches.length > 0) {
+      if (activeMatches.length > 0 && !selectedMatch) {
         setSelectedMatch(activeMatches[0].title);
       }
-
-      fetch('/api/worldcup/matches')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setWorldCupMatches(data);
-          }
-        })
-        .catch((err) => console.error('Failed to fetch world cup matches in modal:', err));
     }
   }, [isOpen]);
 
@@ -379,7 +341,7 @@ export default function UploadModal({ isOpen, onClose, matches, currentUser, onU
     if (displayMatches.length > 0 && !selectedMatch) {
       setSelectedMatch(displayMatches[0].title);
     }
-  }, [worldCupMatches, matches, selectedMatch]);
+  }, [matches, selectedMatch]);
 
   const [prevMatches, setPrevMatches] = useState<any[]>([]);
   if (JSON.stringify(displayMatches) !== JSON.stringify(prevMatches)) {

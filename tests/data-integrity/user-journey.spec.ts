@@ -40,15 +40,15 @@ const MOCK_EVENTS = {
   ],
   brazil: [
     {
-      id: 'wc26-brazil-match-001',
-      title: 'Brazil vs Germany — World Cup 2026',
-      summary: 'FIFA World Cup 2026 match at Estadio Azteca, Mexico City. Score: 2 - 1.',
-      category: 'worldcup',
+      id: 'football-brazil-match-001',
+      title: 'Brazil vs Germany — Football Championship',
+      summary: 'Football match in Rio de Janeiro. Score: 2 - 1.',
+      category: 'football',
       country: 'Brazil',
       city: 'Rio de Janeiro',
       lat: -22.9068,
       lng: -43.1729,
-      source: 'https://www.api-football.com',
+      source: 'https://news.google.com',
       publishedAt: new Date().toISOString(),
       footballData: {
         homeTeam: 'Brazil',
@@ -78,8 +78,7 @@ function buildMockResponse(events: typeof MOCK_EVENTS.india) {
         weather: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
         business: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
         technology: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-        entertainment: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-        worldcup: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
+        entertainment: { lastRetrieved: new Date().toISOString(), ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
       }
     }
   });
@@ -207,16 +206,6 @@ test.describe('Suite 13 — User Journey Data Consistency', () => {
       });
     });
 
-    // Mock statistics endpoint
-    await page.route('**/api/worldcup/statistics*', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          home: { possession: '55%', shots: 12, corners: 4 },
-          away: { possession: '45%', shots: 8, corners: 3 }
-        })
-      });
     });
   });
 

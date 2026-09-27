@@ -5,7 +5,7 @@
 - **Resolution:** 1920×1080 (16:9 Horizontal)
 - **Frame Rate:** 60fps (recommended for smooth animations)
 - **Color:** Dark theme, cinematic grading
-- **Style:** Apple product launch quality, FIFA broadcast quality
+- **Style:** Apple product launch quality, international broadcast quality
 
 ---
 
@@ -13,9 +13,9 @@
 
 | Time | Voice-Over | Scene | On-Screen |
 |------|-----------|-------|-----------|
-| 0:00–0:02 | "Experience the FIFA World Cup 2026..." | Globe rotating with pins | MooEarth Live / The World Watches Together |
+| 0:00–0:02 | "Experience global events and sports..." | Globe rotating with pins | MooEarth Live / The World Watches Together |
 | 0:02–0:04 | "...like never before." | Globe continues, pins pulse | Globe animation |
-| 0:04–0:06 | "Welcome to MooEarth Live." | France 🇫🇷 vs Norway 🇳🇴 reveal | FIFA World Cup 2026 • Group I |
+| 0:04–0:06 | "Welcome to MooEarth Live." | France 🇫🇷 vs Norway 🇳🇴 reveal | International Championship |
 | 0:06–0:08 | "Today's featured clash... France versus Norway." | VS animation, connection line | France VS Norway |
 | 0:08–0:11 | "Watch live scores, match statistics..." | Real app screenshot zooms in | Live Scores / Match Statistics |
 | 0:11–0:14 | "...standings, fixtures, and breaking football news in real time." | Feature labels appear | Group Standings / Fixtures |
@@ -65,7 +65,7 @@
 - Overall: Cool blue-teal tones, high contrast
 - France: Blue accent glow (RGB: 0, 85, 164)
 - Norway: Red accent glow (RGB: 239, 43, 45)
-- FIFA: Gold accent (RGB: 255, 215, 0)
+- Accent: Gold accent (RGB: 255, 215, 0)
 - UI Elements: Cyan glow (RGB: 0, 229, 255)
 
 ### Typography

@@ -22,7 +22,7 @@ test.describe('Suite 12 — Live Data Freshness Validation', () => {
     const freshness = data.status.freshness;
 
     // Verify freshness categories
-    const categories = ['breaking', 'football', 'weather', 'business', 'technology', 'entertainment', 'worldcup'];
+    const categories = ['breaking', 'football', 'weather', 'business', 'technology', 'entertainment'];
     for (const cat of categories) {
       expect(freshness).toHaveProperty(cat);
       const info = freshness[cat];
@@ -94,8 +94,7 @@ test.describe('Suite 12 — Live Data Freshness Validation', () => {
                 weather: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
                 business: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
                 technology: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-                entertainment: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-                worldcup: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
+                entertainment: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
               }
             }
           })
@@ -129,8 +128,7 @@ test.describe('Suite 12 — Live Data Freshness Validation', () => {
                 weather: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
                 business: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
                 technology: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-                entertainment: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 },
-                worldcup: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
+                entertainment: { lastRetrieved: now, ageMinutes: 0.1, status: 'Live', apiResponseAgeSeconds: 6 }
               }
             }
           })

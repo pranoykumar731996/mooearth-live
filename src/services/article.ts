@@ -29,7 +29,6 @@ export const CATEGORY_IMAGES: Record<string, string> = {
   breaking: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=800',
   sports: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
   football: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
-  worldcup: 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=800',
   technology: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800',
   weather: 'https://images.unsplash.com/photo-1592210454359-9043f067919b?q=80&w=800',
   business: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800',

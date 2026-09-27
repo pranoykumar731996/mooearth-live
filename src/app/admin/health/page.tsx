@@ -56,15 +56,13 @@ export default function ProductionHealthDashboard() {
       return { pass: true, message: `${data.events.length} events validated — all have title, country, summary` };
     }));
 
-    // 2. FIFA Data Integrity
-    checks.push(await runCheck('FIFA Data Integrity', async () => {
-      const res = await fetch('/api/admin/worldcup-diagnostics');
-      if (!res.ok) return { pass: false, message: `Diagnostics API returned ${res.status}` };
-      const diag = await res.json();
-      if (diag.leagueId !== 1) return { pass: false, message: `Wrong leagueId: ${diag.leagueId} (expected 1)` };
-      if (diag.seasonId !== 2026) return { pass: false, message: `Wrong seasonId: ${diag.seasonId} (expected 2026)` };
-      const apiStatus = diag.apiKeyLoaded ? 'API key loaded' : 'API key not set';
-      return { pass: true, message: `League=1, Season=2026 — ${apiStatus}`, details: [`API Status: ${diag.apiStatus}`, `Requests remaining: ${diag.requestsRemaining ?? 'N/A'}`] };
+    // 2. Sports Category Integrity
+    checks.push(await runCheck('Sports Category Integrity', async () => {
+      const res = await fetch('/api/events?category=sports');
+      if (!res.ok) return { pass: false, message: `Events API returned ${res.status}` };
+      const data = await res.json();
+      if (!data.events || data.events.length === 0) return { pass: false, message: 'No sports events returned' };
+      return { pass: true, message: `${data.events.length} sports events validated`, details: [`Event count: ${data.events.length}`] };
     }));
 
     // 3. Country Mapping
@@ -142,7 +140,7 @@ export default function ProductionHealthDashboard() {
 
     // 8. API Health
     checks.push(await runCheck('API Health', async () => {
-      const endpoints = ['/api/events', '/api/admin/worldcup-diagnostics'];
+      const endpoints = ['/api/events', '/api/quiz/next'];
       const results: string[] = [];
       let allOk = true;
       for (const ep of endpoints) {
@@ -231,7 +229,7 @@ export default function ProductionHealthDashboard() {
       const data = await res.json();
       if (!data.status || !data.status.freshness) return { pass: false, message: 'Freshness metadata missing in status response' };
       const freshness = data.status.freshness;
-      const categories = ['breaking', 'football', 'weather', 'business', 'technology', 'entertainment', 'worldcup'];
+      const categories = ['breaking', 'football', 'weather', 'business', 'technology', 'entertainment'];
       const missing = categories.filter(c => !freshness[c]);
       if (missing.length > 0) return { pass: false, message: `Missing freshness for categories: ${missing.join(', ')}` };
       

@@ -17,7 +17,6 @@ import {
   generateFlagQuestion, 
   generateCapitalQuestion, 
   getDailyEarthQuestion, 
-  getWorldCupQuestion,
   DEDUPLICATED_STATIC_QUESTIONS
 } from '@/data/questions';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
@@ -98,7 +97,6 @@ const syncProgressToFirestore = async (state: PlayerGameState) => {
       clockBest: state.clockBest || {},
       flagBest: state.flagBest || {},
       capitalBest: state.capitalBest || {},
-      worldCupBest: state.worldCupBest || 0,
       dailyChallengeStreak: state.dailyChallengeStreak || 0,
       lastDailyChallengeDate: state.lastDailyChallengeDate || "",
       answeredQuestions: state.answeredQuestions || [],
@@ -185,23 +183,7 @@ export function getUniqueFlagOrCapitalQuestion(
   return q || (mode === 'flag' ? generateFlagQuestion(difficulty, answeredIds, countryName) : generateCapitalQuestion(difficulty, answeredIds, countryName));
 }
 
-/** Client-side deduplicator for world cup questions */
-export function getUniqueWorldCupQuestion(
-  answeredIds: string[],
-  answeredQuestions: { id: string; question: string; country: string }[]
-): EarthQuestion {
-  const maxAttempts = 100;
-  let q: EarthQuestion | null = null;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const candidate = getWorldCupQuestion(answeredIds);
-    const duplicate = answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
-    if (!duplicate) {
-      return candidate;
-    }
-    q = candidate;
-  }
-  return q || getWorldCupQuestion(answeredIds);
-}
+
 
 export default function PlayEarthOverlay({
   isActive, selectedCountry, onClose, onPlaySound,
@@ -302,8 +284,6 @@ export default function PlayEarthOverlay({
           setPhase('flag-challenge-start');
         } else if (initialMode === 'capital') {
           setPhase('capital-challenge-start');
-        } else if (initialMode === 'worldcup') {
-          setPhase('world-cup-start');
         } else if (initialMode === 'daily') {
           setPhase('daily-earth-start');
         }
@@ -838,66 +818,7 @@ export default function PlayEarthOverlay({
       return;
     }
 
-    // 5. World Cup Mode (5 questions)
-    if (activeMode === 'worldcup') {
-      setGameState(prev => {
-        const next = { ...prev };
-        next.totalAnswered++;
-        next.answeredQuestionIds = [...(prev.answeredQuestionIds || []), currentQuestion.id];
-        next.answeredQuestions = [...(prev.answeredQuestions || []), currentAQ];
 
-        if (correct) {
-          next.xp += 150;
-          next.totalCorrect++;
-          setXpGained(150);
-          setShowXpFloat(true);
-
-          const newLevel = calculateLevel(next.xp);
-          if (newLevel > next.level) {
-            next.level = newLevel;
-            setLeveledUp(true);
-            setTimeout(() => onLevelUp(), 300);
-          }
-
-          if (clockScore + 1 > (next.worldCupBest || 0)) {
-            next.worldCupBest = clockScore + 1;
-          }
-        }
-
-        saveGameState(next);
-        syncProgressToFirestore(next);
-        return next;
-      });
-
-      if (correct) {
-        setClockScore(s => s + 1);
-        onCorrectSound();
-        setTimeout(() => {
-          const nextIdx = dailyIndex + 1;
-          if (nextIdx >= 5) {
-            setPhase('summary');
-          } else {
-            setDailyIndex(nextIdx);
-            setIsLoadingQuestion(true);
-            const q = getUniqueWorldCupQuestion(
-              [...(gameState.answeredQuestionIds || []), currentQuestion.id],
-              [...(gameState.answeredQuestions || []), currentAQ]
-            );
-            setQuestionSource('Local World Cup Database');
-            setCurrentQuestion(q);
-            setSelectedAnswer(null);
-            setIsCorrect(null);
-            setTimer(15);
-            setIsLoadingQuestion(false);
-            setPhase('question');
-          }
-        }, 1000);
-      } else {
-        onWrongSound();
-        setTimeout(() => setPhase('result'), 800);
-      }
-      return;
-    }
 
     // Default Explorer Mode
     if (selectedCategory === 'mixed' && !correct) {
@@ -1039,30 +960,7 @@ export default function PlayEarthOverlay({
       return;
     }
 
-    // 4. World Cup Challenge (5 questions)
-    if (activeMode === 'worldcup') {
-      const nextIdx = dailyIndex + 1; // reuse dailyIndex as counter
-      if (nextIdx >= 5) {
-        setPhase('summary');
-      } else {
-        setDailyIndex(nextIdx);
-        setIsLoadingQuestion(true);
-        setTimeout(() => {
-          const q = getUniqueWorldCupQuestion(
-            gameState.answeredQuestionIds || [],
-            gameState.answeredQuestions || []
-          );
-          setQuestionSource('Local World Cup Database');
-          setCurrentQuestion(q);
-          setSelectedAnswer(null);
-          setIsCorrect(null);
-          setTimer(15);
-          setIsLoadingQuestion(false);
-          setPhase('question');
-        }, 600);
-      }
-      return;
-    }
+
 
     // Explorer Mode continue
     if (selectedCategory === 'mixed') {
@@ -1243,18 +1141,7 @@ export default function PlayEarthOverlay({
                   <span className="text-[8px] text-white/40 leading-snug">Match cities to their sovereign nations.</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('worldcup');
-                    setPhase('world-cup-start');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
-                >
-                  <span className="text-xl">🏆</span>
-                  <span className="text-xs font-black text-white">World Cup</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Curated football history and 2026 trivia.</span>
-                </button>
+
               </div>
 
               <button
@@ -1474,56 +1361,7 @@ export default function PlayEarthOverlay({
             </motion.div>
           )}
 
-          {/* Phase: World Cup Start Screen */}
-          {activeMode === 'worldcup' && phase === 'world-cup-start' && (
-            <motion.div
-              key="wc-start"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-6 space-y-4"
-            >
-              <span className="text-5xl">🏆</span>
-              <div>
-                <h4 className="text-sm font-black text-white uppercase tracking-wider">World Cup Challenge</h4>
-                <p className="text-xs text-white/50 max-w-xs mx-auto mt-1">
-                  Test your knowledge on FIFA World Cup history, legends, and stadiums in a 5-question blitz.
-                </p>
-              </div>
 
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setClockScore(0); // reset score
-                    setDailyIndex(0); // reset index
-                    setIsLoadingQuestion(true);
-                    setTimeout(() => {
-                      const q = getUniqueWorldCupQuestion(
-                        gameState.answeredQuestionIds || [],
-                        gameState.answeredQuestions || []
-                      );
-                      setQuestionSource('Local World Cup Database');
-                      setCurrentQuestion(q);
-                      setSelectedAnswer(null);
-                      setIsCorrect(null);
-                      setTimer(15);
-                      setIsLoadingQuestion(false);
-                      setPhase('question');
-                    }, 600);
-                  }}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 text-black font-black text-xs tracking-wider cursor-pointer"
-                >
-                  START BLITZ
-                </button>
-                <button
-                  onClick={handleBackToModes}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs"
-                >
-                  BACK
-                </button>
-              </div>
-            </motion.div>
-          )}
 
           {/* Phase: Daily Challenge Start Screen */}
           {activeMode === 'daily' && phase === 'daily-earth-start' && (
@@ -1589,7 +1427,6 @@ export default function PlayEarthOverlay({
                        activeMode === 'flag' ? `Flag Streak: ${gameState.streak}` :
                        activeMode === 'capital' ? `Capital Streak: ${gameState.streak}` :
                        activeMode === 'daily' ? `Daily Question ${dailyIndex + 1}/5` :
-                       activeMode === 'worldcup' ? `World Cup ${dailyIndex + 1}/5` :
                        selectedCountry}
                     </span>
                   </div>
@@ -1731,7 +1568,6 @@ export default function PlayEarthOverlay({
                     {activeMode === 'survival' ? `${survivalCount} Survived` :
                      activeMode === 'clock' ? `${clockScore} Points` :
                      activeMode === 'daily' ? `${dailyScore}/5 Correct` :
-                     activeMode === 'worldcup' ? `${clockScore}/5 Correct` :
                      gameState.streak}
                   </span>
                 </div>
@@ -1766,20 +1602,6 @@ export default function PlayEarthOverlay({
                       setDailyIndex(0);
                       setDailyScore(0);
                       loadDailyQuestionIndex(0);
-                    } else if (activeMode === 'worldcup') {
-                      setClockScore(0);
-                      setDailyIndex(0);
-                      setIsLoadingQuestion(true);
-                      setTimeout(() => {
-                        const q = getWorldCupQuestion(gameState.answeredQuestionIds || []);
-                        setQuestionSource('Local World Cup Database');
-                        setCurrentQuestion(q);
-                        setSelectedAnswer(null);
-                        setIsCorrect(null);
-                        setTimer(15);
-                        setIsLoadingQuestion(false);
-                        setPhase('question');
-                      }, 600);
                     } else {
                       setPhase('category-select');
                     }
@@ -1949,18 +1771,7 @@ export default function PlayEarthOverlay({
                   <span className="text-xs text-white/40 leading-snug">Guess capital cities of nations across various difficulty tiers.</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('worldcup');
-                    setPhase('world-cup-start');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
-                >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🏆</span>
-                  <span className="text-sm font-bold text-white">World Cup</span>
-                  <span className="text-xs text-white/40 leading-snug">Test your FIFA World Cup history and records knowledge.</span>
-                </button>
+
               </div>
 
               <button
@@ -2210,58 +2021,7 @@ export default function PlayEarthOverlay({
           </motion.div>
         )}
 
-        {/* Phase: World Cup Start Screen */}
-        {activeMode === 'worldcup' && phase === 'world-cup-start' && (
-          <motion.div
-            key="wc-start"
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto font-sans"
-          >
-            <div className="glass rounded-3xl border border-white/10 p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4">
-              <span className="text-6xl block">🏆</span>
-              <div>
-                <h3 className="text-xl font-black text-white">World Cup Challenge</h3>
-                <p className="text-xs text-white/50 max-w-md mx-auto mt-2 leading-relaxed">
-                  Answer 5 curated questions about legendary World Cup teams, players, and stadium records to test your football trivia.
-                </p>
-              </div>
 
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setClockScore(0);
-                    setDailyIndex(0);
-                    setIsLoadingQuestion(true);
-                    setTimeout(() => {
-                      const q = getUniqueWorldCupQuestion(
-                        gameState.answeredQuestionIds || [],
-                        gameState.answeredQuestions || []
-                      );
-                      setQuestionSource('Local World Cup Database');
-                      setCurrentQuestion(q);
-                      setSelectedAnswer(null);
-                      setIsCorrect(null);
-                      setTimer(15);
-                      setIsLoadingQuestion(false);
-                      setPhase('question');
-                    }, 600);
-                  }}
-                  className="px-6 py-3 rounded-2xl bg-amber-500 text-black font-black text-xs tracking-wider cursor-pointer"
-                >
-                  START WORLD CUP BLITZ
-                </button>
-                <button
-                  onClick={handleBackToModes}
-                  className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs"
-                >
-                  BACK
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
 
         {/* Phase: Daily Challenge Start Screen */}
         {activeMode === 'daily' && phase === 'daily-earth-start' && (
@@ -2337,7 +2097,6 @@ export default function PlayEarthOverlay({
                        activeMode === 'flag' ? `Flag Streak: ${gameState.streak}` :
                        activeMode === 'capital' ? `Capital Streak: ${gameState.streak}` :
                        activeMode === 'daily' ? `Daily Question ${dailyIndex + 1}/5` :
-                       activeMode === 'worldcup' ? `World Cup ${dailyIndex + 1}/5` :
                        selectedCountry}
                     </span>
                   </div>
@@ -2505,7 +2264,6 @@ export default function PlayEarthOverlay({
                     {activeMode === 'survival' ? `${survivalCount} Survived` :
                      activeMode === 'clock' ? `${clockScore} Points` :
                      activeMode === 'daily' ? `${dailyScore}/5 Correct` :
-                     activeMode === 'worldcup' ? `${clockScore}/5 Correct` :
                      gameState.streak}
                   </span>
                 </div>
@@ -2541,20 +2299,6 @@ export default function PlayEarthOverlay({
                       setDailyIndex(0);
                       setDailyScore(0);
                       loadDailyQuestionIndex(0);
-                    } else if (activeMode === 'worldcup') {
-                      setClockScore(0);
-                      setDailyIndex(0);
-                      setIsLoadingQuestion(true);
-                      setTimeout(() => {
-                        const q = getWorldCupQuestion(gameState.answeredQuestionIds || []);
-                        setQuestionSource('Local World Cup Database');
-                        setCurrentQuestion(q);
-                        setSelectedAnswer(null);
-                        setIsCorrect(null);
-                        setTimer(15);
-                        setIsLoadingQuestion(false);
-                        setPhase('question');
-                      }, 600);
                     } else {
                       setPhase('category-select');
                     }

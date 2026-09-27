@@ -345,17 +345,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
         </button>
 
         <div className="flex flex-col items-center mb-5 mt-2">
-          <Image 
-            src="/logo.png" 
-            alt="MooEarth Live Logo" 
-            width={112}
-            height={112}
-            className="w-28 h-28 object-contain mb-3"
-          />
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            {isRegistering ? 'Create Profile' : 'Sign In to MooEarth'}
+          {/* Previous SVG/emoji-based logo */}
+          <div className="relative w-20 h-20 flex items-center justify-center mb-3">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-cyan-400/10 to-blue-600/10 border border-cyan-500/20" />
+            <span className="text-4xl relative z-10 select-none">🌍</span>
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-1 select-none">
+            <span>Moo</span><span className="text-cyan-400">Earth</span>
+            <span className="text-[9px] bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 px-1.5 py-0.5 rounded-full ml-1 uppercase tracking-widest font-black">Live</span>
           </h2>
-          <p className="text-[11px] text-white/40 text-center mt-1.5">
+          <p className="text-[11px] text-white/40 text-center mt-2.5">
             Join the live emotional fan celebration network.
           </p>
         </div>

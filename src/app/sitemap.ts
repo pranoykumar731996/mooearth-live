@@ -13,7 +13,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/weather',
     '/business',
     '/technology',
-    '/fifa',
     '/play-earth'
   ].map(route => ({
     url: `${baseUrl}${route}`,
@@ -24,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 2. Dynamic Categories
   const categories = [
-    'breaking', 'sports', 'football', 'technology', 'business', 'weather', 'entertainment', 'worldcup'
+    'breaking', 'sports', 'football', 'technology', 'business', 'weather', 'entertainment'
   ].map(cat => ({
     url: `${baseUrl}/category/${cat}`,
     lastModified: new Date(),

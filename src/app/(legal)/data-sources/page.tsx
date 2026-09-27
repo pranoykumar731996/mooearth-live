@@ -40,10 +40,10 @@ export default function DataSources() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">3. Trademarks and Logos</h2>
           <p>
-            All team logos, national flags, competition names (such as "FIFA World Cup"), and specific tournament branding are the trademarks and registered properties of their respective owners (e.g., FIFA, national football associations, or regional federations).
+            All organization logos, national flags, competition names, and tournament branding are the trademarks and registered properties of their respective owners.
           </p>
           <p className="mt-2">
-            MooEarth.Live is an independent informational platform. We use these trademarks solely for descriptive, nominative purposes to identify the teams and competitions we are providing data for. We are not officially affiliated with, endorsed by, or sponsored by FIFA or any official football federation.
+            MooEarth.Live is an independent informational platform. We use these trademarks solely for descriptive, nominative purposes. We are not officially affiliated with, endorsed by, or sponsored by any sports federation or media publisher.
           </p>
         </section>
 

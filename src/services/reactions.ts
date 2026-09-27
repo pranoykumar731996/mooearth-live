@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactionEvent, WorldEvent, EventCategory } from '@/types';
-import { fetchLiveFootball } from './football';
 import { fetchLiveNews, searchLiveNews, generateLocalFallbackEvents } from './news';
 import { fetchSocialReactions } from './social';
 import { analyzeSentiment } from './sentiment';
@@ -54,7 +53,6 @@ export async function fetchCountryReactions(country: string, category?: string |
     breaking: 'News',
     sports: 'Sports',
     football: 'Football',
-    worldcup: 'FIFA World Cup',
     technology: 'Technology',
     business: 'Business',
     weather: 'Weather',
@@ -64,75 +62,29 @@ export async function fetchCountryReactions(country: string, category?: string |
   const catLabel = categoryLabelMap[category || ''] || 'News';
 
   if (category && category !== 'home') {
-    if (category === 'sports' || category === 'football' || category === 'worldcup') {
-      const footballResult = await fetchLiveFootball();
-      const football = footballResult.events;
+    generatedQuery = category === 'breaking' ? `${country} Breaking News` : `${country} ${catLabel}`;
+    const newsResult = await searchLiveNews(generatedQuery, category as EventCategory, country);
+    let newsEvents = (newsResult.events || []).filter(e => isSameCountry(e.country, country));
 
-      // Filter football events strictly by country
-      const countryFootball = football.filter(
-        (e) =>
-          isSameCountry(e.country, country) ||
-          e.title.toLowerCase().includes(country.toLowerCase()) ||
-          e.summary.toLowerCase().includes(country.toLowerCase())
-      );
-
-      generatedQuery = category === 'worldcup' ? `${country} FIFA World Cup` : category === 'football' ? `${country} Football` : `${country} Sports`;
-      const newsResult = await searchLiveNews(generatedQuery, category as EventCategory, country);
-      let newsEvents = (newsResult.events || []).filter(e => isSameCountry(e.country, country));
-
-      if (newsEvents.length === 0 && countryFootball.length === 0) {
-        noCategoryContent = true;
-        const generalQuery = `${country} News`;
-        const fallbackResult = await searchLiveNews(generalQuery, null, country);
-        newsEvents = (fallbackResult.events || []).filter(e => isSameCountry(e.country, country));
-        dataSource = 'Google News RSS Search (Related Fallback)';
-
-        if (newsEvents.length === 0) {
-          newsEvents = generateLocalFallbackEvents(generalQuery, null, country);
-          dataSource = 'Local Fallback Database (Related)';
-        }
-      }
-
-      newsHeadlines = [...countryFootball, ...newsEvents];
-    } else {
-      // technology, business, weather, entertainment, breaking
-      generatedQuery = category === 'breaking' ? `${country} Breaking News` : `${country} ${catLabel}`;
-      const newsResult = await searchLiveNews(generatedQuery, category as EventCategory, country);
-      let newsEvents = (newsResult.events || []).filter(e => isSameCountry(e.country, country));
+    if (newsEvents.length === 0) {
+      noCategoryContent = true;
+      const generalQuery = `${country} News`;
+      const fallbackResult = await searchLiveNews(generalQuery, null, country);
+      newsEvents = (fallbackResult.events || []).filter(e => isSameCountry(e.country, country));
+      dataSource = 'Google News RSS Search (Related Fallback)';
 
       if (newsEvents.length === 0) {
-        noCategoryContent = true;
-        const generalQuery = `${country} News`;
-        const fallbackResult = await searchLiveNews(generalQuery, null, country);
-        newsEvents = (fallbackResult.events || []).filter(e => isSameCountry(e.country, country));
-        dataSource = 'Google News RSS Search (Related Fallback)';
-
-        if (newsEvents.length === 0) {
-          newsEvents = generateLocalFallbackEvents(generalQuery, null, country);
-          dataSource = 'Local Fallback Database (Related)';
-        }
+        newsEvents = generateLocalFallbackEvents(generalQuery, null, country);
+        dataSource = 'Local Fallback Database (Related)';
       }
-
-      newsHeadlines = newsEvents;
     }
+
+    newsHeadlines = newsEvents;
   } else {
     // Home mode
     generatedQuery = `${country} News`;
-    const [footballResult, newsResult] = await Promise.all([
-      fetchLiveFootball(),
-      fetchLiveNews()
-    ]);
-
-    const football = footballResult.events;
+    const newsResult = await fetchLiveNews();
     const news = newsResult.events;
-
-    // Filter by country
-    const countryFootball = football.filter(
-      (e) =>
-        isSameCountry(e.country, country) ||
-        e.title.toLowerCase().includes(country.toLowerCase()) ||
-        e.summary.toLowerCase().includes(country.toLowerCase())
-    );
 
     let newsEvents = news.filter(
       (e) =>
@@ -142,22 +94,22 @@ export async function fetchCountryReactions(country: string, category?: string |
     );
 
     // If no general headlines match this country, search specifically for this country
-    if (newsEvents.length === 0 && countryFootball.length === 0) {
+    if (newsEvents.length === 0) {
       const searchResult = await searchLiveNews(generatedQuery, null, country);
       newsEvents = (searchResult.events || []).filter(e => isSameCountry(e.country, country));
     }
 
-    if (newsEvents.length === 0 && countryFootball.length === 0) {
+    if (newsEvents.length === 0) {
       newsEvents = generateLocalFallbackEvents(generatedQuery, null, country);
       dataSource = 'Local Fallback Database';
     }
 
-    newsHeadlines = [...countryFootball, ...newsEvents];
+    newsHeadlines = newsEvents;
   }
 
-  // Read local fan celebrations and filter for this country (only for sports / football / worldcup / home)
+  // Read local fan celebrations and filter for this country (only for sports / football / home)
   const allCelebrations = readCelebrations();
-  const countryCelebrations = (!category || ['sports', 'football', 'worldcup'].includes(category))
+  const countryCelebrations = (!category || ['sports', 'football'].includes(category))
     ? allCelebrations.filter(
         (c: any) => isSameCountry(c.country, country) && (!c.reports || c.reports < 3)
       )
@@ -168,21 +120,13 @@ export async function fetchCountryReactions(country: string, category?: string |
     id: c.id,
     title: `[Fan ${c.type.toUpperCase()}] ${c.username} reacted: "${c.comment}"`,
     summary: `Live fan feedback uploaded from ${c.country}.`,
-    category: 'football' as any,
+    category: 'sports' as any,
     country: c.country,
     city: 'Live Network',
     lat: c.lat,
     lng: c.lng,
     source: 'Fan Upload Network',
-    publishedAt: new Date(c.timestamp).toISOString(),
-    footballData: c.match ? {
-      homeTeam: c.match.split(' vs ')[0] || c.match,
-      awayTeam: c.match.split(' vs ')[1] || '',
-      homeScore: 0,
-      awayScore: 0,
-      status: 'LIVE',
-      elapsed: 90
-    } : undefined
+    publishedAt: new Date(c.timestamp).toISOString()
   }));
 
   const allHeadlines = [...celebrationHeadlines, ...newsHeadlines];

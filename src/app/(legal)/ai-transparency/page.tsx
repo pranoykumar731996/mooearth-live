@@ -43,7 +43,7 @@ export default function AITransparency() {
           </p>
           <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg">
             <p className="font-semibold text-amber-500 mb-2">Important Disclaimer:</p>
-            <p>AI-generated summaries may contain inaccuracies regarding match events, player names, or historical context. They should <strong>never</strong> replace official announcements from FIFA, national federations, or official match referees.</p>
+            <p>AI-generated summaries may contain inaccuracies regarding event details, names, or historical context. They should <strong>never</strong> replace official announcements from primary sources, official governing bodies, or credited news publishers.</p>
           </div>
         </section>
 

@@ -14,7 +14,6 @@ import { isCountryWhitelisted } from '@/config/publishers';
 import { CountryFlag } from './CountryFlag';
 import { locations, LocationRecord } from '@/data/locations';
 import dynamic from 'next/dynamic';
-import { getRealFifaRank, getRealWinRatio, getRealGoalsScored } from '@/data/fifaRankings';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -23,7 +22,6 @@ const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryVal
   { id: 'discovery', label: 'Discovery', emoji: '🌍', categoryValue: 'discovery' },
   { id: 'news', label: 'News', emoji: '📰', categoryValue: 'breaking' },
   { id: 'sports', label: 'Sports', emoji: '⚽', categoryValue: 'sports' },
-  { id: 'worldcup', label: 'FIFA World Cup', emoji: '🏆', categoryValue: 'football' },
   { id: 'tech', label: 'Technology', emoji: '💻', categoryValue: 'technology' },
   { id: 'weather', label: 'Weather', emoji: '🌦', categoryValue: 'weather' },
   { id: 'business', label: 'Business', emoji: '💼', categoryValue: 'business' },
@@ -69,11 +67,11 @@ function getDeterministicMetrics(country: string, category: string | null) {
     const trendingShow = ['Earth Beat', 'Live Globe', 'Orbit Stars', 'Solar Wind', 'Blue Planet'][getVal(0, 4, 3)];
     return { boxOffice, streamingSubscribers, trendingShow };
   }
-  if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
-    const fifaRank = getRealFifaRank(country);
-    const winRatio = getRealWinRatio(fifaRank);
-    const goalsScored = getRealGoalsScored(fifaRank);
-    return { fifaRank, winRatio, goalsScored };
+  if (cat === 'sports' || cat === 'football') {
+    const athleticRank = getVal(1, 120, 1);
+    const winRatio = getVal(35, 88, 2);
+    const eventsWon = getVal(5, 95, 3);
+    return { athleticRank, winRatio, eventsWon };
   }
   // breaking / home / news
   const pressFreedom = getVal(55, 92, 1);
@@ -185,8 +183,7 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
     );
   }
 
-  if (cat === 'sports' || cat === 'football' || cat === 'worldcup') {
-    const hasRank = typeof metrics.fifaRank === 'number' && metrics.fifaRank > 0;
+  if (cat === 'sports' || cat === 'football') {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
         <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
@@ -195,18 +192,18 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-2xl font-black text-white">{hasRank ? `${metrics.winRatio}%` : 'N/A'}</div>
+            <div className="text-2xl font-black text-white">{metrics.winRatio}%</div>
             <div className="text-[10px] text-white/50">Overall Win Ratio</div>
           </div>
           <div className="text-right">
             <div className="text-sm font-bold text-white">
-              {hasRank ? `Rank: #${metrics.fifaRank}` : 'Ranking unavailable'}
+              #{metrics.athleticRank}
             </div>
-            <div className="text-[10px] text-white/50">FIFA Group Rank</div>
+            <div className="text-[10px] text-white/50">Athletic Standing</div>
           </div>
         </div>
         <div className="text-[10px] text-white/50 font-bold">
-          Tournament Goals Registered: {hasRank ? metrics.goalsScored : 'N/A'}
+          Championship Wins / Medals: {metrics.eventsWon}
         </div>
       </div>
     );
@@ -479,10 +476,10 @@ export default function MobileCountrySheet({
               <span className="text-[8px] bg-emerald-400/20 text-emerald-200 px-1.5 py-0.5 rounded font-black">{countryMeta?.sport || 'Football'}</span>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-white">#{sportsMetrics.fifaRank}</span>
-              <span className="text-[10px] text-white/50">FIFA Ranking</span>
+              <span className="text-2xl font-black text-white">#{sportsMetrics.athleticRank}</span>
+              <span className="text-[10px] text-white/50">Athletic Standing</span>
             </div>
-            <p className="text-[9px] text-white/40 font-bold uppercase">Win Ratio: {sportsMetrics.winRatio}% • Goals: {sportsMetrics.goalsScored}</p>
+            <p className="text-[9px] text-white/40 font-bold uppercase">Win Ratio: {sportsMetrics.winRatio}% • Medals: {sportsMetrics.eventsWon}</p>
           </div>
         </div>
 
@@ -576,15 +573,6 @@ export default function MobileCountrySheet({
               <span className="text-[8px] text-white/40 leading-snug">Fast-paced countdown blitz.</span>
             </button>
 
-            {/* World Cup */}
-            <button
-              onClick={() => handleLaunchMode('worldcup')}
-              className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all text-left flex flex-col gap-1 cursor-pointer group"
-            >
-              <span className="text-xl group-hover:scale-110 transition-transform">🏆</span>
-              <span className="text-xs font-black text-white">World Cup</span>
-              <span className="text-[8px] text-white/40 leading-snug">FIFA tournament history trivia.</span>
-            </button>
           </div>
 
           {/* Daily Global Challenge */}

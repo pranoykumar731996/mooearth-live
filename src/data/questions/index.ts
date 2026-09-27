@@ -509,7 +509,6 @@ export function calculateLevel(xp: number): number {
 }
 
 // Custom Generators for Play Earth V2 Modes
-import WORLDCUP_QUESTIONS from './worldcup.json';
 
 /** Generates a flag quiz question dynamically from COUNTRY_METADATA */
 export function generateFlagQuestion(
@@ -626,22 +625,6 @@ export function getDailyEarthQuestion(dateStr: string, index: number): EarthQues
   };
 }
 
-/** Retrieves World Cup questions from curated worldcup.json database with fallbacks */
-export function getWorldCupQuestion(answeredIds: string[] = []): EarthQuestion {
-  const excludeSet = new Set(answeredIds);
-  const unseen = (WORLDCUP_QUESTIONS as EarthQuestion[]).filter(q => !excludeSet.has(q.id));
-  
-  if (unseen.length > 0) {
-    return shuffle(unseen)[0];
-  }
-
-  // Fallback to random World Cup questions by recycling
-  const recycled = (WORLDCUP_QUESTIONS as EarthQuestion[]).sort((a, b) => {
-    return answeredIds.lastIndexOf(a.id) - answeredIds.lastIndexOf(b.id);
-  });
-  return recycled[0];
-}
-
 /** All quiz categories with labels, emojis, and styling */
 export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; color: string }[] = [
   { id: 'geography', label: 'Geography', emoji: '🌍', color: '#00e5ff' },
@@ -650,5 +633,4 @@ export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; 
   { id: 'science', label: 'Science', emoji: '🔬', color: '#3b82f6' },
   { id: 'current-affairs', label: 'Current Affairs', emoji: '📰', color: '#a78bfa' },
   { id: 'mixed', label: 'Mixed Challenge', emoji: '🌍', color: '#ec4899' },
-  { id: 'worldcup', label: 'FIFA World Cup', emoji: '🏆', color: '#fbbf24' },
 ];

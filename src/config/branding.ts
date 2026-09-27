@@ -8,7 +8,7 @@ export const BRANDING = {
   shortName: 'MooEarth',
   domain: 'mooearth.live',
   url: 'https://mooearth.live',
-  description: 'An immersive emotional globe visualizing live football reactions, celebrations, and global energy during the FIFA World Cup.',
+  description: 'An immersive emotional globe visualizing global news, live sports reactions, celebrations, and world energy.',
   tagline: 'WATCH THE WORLD REACT',
   themeColor: '#000000',
   backgroundColor: '#000000',

@@ -79,7 +79,6 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
 
   // Calculate countryResult dynamically (for backward compatibility)
   const countryResult = useMemo(() => {
-    if (activeCategory === 'worldcup') return null;
     const q = debouncedQuery.trim().toLowerCase();
     if (!q) return null;
 
@@ -109,12 +108,8 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
 
     const localFiltered = events.filter((e) => {
       if (activeCategory) {
-        if (activeCategory === 'worldcup') {
-          if (e.category !== 'worldcup') return false;
-        } else if (activeCategory === 'football') {
-          if (e.category !== 'football') return false;
-        } else if (activeCategory === 'sports') {
-          if (e.category !== 'sports' && e.category !== 'football' && e.category !== 'worldcup') return false;
+        if (activeCategory === 'sports' || activeCategory === 'football') {
+          if (e.category !== 'sports' && e.category !== 'football') return false;
         } else {
           if (e.category !== activeCategory) return false;
         }

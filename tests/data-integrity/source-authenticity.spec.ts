@@ -15,7 +15,7 @@ test.describe('Suite 11 — Source Authenticity Validation', () => {
     // We filter down to only news items for publisher/link check
     const newsEvents = events.filter((e: any) => 
       e.id.startsWith('news-') && 
-      !['football', 'worldcup'].includes(e.category)
+      e.category !== 'football'
     );
 
     const report: any[] = [];
