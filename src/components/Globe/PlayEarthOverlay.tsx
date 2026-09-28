@@ -2694,9 +2694,9 @@ export default function PlayEarthOverlay({
         )}
       </AnimatePresence>
 
-      {/* Visual backdrop during active game (pointer-events-none allows 3D globe interaction) */}
+      {/* Subtle bottom vignette for card readability while keeping the 3D Earth 100% bright and clear */}
       {(phase !== 'intro' || (activeMode && activeMode !== 'explorer')) && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[1.5px] pointer-events-none" />
+        <div className="fixed inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#030308]/80 via-[#030308]/25 to-transparent pointer-events-none" />
       )}
 
       {/* Top HUD Bar */}

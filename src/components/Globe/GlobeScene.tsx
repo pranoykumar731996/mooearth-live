@@ -347,10 +347,10 @@ const GlobeScene = React.memo(function GlobeScene({
 
     if (globeView === 'standard' || globeView === 'night') {
       targetTexture = '/textures/globe-night.jpg';
-    } else if (globeView === 'discovery') {
-      targetTexture = getBlueprintGridTexture();
+    } else if (globeView === 'discovery' || isPlayEarthActive) {
+      targetTexture = '/textures/globe-day.jpg';
     } else if (globeView === 'weather' || globeView === 'satellite') {
-      targetTexture = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+      targetTexture = '/textures/globe-day.jpg';
     }
 
     if (!targetTexture) return;
@@ -382,7 +382,7 @@ const GlobeScene = React.memo(function GlobeScene({
     return () => {
       active = false;
     };
-  }, [globeView]);
+  }, [globeView, isPlayEarthActive]);
 
   // Preload clouds texture in background
   useEffect(() => {
@@ -529,6 +529,18 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
+    // Enhance lighting for crystal-clear globe visibility
+    const directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
+    if (directionalLight) {
+      directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 4.0 : 3.5;
+      directionalLight.position.set(1, 1, 1);
+    }
+    
+    const ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
+    if (ambientLight) {
+      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 1.6 : 0.5;
+    }
+
     // Show clouds ONLY on standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)
     const showClouds = (globeView === 'standard' || globeView === 'weather') && !failsafeActive;
 
@@ -573,19 +585,7 @@ const GlobeScene = React.memo(function GlobeScene({
         cloudsMeshRef.current = clouds;
       }
     });
-
-    // Enhance lighting
-    const directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
-    if (directionalLight) {
-      directionalLight.intensity = 3.5;
-      directionalLight.position.set(1, 1, 1);
-    }
-    
-    const ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
-    if (ambientLight) {
-      ambientLight.intensity = 0.5;
-    }
-  }, [globeRef, introDone, cloudsTextureUrl, isMobile, globeView, failsafeActive]);
+  }, [globeRef, introDone, cloudsTextureUrl, isMobile, globeView, failsafeActive, isPlayEarthActive]);
 
   // Unified Render Loop: Phase 8 (Breathing/Rotation), Phase 10 (Energy), Phase 1 (Flicker)
   useEffect(() => {
@@ -974,8 +974,8 @@ const GlobeScene = React.memo(function GlobeScene({
       if (selected.some(s => s.name === label.name)) continue;
 
       // Special Europe Handling (Feature 4):
-      // If zoomed out (alt > 1.2) in Europe, show only the major European countries
-      if (label.isEurope && alt > 1.2) {
+      // If zoomed out (alt > 1.2) in Europe, show only the major European countries (unless in game mode where all countries must be discoverable)
+      if (!isPlayEarthActive && label.isEurope && alt > 1.2) {
         const isEuroMajor = EUROPE_MAJORS.some(m => matchCountryNames(m, label.name));
         if (!isEuroMajor && !liveMatchCountriesMap[label.name]) {
           continue; // Hide minor European countries at far/medium zoom
@@ -1006,6 +1006,8 @@ const GlobeScene = React.memo(function GlobeScene({
     let maxLabels = 60; // Close Zoom default
     if (failsafeActive) {
       maxLabels = 8;
+    } else if (isPlayEarthActive) {
+      maxLabels = isMobile ? 24 : 60; // More visible labels during gameplay to easily find nations
     } else if (isMobile) {
       maxLabels = 12;
     } else if (alt > 2.0) {
@@ -1015,7 +1017,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return selected.slice(0, maxLabels);
-  }, [labelsData, zoomAltitude, selectedCountry, hoveredPolygon, MAJOR_COUNTRIES, isMobile, liveMatchCountriesMap, categoryMatchingCountriesMap, failsafeActive]);
+  }, [labelsData, zoomAltitude, selectedCountry, hoveredPolygon, MAJOR_COUNTRIES, isMobile, liveMatchCountriesMap, categoryMatchingCountriesMap, failsafeActive, isPlayEarthActive]);
 
   const getLabelSize = useCallback((d: any) => {
     const isSelected = selectedCountry === d.name;
@@ -1502,12 +1504,15 @@ const GlobeScene = React.memo(function GlobeScene({
       return 'rgba(168, 85, 247, 0.38)';                // Freezing (Purple)
     }
 
-    if (globeView === 'discovery') {
+    if (globeView === 'discovery' || isPlayEarthActive) {
       if (isSelected) {
-        return 'rgba(0, 229, 255, 0.45)'; // Electric cyan
+        return 'rgba(16, 185, 129, 0.65)'; // High-visibility emerald target glow
       }
-      // Blueprint blue caps
-      return 'rgba(0, 100, 255, 0.12)';
+      if (hoveredPolygon && hoveredPolygon.properties.NAME === name) {
+        return 'rgba(0, 229, 255, 0.35)'; // High-visibility cyan hover highlight
+      }
+      // Crystal clear transparent caps so the daytime Earth map is 100% visible
+      return 'rgba(255, 255, 255, 0.02)';
     }
 
     // 3. Live match gold glow (Feature 3)
@@ -1578,6 +1583,12 @@ const GlobeScene = React.memo(function GlobeScene({
       return 0.15; // Highest possible extrusion
     }
 
+    if (globeView === 'discovery' || isPlayEarthActive) {
+      if (isSelected) return 0.08;
+      if (hoveredPolygon && hoveredPolygon.properties.NAME === name) return 0.04;
+      return 0.003;
+    }
+
     // Flat views (Satellite and Night Lights)
     if (globeView === 'satellite' || globeView === 'night') {
       return 0.001; // Render flat mapping
@@ -1624,8 +1635,8 @@ const GlobeScene = React.memo(function GlobeScene({
       return `${celebration.colors.primary}99`;
     }
 
-    if (globeView === 'discovery') {
-      return isSelected ? 'rgba(0, 229, 255, 0.7)' : 'rgba(0, 150, 255, 0.3)';
+    if (globeView === 'discovery' || isPlayEarthActive) {
+      return isSelected ? 'rgba(16, 185, 129, 0.8)' : 'rgba(0, 229, 255, 0.25)';
     }
 
     if (globeView === 'satellite' || globeView === 'night') {
@@ -1658,8 +1669,11 @@ const GlobeScene = React.memo(function GlobeScene({
       return 'rgba(255, 255, 255, 0.7)'; // Bright white on hover
     }
 
-    if (globeView === 'discovery') {
-      return 'rgba(0, 229, 255, 0.6)'; // Cyber cyan blueprint borders
+    if (globeView === 'discovery' || isPlayEarthActive) {
+      if (hoveredPolygon && hoveredPolygon.properties.NAME === name) {
+        return 'rgba(255, 255, 255, 1.0)'; // Pure bright white border on hover
+      }
+      return 'rgba(0, 229, 255, 0.7)'; // Clear bright cyan borders
     }
 
     if (globeView === 'night') {
@@ -1767,10 +1781,10 @@ const GlobeScene = React.memo(function GlobeScene({
           atmosphereColor={
             celebration?.active 
               ? celebration.colors.primary 
+              : (globeView === 'discovery' || isPlayEarthActive)
+              ? '#55ccff'
               : globeView === 'night'
               ? '#00e5ff'
-              : globeView === 'discovery'
-              ? '#00f5ff'
               : (globeView === 'weather' || globeView === 'satellite')
               ? '#87ceeb'
               : GLOBE_CONFIG.atmosphereColor
@@ -1780,10 +1794,10 @@ const GlobeScene = React.memo(function GlobeScene({
               ? (isMobile ? 0.35 : 0.4) 
               : failsafeActive
               ? 0.05
+              : (globeView === 'discovery' || isPlayEarthActive)
+              ? 0.16
               : globeView === 'night'
               ? 0.28
-              : globeView === 'discovery'
-              ? 0.25
               : (globeView === 'weather' || globeView === 'satellite')
               ? 0.15
               : (isMobile ? 0.2 : GLOBE_CONFIG.atmosphereAltitude)
@@ -1837,8 +1851,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
             let text = asciiName;
             if (isPlayEarthActive) {
-              const questionsAvailable = (asciiName.length * 13) % 150 + 50;
-              text = `${asciiName} (${questionsAvailable} Qs)`;
+              text = asciiName;
             } else if (hasLiveMatch) {
               text = `${asciiName} LIVE`;
             }
@@ -1846,10 +1859,13 @@ const GlobeScene = React.memo(function GlobeScene({
             return text;
           }}
           labelColor={(d: any) => {
-            if (selectedCountry) {
-              return matchCountryNames(selectedCountry, d.name) ? '#00e5ff' : 'rgba(255, 255, 255, 0.35)';
+            if (selectedCountry && matchCountryNames(selectedCountry, d.name)) {
+              return '#00ffc4'; // Bright emerald cyan
             }
-            return '#ffffff';
+            if (hoveredPolygon && matchCountryNames(hoveredPolygon.properties.NAME, d.name)) {
+              return '#ffffff'; // Bright pure white
+            }
+            return (globeView === 'discovery' || isPlayEarthActive) ? '#ffffff' : 'rgba(255, 255, 255, 0.85)';
           }}
           labelSize={getLabelSize}
           labelAltitude={getLabelAltitude}
