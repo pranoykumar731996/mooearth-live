@@ -23,6 +23,7 @@ import { adjustTimeLimit } from '../DifficultyEngine';
 import { getDefaultTimeLimit, getBasePoints } from '../registry';
 import { WorldEvent } from '@/types';
 import { fetchLiveNews } from '@/services/news';
+import { demoEvents } from '@/data/events';
 import { COUNTRY_METADATA, CountryMeta } from '@/data/questions/countryMetadata';
 
 // ---- Configuration ----
@@ -88,20 +89,21 @@ async function getNewsEvents(): Promise<WorldEvent[]> {
 
   try {
     const result = await fetchLiveNews();
-    const events = result.events.filter(
+    const events = (result.events || []).filter(
       e => e.country && e.title && e.lat && e.lng
     );
 
+    const finalEvents = events.length >= 4 ? events : demoEvents;
+
     newsCache = {
-      events,
+      events: finalEvents,
       fetchedAt: now,
       expiresAt: now + NEWS_CACHE_TTL_MS,
     };
 
-    return events;
-  } catch (error) {
-    if (newsCache) return newsCache.events;
-    throw error;
+    return finalEvents;
+  } catch {
+    return newsCache?.events || demoEvents;
   }
 }
 

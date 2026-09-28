@@ -102,6 +102,7 @@ export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEve
   try {
     const url = `https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(1800),
       next: { revalidate: refresh ? 0 : 60 },
       cache: refresh ? 'no-store' : 'default'
     } as any);
@@ -147,6 +148,7 @@ export async function searchLiveNews(query: string, category?: EventCategory | n
   try {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(1800),
       next: { revalidate: refresh ? 0 : 60 },
       cache: refresh ? 'no-store' : 'default'
     } as any);

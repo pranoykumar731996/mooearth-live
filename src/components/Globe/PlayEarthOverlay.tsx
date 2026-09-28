@@ -452,10 +452,56 @@ export default function PlayEarthOverlay({
       engine = 'earth_events';
     }
 
+    const applyEngineChallenge = (challenge: EarthChallenge, sessionId?: string | null) => {
+      if (challenge.fingerprint) {
+        recordSeenEngineFingerprint(username, challenge.fingerprint);
+      }
+      setEngineChallenge(challenge);
+      setEngineSessionId(sessionId || null);
+      setEngineTimer(challenge.timeLimit || 20);
+      setEngineStartTime(Date.now());
+      setEngineSelectedChoice(null);
+      setEngineSelectedCountry(null);
+      setEngineDistanceGuess(5000);
+      const initialPath = challenge.data?.startCountry ? [challenge.data.startCountry as string] : [];
+      setEnginePath(initialPath);
+      if (initialPath.length > 0) {
+        setEngineNeighbors(getNeighbours(initialPath[0]));
+      } else {
+        setEngineNeighbors([]);
+      }
+      setPhase('engine-challenge');
+    };
+
+    // For pure geography modes (Globe Hunt, Border Escape), generate locally in < 1ms
+    if (targetMode === 'globe-hunt' || targetMode === 'border-escape') {
+      try {
+        initializeGameEngine();
+        const fallbackSession = createSession('endless');
+        const fallbackChallenge = await generateNextChallenge(fallbackSession, {
+          engine: engine as any,
+          type: type as any,
+          difficulty,
+          excludeFingerprints: getSeenEngineFingerprints(username),
+        });
+        if (fallbackChallenge) {
+          applyEngineChallenge(fallbackChallenge, fallbackSession.sessionId);
+          return;
+        }
+      } catch (localErr) {
+        console.warn('[PlayEarthOverlay] Instant geography generation failed:', localErr);
+      }
+    }
+
+    // For live modes, try server API with a strict 1200ms abort controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
+
     try {
       const res = await fetch('/api/game/challenge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           sessionId: engineSessionId || undefined,
           mode: 'endless',
@@ -465,36 +511,21 @@ export default function PlayEarthOverlay({
           excludeFingerprints: getSeenEngineFingerprints(username),
         }),
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
         if (data.challenge) {
-          if (data.challenge.fingerprint) {
-            recordSeenEngineFingerprint(username, data.challenge.fingerprint);
-          }
-          setEngineChallenge(data.challenge);
-          setEngineSessionId(data.session?.sessionId || null);
-          setEngineTimer(data.challenge.timeLimit || 20);
-          setEngineStartTime(Date.now());
-          setEngineSelectedChoice(null);
-          setEngineSelectedCountry(null);
-          setEngineDistanceGuess(5000);
-          const initialPath = data.challenge.data?.startCountry ? [data.challenge.data.startCountry as string] : [];
-          setEnginePath(initialPath);
-          if (initialPath.length > 0) {
-            setEngineNeighbors(getNeighbours(initialPath[0]));
-          } else {
-            setEngineNeighbors([]);
-          }
-          setPhase('engine-challenge');
+          applyEngineChallenge(data.challenge, data.session?.sessionId);
           return;
         }
       }
     } catch (err) {
-      console.warn('[PlayEarthOverlay] Server challenge fetch failed, falling back to local engine:', err);
+      clearTimeout(timeoutId);
+      console.warn('[PlayEarthOverlay] Server challenge fetch aborted or failed, instant fallback:', err);
     }
 
-    // Local / Offline fallback
+    // Local / Offline instant fallback (< 5ms)
     try {
       initializeGameEngine();
       const fallbackSession = createSession('endless');
@@ -502,28 +533,15 @@ export default function PlayEarthOverlay({
         engine: engine as any,
         type: type as any,
         difficulty,
+        excludeFingerprints: getSeenEngineFingerprints(username),
       });
       if (fallbackChallenge) {
-        setEngineChallenge(fallbackChallenge);
-        setEngineSessionId(fallbackSession.sessionId);
-        setEngineTimer(fallbackChallenge.timeLimit || 20);
-        setEngineStartTime(Date.now());
-        setEngineSelectedChoice(null);
-        setEngineSelectedCountry(null);
-        setEngineDistanceGuess(5000);
-        const initialPath = fallbackChallenge.data?.startCountry ? [fallbackChallenge.data.startCountry as string] : [];
-        setEnginePath(initialPath);
-        if (initialPath.length > 0) {
-          setEngineNeighbors(getNeighbours(initialPath[0]));
-        } else {
-          setEngineNeighbors([]);
-        }
-        setPhase('engine-challenge');
+        applyEngineChallenge(fallbackChallenge, fallbackSession.sessionId);
       }
     } catch (localErr) {
       console.error('[PlayEarthOverlay] Local engine generation failed:', localErr);
     }
-  }, [activeMode, engineSessionId, difficulty]);
+  }, [activeMode, engineSessionId, difficulty, username]);
 
   // Trigger loading when phase transitions to engine-loading
   useEffect(() => {
@@ -532,7 +550,7 @@ export default function PlayEarthOverlay({
     }
   }, [phase, fetchNextEngineChallenge]);
 
-  // Engine Answer Processing
+  // Engine Answer Processing (Instant local scoring + async background sync)
   const handleEngineAnswer = useCallback(async (userResponse: Partial<UserResponse>) => {
     if (!engineChallenge || phase !== 'engine-challenge') return;
 
@@ -542,35 +560,25 @@ export default function PlayEarthOverlay({
       responseTimeMs,
     };
 
-    let validation: ValidationResult;
-    let scoring: ScoringBreakdown;
+    // Instant local validation and scoring (0ms latency for player)
+    const validation = validateResponse(engineChallenge, fullResponse);
+    const scoring = calculateScore(engineChallenge, fullResponse, validation, {
+      currentStreak: engineStreak,
+      mode: 'endless',
+    });
 
-    try {
-      if (engineSessionId) {
-        const res = await fetch('/api/game/answer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId: engineSessionId,
-            response: fullResponse,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          validation = data.validation;
-          scoring = data.scoring;
-        } else {
-          validation = validateResponse(engineChallenge, fullResponse);
-          scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
-        }
-      } else {
-        validation = validateResponse(engineChallenge, fullResponse);
-        scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
-      }
-    } catch {
-      validation = validateResponse(engineChallenge, fullResponse);
-      scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
+    // Fire background telemetry sync asynchronously without blocking UI
+    if (engineSessionId) {
+      fetch('/api/game/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: engineSessionId,
+          response: fullResponse,
+        }),
+      }).catch(err => {
+        console.debug('[PlayEarthOverlay] Background answer sync failed:', err);
+      });
     }
 
     setEngineResult({ validation, scoring });

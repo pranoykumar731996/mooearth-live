@@ -83,57 +83,82 @@ function weatherCodeToEmoji(code: number): string {
   return '🌤️';
 }
 
+// ---- Fallback Seed Data ----
+
+const SEED_WEATHER_OBSERVATIONS: WeatherObservation[] = [
+  { lat: 28.6139, lng: 77.209, city: 'New Delhi', country: 'India', temperature: 28.5, apparentTemperature: 30.1, precipitation: 0, rain: 0, windSpeed: 8.2, windDirection: 120, cloudCover: 15, weatherCode: 1, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 51.5074, lng: -0.1278, city: 'London', country: 'United Kingdom', temperature: 14.2, apparentTemperature: 13.5, precipitation: 2.1, rain: 2.1, windSpeed: 22.4, windDirection: 240, cloudCover: 90, weatherCode: 61, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 35.6762, lng: 139.6503, city: 'Tokyo', country: 'Japan', temperature: 19.8, apparentTemperature: 19.2, precipitation: 0, rain: 0, windSpeed: 12.0, windDirection: 70, cloudCover: 25, weatherCode: 2, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 40.7128, lng: -74.006, city: 'New York', country: 'United States', temperature: 18.0, apparentTemperature: 17.2, precipitation: 0.5, rain: 0.5, windSpeed: 16.5, windDirection: 310, cloudCover: 65, weatherCode: 51, isDay: true, timestamp: new Date().toISOString() },
+  { lat: -33.8688, lng: 151.2093, city: 'Sydney', country: 'Australia', temperature: 21.3, apparentTemperature: 21.0, precipitation: 0, rain: 0, windSpeed: 14.8, windDirection: 190, cloudCover: 10, weatherCode: 0, isDay: false, timestamp: new Date().toISOString() },
+  { lat: -23.5505, lng: -46.6333, city: 'São Paulo', country: 'Brazil', temperature: 24.1, apparentTemperature: 25.0, precipitation: 0, rain: 0, windSpeed: 9.3, windDirection: 160, cloudCover: 40, weatherCode: 2, isDay: false, timestamp: new Date().toISOString() },
+  { lat: 55.7558, lng: 37.6173, city: 'Moscow', country: 'Russia', temperature: 3.5, apparentTemperature: 0.2, precipitation: 0, rain: 0, windSpeed: 15.1, windDirection: 340, cloudCover: 95, weatherCode: 3, isDay: true, timestamp: new Date().toISOString() },
+  { lat: -1.2921, lng: 36.8219, city: 'Nairobi', country: 'Kenya', temperature: 22.0, apparentTemperature: 22.5, precipitation: 1.2, rain: 1.2, windSpeed: 11.0, windDirection: 80, cloudCover: 60, weatherCode: 80, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 48.8566, lng: 2.3522, city: 'Paris', country: 'France', temperature: 16.2, apparentTemperature: 15.8, precipitation: 0, rain: 0, windSpeed: 10.5, windDirection: 210, cloudCover: 30, weatherCode: 1, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 1.3521, lng: 103.8198, city: 'Singapore', country: 'Singapore', temperature: 31.4, apparentTemperature: 37.2, precipitation: 3.5, rain: 3.5, windSpeed: 7.5, windDirection: 60, cloudCover: 85, weatherCode: 95, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 25.2048, lng: 55.2708, city: 'Dubai', country: 'United Arab Emirates', temperature: 36.2, apparentTemperature: 39.5, precipitation: 0, rain: 0, windSpeed: 18.0, windDirection: 310, cloudCover: 5, weatherCode: 0, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 37.5665, lng: 126.978, city: 'Seoul', country: 'South Korea', temperature: 17.5, apparentTemperature: 16.9, precipitation: 0, rain: 0, windSpeed: 8.5, windDirection: 140, cloudCover: 20, weatherCode: 1, isDay: true, timestamp: new Date().toISOString() },
+  { lat: -34.6037, lng: -58.3816, city: 'Buenos Aires', country: 'Argentina', temperature: 19.1, apparentTemperature: 18.8, precipitation: 0, rain: 0, windSpeed: 13.2, windDirection: 90, cloudCover: 35, weatherCode: 2, isDay: false, timestamp: new Date().toISOString() },
+  { lat: 30.0444, lng: 31.2357, city: 'Cairo', country: 'Egypt', temperature: 31.0, apparentTemperature: 32.5, precipitation: 0, rain: 0, windSpeed: 14.0, windDirection: 350, cloudCover: 0, weatherCode: 0, isDay: true, timestamp: new Date().toISOString() },
+  { lat: 19.4326, lng: -99.1332, city: 'Mexico City', country: 'Mexico', temperature: 23.4, apparentTemperature: 23.0, precipitation: 0, rain: 0, windSpeed: 9.8, windDirection: 45, cloudCover: 45, weatherCode: 2, isDay: false, timestamp: new Date().toISOString() },
+];
+
 // ---- Data Fetching ----
 
 /**
  * Fetch weather observations for multiple cities via Open-Meteo.
- * Uses batch coordinates to minimize API calls.
+ * Uses batch coordinates to minimize API calls with a strict 1500ms timeout.
  */
 async function fetchWeatherData(): Promise<WeatherObservation[]> {
-  const entries = Object.entries(COUNTRY_COORDINATES);
-  const selected = shuffle(entries).slice(0, MAX_CITIES);
+  try {
+    const entries = Object.entries(COUNTRY_COORDINATES);
+    const selected = shuffle(entries).slice(0, MAX_CITIES);
 
-  const lats = selected.map(([, d]) => d.lat).join(',');
-  const lngs = selected.map(([, d]) => d.lng).join(',');
+    const lats = selected.map(([, d]) => d.lat).join(',');
+    const lngs = selected.map(([, d]) => d.lng).join(',');
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,weather_code,is_day&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,weather_code,is_day&timezone=auto`;
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Open-Meteo API error: ${response.status}`);
+    const response = await fetch(url, { signal: AbortSignal.timeout(1500) });
+    if (!response.ok) {
+      throw new Error(`Open-Meteo API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Open-Meteo returns an array when multiple coordinates are provided
+    const results: WeatherObservation[] = [];
+    const items = Array.isArray(data) ? data : [data];
+
+    for (let i = 0; i < items.length && i < selected.length; i++) {
+      const item = items[i];
+      const [, coordData] = selected[i];
+      const current = item?.current;
+      if (!current) continue;
+
+      results.push({
+        lat: coordData.lat,
+        lng: coordData.lng,
+        city: coordData.city || 'Unknown',
+        country: coordData.country || selected[i][0],
+        temperature: current.temperature_2m ?? 0,
+        apparentTemperature: current.apparent_temperature ?? 0,
+        precipitation: current.precipitation ?? 0,
+        rain: current.rain ?? 0,
+        windSpeed: current.wind_speed_10m ?? 0,
+        windDirection: current.wind_direction_10m ?? 0,
+        cloudCover: current.cloud_cover ?? 0,
+        weatherCode: current.weather_code ?? 0,
+        isDay: current.is_day === 1,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return results.length >= 4 ? results : SEED_WEATHER_OBSERVATIONS;
+  } catch (error) {
+    console.warn('[WeatherProvider] Open-Meteo fetch failed/timed out, using seed observations:', error);
+    return SEED_WEATHER_OBSERVATIONS;
   }
-
-  const data = await response.json();
-
-  // Open-Meteo returns an array when multiple coordinates are provided
-  const results: WeatherObservation[] = [];
-  const items = Array.isArray(data) ? data : [data];
-
-  for (let i = 0; i < items.length && i < selected.length; i++) {
-    const item = items[i];
-    const [, coordData] = selected[i];
-    const current = item?.current;
-    if (!current) continue;
-
-    results.push({
-      lat: coordData.lat,
-      lng: coordData.lng,
-      city: coordData.city || 'Unknown',
-      country: coordData.country || selected[i][0],
-      temperature: current.temperature_2m ?? 0,
-      apparentTemperature: current.apparent_temperature ?? 0,
-      precipitation: current.precipitation ?? 0,
-      rain: current.rain ?? 0,
-      windSpeed: current.wind_speed_10m ?? 0,
-      windDirection: current.wind_direction_10m ?? 0,
-      cloudCover: current.cloud_cover ?? 0,
-      weatherCode: current.weather_code ?? 0,
-      isDay: current.is_day === 1,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  return results;
 }
 
 /** Get or refresh cached weather data */
@@ -146,18 +171,15 @@ async function getWeatherData(): Promise<WeatherObservation[]> {
 
   try {
     const observations = await fetchWeatherData();
+    const result = observations.length >= 4 ? observations : SEED_WEATHER_OBSERVATIONS;
     weatherCache = {
-      observations,
+      observations: result,
       fetchedAt: now,
       expiresAt: now + CACHE_TTL_MS,
     };
-    return observations;
-  } catch (error) {
-    // Return stale cache if available
-    if (weatherCache) {
-      return weatherCache.observations;
-    }
-    throw error;
+    return result;
+  } catch {
+    return weatherCache?.observations || SEED_WEATHER_OBSERVATIONS;
   }
 }
 
