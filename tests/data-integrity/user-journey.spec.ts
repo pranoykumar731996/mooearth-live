@@ -205,8 +205,6 @@ test.describe('Suite 13 — User Journey Data Consistency', () => {
         })
       });
     });
-
-    });
   });
 
   test('should open country dashboard via search and verify state', async ({ page }) => {

@@ -162,7 +162,9 @@ export default function HomePage({
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [currentActivity, setCurrentActivity] = useState('None');
   const isFocusModeRef = useRef(false);
-  isFocusModeRef.current = isFocusMode;
+  useEffect(() => {
+    isFocusModeRef.current = isFocusMode;
+  }, [isFocusMode]);
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [isDeveloper, setIsDeveloper] = useState(false);
 
@@ -1312,6 +1314,11 @@ export default function HomePage({
           event={activeArticle}
           allEvents={filteredEvents}
           onClose={() => setActiveArticle(null)}
+          onStartQuiz={(country) => {
+            setActiveArticle(null);
+            setSelectedCountry(country);
+            setIsPlayEarthActive(true);
+          }}
         />
       )}
 

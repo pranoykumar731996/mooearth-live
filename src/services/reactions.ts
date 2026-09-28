@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { ReactionEvent, WorldEvent, EventCategory } from '@/types';
 import { fetchLiveNews, searchLiveNews, generateLocalFallbackEvents } from './news';
 import { fetchSocialReactions } from './social';

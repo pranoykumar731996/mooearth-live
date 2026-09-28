@@ -745,6 +745,10 @@ export default function MobileCountrySheet({
                 onClose={() => onSelectArticle(null)}
                 isInline={true}
                 onBack={() => onSelectArticle(null)}
+                onStartQuiz={() => {
+                  onSelectArticle(null);
+                  onTogglePlayEarth(true);
+                }}
               />
             ) : currentActiveTabValue === 'discovery' ? (
               /* Earth Discovery Mode Dashboard (V7) */

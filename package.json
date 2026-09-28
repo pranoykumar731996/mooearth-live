@@ -14,7 +14,12 @@
     "test:e2e:debug": "playwright test --debug",
     "test:data-integrity": "playwright test tests/data-integrity/",
     "test:mock-scan": "node scripts/data-integrity-scanner.js",
-    "test:production-readiness": "npm run test:mock-scan && npm run test:data-integrity"
+    "test:production-readiness": "npm run test:mock-scan && npm run test:data-integrity",
+    "test:sentry": "npx tsx scripts/regression-sentry.ts",
+    "test:sentry:fix": "npx tsx scripts/regression-sentry.ts --auto-fix",
+    "test:sentry:full": "npx tsx scripts/regression-sentry.ts --full",
+    "test:regression": "npx tsx scripts/regression-sentry.ts",
+    "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",

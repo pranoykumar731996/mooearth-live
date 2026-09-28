@@ -27,6 +27,19 @@ import { BRANDING } from '@/config/branding';
 import { checkUnlockBadges } from '@/config/badges';
 import { auth, db } from '@/lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import {
+  EarthChallenge,
+  UserResponse,
+  ValidationResult,
+  ScoringBreakdown,
+  getRegistryEntry,
+  initializeGameEngine,
+  validateResponse,
+  calculateScore,
+  createSession,
+  generateNextChallenge,
+  getNeighbours,
+} from '@/engines/game';
 
 const TIMER_SECONDS = 15;
 const STREAK_BONUS_MULTIPLIER = 1.5;
@@ -45,20 +58,56 @@ interface PlayEarthOverlayProps {
   initialMode?: PlayEarthMode | null;
 }
 
+import {
+  recordSeenQuestion,
+  recordSeenQuestions,
+  isQuestionSeen,
+  getSeenQuestions,
+  getSeenQuestionIds,
+  areQuestionsDuplicate,
+  migrateGuestSeenQuestions,
+  getSeenEngineFingerprints,
+  recordSeenEngineFingerprint,
+  QuestionBrief
+} from '@/services/questionHistoryService';
+import { generateQuestions } from '@/data/questions/generator';
+
+export { areQuestionsDuplicate };
+export type { QuestionBrief };
+
 /** Load game state from localStorage */
 function loadGameState(username: string): PlayerGameState {
-  if (typeof window === 'undefined') return createDefaultState(username);
+  const base = createDefaultState(username);
+  if (typeof window === 'undefined') return base;
   try {
     const raw = localStorage.getItem(`mooearth_quiz_progress_${username}`);
+    let parsed: any = base;
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (!parsed.answeredQuestionIds || !Array.isArray(parsed.answeredQuestionIds)) {
-        parsed.answeredQuestionIds = parsed.answeredIds || [];
-      }
-      return parsed;
+      parsed = JSON.parse(raw);
     }
+    if (!parsed.answeredQuestionIds || !Array.isArray(parsed.answeredQuestionIds)) {
+      parsed.answeredQuestionIds = parsed.answeredIds || [];
+    }
+    if (!parsed.answeredQuestions || !Array.isArray(parsed.answeredQuestions)) {
+      parsed.answeredQuestions = [];
+    }
+
+    // Merge in persistent seen questions from questionHistoryService
+    const seenBriefs = getSeenQuestions(username);
+    const seenIds = getSeenQuestionIds(username);
+    const mergedIdSet = new Set<string>([...(parsed.answeredQuestionIds || []), ...seenIds]);
+    parsed.answeredQuestionIds = Array.from(mergedIdSet);
+
+    const existingBriefIds = new Set((parsed.answeredQuestions || []).map((b: any) => b.id));
+    for (const sb of seenBriefs) {
+      if (sb && sb.id && !existingBriefIds.has(sb.id)) {
+        parsed.answeredQuestions.push(sb);
+        existingBriefIds.add(sb.id);
+      }
+    }
+    return parsed;
   } catch (e) {}
-  return createDefaultState(username);
+  return base;
 }
 
 function createDefaultState(username: string): PlayerGameState {
@@ -68,6 +117,10 @@ function createDefaultState(username: string): PlayerGameState {
     answeredQuestionIds: [], recentQuestions: [], recentCountryQuestions: [],
     countriesExplored: [], badges: [],
     answeredQuestions: [],
+    infiniteHighScore: 0,
+    infiniteBestStreak: 0,
+    infiniteTotalChallenges: 0,
+    infiniteCorrectAnswers: 0,
   };
 }
 
@@ -76,6 +129,9 @@ function saveGameState(state: PlayerGameState) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(`mooearth_quiz_progress_${state.username}`, JSON.stringify(state));
+    if (Array.isArray(state.answeredQuestions) && state.answeredQuestions.length > 0) {
+      recordSeenQuestions(state.username, state.answeredQuestions);
+    }
   } catch (e) {}
 }
 
@@ -91,7 +147,7 @@ const syncProgressToFirestore = async (state: PlayerGameState) => {
       bestStreak: state.bestStreak,
       totalCorrect: state.totalCorrect,
       totalAnswered: state.totalAnswered,
-      answeredQuestionIds: state.answeredQuestionIds || [],
+      answeredQuestionIds: (state.answeredQuestionIds || []).slice(-500),
       countriesExplored: state.countriesExplored || [],
       survivalBest: state.survivalBest || 0,
       clockBest: state.clockBest || {},
@@ -99,65 +155,16 @@ const syncProgressToFirestore = async (state: PlayerGameState) => {
       capitalBest: state.capitalBest || {},
       dailyChallengeStreak: state.dailyChallengeStreak || 0,
       lastDailyChallengeDate: state.lastDailyChallengeDate || "",
-      answeredQuestions: state.answeredQuestions || [],
+      answeredQuestions: (state.answeredQuestions || []).slice(-200),
+      infiniteHighScore: state.infiniteHighScore || 0,
+      infiniteBestStreak: state.infiniteBestStreak || 0,
+      infiniteTotalChallenges: state.infiniteTotalChallenges || 0,
+      infiniteCorrectAnswers: state.infiniteCorrectAnswers || 0,
     });
   } catch (err) {
     console.warn('[PlayEarthOverlay] Firestore progress sync failed:', err);
   }
 };
-
-interface QuestionBrief {
-  id: string;
-  question: string;
-  country: string;
-}
-
-export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boolean {
-  if (q1.id === q2.id) return true;
-  
-  const c1 = q1.country.toLowerCase().trim();
-  const c2 = q2.country.toLowerCase().trim();
-  if (c1 !== c2) return false;
-  
-  const getSignature = (text: string) => {
-    const norm = text.toLowerCase();
-    const keywords = ['capital', 'flag', 'currency', 'language', 'continent', 'landmark', 'border', 'neighbour', 'population', 'independence', 'dish', 'food', 'person', 'sport'];
-    for (const kw of keywords) {
-      if (norm.includes(kw)) return kw;
-    }
-    return '';
-  };
-  
-  const sig1 = getSignature(q1.question);
-  const sig2 = getSignature(q2.question);
-  
-  if (sig1 && sig1 === sig2) {
-    return true;
-  }
-  
-  const stopWords = new Set(['what', 'which', 'the', 'is', 'are', 'was', 'were', 'of', 'in', 'and', 'belong', 'belongs', 'located', 'city', 'country']);
-  const getWords = (text: string) => {
-    return new Set(
-      text.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .split(/\s+/)
-        .filter(w => w.length > 2 && !stopWords.has(w))
-    );
-  };
-  
-  const w1 = getWords(q1.question);
-  const w2 = getWords(q2.question);
-  
-  if (w1.size === 0 || w2.size === 0) return false;
-  
-  let intersection = 0;
-  for (const w of w1) {
-    if (w2.has(w)) intersection++;
-  }
-  
-  const union = w1.size + w2.size - intersection;
-  return (intersection / union) > 0.55;
-}
 
 /** Client-side deduplicator for flag or capital questions */
 export function getUniqueFlagOrCapitalQuestion(
@@ -167,19 +174,26 @@ export function getUniqueFlagOrCapitalQuestion(
   answeredQuestions: { id: string; question: string; country: string }[],
   countryName?: string
 ): EarthQuestion {
-  const maxAttempts = 100;
+  const maxAttempts = 120;
   let q: EarthQuestion | null = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const candidate = mode === 'flag'
-      ? generateFlagQuestion(difficulty, answeredIds, countryName)
-      : generateCapitalQuestion(difficulty, answeredIds, countryName);
+      ? generateFlagQuestion(difficulty, answeredIds, countryName, answeredQuestions)
+      : generateCapitalQuestion(difficulty, answeredIds, countryName, answeredQuestions);
     
     const duplicate = answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
     if (!duplicate) {
       return candidate;
     }
-    q = candidate;
+    if (!q) q = candidate;
   }
+
+  // Fallback to procedural question if all flags/capitals exhausted
+  if (countryName) {
+    const proc = generateQuestions(countryName, 'geography', 2, answeredIds, answeredQuestions);
+    if (proc.length > 0) return proc[0];
+  }
+
   return q || (mode === 'flag' ? generateFlagQuestion(difficulty, answeredIds, countryName) : generateCapitalQuestion(difficulty, answeredIds, countryName));
 }
 
@@ -221,6 +235,21 @@ export default function PlayEarthOverlay({
   const [dismissedExplorerIntro, setDismissedExplorerIntro] = useState(false);
   const [isDebug, setIsDebug] = useState(false);
 
+  // Infinite Earth Game Engine states
+  const [engineChallenge, setEngineChallenge] = useState<EarthChallenge | null>(null);
+  const [engineSessionId, setEngineSessionId] = useState<string | null>(null);
+  const [engineResult, setEngineResult] = useState<{ validation: ValidationResult; scoring: ScoringBreakdown } | null>(null);
+  const [engineSelectedCountry, setEngineSelectedCountry] = useState<string | null>(null);
+  const [engineDistanceGuess, setEngineDistanceGuess] = useState<number>(5000);
+  const [enginePath, setEnginePath] = useState<string[]>([]);
+  const [engineStreak, setEngineStreak] = useState<number>(0);
+  const [engineScore, setEngineScore] = useState<number>(0);
+  const [engineCompleted, setEngineCompleted] = useState<number>(0);
+  const [engineTimer, setEngineTimer] = useState<number>(20);
+  const [engineStartTime, setEngineStartTime] = useState<number>(() => Date.now());
+  const [engineSelectedChoice, setEngineSelectedChoice] = useState<number | null>(null);
+  const [engineNeighbors, setEngineNeighbors] = useState<string[]>([]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -251,6 +280,33 @@ export default function PlayEarthOverlay({
     };
   }, [activeMode, phase, dismissedExplorerIntro]);
 
+  const [dailyRound, setDailyRound] = useState(0);
+
+  // Synchronous refs for 100% real-time anti-repeat (eliminates stale closure bugs across rounds)
+  const seenQuestionIdsRef = useRef<Set<string>>(
+    new Set([...(gameState.answeredQuestionIds || []), ...getSeenQuestionIds(username)])
+  );
+  const seenQuestionBriefsRef = useRef<QuestionBrief[]>(
+    [...(gameState.answeredQuestions || []), ...getSeenQuestions(username)]
+  );
+
+  // Synchronize refs when gameState or username updates
+  useEffect(() => {
+    const freshIds = new Set([...seenQuestionIdsRef.current, ...(gameState.answeredQuestionIds || []), ...getSeenQuestionIds(username)]);
+    seenQuestionIdsRef.current = freshIds;
+
+    const existingBriefIds = new Set(seenQuestionBriefsRef.current.map(b => b.id));
+    const mergedBriefs = [...seenQuestionBriefsRef.current];
+    const incoming = [...(gameState.answeredQuestions || []), ...getSeenQuestions(username)];
+    for (const item of incoming) {
+      if (item && item.id && !existingBriefIds.has(item.id)) {
+        mergedBriefs.push(item);
+        existingBriefIds.add(item.id);
+      }
+    }
+    seenQuestionBriefsRef.current = mergedBriefs;
+  }, [gameState, username]);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,6 +315,9 @@ export default function PlayEarthOverlay({
   // Sync username changes
   const [prevUsername, setPrevUsername] = useState(username);
   if (username !== prevUsername) {
+    if (prevUsername === 'Guest' && username !== 'Guest') {
+      migrateGuestSeenQuestions(username);
+    }
     setPrevUsername(username);
     setGameState(loadGameState(username));
   }
@@ -272,7 +331,9 @@ export default function PlayEarthOverlay({
     setPrevSelectedCountry(selectedCountry);
     
     if (isActive) {
-      if (initialMode) {
+      if (phase.startsWith('engine-')) {
+        // Do not reset when active in an engine mode and country changes on globe tap
+      } else if (initialMode) {
         setActiveMode(initialMode);
         if (initialMode === 'explorer') {
           setPhase(selectedCountry ? 'category-select' : 'intro');
@@ -286,6 +347,15 @@ export default function PlayEarthOverlay({
           setPhase('capital-challenge-start');
         } else if (initialMode === 'daily') {
           setPhase('daily-earth-start');
+        } else if (
+          initialMode === 'infinite' ||
+          initialMode === 'globe-hunt' ||
+          initialMode === 'weather-challenge' ||
+          initialMode === 'news-detective' ||
+          initialMode === 'border-escape' ||
+          initialMode === 'earthquake-hunt'
+        ) {
+          setPhase('engine-loading');
         }
       } else if (selectedCountry) {
         setActiveMode('explorer');
@@ -337,6 +407,236 @@ export default function PlayEarthOverlay({
   useEffect(() => {
     onTimerTickRef.current = onTimerTick;
   }, [onTimerTick]);
+
+  // ── Infinite Earth Game Engine Handlers ──
+
+  const fetchNextEngineChallenge = useCallback(async (modeOverride?: PlayEarthMode) => {
+    const targetMode = modeOverride || activeMode;
+    if (!targetMode) return;
+
+    let engine: string | undefined;
+    let type: string | undefined;
+
+    if (targetMode === 'globe-hunt') {
+      engine = 'geography';
+      type = 'GEO_GLOBE_HUNT';
+    } else if (targetMode === 'weather-challenge') {
+      engine = 'weather';
+    } else if (targetMode === 'news-detective') {
+      engine = 'news';
+    } else if (targetMode === 'border-escape') {
+      engine = 'geography';
+      type = 'GEO_BORDER_ESCAPE';
+    } else if (targetMode === 'earthquake-hunt') {
+      engine = 'earth_events';
+    }
+
+    try {
+      const res = await fetch('/api/game/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: engineSessionId || undefined,
+          mode: 'endless',
+          engine,
+          type,
+          difficulty,
+          excludeFingerprints: getSeenEngineFingerprints(username),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.challenge) {
+          if (data.challenge.fingerprint) {
+            recordSeenEngineFingerprint(username, data.challenge.fingerprint);
+          }
+          setEngineChallenge(data.challenge);
+          setEngineSessionId(data.session?.sessionId || null);
+          setEngineTimer(data.challenge.timeLimit || 20);
+          setEngineStartTime(Date.now());
+          setEngineSelectedChoice(null);
+          setEngineSelectedCountry(null);
+          setEngineDistanceGuess(5000);
+          const initialPath = data.challenge.data?.startCountry ? [data.challenge.data.startCountry as string] : [];
+          setEnginePath(initialPath);
+          if (initialPath.length > 0) {
+            setEngineNeighbors(getNeighbours(initialPath[0]));
+          } else {
+            setEngineNeighbors([]);
+          }
+          setPhase('engine-challenge');
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[PlayEarthOverlay] Server challenge fetch failed, falling back to local engine:', err);
+    }
+
+    // Local / Offline fallback
+    try {
+      initializeGameEngine();
+      const fallbackSession = createSession('endless');
+      const fallbackChallenge = await generateNextChallenge(fallbackSession, {
+        engine: engine as any,
+        type: type as any,
+        difficulty,
+      });
+      if (fallbackChallenge) {
+        setEngineChallenge(fallbackChallenge);
+        setEngineSessionId(fallbackSession.sessionId);
+        setEngineTimer(fallbackChallenge.timeLimit || 20);
+        setEngineStartTime(Date.now());
+        setEngineSelectedChoice(null);
+        setEngineSelectedCountry(null);
+        setEngineDistanceGuess(5000);
+        const initialPath = fallbackChallenge.data?.startCountry ? [fallbackChallenge.data.startCountry as string] : [];
+        setEnginePath(initialPath);
+        if (initialPath.length > 0) {
+          setEngineNeighbors(getNeighbours(initialPath[0]));
+        } else {
+          setEngineNeighbors([]);
+        }
+        setPhase('engine-challenge');
+      }
+    } catch (localErr) {
+      console.error('[PlayEarthOverlay] Local engine generation failed:', localErr);
+    }
+  }, [activeMode, engineSessionId, difficulty]);
+
+  // Trigger loading when phase transitions to engine-loading
+  useEffect(() => {
+    if (phase === 'engine-loading') {
+      fetchNextEngineChallenge();
+    }
+  }, [phase, fetchNextEngineChallenge]);
+
+  // Engine Answer Processing
+  const handleEngineAnswer = useCallback(async (userResponse: Partial<UserResponse>) => {
+    if (!engineChallenge || phase !== 'engine-challenge') return;
+
+    const responseTimeMs = Math.max(400, Date.now() - engineStartTime);
+    const fullResponse: UserResponse = {
+      ...userResponse,
+      responseTimeMs,
+    };
+
+    let validation: ValidationResult;
+    let scoring: ScoringBreakdown;
+
+    try {
+      if (engineSessionId) {
+        const res = await fetch('/api/game/answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: engineSessionId,
+            response: fullResponse,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          validation = data.validation;
+          scoring = data.scoring;
+        } else {
+          validation = validateResponse(engineChallenge, fullResponse);
+          scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
+        }
+      } else {
+        validation = validateResponse(engineChallenge, fullResponse);
+        scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
+      }
+    } catch {
+      validation = validateResponse(engineChallenge, fullResponse);
+      scoring = calculateScore(engineChallenge, fullResponse, validation, { currentStreak: engineStreak, mode: 'endless' });
+    }
+
+    setEngineResult({ validation, scoring });
+    setEngineCompleted(c => c + 1);
+
+    setGameState(prev => {
+      const next = { ...prev };
+      next.totalAnswered++;
+      next.infiniteTotalChallenges = (next.infiniteTotalChallenges || 0) + 1;
+
+      if (validation.correct) {
+        const points = scoring.totalPoints;
+        next.xp += points;
+        next.totalCorrect++;
+        next.infiniteCorrectAnswers = (next.infiniteCorrectAnswers || 0) + 1;
+        setXpGained(points);
+        setShowXpFloat(true);
+
+        const newStreak = engineStreak + 1;
+        setEngineStreak(newStreak);
+        const newScore = engineScore + points;
+        setEngineScore(newScore);
+
+        next.streak = newStreak;
+        next.bestStreak = Math.max(next.bestStreak, newStreak);
+        next.infiniteBestStreak = Math.max(next.infiniteBestStreak || 0, newStreak);
+        next.infiniteHighScore = Math.max(next.infiniteHighScore || 0, newScore);
+
+        const newLevel = calculateLevel(next.xp);
+        if (newLevel > next.level) {
+          next.level = newLevel;
+          setLeveledUp(true);
+          setTimeout(() => onLevelUp(), 300);
+        }
+
+        onCorrectSound();
+      } else {
+        setEngineStreak(0);
+        next.streak = 0;
+        onWrongSound();
+      }
+
+      saveGameState(next);
+      syncProgressToFirestore(next);
+      return next;
+    });
+
+    setPhase('engine-result');
+  }, [engineChallenge, phase, engineStartTime, engineSessionId, engineStreak, engineScore, onLevelUp, onCorrectSound, onWrongSound]);
+
+  // Engine Challenge Countdown Timer
+  useEffect(() => {
+    if (phase !== 'engine-challenge' || !engineChallenge) return;
+
+    const interval = setInterval(() => {
+      setEngineTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleEngineAnswer({ responseTimeMs: (engineChallenge.timeLimit || 20) * 1000 });
+          return 0;
+        }
+        if (prev <= 6) {
+          const urgency = (6 - prev) / 5;
+          onTimerTickRef.current(urgency);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase, engineChallenge, handleEngineAnswer]);
+
+  // Globe click listener for engine challenge
+  useEffect(() => {
+    if (!selectedCountry || phase !== 'engine-challenge' || !engineChallenge) return;
+
+    if (engineChallenge.responseType === 'globe_tap') {
+      setEngineSelectedCountry(selectedCountry);
+    } else if (engineChallenge.responseType === 'path_select') {
+      setEnginePath(prev => {
+        if (prev.length > 0 && prev[prev.length - 1] === selectedCountry) return prev;
+        const nextPath = [...prev, selectedCountry];
+        setEngineNeighbors(getNeighbours(selectedCountry));
+        return nextPath;
+      });
+    }
+  }, [selectedCountry, phase, engineChallenge]);
 
   // Standard Quiz Phase Timer Countdown
   useEffect(() => {
@@ -409,40 +709,52 @@ export default function PlayEarthOverlay({
   }, [activeMode, phase, clockDuration, clockScore]);
 
   /** Helper to load a random global question for Beat the Clock mode */
-  const loadNextClockQuestion = () => {
+  const loadNextClockQuestion = useCallback(() => {
     setSelectedAnswer(null);
     setIsCorrect(null);
     
-    // Choose randomly: Curated, Flag, or Capital
-    const type = Math.floor(Math.random() * 3);
-    const answered = gameState.answeredQuestionIds || [];
-    const answeredQs = gameState.answeredQuestions || [];
+    const answeredIdsList = Array.from(seenQuestionIdsRef.current);
+    const answeredQs = seenQuestionBriefsRef.current;
     let q: EarthQuestion | null = null;
     let finalSource = 'Local Database';
+    const countries = getMetadataCountries();
 
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const candidateType = (type + attempt) % 3;
-      let candidate: EarthQuestion;
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const candidateType = attempt % 5;
+      let candidate: EarthQuestion | null = null;
       let source = 'Local Database';
       
       if (candidateType === 0) {
-        candidate = generateFlagQuestion('medium', answered);
+        candidate = generateFlagQuestion('medium', answeredIdsList, undefined, answeredQs);
         source = 'Flag Generator';
       } else if (candidateType === 1) {
-        candidate = generateCapitalQuestion('medium', answered);
+        candidate = generateCapitalQuestion('medium', answeredIdsList, undefined, answeredQs);
         source = 'Capital Generator';
-      } else {
-        const pool = DEDUPLICATED_STATIC_QUESTIONS.filter(x => !answered.includes(x.id));
+      } else if (candidateType === 2) {
+        const pool = DEDUPLICATED_STATIC_QUESTIONS.filter(x => !seenQuestionIdsRef.current.has(x.id));
         if (pool.length > 0) {
           candidate = pool[Math.floor(Math.random() * pool.length)];
-          source = 'Local Database';
-        } else {
-          candidate = generateCapitalQuestion('easy', answered);
-          source = 'Capital Generator';
+          source = 'Curated Vault';
+        }
+      } else if (candidateType === 3) {
+        const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+        const proc = generateQuestions(randomCountry, 'geography', 2, answeredIdsList, answeredQs);
+        if (proc.length > 0) {
+          candidate = proc[0];
+          source = 'Geography Engine';
+        }
+      } else {
+        const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+        const proc = generateQuestions(randomCountry, 'trivia', 2, answeredIdsList, answeredQs);
+        if (proc.length > 0) {
+          candidate = proc[0];
+          source = 'Culture Engine';
         }
       }
       
-      const duplicate = answeredQs.some(aq => areQuestionsDuplicate(candidate, aq));
+      if (!candidate) continue;
+
+      const duplicate = isQuestionSeen(username, candidate) || answeredQs.some(aq => areQuestionsDuplicate(candidate!, aq));
       if (!duplicate) {
         q = candidate;
         finalSource = source;
@@ -455,10 +767,19 @@ export default function PlayEarthOverlay({
     }
     
     if (q) {
+      seenQuestionIdsRef.current.add(q.id);
+      seenQuestionBriefsRef.current.push({
+        id: q.id,
+        question: q.question,
+        country: q.country,
+        category: q.category
+      });
+      recordSeenQuestion(username, q);
+
       setQuestionSource(finalSource);
       setCurrentQuestion(q);
     }
-  };
+  }, [username]);
 
   /** Start a new question from the hybrid API or dynamic generators */
   const startQuestion = useCallback(async (category: QuizCategory) => {
@@ -469,6 +790,9 @@ export default function PlayEarthOverlay({
 
     const startTime = Date.now();
     try {
+      const answeredIdsList = Array.from(seenQuestionIdsRef.current);
+      const answeredQsList = seenQuestionBriefsRef.current;
+
       const res = await fetch('/api/quiz/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -476,8 +800,8 @@ export default function PlayEarthOverlay({
           country: selectedCountry || 'Global',
           category,
           username,
-          answeredIds: gameState.answeredQuestionIds || [],
-          answeredQuestions: gameState.answeredQuestions || []
+          answeredIds: answeredIdsList,
+          answeredQuestions: answeredQsList
         })
       });
 
@@ -492,6 +816,15 @@ export default function PlayEarthOverlay({
       }
 
       if (q) {
+        seenQuestionIdsRef.current.add(q.id);
+        seenQuestionBriefsRef.current.push({
+          id: q.id,
+          question: q.question,
+          country: q.country,
+          category: q.category
+        });
+        recordSeenQuestion(username, q);
+
         setCurrentQuestion(q);
         setQuestionSource(data.source || 'AI Generator');
         setSelectedAnswer(null);
@@ -507,8 +840,17 @@ export default function PlayEarthOverlay({
       }
     } catch (err) {
       console.warn('API error, falling back to local procedural template', err);
-      // Local fallback
-      const q = getUniqueFlagOrCapitalQuestion('capital', 'medium', gameState.answeredQuestionIds || [], gameState.answeredQuestions || []);
+      // Local fallback with strict anti-repeat
+      const q = getUniqueFlagOrCapitalQuestion('capital', 'medium', Array.from(seenQuestionIdsRef.current), seenQuestionBriefsRef.current, selectedCountry || undefined);
+      seenQuestionIdsRef.current.add(q.id);
+      seenQuestionBriefsRef.current.push({
+        id: q.id,
+        question: q.question,
+        country: q.country,
+        category: q.category
+      });
+      recordSeenQuestion(username, q);
+
       setCurrentQuestion(q);
       setQuestionSource('Capital Generator (Local Fallback)');
       setSelectedAnswer(null);
@@ -518,7 +860,7 @@ export default function PlayEarthOverlay({
     } finally {
       setIsLoadingQuestion(false);
     }
-  }, [selectedCountry, gameState, username, onPlaySound]);
+  }, [selectedCountry, username, onPlaySound]);
 
   /** Survival Mode Loop: Correct -> load next random country question */
   const startSurvivalQuestion = useCallback(() => {
@@ -527,28 +869,58 @@ export default function PlayEarthOverlay({
     
     setTimeout(() => {
       const countries = getMetadataCountries();
-      const answered = gameState.answeredQuestionIds || [];
-      const answeredQs = gameState.answeredQuestions || [];
+      const answeredIdsList = Array.from(seenQuestionIdsRef.current);
+      const answeredQs = seenQuestionBriefsRef.current;
       let selectedQ: EarthQuestion | null = null;
       let selectedCountryName = '';
+      let sourceName = 'Survival Engine';
       
-      for (let attempt = 0; attempt < 50; attempt++) {
+      for (let attempt = 0; attempt < 80; attempt++) {
         const randomCountry = countries[Math.floor(Math.random() * countries.length)];
-        const candidate = generateCapitalQuestion('medium', answered, randomCountry);
-        const duplicate = answeredQs.some(aq => areQuestionsDuplicate(candidate, aq));
+        const qType = attempt % 3;
+        let candidate: EarthQuestion | null = null;
+
+        if (qType === 0) {
+          candidate = generateCapitalQuestion('medium', answeredIdsList, randomCountry, answeredQs);
+          sourceName = 'Capital Challenge';
+        } else if (qType === 1) {
+          candidate = generateFlagQuestion('medium', answeredIdsList, randomCountry, answeredQs);
+          sourceName = 'Flag Challenge';
+        } else {
+          const proc = generateQuestions(randomCountry, 'geography', 2, answeredIdsList, answeredQs);
+          if (proc.length > 0) {
+            candidate = proc[0];
+            sourceName = 'Geography Challenge';
+          }
+        }
+
+        if (!candidate) continue;
+
+        const duplicate = isQuestionSeen(username, candidate) || answeredQs.some(aq => areQuestionsDuplicate(candidate!, aq));
         if (!duplicate) {
           selectedQ = candidate;
-          selectedCountryName = randomCountry;
+          selectedCountryName = candidate.country || randomCountry;
           break;
         }
         if (!selectedQ) {
           selectedQ = candidate;
-          selectedCountryName = randomCountry;
+          selectedCountryName = candidate.country || randomCountry;
         }
+      }
+
+      if (selectedQ) {
+        seenQuestionIdsRef.current.add(selectedQ.id);
+        seenQuestionBriefsRef.current.push({
+          id: selectedQ.id,
+          question: selectedQ.question,
+          country: selectedQ.country,
+          category: selectedQ.category
+        });
+        recordSeenQuestion(username, selectedQ);
       }
       
       setSurvivalCountry(selectedCountryName);
-      setQuestionSource('Capital Generator');
+      setQuestionSource(sourceName);
       setCurrentQuestion(selectedQ);
       setSelectedAnswer(null);
       setIsCorrect(null);
@@ -556,19 +928,28 @@ export default function PlayEarthOverlay({
       setIsLoadingQuestion(false);
       setPhase('question');
     }, 800);
-  }, [gameState, onPlaySound]);
+  }, [username, onPlaySound]);
 
   /** Daily challenge question handler */
-  const loadDailyQuestionIndex = (idx: number) => {
+  const loadDailyQuestionIndex = useCallback((idx: number, roundNum: number = dailyRound) => {
     const today = new Date().toDateString();
-    const q = getDailyEarthQuestion(today, idx);
+    const q = getDailyEarthQuestion(today, idx, roundNum);
+    seenQuestionIdsRef.current.add(q.id);
+    seenQuestionBriefsRef.current.push({
+      id: q.id,
+      question: q.question,
+      country: q.country,
+      category: q.category
+    });
+    recordSeenQuestion(username, q);
+
     setQuestionSource('Seeded Daily Generator');
     setCurrentQuestion(q);
     setSelectedAnswer(null);
     setIsCorrect(null);
     setTimer(15);
     setPhase('question');
-  };
+  }, [dailyRound, username]);
 
   /** Handle answer selection and calculate rewards */
   const handleAnswer = useCallback((index: number) => {
@@ -591,6 +972,11 @@ export default function PlayEarthOverlay({
       question: currentQuestion.question,
       country: currentQuestion.country
     };
+
+    // Update synchronous refs immediately to kill stale closures across all modes
+    seenQuestionIdsRef.current.add(currentQuestion.id);
+    seenQuestionBriefsRef.current.push(currentAQ);
+    recordSeenQuestion(username, currentQuestion);
 
     // 1. Beat the Clock Mode
     if (activeMode === 'clock') {
@@ -737,9 +1123,19 @@ export default function PlayEarthOverlay({
           const nextQuestion = getUniqueFlagOrCapitalQuestion(
             activeMode,
             difficulty,
-            [...(gameState.answeredQuestionIds || []), currentQuestion.id],
-            [...(gameState.answeredQuestions || []), currentAQ]
+            Array.from(seenQuestionIdsRef.current),
+            seenQuestionBriefsRef.current,
+            selectedCountry || undefined
           );
+          seenQuestionIdsRef.current.add(nextQuestion.id);
+          seenQuestionBriefsRef.current.push({
+            id: nextQuestion.id,
+            question: nextQuestion.question,
+            country: nextQuestion.country,
+            category: nextQuestion.category
+          });
+          recordSeenQuestion(username, nextQuestion);
+
           setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
           setCurrentQuestion(nextQuestion);
           setSelectedAnswer(null);
@@ -808,7 +1204,7 @@ export default function PlayEarthOverlay({
             setPhase('summary');
           } else {
             setDailyIndex(nextIdx);
-            loadDailyQuestionIndex(nextIdx);
+            loadDailyQuestionIndex(nextIdx, dailyRound);
           }
         }, 1000);
       } else {
@@ -884,7 +1280,7 @@ export default function PlayEarthOverlay({
         setPhase('result');
       }, 800);
     }
-  }, [currentQuestion, selectedAnswer, timer, selectedCountry, selectedCategory, onCorrectSound, onWrongSound, onLevelUp, activeMode, survivalCount, clockScore, difficulty, dailyIndex]);
+  }, [currentQuestion, selectedAnswer, timer, selectedCountry, selectedCategory, onCorrectSound, onWrongSound, onLevelUp, activeMode, survivalCount, clockScore, difficulty, dailyIndex, dailyRound, loadDailyQuestionIndex, startQuestion]);
 
   useEffect(() => {
     handleAnswerRef.current = handleAnswer;
@@ -915,9 +1311,18 @@ export default function PlayEarthOverlay({
           const q = getUniqueFlagOrCapitalQuestion(
             activeMode,
             difficulty,
-            gameState.answeredQuestionIds || [],
-            gameState.answeredQuestions || []
+            Array.from(seenQuestionIdsRef.current),
+            seenQuestionBriefsRef.current
           );
+          seenQuestionIdsRef.current.add(q.id);
+          seenQuestionBriefsRef.current.push({
+            id: q.id,
+            question: q.question,
+            country: q.country,
+            category: q.category
+          });
+          recordSeenQuestion(username, q);
+
           setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
           setCurrentQuestion(q);
           setSelectedAnswer(null);
@@ -955,7 +1360,7 @@ export default function PlayEarthOverlay({
         setPhase('summary');
       } else {
         setDailyIndex(nextIdx);
-        loadDailyQuestionIndex(nextIdx);
+        loadDailyQuestionIndex(nextIdx, dailyRound);
       }
       return;
     }
@@ -977,7 +1382,7 @@ export default function PlayEarthOverlay({
         startQuestion(selectedCategory);
       }
     }
-  }, [onPlaySound, selectedCategory, mixedWrongCount, startQuestion, activeMode, isCorrect, startSurvivalQuestion, difficulty, gameState, dailyIndex]);
+  }, [onPlaySound, selectedCategory, mixedWrongCount, startQuestion, activeMode, isCorrect, startSurvivalQuestion, difficulty, dailyIndex, dailyRound, loadDailyQuestionIndex, username]);
 
   /** Reset mode to selection dashboard */
   const handleBackToModes = useCallback(() => {
@@ -1027,6 +1432,509 @@ export default function PlayEarthOverlay({
       </div>
     );
   };
+
+  const renderEngineLoading = (isCompact: boolean) => (
+    <motion.div
+      key="engine-loading"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className={isCompact ? "space-y-4 text-center py-8" : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto font-sans"}
+    >
+      <div className="glass rounded-3xl border border-cyan-500/30 p-8 shadow-[0_0_60px_rgba(6,182,212,0.2)] text-center relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="w-16 h-16 mx-auto mb-4 relative flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin absolute inset-0" />
+          <div className="w-10 h-10 rounded-full border border-emerald-500/30 border-b-emerald-400 animate-[spin_1.5s_linear_infinite_reverse] absolute" />
+          <span className="text-2xl animate-pulse">🛰️</span>
+        </div>
+        <h3 className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-emerald-300 to-blue-300 uppercase tracking-widest">
+          Calibrating Satellite Sensors
+        </h3>
+        <p className="text-[11px] text-white/50 mt-1 max-w-xs mx-auto">
+          Scanning real-time telemetry, weather radars, and geopolitical feeds...
+        </p>
+        <button
+          onClick={handleBackToModes}
+          className="mt-6 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-white/40 hover:text-white/80 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  const renderEngineChallenge = (isCompact: boolean) => {
+    if (!engineChallenge) return null;
+    const entry = getRegistryEntry(engineChallenge.type);
+    const difficultyColors: Record<string, string> = {
+      easy: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+      medium: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+      hard: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
+      expert: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
+    };
+    const diffClass = difficultyColors[engineChallenge.difficulty] || difficultyColors.medium;
+    const isTimerUrgent = engineTimer <= 5;
+
+    return (
+      <motion.div
+        key="engine-challenge-card"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={isCompact ? "space-y-4" : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-4 pointer-events-auto font-sans"}
+      >
+        <div className="glass rounded-3xl border border-white/15 p-5 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl relative overflow-hidden">
+          {/* Top telemetry bar */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{entry?.emoji || '🌍'}</span>
+              <div>
+                <span className="text-xs font-black text-white tracking-wide block">
+                  {entry?.label || engineChallenge.type.replace(/_/g, ' ')}
+                </span>
+                <span className="text-[9px] text-cyan-400 font-mono">
+                  {engineChallenge.source || 'MooEarth Game Engine'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${diffClass}`}>
+                {engineChallenge.difficulty}
+              </span>
+              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border font-mono font-black text-xs ${
+                isTimerUrgent ? 'border-red-500/60 bg-red-500/20 text-red-300 animate-pulse' : 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300'
+              }`}>
+                <span>⏱️</span>
+                <span>{engineTimer}s</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Points & Streak pill */}
+          <div className="flex items-center justify-between text-[10px] font-mono text-white/50 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 mb-3">
+            <span>+{engineChallenge.points} Potential XP</span>
+            <span>🔥 Streak: {engineStreak} {engineStreak >= 2 ? `(${1 + engineStreak * 0.1}x)` : ''}</span>
+            <span>Score: {engineScore}</span>
+          </div>
+
+          {/* Challenge prompt box */}
+          <div className="mb-4">
+            <h3 className="text-sm sm:text-base font-bold text-white leading-relaxed whitespace-pre-wrap">
+              {renderTextWithFlags(engineChallenge.question)}
+            </h3>
+
+            {engineChallenge.hint && (
+              <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200/90 leading-snug flex items-start gap-2">
+                <span className="shrink-0 text-sm">💡</span>
+                <span>{renderTextWithFlags(engineChallenge.hint)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Interactive Response Controls */}
+          {/* 1. Multiple Choice */}
+          {engineChallenge.responseType === 'multiple_choice' && engineChallenge.choices && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {engineChallenge.choices.map((choice, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    onPlaySound();
+                    setEngineSelectedChoice(idx);
+                    handleEngineAnswer({ choiceIndex: idx });
+                  }}
+                  className="w-full text-left p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/15 hover:border-cyan-400/40 transition-all flex items-center gap-2.5 cursor-pointer text-xs font-medium text-white group"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-black group-hover:bg-cyan-500 group-hover:text-black transition-colors shrink-0">
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span className="truncate">{renderTextWithFlags(choice)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 2. Globe Tap */}
+          {engineChallenge.responseType === 'globe_tap' && (
+            <div className="space-y-3">
+              <div className="p-3.5 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 text-center relative overflow-hidden">
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-cyan-300 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                  <span>Interactive 3D Globe Radar</span>
+                </div>
+                <p className="text-[11px] text-white/70">
+                  Rotate the globe and tap the target nation to lock coordinates.
+                </p>
+
+                {engineSelectedCountry ? (
+                  <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-emerald-300 flex items-center gap-1.5 truncate">
+                      <span>🎯 Targeted:</span>
+                      <span>{renderTextWithFlags(engineSelectedCountry)}</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        onPlaySound();
+                        handleEngineAnswer({ tappedCountry: engineSelectedCountry });
+                      }}
+                      className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs cursor-pointer shadow-md shrink-0"
+                    >
+                      Confirm Lock ➔
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-[10px] text-white/40 font-mono animate-pulse">
+                    [Awaiting country tap on globe...]
+                  </div>
+                )}
+              </div>
+
+              {/* Accessible fallback choice pills if options are available */}
+              {engineChallenge.choices && engineChallenge.choices.length > 0 && (
+                <div>
+                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
+                    Or select candidate nation:
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {engineChallenge.choices.map((c, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          onPlaySound();
+                          setEngineSelectedCountry(c);
+                          handleEngineAnswer({ tappedCountry: c });
+                        }}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left text-[11px] font-medium text-white truncate flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="text-[10px] opacity-40 font-mono">#{idx + 1}</span>
+                        <span className="truncate">{renderTextWithFlags(c)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. Slider (Distance Estimation) */}
+          {engineChallenge.responseType === 'slider' && (
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono block mb-1">
+                  Estimated Geodesic Distance
+                </span>
+                <span className="text-2xl font-black text-cyan-400 font-mono">
+                  {engineDistanceGuess.toLocaleString()} km
+                </span>
+
+                <div className="mt-4 px-2">
+                  <input
+                    type="range"
+                    min="100"
+                    max="20000"
+                    step="50"
+                    value={engineDistanceGuess}
+                    onChange={(e) => setEngineDistanceGuess(Number(e.target.value))}
+                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                  <div className="flex justify-between text-[9px] text-white/30 font-mono mt-1">
+                    <span>0 km</span>
+                    <span>10,000 km</span>
+                    <span>20,000 km</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {[-1000, -250, 250, 1000].map((delta) => (
+                    <button
+                      key={delta}
+                      onClick={() => setEngineDistanceGuess(v => Math.max(100, Math.min(20000, v + delta)))}
+                      className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-mono text-white/70 cursor-pointer"
+                    >
+                      {delta > 0 ? `+${delta}` : delta} km
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  onPlaySound();
+                  handleEngineAnswer({ numericValue: engineDistanceGuess });
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-lg"
+              >
+                Confirm Geodesic Estimate ➔
+              </button>
+            </div>
+          )}
+
+          {/* 4. Path Select (Border Escape / Country Chain) */}
+          {engineChallenge.responseType === 'path_select' && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                <span className="text-[10px] text-white/40 uppercase tracking-widest font-mono block mb-1">
+                  Active Border Route ({enginePath.length} steps)
+                </span>
+                <div className="flex flex-wrap items-center gap-1 text-xs font-bold text-white">
+                  {enginePath.length === 0 ? (
+                    <span className="text-white/40 italic text-[11px]">Tap start country to begin journey...</span>
+                  ) : (
+                    enginePath.map((step, idx) => (
+                      <span key={idx} className="flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg bg-white/10 border border-white/10 text-cyan-300">
+                          {renderTextWithFlags(step)}
+                        </span>
+                        {idx < enginePath.length - 1 && <span className="text-white/30 text-[10px]">➔</span>}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Neighbor options to tap */}
+              {engineNeighbors.length > 0 && (
+                <div>
+                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">
+                    Verified Land Neighbors:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                    {engineNeighbors.map((nb, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          onPlaySound();
+                          const nextPath = [...enginePath, nb];
+                          setEnginePath(nextPath);
+                          setEngineNeighbors(getNeighbours(nb));
+                        }}
+                        className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-400/40 text-[11px] text-white font-medium transition-colors cursor-pointer"
+                      >
+                        +{renderTextWithFlags(nb)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {enginePath.length > 1 && (
+                  <button
+                    onClick={() => {
+                      const prevPath = enginePath.slice(0, -1);
+                      setEnginePath(prevPath);
+                      if (prevPath.length > 0) {
+                        setEngineNeighbors(getNeighbours(prevPath[prevPath.length - 1]));
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[11px] text-white/60 hover:text-white cursor-pointer"
+                  >
+                    ↩ Undo
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    handleEngineAnswer({ selectedPath: enginePath });
+                  }}
+                  disabled={enginePath.length < 2}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                >
+                  Submit Verified Route ➔
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Globe Point */}
+          {engineChallenge.responseType === 'globe_point' && (
+            <div className="space-y-3">
+              <p className="text-xs text-white/60 text-center">
+                Point and tap the closest geographic coordinates on the globe.
+              </p>
+              {engineSelectedCountry && (
+                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-center">
+                  <span className="text-xs font-bold text-emerald-300">
+                    Selected: {renderTextWithFlags(engineSelectedCountry)}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  onPlaySound();
+                  handleEngineAnswer({ tappedCountry: engineSelectedCountry || 'Unknown' });
+                }}
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer shadow-md"
+              >
+                Confirm Point Estimate ➔
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderEngineResult = (isCompact: boolean) => {
+    if (!engineResult || !engineChallenge) return null;
+    const { validation, scoring } = engineResult;
+    const isCorrectResult = validation.correct;
+
+    return (
+      <motion.div
+        key="engine-result-card"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={isCompact ? "space-y-4 font-sans" : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto font-sans"}
+      >
+        <div className={`glass rounded-3xl border p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl ${
+          isCorrectResult ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20'
+        }`}>
+          {/* Header Banner */}
+          <div className="text-center mb-4">
+            <span className="text-4xl block mb-2">{isCorrectResult ? '🎯' : '⚠️'}</span>
+            <h3 className={`text-lg font-black tracking-wide ${isCorrectResult ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {isCorrectResult ? 'MISSION ACCOMPLISHED' : 'TARGET MISSED'}
+            </h3>
+            <p className="text-xs text-white/70 mt-1">
+              {validation.feedback}
+            </p>
+          </div>
+
+          {/* Distance offset if available */}
+          {validation.distanceKm !== undefined && (
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center mb-3">
+              <span className="text-[10px] text-white/40 uppercase font-mono block">Geodesic Offset</span>
+              <span className="text-xl font-black text-cyan-300 font-mono">
+                {Math.round(validation.distanceKm).toLocaleString()} km
+              </span>
+            </div>
+          )}
+
+          {/* Points Breakdown */}
+          {isCorrectResult && (
+            <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-white/[0.03] border border-white/5 text-center font-mono text-[10px] text-white/60 mb-3">
+              <div>
+                <span className="block text-white/30 text-[8px]">BASE</span>
+                <span className="text-white font-bold">+{scoring.basePoints}</span>
+              </div>
+              <div>
+                <span className="block text-white/30 text-[8px]">SPEED</span>
+                <span className="text-cyan-400 font-bold">+{scoring.speedBonus}</span>
+              </div>
+              <div>
+                <span className="block text-white/30 text-[8px]">TOTAL</span>
+                <span className="text-emerald-400 font-black text-xs">+{scoring.totalPoints} XP</span>
+              </div>
+            </div>
+          )}
+
+          {/* Educational Debrief */}
+          {engineChallenge.explanation && (
+            <div className="p-3 rounded-2xl bg-white/5 border border-white/10 mb-4 text-left">
+              <span className="text-[9px] text-cyan-400 uppercase tracking-widest font-black block mb-1">
+                Telemetry Debrief
+              </span>
+              <p className="text-xs text-white/80 leading-relaxed">
+                {renderTextWithFlags(engineChallenge.explanation)}
+              </p>
+              {engineChallenge.source && (
+                <span className="text-[9px] text-white/40 font-mono mt-2 block">
+                  Source: {engineChallenge.source}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                onPlaySound();
+                setPhase('engine-loading');
+              }}
+              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-lg"
+            >
+              Next Challenge ➔
+            </button>
+            <button
+              onClick={() => {
+                onPlaySound();
+                setPhase('engine-summary');
+              }}
+              className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-bold text-xs cursor-pointer"
+            >
+              Debrief
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const renderEngineSummary = (isCompact: boolean) => (
+    <motion.div
+      key="engine-summary-card"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className={isCompact ? "space-y-4 font-sans" : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-lg px-4 pointer-events-auto font-sans"}
+    >
+      <div className="glass rounded-3xl border border-white/15 p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl text-center space-y-4">
+        <div>
+          <span className="text-4xl block mb-2">🎖️</span>
+          <h3 className="text-xl font-black text-white">Engine Session Debrief</h3>
+          <p className="text-xs text-white/50">Infinite Earth operational performance summary</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-left font-mono">
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+            <span className="text-[9px] text-white/40 block">SESSION SCORE</span>
+            <span className="text-sm font-black text-cyan-300">{engineScore} Points</span>
+          </div>
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+            <span className="text-[9px] text-white/40 block">BEST STREAK</span>
+            <span className="text-sm font-black text-amber-300">🔥 {engineStreak}</span>
+          </div>
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+            <span className="text-[9px] text-white/40 block">CHALLENGES COMPLETED</span>
+            <span className="text-sm font-black text-white">{engineCompleted}</span>
+          </div>
+          <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+            <span className="text-[9px] text-white/40 block">CAREER HIGH SCORE</span>
+            <span className="text-sm font-black text-emerald-400">
+              {gameState.infiniteHighScore || engineScore} Pts
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              onPlaySound();
+              setEngineScore(0);
+              setEngineStreak(0);
+              setEngineCompleted(0);
+              setEngineSessionId(null);
+              setPhase('engine-loading');
+            }}
+            className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-lg"
+          >
+            Play Again ➔
+          </button>
+          <button
+            onClick={handleBackToModes}
+            className="flex-1 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white font-bold text-xs cursor-pointer"
+          >
+            Modes Menu
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
 
   if (!isActive) return null;
 
@@ -1139,6 +2047,72 @@ export default function PlayEarthOverlay({
                   <span className="text-xl">🏙️</span>
                   <span className="text-xs font-black text-white">Capital Challenge</span>
                   <span className="text-[8px] text-white/40 leading-snug">Match cities to their sovereign nations.</span>
+                </button>
+
+                {/* Infinite Earth Game Engine Modes */}
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('infinite');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col gap-1 cursor-pointer col-span-2"
+                >
+                  <span className="text-xl">♾️</span>
+                  <span className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">Infinite Earth</span>
+                  <span className="text-[8px] text-white/40 leading-snug">Endless engine — geography, weather, news, earthquakes & more!</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('globe-hunt');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xl">🎯</span>
+                  <span className="text-xs font-black text-white">Globe Hunt</span>
+                  <span className="text-[8px] text-white/40 leading-snug">Find countries by tapping the 3D globe.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('weather-challenge');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xl">🌧️</span>
+                  <span className="text-xs font-black text-white">Weather Challenge</span>
+                  <span className="text-[8px] text-white/40 leading-snug">Live weather data challenges from around the world.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('news-detective');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xl">🕵️</span>
+                  <span className="text-xs font-black text-white">News Detective</span>
+                  <span className="text-[8px] text-white/40 leading-snug">Identify countries from real news stories.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('earthquake-hunt');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="text-xl">🌋</span>
+                  <span className="text-xs font-black text-white">Earthquake Hunt</span>
+                  <span className="text-[8px] text-white/40 leading-snug">Locate real earthquakes from USGS data.</span>
                 </button>
 
 
@@ -1334,9 +2308,19 @@ export default function PlayEarthOverlay({
                         const q = getUniqueFlagOrCapitalQuestion(
                           activeMode,
                           diff,
-                          gameState.answeredQuestionIds || [],
-                          gameState.answeredQuestions || []
+                          Array.from(seenQuestionIdsRef.current),
+                          seenQuestionBriefsRef.current
                         );
+                        seenQuestionIdsRef.current.add(q.id);
+                        seenQuestionBriefsRef.current.push({
+                          id: q.id,
+                          question: q.question,
+                          country: q.country,
+                          category: q.category
+                        });
+                        recordSeenQuestion(username, q);
+
+                        setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
                         setCurrentQuestion(q);
                         setSelectedAnswer(null);
                         setIsCorrect(null);
@@ -1591,19 +2575,58 @@ export default function PlayEarthOverlay({
                 <button
                   onClick={() => {
                     onPlaySound();
-                    if (activeMode === 'survival') startSurvivalQuestion();
-                    else if (activeMode === 'clock') {
+                    if (activeMode === 'survival') {
+                      setSurvivalCount(0);
+                      startSurvivalQuestion();
+                    } else if (activeMode === 'clock') {
                       setClockScore(0);
                       setClockTotal(0);
                       setTimer(clockDuration === '30s' ? 30 : clockDuration === '120s' ? 120 : 60);
                       loadNextClockQuestion();
                       setPhase('question');
+                    } else if (activeMode === 'flag' || activeMode === 'capital') {
+                      setGameState(prev => ({ ...prev, streak: 0 }));
+                      setIsLoadingQuestion(true);
+                      setTimeout(() => {
+                        const q = getUniqueFlagOrCapitalQuestion(
+                          activeMode,
+                          difficulty,
+                          Array.from(seenQuestionIdsRef.current),
+                          seenQuestionBriefsRef.current
+                        );
+                        seenQuestionIdsRef.current.add(q.id);
+                        seenQuestionBriefsRef.current.push({
+                          id: q.id,
+                          question: q.question,
+                          country: q.country,
+                          category: q.category
+                        });
+                        recordSeenQuestion(username, q);
+
+                        setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
+                        setCurrentQuestion(q);
+                        setSelectedAnswer(null);
+                        setIsCorrect(null);
+                        setTimer(15);
+                        setIsLoadingQuestion(false);
+                        setPhase('question');
+                      }, 600);
                     } else if (activeMode === 'daily') {
-                      setDailyIndex(0);
-                      setDailyScore(0);
-                      loadDailyQuestionIndex(0);
+                      setDailyRound(r => {
+                        const nextR = r + 1;
+                        setDailyIndex(0);
+                        setDailyScore(0);
+                        loadDailyQuestionIndex(0, nextR);
+                        return nextR;
+                      });
                     } else {
-                      setPhase('category-select');
+                      if (selectedCategory === 'mixed') {
+                        startQuestion('mixed');
+                      } else if (selectedCategory) {
+                        startQuestion(selectedCategory);
+                      } else {
+                        setPhase('category-select');
+                      }
                     }
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs tracking-wider cursor-pointer"
@@ -1619,6 +2642,12 @@ export default function PlayEarthOverlay({
               </div>
             </motion.div>
           )}
+
+          {/* Phase: Infinite Earth Engine Views (Inline) */}
+          {phase === 'engine-loading' && renderEngineLoading(true)}
+          {phase === 'engine-challenge' && renderEngineChallenge(true)}
+          {phase === 'engine-result' && renderEngineResult(true)}
+          {phase === 'engine-summary' && renderEngineSummary(true)}
         </AnimatePresence>
       </div>
     );
@@ -1772,6 +2801,84 @@ export default function PlayEarthOverlay({
                 </button>
 
 
+                {/* Infinite Earth Game Engine Modes */}
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('infinite');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col gap-1.5 cursor-pointer col-span-2 group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">♾️</span>
+                  <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">Infinite Earth</span>
+                  <span className="text-xs text-white/40 leading-snug">Endless procedural engine — geography, weather, news, earthquakes & multi-sensor missions!</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('globe-hunt');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">🎯</span>
+                  <span className="text-sm font-bold text-white">Globe Hunt</span>
+                  <span className="text-xs text-white/40 leading-snug">Locate nations by rotating and tapping the 3D globe.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('weather-challenge');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">🌧️</span>
+                  <span className="text-sm font-bold text-white">Weather Watch</span>
+                  <span className="text-xs text-white/40 leading-snug">Live satellite temperatures, precipitation & wind comparisons.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('news-detective');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">🕵️</span>
+                  <span className="text-sm font-bold text-white">News Detective</span>
+                  <span className="text-xs text-white/40 leading-snug">Identify countries from real global breaking news headlines.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('earthquake-hunt');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">🌋</span>
+                  <span className="text-sm font-bold text-white">Earthquake Tracker</span>
+                  <span className="text-xs text-white/40 leading-snug">Pinpoint live seismic tremors directly from USGS telemetry.</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onPlaySound();
+                    setActiveMode('border-escape');
+                    setPhase('engine-loading');
+                  }}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                >
+                  <span className="text-2xl group-hover:scale-105 transition-transform">🗺️</span>
+                  <span className="text-sm font-bold text-white">Border Escape</span>
+                  <span className="text-xs text-white/40 leading-snug">Navigate from country to country via verified geopolitical borders.</span>
+                </button>
               </div>
 
               <button
@@ -1993,9 +3100,18 @@ export default function PlayEarthOverlay({
                         const q = getUniqueFlagOrCapitalQuestion(
                           activeMode,
                           diff,
-                          gameState.answeredQuestionIds || [],
-                          gameState.answeredQuestions || []
+                          Array.from(seenQuestionIdsRef.current),
+                          seenQuestionBriefsRef.current
                         );
+                        seenQuestionIdsRef.current.add(q.id);
+                        seenQuestionBriefsRef.current.push({
+                          id: q.id,
+                          question: q.question,
+                          country: q.country,
+                          category: q.category
+                        });
+                        recordSeenQuestion(username, q);
+
                         setCurrentQuestion(q);
                         setSelectedAnswer(null);
                         setIsCorrect(null);
@@ -2295,12 +3411,49 @@ export default function PlayEarthOverlay({
                       setTimer(clockDuration === '30s' ? 30 : clockDuration === '120s' ? 120 : 60);
                       loadNextClockQuestion();
                       setPhase('question');
+                    } else if (activeMode === 'flag' || activeMode === 'capital') {
+                      setGameState(prev => ({ ...prev, streak: 0 }));
+                      setIsLoadingQuestion(true);
+                      setTimeout(() => {
+                        const q = getUniqueFlagOrCapitalQuestion(
+                          activeMode,
+                          difficulty,
+                          Array.from(seenQuestionIdsRef.current),
+                          seenQuestionBriefsRef.current
+                        );
+                        seenQuestionIdsRef.current.add(q.id);
+                        seenQuestionBriefsRef.current.push({
+                          id: q.id,
+                          question: q.question,
+                          country: q.country,
+                          category: q.category
+                        });
+                        recordSeenQuestion(username, q);
+
+                        setQuestionSource(activeMode === 'flag' ? 'Flag Generator' : 'Capital Generator');
+                        setCurrentQuestion(q);
+                        setSelectedAnswer(null);
+                        setIsCorrect(null);
+                        setTimer(15);
+                        setIsLoadingQuestion(false);
+                        setPhase('question');
+                      }, 600);
                     } else if (activeMode === 'daily') {
-                      setDailyIndex(0);
-                      setDailyScore(0);
-                      loadDailyQuestionIndex(0);
+                      setDailyRound(r => {
+                        const nextR = r + 1;
+                        setDailyIndex(0);
+                        setDailyScore(0);
+                        loadDailyQuestionIndex(0, nextR);
+                        return nextR;
+                      });
                     } else {
-                      setPhase('category-select');
+                      if (selectedCategory === 'mixed') {
+                        startQuestion('mixed');
+                      } else if (selectedCategory) {
+                        startQuestion(selectedCategory);
+                      } else {
+                        setPhase('category-select');
+                      }
                     }
                   }}
                   className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-extrabold text-sm tracking-wider cursor-pointer hover:scale-[1.02] transition-all"
@@ -2317,6 +3470,12 @@ export default function PlayEarthOverlay({
             </div>
           </motion.div>
         )}
+
+        {/* Phase: Infinite Earth Engine Views (Desktop) */}
+        {phase === 'engine-loading' && renderEngineLoading(false)}
+        {phase === 'engine-challenge' && renderEngineChallenge(false)}
+        {phase === 'engine-result' && renderEngineResult(false)}
+        {phase === 'engine-summary' && renderEngineSummary(false)}
       </AnimatePresence>
 
       {/* Badge Unlock Celebration Modal */}

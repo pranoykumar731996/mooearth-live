@@ -1284,7 +1284,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (d: any) => {
       const isCelebration = d.isCelebration;
       const markerId = d.id || `${d.lat}-${d.lng}-${isCelebration ? 'celeb' : 'event'}`;

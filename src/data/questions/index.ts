@@ -514,13 +514,30 @@ export function calculateLevel(xp: number): number {
 export function generateFlagQuestion(
   difficulty: 'easy' | 'medium' | 'hard',
   answeredIds: string[] = [],
-  countryName?: string
+  countryName?: string,
+  answeredQuestions: { id: string; question: string; country: string }[] = []
 ): EarthQuestion {
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.flag && m.name);
-  let target = countryName ? metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase()) : null;
+  const excludeSet = new Set(answeredIds);
+  const seenCountryNames = new Set(
+    answeredQuestions
+      .filter(aq => (aq.question || '').toLowerCase().includes('flag') || (aq.id || '').startsWith('flag-'))
+      .map(aq => (aq.country || '').toLowerCase())
+  );
+
+  let target: (typeof metadataArray)[0] | null = null;
+  if (countryName) {
+    const candidate = metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase());
+    if (candidate && !excludeSet.has(`flag-${candidate.name.toLowerCase()}`) && !seenCountryNames.has(candidate.name.toLowerCase())) {
+      target = candidate;
+    }
+  }
+
   if (!target) {
-    const excludeSet = new Set(answeredIds);
-    const unseen = metadataArray.filter(m => !excludeSet.has(`flag-${m.name.toLowerCase()}`));
+    const unseen = metadataArray.filter(m => 
+      !excludeSet.has(`flag-${m.name.toLowerCase()}`) &&
+      !seenCountryNames.has(m.name.toLowerCase())
+    );
     target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
   }
 
@@ -561,13 +578,30 @@ export function generateFlagQuestion(
 export function generateCapitalQuestion(
   difficulty: 'easy' | 'medium' | 'hard',
   answeredIds: string[] = [],
-  countryName?: string
+  countryName?: string,
+  answeredQuestions: { id: string; question: string; country: string }[] = []
 ): EarthQuestion {
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
-  let target = countryName ? metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase()) : null;
+  const excludeSet = new Set(answeredIds);
+  const seenCountryNames = new Set(
+    answeredQuestions
+      .filter(aq => (aq.question || '').toLowerCase().includes('capital') || (aq.id || '').startsWith('capital-'))
+      .map(aq => (aq.country || '').toLowerCase())
+  );
+
+  let target: (typeof metadataArray)[0] | null = null;
+  if (countryName) {
+    const candidate = metadataArray.find(m => m.name.toLowerCase() === countryName.toLowerCase());
+    if (candidate && !excludeSet.has(`capital-${candidate.name.toLowerCase()}`) && !seenCountryNames.has(candidate.name.toLowerCase())) {
+      target = candidate;
+    }
+  }
+
   if (!target) {
-    const excludeSet = new Set(answeredIds);
-    const unseen = metadataArray.filter(m => !excludeSet.has(`capital-${m.name.toLowerCase()}`));
+    const unseen = metadataArray.filter(m => 
+      !excludeSet.has(`capital-${m.name.toLowerCase()}`) &&
+      !seenCountryNames.has(m.name.toLowerCase())
+    );
     target = unseen.length > 0 ? shuffle(unseen)[0] : shuffle(metadataArray)[0];
   }
 
@@ -589,11 +623,11 @@ export function generateCapitalQuestion(
   };
 }
 
-/** Generates a deterministic daily earth question based on calendar date and index */
-export function getDailyEarthQuestion(dateStr: string, index: number): EarthQuestion {
-  // Simple seed based on date string
+/** Generates a deterministic daily earth question based on calendar date, index, and optional round */
+export function getDailyEarthQuestion(dateStr: string, index: number, round: number = 0): EarthQuestion {
+  // Simple seed based on date string and round
   const charSum = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const seed = charSum + index * 101;
+  const seed = charSum + index * 101 + round * 1009;
   const rng = new SeededRandom(seed);
 
   const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
@@ -614,11 +648,11 @@ export function getDailyEarthQuestion(dateStr: string, index: number): EarthQues
   const choices = rng.shuffle([target.capital, ...distractors]);
 
   return {
-    id: `daily-${dateStr.replace(/[^a-zA-Z0-9]/g, '')}-${index}`,
+    id: `daily-${dateStr.replace(/[^a-zA-Z0-9]/g, '')}-${round}-${index}`,
     country: target.name,
     category: 'mixed',
     difficulty: 'medium',
-    question: `[Daily Challenge #${index + 1}] What is the capital city of ${target.name}?`,
+    question: `[Daily Challenge #${index + 1}${round > 0 ? ` Round ${round + 1}` : ''}] What is the capital city of ${target.name}?`,
     choices,
     correctIndex: choices.indexOf(target.capital),
     funFact: `${target.name} has a population of approximately ${target.population}. ${target.funFact}`
@@ -634,3 +668,5 @@ export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; 
   { id: 'current-affairs', label: 'Current Affairs', emoji: '📰', color: '#a78bfa' },
   { id: 'mixed', label: 'Mixed Challenge', emoji: '🌍', color: '#ec4899' },
 ];
+
+export { generateQuestions } from './generator';

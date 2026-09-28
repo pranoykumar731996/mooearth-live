@@ -8,7 +8,7 @@ import { useCallback, useRef } from 'react';
 import { GLOBE_CONFIG } from '@/lib/constants';
 import { GlobePointOfView } from '@/types';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type GlobeInstance = any;
 
 export function useGlobeControls() {

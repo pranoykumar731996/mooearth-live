@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getSentryHealthReport, clearSentryIncidents } from '@/services/sentryWatchdog';
 
 interface HealthCheck {
   name: string;
@@ -140,7 +141,7 @@ export default function ProductionHealthDashboard() {
 
     // 8. API Health
     checks.push(await runCheck('API Health', async () => {
-      const endpoints = ['/api/events', '/api/quiz/next'];
+      const endpoints = ['/api/events', '/api/quiz/next', '/api/game/health'];
       const results: string[] = [];
       let allOk = true;
       for (const ep of endpoints) {
@@ -323,6 +324,30 @@ export default function ProductionHealthDashboard() {
       }
 
       return { pass, message: pass ? 'User journey state variables and storage schemas are consistent' : 'Consistency checks failed', details };
+    }));
+
+    // 13. Infinite Game Engine Health
+    checks.push(await runCheck('Infinite Game Engine Health', async () => {
+      const res = await fetch('/api/game/health');
+      if (!res.ok) return { pass: false, message: `Game Health API returned ${res.status}` };
+      const data = await res.json();
+      if (data.status !== 'HEALTHY') return { pass: false, message: `Engine status is ${data.status}` };
+      return {
+        pass: true,
+        message: `Engine HEALTHY — ${data.registeredChallengeTypes} registered types across 6 active providers`,
+        details: Object.entries(data.providers || {}).map(([p, st]) => `${p}: ${st}`)
+      };
+    }));
+
+    // 14. Sentry Error Watchdog & Self-Healing
+    checks.push(await runCheck('Sentry Error Watchdog & Self-Healing', async () => {
+      const sentryReport = getSentryHealthReport();
+      const isOk = sentryReport.status === 'HEALTHY' || sentryReport.status === 'HEALED';
+      return {
+        pass: isOk,
+        message: `Sentry Watchdog: ${sentryReport.status} (${sentryReport.totalIncidents} incidents, ${sentryReport.autoHealsApplied} auto-heals applied, ${sentryReport.unhealedErrors} unhealed)`,
+        details: sentryReport.incidents.slice(0, 5).map(i => `[${i.severity.toUpperCase()}] ${i.timestamp.substring(11, 19)} - ${i.message} (Auto-Heal: ${i.autoHealAction})`)
+      };
     }));
 
     // Calculate overall score

@@ -312,7 +312,7 @@ async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
     }
 
     // 4. Extract article body (P tags)
-    let cleanHtml = html
+    const cleanHtml = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')

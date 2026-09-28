@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { WorldEvent, EventCategory } from '@/types';
+import { WorldEvent, EventCategory, EarthQuestion } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { CATEGORY_IMAGES, ArticleDetails } from '@/services/article';
 import { trackEvent } from '@/services/analytics';
@@ -37,6 +37,7 @@ interface ArticleViewerProps {
   onClose: () => void;
   isInline?: boolean;
   onBack?: () => void;
+  onStartQuiz?: (country: string, title: string) => void;
 }
 
 // Module-level cache to persist loaded articles across mounts/unmounts in the session
@@ -141,6 +142,7 @@ export default function ArticleViewer({
   onClose,
   isInline = false,
   onBack,
+  onStartQuiz,
 }: ArticleViewerProps) {
   const [activeEvent, setActiveEvent] = useState<WorldEvent | null>(null);
   const [loading, setLoading] = useState(false);
@@ -167,6 +169,93 @@ export default function ArticleViewer({
     rendered: string;
     cached?: string;
   } | null>(null);
+
+  // Article Comprehension Quiz state
+  const [quizActive, setQuizActive] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<EarthQuestion[]>([]);
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizAnswerSelected, setQuizAnswerSelected] = useState<number | null>(null);
+  const [quizScore, setQuizScore] = useState(0);
+  const [quizDone, setQuizDone] = useState(false);
+  const [quizXpAwarded, setQuizXpAwarded] = useState(false);
+
+  const handleStartInlineQuiz = async (
+    countryName: string,
+    articleTitle: string,
+    articleSummary: string,
+    publisherName: string
+  ) => {
+    setQuizActive(true);
+    setQuizLoading(true);
+    setQuizIndex(0);
+    setQuizAnswerSelected(null);
+    setQuizScore(0);
+    setQuizDone(false);
+    setQuizXpAwarded(false);
+
+    try {
+      const res = await fetch('/api/article/quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: articleTitle,
+          summary: articleSummary.slice(0, 800),
+          country: countryName,
+          source: publisherName,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.questions) && data.questions.length > 0) {
+          setQuizQuestions(data.questions);
+        }
+      }
+    } catch (err) {
+      console.error('[ArticleViewer] Quiz load error:', err);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const handleSelectQuizAnswer = (idx: number) => {
+    if (quizAnswerSelected !== null) return;
+    setQuizAnswerSelected(idx);
+    const currentQ = quizQuestions[quizIndex];
+    if (currentQ && idx === currentQ.correctIndex) {
+      setQuizScore(s => s + 50);
+    }
+  };
+
+  const handleNextQuizQuestion = () => {
+    if (quizIndex + 1 < quizQuestions.length) {
+      setQuizIndex(i => i + 1);
+      setQuizAnswerSelected(null);
+    } else {
+      setQuizDone(true);
+      if (!quizXpAwarded) {
+        setQuizXpAwarded(true);
+        try {
+          const cachedUser = localStorage.getItem('mooearth_user');
+          let username = 'Guest';
+          if (cachedUser) {
+            const parsed = JSON.parse(cachedUser);
+            if (parsed?.username) username = parsed.username;
+          }
+          const storageKey = `mooearth_quiz_progress_${username}`;
+          const raw = localStorage.getItem(storageKey);
+          const st = raw ? JSON.parse(raw) : { xp: 0, level: 1, totalCorrect: 0, totalAnswered: 0 };
+          const earned = Math.max(50, quizScore);
+          st.xp = (st.xp || 0) + earned;
+          st.totalAnswered = (st.totalAnswered || 0) + quizQuestions.length;
+          st.totalCorrect = (st.totalCorrect || 0) + Math.round(quizScore / 50);
+          localStorage.setItem(storageKey, JSON.stringify(st));
+        } catch (e) {
+          console.warn('[ArticleViewer] XP storage error:', e);
+        }
+      }
+    }
+  };
 
   const handleShare = async () => {
     if (!activeEvent) return;
@@ -246,6 +335,14 @@ export default function ArticleViewer({
     setIsTranslating(false);
     setIsLangDropdownOpen(false);
     setArticleDebugInfo(null);
+    setQuizActive(false);
+    setQuizLoading(false);
+    setQuizQuestions([]);
+    setQuizIndex(0);
+    setQuizAnswerSelected(null);
+    setQuizScore(0);
+    setQuizDone(false);
+    setQuizXpAwarded(false);
     
     if (activeEvent) {
       const cacheKey = activeEvent.id || activeEvent.source || activeEvent.title;
@@ -1139,6 +1236,156 @@ export default function ArticleViewer({
                   )}
 
 
+
+                  {/* Article-to-Play-Earth Quiz Bridge Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/[0.08] via-purple-500/[0.04] to-cyan-500/[0.06] border border-amber-500/25 shadow-lg relative overflow-hidden font-sans space-y-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/[0.05] rounded-full blur-2xl pointer-events-none" />
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎯</span>
+                        <div>
+                          <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+                            Knowledge Verification
+                          </div>
+                          <h4 className="text-sm font-extrabold text-white">
+                            Test Your Knowledge
+                          </h4>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                        <span>⚡</span> +150 XP
+                      </span>
+                    </div>
+
+                    {!quizActive ? (
+                      <>
+                        <p className="text-xs text-white/70 leading-relaxed font-medium">
+                          Finished reading this report? Put your real-world comprehension to the test with instant AI-powered questions, or jump into Play Earth to explore this region.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 pt-1">
+                          <button
+                            onClick={() => handleStartInlineQuiz(activeEvent.country, cleanTitle, articleDetails?.fullContent || articleDetails?.aiSummary || activeEvent.summary || '', publisher)}
+                            className="flex-1 min-w-[160px] py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-extrabold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <span>🧠</span>
+                            <span>Take Quick Quiz</span>
+                          </button>
+                          {onStartQuiz && (
+                            <button
+                              onClick={() => onStartQuiz(activeEvent.country, cleanTitle)}
+                              className="py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs uppercase tracking-wider hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <span>🌍</span>
+                              <span>Play in Earth 3D</span>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    ) : quizLoading ? (
+                      <div className="py-6 flex flex-col items-center justify-center gap-3 text-center">
+                        <div className="w-8 h-8 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                        <span className="text-xs font-bold text-white/70">
+                          Synthesizing comprehension questions with AI...
+                        </span>
+                      </div>
+                    ) : quizDone ? (
+                      <div className="py-4 space-y-4 text-center">
+                        <div className="text-3xl">🎉</div>
+                        <div>
+                          <h5 className="text-base font-black text-white">Quiz Completed!</h5>
+                          <p className="text-xs text-white/60 mt-1">
+                            You earned <strong className="text-amber-400">+{Math.max(50, quizScore)} XP</strong> toward your MooEarth explorer rank.
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center gap-3 pt-2">
+                          <button
+                            onClick={() => {
+                              setQuizActive(false);
+                              setQuizDone(false);
+                            }}
+                            className="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 font-bold text-xs cursor-pointer"
+                          >
+                            Close Quiz
+                          </button>
+                          {onStartQuiz && (
+                            <button
+                              onClick={() => onStartQuiz(activeEvent.country, cleanTitle)}
+                              className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg hover:scale-[1.02] transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span>🌍</span>
+                              <span>Continue in Play Earth</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : quizQuestions.length > 0 ? (
+                      <div className="space-y-3 pt-1">
+                        {/* Progress */}
+                        <div className="flex items-center justify-between text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                          <span>Question {quizIndex + 1} of {quizQuestions.length}</span>
+                          <span className="text-amber-400 font-extrabold">Score: {quizScore} XP</span>
+                        </div>
+
+                        {/* Question text */}
+                        <p className="text-xs font-bold text-white leading-snug">
+                          {quizQuestions[quizIndex]?.question}
+                        </p>
+
+                        {/* Options */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                          {quizQuestions[quizIndex]?.choices.map((choice, cIdx) => {
+                            const isSelected = quizAnswerSelected === cIdx;
+                            const isCorrect = cIdx === quizQuestions[quizIndex]?.correctIndex;
+                            let btnStyle = 'bg-white/5 border-white/10 hover:bg-white/10 text-white';
+                            if (quizAnswerSelected !== null) {
+                              if (isCorrect) {
+                                btnStyle = 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-extrabold';
+                              } else if (isSelected) {
+                                btnStyle = 'bg-red-500/20 border-red-400 text-red-300 line-through';
+                              } else {
+                                btnStyle = 'bg-white/[0.02] border-white/5 text-white/30';
+                              }
+                            }
+                            return (
+                              <button
+                                key={cIdx}
+                                onClick={() => handleSelectQuizAnswer(cIdx)}
+                                disabled={quizAnswerSelected !== null}
+                                className={`p-3 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer ${btnStyle}`}
+                              >
+                                <span className="font-bold opacity-60 mr-1.5">
+                                  {['A', 'B', 'C', 'D'][cIdx]}.
+                                </span>
+                                {choice}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Fun fact & Next button */}
+                        {quizAnswerSelected !== null && (
+                          <div className="pt-2 space-y-3">
+                            {quizQuestions[quizIndex]?.funFact && (
+                              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] text-white/70 leading-relaxed">
+                                <span className="font-bold text-amber-400 mr-1">💡 Insight:</span>
+                                {quizQuestions[quizIndex]?.funFact}
+                              </div>
+                            )}
+                            <div className="flex justify-end">
+                              <button
+                                onClick={handleNextQuizQuestion}
+                                className="py-2.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                {quizIndex + 1 < quizQuestions.length ? 'Next Question →' : 'See Results →'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
 
                   {/* Share Action Bar */}
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 font-sans">

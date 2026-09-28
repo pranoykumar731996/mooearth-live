@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/set-state-in-effect */
 // ============================================================
 // MooEarth Live — useEarthCast Hook
 // Central orchestrator for the cinematic AI narration system.

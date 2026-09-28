@@ -7,6 +7,7 @@ import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { BRANDING } from '@/config/branding';
+import SentryInitializer from '@/components/UI/SentryInitializer';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -78,6 +79,7 @@ export default function RootLayout({
             });
           `}
         </Script>
+        <SentryInitializer />
         {children}
       </body>
     </html>

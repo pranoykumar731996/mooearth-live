@@ -10,6 +10,10 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-unused-vars": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/refs": "warn",
+      "react/no-unescaped-entities": "off",
     }
   },
   // Override default ignores of eslint-config-next.
@@ -19,6 +23,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "playwright-report/**",
+    "test-results/**",
+    "scratch/**",
+    "public/**",
+    "*.js",
   ]),
 ]);
 

@@ -70,3 +70,29 @@ Netlify is another robust platform for Next.js deployments.
 4.  Click **Show advanced** and enter the 13 Environment Variables.
 5.  Click **Deploy site**.
 > Note: The included `netlify.toml` handles the build command, output directory, plugin installation, and PWA caching rules.
+
+---
+
+## 🛡️ Sentry Regression Sentinel & Auto-Healing Pipeline
+
+To guarantee that updates never introduce broken routes, type regressions, lint failures, or data leaks, run the Sentry Regression Sentinel:
+
+```bash
+# Run continuous regression sentinel with auto-healing enabled:
+npm run test:sentry
+
+# Force explicit auto-fix and AST repair across all suites:
+npm run test:sentry:fix
+
+# Run full regression suite including Next.js production build:
+npm run test:sentry:full
+```
+
+### What It Validates & Auto-Heals:
+1. **Static Type Invariants**: Evaluates `tsc --noEmit` and verifies type contract preservation.
+2. **ESLint & Code Standards**: Evaluates Next.js and React standards with autonomous `--fix` repair.
+3. **Data Integrity & Mock Leak Guard**: Scans for unauthorized demo/mock/fake data references.
+4. **Game Engine Invariants**: In-process mathematical verification of Haversine geodesics, border graphs, anti-repeat buffers, and 20 registered challenge types.
+5. **Cache & Service Worker Synchronization**: Verifies and synchronizes build timestamps.
+6. **Detailed Telemetry**: Outputs to `test-results/sentry-regression-report.json` and Markdown summaries.
+

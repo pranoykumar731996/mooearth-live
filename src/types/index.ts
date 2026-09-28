@@ -146,7 +146,14 @@ export type PlayEarthMode =
   | 'clock'
   | 'flag'
   | 'capital'
-  | 'daily';
+  | 'daily'
+  // Infinite Earth Game Engine modes
+  | 'infinite'
+  | 'globe-hunt'
+  | 'weather-challenge'
+  | 'news-detective'
+  | 'border-escape'
+  | 'earthquake-hunt';
 
 /** Phase of the Play Earth game flow */
 export type PlayEarthPhase =
@@ -160,7 +167,12 @@ export type PlayEarthPhase =
   | 'daily-earth-start'     // Daily global challenge dashboard
   | 'question'              // Active timed question
   | 'result'                // Showing answer result
-  | 'summary';              // Post-round summary
+  | 'summary'               // Post-round summary
+  // Infinite Earth Game Engine phases
+  | 'engine-loading'        // Loading next engine challenge
+  | 'engine-challenge'      // Active engine challenge (globe_tap, slider, etc.)
+  | 'engine-result'         // Engine challenge result with scoring breakdown
+  | 'engine-summary';       // Engine session summary
 
 export interface ModeStats {
   gamesPlayed: number;
@@ -195,4 +207,12 @@ export interface PlayerGameState {
   dailyChallengeStreak?: number;
   lastDailyChallengeDate?: string; // YYYY-MM-DD
   answeredQuestions?: { id: string; question: string; country: string }[];
+
+  // Infinite Earth Game Engine stats
+  infiniteHighScore?: number;
+  infiniteBestStreak?: number;
+  infiniteTotalChallenges?: number;
+  infiniteCorrectAnswers?: number;
+  infiniteFavoriteMode?: string;
+  engineFingerprints?: string[];    // Persisted anti-repeat fingerprints
 }

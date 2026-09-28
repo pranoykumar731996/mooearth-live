@@ -77,7 +77,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }
   const handleShareProfile = async () => {
     if (!currentUser) return;
     
-    let refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
+    const refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
     const shareUrl = `/${refQuery}`; // Link to MooEarth centering or centering profile
     
     const didShare = await shareContent({
@@ -95,7 +95,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }
   const handleShareBadge = async (badge: GameBadge) => {
     if (!currentUser) return;
     
-    let refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
+    const refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
     const shareUrl = `/play-earth${refQuery}`;
     
     const didShare = await shareContent({

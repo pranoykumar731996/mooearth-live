@@ -277,58 +277,12 @@ function generateUniversalFallback(country: string, category: string): EarthQues
   };
 }
 
-interface QuestionBrief {
-  id: string;
-  question: string;
-  country: string;
-}
+import { 
+  areQuestionsDuplicate as historyAreQuestionsDuplicate, 
+  QuestionBrief 
+} from '@/services/questionHistoryService';
 
-export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boolean {
-  if (q1.id === q2.id) return true;
-  
-  const c1 = q1.country.toLowerCase().trim();
-  const c2 = q2.country.toLowerCase().trim();
-  if (c1 !== c2) return false;
-  
-  const getSignature = (text: string) => {
-    const norm = text.toLowerCase();
-    const keywords = ['capital', 'flag', 'currency', 'language', 'continent', 'landmark', 'border', 'neighbour', 'population', 'independence', 'dish', 'food', 'person', 'sport'];
-    for (const kw of keywords) {
-      if (norm.includes(kw)) return kw;
-    }
-    return '';
-  };
-  
-  const sig1 = getSignature(q1.question);
-  const sig2 = getSignature(q2.question);
-  
-  if (sig1 && sig1 === sig2) {
-    return true;
-  }
-  
-  const stopWords = new Set(['what', 'which', 'the', 'is', 'are', 'was', 'were', 'of', 'in', 'and', 'belong', 'belongs', 'located', 'city', 'country']);
-  const getWords = (text: string) => {
-    return new Set(
-      text.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .split(/\s+/)
-        .filter(w => w.length > 2 && !stopWords.has(w))
-    );
-  };
-  
-  const w1 = getWords(q1.question);
-  const w2 = getWords(q2.question);
-  
-  if (w1.size === 0 || w2.size === 0) return false;
-  
-  let intersection = 0;
-  for (const w of w1) {
-    if (w2.has(w)) intersection++;
-  }
-  
-  const union = w1.size + w2.size - intersection;
-  return (intersection / union) > 0.55;
-}
+export const areQuestionsDuplicate = historyAreQuestionsDuplicate;
 
 export async function POST(request: NextRequest) {
   let requestCountry = 'Global';
@@ -464,12 +418,13 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
     }
 
     // ------ LAYER 3: LOCAL PROCEDURAL TEMPLATES (FALLBACK) ------
-    // Generate up to 5 questions, excluding any already answered.
+    // Generate up to 10 questions, strictly excluding any already answered or duplicate questions
     const procedural = generateQuestions(
       canonicalCountry, 
       getCanonicalCategory(category) as QuizCategory, 
-      5, 
-      clientAnsweredIds
+      10, 
+      clientAnsweredIds,
+      clientAnsweredQuestions
     );
     const unseenProcedural = procedural.filter(q => !isDuplicate(q));
     console.log(`[PLAY EARTH DEBUG] Layer 3: Procedural count: ${procedural.length}, Unseen: ${unseenProcedural.length}`);
@@ -480,30 +435,27 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
       return NextResponse.json({ question: selected, source: 'procedural' });
     }
 
-    // ------ LAYER 4: SAME-COUNTRY MIXED FALLBACK ------
-    // If we have no questions for this category (e.g. Sports empty), fallback to same country's Mixed pool
-    if (category !== 'mixed') {
-      console.log(`[PLAY EARTH DEBUG] Layer 4: Category "${category}" empty, falling back to same-country "mixed" pool`);
-      
-      const mixedPool = getMergedQuestions(canonicalCountry, 'mixed');
-      const unseenMixed = mixedPool.filter(q => !isDuplicate(q));
-      console.log(`[PLAY EARTH DEBUG] Layer 4: Unseen mixed pool size: ${unseenMixed.length}`);
+    // ------ LAYER 4: SAME-COUNTRY CATEGORY EXPANSION ------
+    // If we have exhausted this category (e.g. Sports), seamlessly rotate to other unasked categories for the same country
+    const altCategories: QuizCategory[] = ['geography', 'trivia', 'sports', 'history', 'current-affairs'];
+    for (const altCat of altCategories) {
+      if (altCat === getCanonicalCategory(category)) continue;
 
-      if (unseenMixed.length > 0) {
-        const selected = shuffle(unseenMixed)[0];
-        console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${selected.id}" (Mixed category fallback)`);
-        return NextResponse.json({ question: selected, source: 'same-country-mixed-fallback' });
+      const altFolder = getMergedQuestions(canonicalCountry, altCat);
+      const unseenAlt = altFolder.filter(q => !isDuplicate(q));
+      if (unseenAlt.length > 0) {
+        const selected = shuffle(unseenAlt)[0];
+        console.log(`[PLAY EARTH DEBUG] Layer 4: Found alternative category question: "${selected.id}" in ${altCat}`);
+        return NextResponse.json({ question: selected, source: `alt-category-${altCat}` });
       }
 
-      // If mixed folder is also empty/exhausted, try generating procedural questions from any category
-      const proceduralMixed = generateQuestions(canonicalCountry, 'mixed', 5, clientAnsweredIds);
-      const unseenProceduralMixed = proceduralMixed.filter(q => !isDuplicate(q));
-      console.log(`[PLAY EARTH DEBUG] Layer 4: Procedural mixed count: ${proceduralMixed.length}, Unseen: ${unseenProceduralMixed.length}`);
-      if (unseenProceduralMixed.length > 0) {
-        const selected = shuffle(unseenProceduralMixed)[0];
+      const altProcedural = generateQuestions(canonicalCountry, altCat, 6, clientAnsweredIds, clientAnsweredQuestions);
+      const unseenAltProcedural = altProcedural.filter(q => !isDuplicate(q));
+      if (unseenAltProcedural.length > 0) {
+        const selected = shuffle(unseenAltProcedural)[0];
         saveGeneratedQuestion(selected);
-        console.log(`[PLAY EARTH DEBUG] Layer 4 Match Found: ID="${selected.id}" (Procedural mixed category fallback)`);
-        return NextResponse.json({ question: selected, source: 'same-country-procedural-mixed-fallback' });
+        console.log(`[PLAY EARTH DEBUG] Layer 4: Generated alternative category procedural question: "${selected.id}" in ${altCat}`);
+        return NextResponse.json({ question: selected, source: `alt-procedural-${altCat}` });
       }
     }
 

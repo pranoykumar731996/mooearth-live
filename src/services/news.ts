@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { WorldEvent, EventCategory } from '@/types';
 import { demoEvents } from '@/data/events';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
