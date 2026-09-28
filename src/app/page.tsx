@@ -132,6 +132,7 @@ export default function HomePage({
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+  const [lastGlobeTap, setLastGlobeTap] = useState<{ country: string; timestamp: number } | null>(null);
 
   // Mobile Layers Selector & Toast Notifications
   const [isMobileViewsOpen, setIsMobileViewsOpen] = useState(false);
@@ -634,6 +635,16 @@ export default function HomePage({
   }, [selectedLocation, activeCategory]);
 
   const handleGlobeSelectCountry = useCallback((country: string | null) => {
+    if (isPlayEarthActive) {
+      if (country) {
+        setSelectedCountry(country);
+        setLastGlobeTap({ country, timestamp: Date.now() });
+        playHoverBlip();
+        trackEvent('country', 'click', country, 1, { category: 'play_earth', trigger: 'globe_tap' });
+      }
+      return;
+    }
+
     if (country === selectedCountry && country !== null) {
       setIsDashboardOpen(true);
       playDeepPulse();
@@ -648,7 +659,7 @@ export default function HomePage({
         setActiveReaction(null);
       }
     }
-  }, [selectedCountry, isMobile, playDeepPulse, activeCategory]);
+  }, [isPlayEarthActive, selectedCountry, isMobile, playDeepPulse, playHoverBlip, activeCategory]);
 
   // EarthCast: Fly camera to a country by name
   const handleEarthCastFlyTo = useCallback((country: string) => {
@@ -1323,23 +1334,22 @@ export default function HomePage({
       )}
 
       {/* PLAY EARTH GAME MODE OVERLAY */}
-      {(!isMobile || !selectedCountry) && (
-        <PlayEarthOverlay
-          isActive={isPlayEarthActive}
-          selectedCountry={selectedCountry}
-          onClose={() => {
-            setIsPlayEarthActive(false);
-            handleSelectCountry(null);
-            playHoverBlip();
-          }}
-          onPlaySound={playHoverBlip}
-          onCorrectSound={playCorrectSound}
-          onWrongSound={playWrongSound}
-          onTimerTick={playTimerTick}
-          onLevelUp={playLevelUp}
-          username={currentUser?.username || 'Guest'}
-        />
-      )}
+      <PlayEarthOverlay
+        isActive={isPlayEarthActive}
+        selectedCountry={selectedCountry}
+        lastGlobeTap={lastGlobeTap}
+        onClose={() => {
+          setIsPlayEarthActive(false);
+          handleSelectCountry(null);
+          playHoverBlip();
+        }}
+        onPlaySound={playHoverBlip}
+        onCorrectSound={playCorrectSound}
+        onWrongSound={playWrongSound}
+        onTimerTick={playTimerTick}
+        onLevelUp={playLevelUp}
+        username={currentUser?.username || 'Guest'}
+      />
       {/* EARTHCAST NARRATION OVERLAY REMOVED */}
 
       {/* MOOEARTH AI ASSISTANT DRAWER */}
@@ -1519,7 +1529,7 @@ export default function HomePage({
 
       {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && (selectedCountry || selectedLocation) && (
+        {isMobile && !isPlayEarthActive && (selectedCountry || selectedLocation) && (
           <MobileCountrySheet
             country={selectedCountry || selectedLocation?.name || ''}
             selectedLocation={selectedLocation}

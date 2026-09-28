@@ -56,7 +56,9 @@ interface PlayEarthOverlayProps {
   username: string;
   isInline?: boolean;
   initialMode?: PlayEarthMode | null;
+  lastGlobeTap?: { country: string; timestamp: number } | null;
 }
+
 
 import {
   recordSeenQuestion,
@@ -203,6 +205,7 @@ export default function PlayEarthOverlay({
   isActive, selectedCountry, onClose, onPlaySound,
   onCorrectSound, onWrongSound, onTimerTick, onLevelUp, username,
   isInline = false, initialMode = null,
+  lastGlobeTap = null,
 }: PlayEarthOverlayProps) {
   // Game Mode States
   const [activeMode, setActiveMode] = useState<PlayEarthMode | 'discovery' | null>(null);
@@ -331,8 +334,8 @@ export default function PlayEarthOverlay({
     setPrevSelectedCountry(selectedCountry);
     
     if (isActive) {
-      if (phase.startsWith('engine-')) {
-        // Do not reset when active in an engine mode and country changes on globe tap
+      if (phase.startsWith('engine-') || phase === 'question' || phase === 'result' || (activeMode && activeMode !== 'explorer')) {
+        // Do not reset when active in an engine mode, during an active quiz, or in a specific non-explorer game mode
       } else if (initialMode) {
         setActiveMode(initialMode);
         if (initialMode === 'explorer') {
@@ -357,22 +360,40 @@ export default function PlayEarthOverlay({
         ) {
           setPhase('engine-loading');
         }
+        setIsLoadingQuestion(false);
+        setCurrentQuestion(null);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setTimer(TIMER_SECONDS);
+        setXpGained(0);
+        setShowXpFloat(false);
+        setLeveledUp(false);
+        setMixedWrongCount(0);
       } else if (selectedCountry) {
         setActiveMode('explorer');
         setPhase('category-select');
+        setIsLoadingQuestion(false);
+        setCurrentQuestion(null);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setTimer(TIMER_SECONDS);
+        setXpGained(0);
+        setShowXpFloat(false);
+        setLeveledUp(false);
+        setMixedWrongCount(0);
       } else {
         setActiveMode(null);
         setPhase('intro');
+        setIsLoadingQuestion(false);
+        setCurrentQuestion(null);
+        setSelectedAnswer(null);
+        setIsCorrect(null);
+        setTimer(TIMER_SECONDS);
+        setXpGained(0);
+        setShowXpFloat(false);
+        setLeveledUp(false);
+        setMixedWrongCount(0);
       }
-      setIsLoadingQuestion(false);
-      setCurrentQuestion(null);
-      setSelectedAnswer(null);
-      setIsCorrect(null);
-      setTimer(TIMER_SECONDS);
-      setXpGained(0);
-      setShowXpFloat(false);
-      setLeveledUp(false);
-      setMixedWrongCount(0);
     }
   }
 
@@ -624,19 +645,22 @@ export default function PlayEarthOverlay({
 
   // Globe click listener for engine challenge
   useEffect(() => {
-    if (!selectedCountry || phase !== 'engine-challenge' || !engineChallenge) return;
+    const tapped = lastGlobeTap?.country || selectedCountry;
+    if (!tapped || phase !== 'engine-challenge' || !engineChallenge) return;
 
     if (engineChallenge.responseType === 'globe_tap') {
-      setEngineSelectedCountry(selectedCountry);
+      setEngineSelectedCountry(tapped);
+      onPlaySound();
     } else if (engineChallenge.responseType === 'path_select') {
       setEnginePath(prev => {
-        if (prev.length > 0 && prev[prev.length - 1] === selectedCountry) return prev;
-        const nextPath = [...prev, selectedCountry];
-        setEngineNeighbors(getNeighbours(selectedCountry));
+        if (prev.length > 0 && prev[prev.length - 1] === tapped) return prev;
+        const nextPath = [...prev, tapped];
+        setEngineNeighbors(getNeighbours(tapped));
         return nextPath;
       });
+      onPlaySound();
     }
-  }, [selectedCountry, phase, engineChallenge]);
+  }, [lastGlobeTap, selectedCountry, phase, engineChallenge, onPlaySound]);
 
   // Standard Quiz Phase Timer Countdown
   useEffect(() => {
@@ -2670,11 +2694,9 @@ export default function PlayEarthOverlay({
         )}
       </AnimatePresence>
 
-      {/* Click-blocking backdrop during active quiz */}
+      {/* Visual backdrop during active game (pointer-events-none allows 3D globe interaction) */}
       {(phase !== 'intro' || (activeMode && activeMode !== 'explorer')) && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[1.5px] pointer-events-auto" onClick={(e) => {
-          e.stopPropagation();
-        }} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[1.5px] pointer-events-none" />
       )}
 
       {/* Top HUD Bar */}
