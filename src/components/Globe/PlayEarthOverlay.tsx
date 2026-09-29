@@ -682,35 +682,27 @@ export default function PlayEarthOverlay({
 
   const handleModeClick = useCallback((mode: PlayEarthMode) => {
     onPlaySound();
-    let hasCompletedDemo = false;
-    try {
-      hasCompletedDemo = localStorage.getItem(`mooearth_demo_completed_${mode}`) === 'true';
-    } catch {}
-
-    if (!hasCompletedDemo) {
-      startDemo(mode);
+    setIsHudMinimized(false);
+    if (mode === 'survival') {
+      setActiveMode('survival');
+      setPhase('survival-start');
+    } else if (mode === 'clock') {
+      setActiveMode('clock');
+      setPhase('beat-the-clock-start');
+    } else if (mode === 'flag') {
+      setActiveMode('flag');
+      setPhase('flag-challenge-start');
+    } else if (mode === 'capital') {
+      setActiveMode('capital');
+      setPhase('capital-challenge-start');
+    } else if (mode === 'daily') {
+      setActiveMode('daily');
+      setPhase('daily-earth-start');
     } else {
-      if (mode === 'survival') {
-        setActiveMode('survival');
-        setPhase('survival-start');
-      } else if (mode === 'clock') {
-        setActiveMode('clock');
-        setPhase('beat-the-clock-start');
-      } else if (mode === 'flag') {
-        setActiveMode('flag');
-        setPhase('flag-challenge-start');
-      } else if (mode === 'capital') {
-        setActiveMode('capital');
-        setPhase('capital-challenge-start');
-      } else if (mode === 'daily') {
-        setActiveMode('daily');
-        setPhase('daily-earth-start');
-      } else {
-        setActiveMode(mode);
-        setPhase('engine-loading');
-      }
+      setActiveMode(mode);
+      setPhase('engine-loading');
     }
-  }, [onPlaySound, startDemo]);
+  }, [onPlaySound]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -2058,76 +2050,81 @@ export default function PlayEarthOverlay({
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={isCompact ? "space-y-4" : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"}
+        className={isCompact ? "space-y-4" : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col max-h-[58vh] sm:max-h-[68vh] lg:max-h-[84vh]"}
       >
-        <div className="glass rounded-3xl border border-white/15 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl relative overflow-hidden">
-          {/* Mobile Quick Peek Handle */}
-          <button
-            type="button"
-            onClick={() => setIsHudMinimized(true)}
-            className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
-            title="Tap to peek globe"
-          >
-            <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
-          </button>
-          {/* Top telemetry bar */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{entry?.emoji || '🌍'}</span>
-              <div>
-                <span className="text-xs font-black text-white tracking-wide block">
-                  {entry?.label || engineChallenge.type.replace(/_/g, ' ')}
+        <div className="glass rounded-3xl border border-white/15 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl relative flex flex-col max-h-full overflow-hidden">
+          {/* Header & Telemetry (shrink-0) */}
+          <div className="shrink-0 p-3 sm:p-5 pb-2 sm:pb-3 border-b border-white/5">
+            {/* Mobile Quick Peek Handle */}
+            <button
+              type="button"
+              onClick={() => setIsHudMinimized(true)}
+              className="sm:hidden w-full flex items-center justify-center py-0.5 -mt-1 mb-1 text-white/40 hover:text-white cursor-pointer"
+              title="Tap to peek globe"
+            >
+              <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+            </button>
+            {/* Top telemetry bar */}
+            <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{entry?.emoji || '🌍'}</span>
+                <div>
+                  <span className="text-xs font-black text-white tracking-wide block">
+                    {entry?.label || engineChallenge.type.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-[9px] text-cyan-400 font-mono">
+                    {engineChallenge.source || 'MooEarth Game Engine'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${diffClass}`}>
+                  {engineChallenge.difficulty}
                 </span>
-                <span className="text-[9px] text-cyan-400 font-mono">
-                  {engineChallenge.source || 'MooEarth Game Engine'}
-                </span>
+                <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border font-mono font-black text-xs ${
+                  isTimerUrgent ? 'border-red-500/60 bg-red-500/20 text-red-300 animate-pulse' : 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300'
+                }`}>
+                  <span>⏱️</span>
+                  <span>{engineTimer}s</span>
+                </div>
+                {!isCompact && (
+                  <button
+                    type="button"
+                    onClick={() => setIsHudMinimized(true)}
+                    className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-[10px] text-cyan-300 hover:text-white font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                    title="Minimize card to peek at the globe"
+                  >
+                    <span>👁️</span>
+                    <span className="hidden sm:inline">Peek Globe</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${diffClass}`}>
-                {engineChallenge.difficulty}
-              </span>
-              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border font-mono font-black text-xs ${
-                isTimerUrgent ? 'border-red-500/60 bg-red-500/20 text-red-300 animate-pulse' : 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300'
-              }`}>
-                <span>⏱️</span>
-                <span>{engineTimer}s</span>
-              </div>
-              {!isCompact && (
-                <button
-                  type="button"
-                  onClick={() => setIsHudMinimized(true)}
-                  className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-[10px] text-cyan-300 hover:text-white font-bold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
-                  title="Minimize card to peek at the globe"
-                >
-                  <span>👁️</span>
-                  <span className="hidden sm:inline">Peek Globe</span>
-                </button>
+            {/* Points & Streak pill */}
+            <div className="flex items-center justify-between text-[10px] font-mono text-white/50 px-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/5">
+              <span>+{engineChallenge.points} Potential XP</span>
+              <span>🔥 Streak: {engineStreak} {engineStreak >= 2 ? `(${1 + engineStreak * 0.1}x)` : ''}</span>
+              <span>Score: {engineScore}</span>
+            </div>
+          </div>
+
+          {/* Scrollable Challenge & Controls (flex-1 overflow-y-auto scrollbar-thin min-h-0) */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-5 space-y-3 min-h-0">
+            {/* Challenge prompt box */}
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-white leading-relaxed whitespace-pre-wrap">
+                {renderTextWithFlags(engineChallenge.question)}
+              </h3>
+
+              {engineChallenge.hint && (
+                <div className="mt-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-[11px] text-amber-200/90 leading-snug flex items-start gap-1.5">
+                  <span className="shrink-0 text-xs">💡</span>
+                  <span>{renderTextWithFlags(engineChallenge.hint)}</span>
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Points & Streak pill */}
-          <div className="flex items-center justify-between text-[10px] font-mono text-white/50 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 mb-3">
-            <span>+{engineChallenge.points} Potential XP</span>
-            <span>🔥 Streak: {engineStreak} {engineStreak >= 2 ? `(${1 + engineStreak * 0.1}x)` : ''}</span>
-            <span>Score: {engineScore}</span>
-          </div>
-
-          {/* Challenge prompt box */}
-          <div className="mb-4">
-            <h3 className="text-sm sm:text-base font-bold text-white leading-relaxed whitespace-pre-wrap">
-              {renderTextWithFlags(engineChallenge.question)}
-            </h3>
-
-            {engineChallenge.hint && (
-              <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200/90 leading-snug flex items-start gap-2">
-                <span className="shrink-0 text-sm">💡</span>
-                <span>{renderTextWithFlags(engineChallenge.hint)}</span>
-              </div>
-            )}
-          </div>
 
           {/* Interactive Response Controls */}
           {/* 1. Multiple Choice */}
@@ -2426,6 +2423,7 @@ export default function PlayEarthOverlay({
               )}
             </div>
           )}
+          </div>
         </div>
       </motion.div>
     );
@@ -2713,232 +2711,252 @@ export default function PlayEarthOverlay({
         className={
           isCompact
             ? "space-y-4 font-sans text-left"
-            : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
+            : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col max-h-[58vh] sm:max-h-[68vh] lg:max-h-[84vh]"
         }
       >
         <div
-          className="glass rounded-3xl border border-cyan-400/30 p-3.5 sm:p-5 lg:p-6 shadow-[0_0_60px_rgba(6,182,212,0.25)] relative overflow-hidden backdrop-blur-xl"
+          className="glass rounded-3xl border border-cyan-400/30 shadow-[0_0_60px_rgba(6,182,212,0.25)] relative overflow-hidden backdrop-blur-xl flex flex-col max-h-full"
           style={{ background: 'linear-gradient(135deg, rgba(8,20,30,0.96) 0%, rgba(4,12,22,0.96) 100%)' }}
         >
-          {/* Mobile Quick Peek Handle */}
-          <button
-            type="button"
-            onClick={() => setIsHudMinimized(true)}
-            className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
-            title="Tap to peek globe"
-          >
-            <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
-          </button>
-
-          {/* Header with Title and Mode */}
-          <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3 mb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[9px] font-black text-cyan-300 uppercase tracking-widest animate-pulse">
-                  🎮 Interactive Practice Demo
-                </span>
-                <span className="text-[10px] text-white/40 font-mono">
-                  {demoState.totalSteps > 1 ? `Step ${demoState.step}/${demoState.totalSteps}` : 'Live Drill'}
-                </span>
-              </div>
-              <h3 className="text-base font-black text-white mt-1 flex items-center gap-2">
-                {demoState.title}
-              </h3>
-              <p className="text-[11px] text-white/50">
-                Safe sandbox mode • Learn by doing with zero time pressure or score penalty.
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsHudMinimized(true)}
-                className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-[10px] font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-all"
-                title="Minimize card to peek and interact with full 3D globe"
-              >
-                <span>👁️</span>
-                <span className="hidden xs:inline">Peek Globe</span>
-              </button>
-              <button
-                onClick={handleBackToModes}
-                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white text-xs transition-colors cursor-pointer"
-                title="Return to Menu"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-
-          {/* Current Instruction Banner */}
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 mb-3 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                Current Objective:
-              </span>
-              {demoState.hint && (
-                <button
-                  onClick={() => setDemoState(prev => prev ? { ...prev, showHint: !prev.showHint } : null)}
-                  className="text-[10px] text-amber-300 hover:text-amber-200 underline cursor-pointer"
-                >
-                  {demoState.showHint ? 'Hide Hint' : '💡 Need a Hint?'}
-                </button>
-              )}
-            </div>
-            <p className="text-xs font-bold text-white leading-relaxed">
-              {demoState.instruction}
-            </p>
-            {(demoState.mode === 'globe-hunt' || demoState.mode === 'border-escape' || demoState.mode === 'explorer') && !demoState.completed && (
-              <button
-                type="button"
-                onClick={() => setIsHudMinimized(true)}
-                className="w-full mt-2 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-              >
-                <span>🌍</span>
-                <span>Peek 3D Globe to Rotate & Tap Target</span>
-              </button>
-            )}
-            {demoState.showHint && demoState.hint && (
-              <div className="mt-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
-                💡 {demoState.hint}
-              </div>
-            )}
-          </div>
-
-          {/* Live Feedback Toast */}
-          {demoState.feedback && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`mb-3 p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 ${
-                demoState.feedback.isError
-                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
-                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-              }`}
+          {/* Header with Title and Mode - Fixed at Top (shrink-0) */}
+          <div className="shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-white/10">
+            {/* Mobile Quick Peek Handle */}
+            <button
+              type="button"
+              onClick={() => setIsHudMinimized(true)}
+              className="sm:hidden w-full flex items-center justify-center py-0.5 -mt-1 mb-1 text-white/40 hover:text-white cursor-pointer"
+              title="Tap to peek globe"
             >
-              <span>{demoState.feedback.isError ? '⚠️' : '✅'}</span>
-              <span>{demoState.feedback.text}</span>
-            </motion.div>
-          )}
+              <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+            </button>
 
-          {/* Interactive Route / Border Escape Area */}
-          {demoState.mode === 'border-escape' && (
-            <div className="space-y-3 mb-3">
-              {/* Route Breadcrumbs */}
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
-                <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
-                  Border Journey Path ({demoState.path?.length || 1} of 3 Stops):
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-white">
-                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
-                    🇨🇦 Canada (Start)
+            <div className="flex items-start justify-between gap-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[9px] font-black text-cyan-300 uppercase tracking-wider animate-pulse">
+                    🎮 Practice Drill
                   </span>
-                  <span className="text-white/30 text-xs">➔</span>
-                  <span
-                    className={`px-2.5 py-1 rounded-xl border transition-all ${
-                      (demoState.path?.length || 0) >= 2
-                        ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
-                        : 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 animate-pulse'
-                    }`}
-                  >
-                    🇺🇸 United States
-                  </span>
-                  <span className="text-white/30 text-xs">➔</span>
-                  <span
-                    className={`px-2.5 py-1 rounded-xl border transition-all ${
-                      (demoState.path?.length || 0) >= 3
-                        ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300 font-black'
-                        : 'bg-white/5 border-white/10 text-white/40'
-                    }`}
-                  >
-                    🇲🇽 Mexico (Destination)
+                  <span className="text-[10px] text-white/40 font-mono">
+                    {demoState.totalSteps > 1 ? `Step ${demoState.step}/${demoState.totalSteps}` : 'Live Sandbox'}
                   </span>
                 </div>
+                <h3 className="text-sm sm:text-base font-black text-white mt-0.5 truncate">
+                  {demoState.title}
+                </h3>
               </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsHudMinimized(true)}
+                  className="px-2 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-[10px] font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-all"
+                  title="Minimize card to peek and interact with full 3D globe"
+                >
+                  <span>👁️</span>
+                  <span className="hidden xs:inline">Peek Globe</span>
+                </button>
+                <button
+                  onClick={handleBackToModes}
+                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white text-xs transition-colors cursor-pointer"
+                  title="Return to Menu"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {/* Tappable neighbor pills */}
-              {!demoState.completed && demoState.neighbors && demoState.neighbors.length > 0 && (
-                <div>
-                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
-                    👉 Tap directly on the 3D globe, or click the verified border neighbor:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {demoState.neighbors.map((nb, i) => (
+          {/* Scrollable Content Area (flex-1 overflow-y-auto scrollbar-thin min-h-0) */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-4 space-y-2.5 min-h-0">
+            {/* If completed, show clear celebratory objective achieved state */}
+            {demoState.completed ? (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 text-center space-y-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-2xl sm:text-3xl">🎉</span>
+                  <h4 className="text-sm sm:text-base font-black text-emerald-300">Training Objective Achieved!</h4>
+                </div>
+                <p className="text-xs text-white/80 leading-snug">
+                  {demoState.feedback?.text || 'Great job! You have mastered the mechanics for this game mode.'}
+                </p>
+                <div className="text-[11px] text-emerald-400/90 font-medium">
+                  Tap below to start the real game with live global scoring, XP & leaderboard ranks!
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Current Instruction Banner */}
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] sm:text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                      Current Objective:
+                    </span>
+                    {demoState.hint && (
                       <button
-                        key={i}
-                        onClick={() => {
-                          onPlaySound();
-                          handleDemoTap(nb);
-                        }}
-                        className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border-2 border-cyan-400/60 hover:border-cyan-300 text-xs text-white font-extrabold transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] animate-pulse"
+                        onClick={() => setDemoState(prev => prev ? { ...prev, showHint: !prev.showHint } : null)}
+                        className="text-[9px] sm:text-[10px] text-amber-300 hover:text-amber-200 underline cursor-pointer"
                       >
-                        +{renderTextWithFlags(nb)}
+                        {demoState.showHint ? 'Hide Hint' : '💡 Need a Hint?'}
                       </button>
-                    ))}
+                    )}
                   </div>
+                  <p className="text-xs font-bold text-white leading-snug">
+                    {demoState.instruction}
+                  </p>
+                  {(demoState.mode === 'globe-hunt' || demoState.mode === 'border-escape' || demoState.mode === 'explorer') && !demoState.completed && (
+                    <button
+                      type="button"
+                      onClick={() => setIsHudMinimized(true)}
+                      className="w-full mt-1.5 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <span>🌍</span>
+                      <span>Peek 3D Globe to Rotate & Tap Target</span>
+                    </button>
+                  )}
+                  {demoState.showHint && demoState.hint && (
+                    <div className="mt-1.5 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-[11px] text-amber-200">
+                      💡 {demoState.hint}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Interactive Globe Hunt Area */}
-          {demoState.mode === 'globe-hunt' && (
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center mb-3">
-              <span className="text-3xl block mb-1">🎯</span>
-              <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block">
-                Target Objective:
-              </span>
-              <span className="text-xl font-black text-white mt-1 block">
-                🇨🇦 CANADA
-              </span>
-              <p className="text-[11px] text-white/50 mt-1">
-                Drag to rotate the 3D Earth, locate Canada in North America, and click on it!
-              </p>
-            </div>
-          )}
-
-          {/* Multiple Choice / Telemetry Area */}
-          {demoState.options && (
-            <div className="space-y-2 mb-3">
-              {demoState.question && (
-                <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs font-medium text-white/90 whitespace-pre-line leading-relaxed">
-                  {demoState.question}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                {demoState.options.map((opt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleDemoChoice(idx)}
-                    disabled={demoState.completed}
-                    className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      demoState.completed && idx === demoState.correctIndex
-                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                        : demoState.selectedIndex === idx && idx !== demoState.correctIndex
-                        ? 'bg-rose-500/20 border-rose-400 text-rose-300'
-                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/25'
+                {/* Live Feedback Toast */}
+                {demoState.feedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                      demoState.feedback.isError
+                        ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                        : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
                     }`}
                   >
-                    <span>{opt}</span>
-                    {demoState.completed && idx === demoState.correctIndex && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                    <span>{demoState.feedback.isError ? '⚠️' : '✅'}</span>
+                    <span>{demoState.feedback.text}</span>
+                  </motion.div>
+                )}
 
-          {/* Bottom Actions */}
-          <div className="flex gap-2 pt-2 border-t border-white/10">
+                {/* Interactive Route / Border Escape Area */}
+                {demoState.mode === 'border-escape' && (
+                  <div className="space-y-2.5">
+                    {/* Route Breadcrumbs */}
+                    <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10">
+                      <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">
+                        Border Journey Path ({demoState.path?.length || 1} of 3 Stops):
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-white">
+                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
+                          🇨🇦 Canada (Start)
+                        </span>
+                        <span className="text-white/30 text-xs">➔</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg border transition-all ${
+                            (demoState.path?.length || 0) >= 2
+                              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                              : 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 animate-pulse'
+                          }`}
+                        >
+                          🇺🇸 United States
+                        </span>
+                        <span className="text-white/30 text-xs">➔</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg border transition-all ${
+                            (demoState.path?.length || 0) >= 3
+                              ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300 font-black'
+                              : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          🇲🇽 Mexico (Destination)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tappable neighbor pills */}
+                    {!demoState.completed && demoState.neighbors && demoState.neighbors.length > 0 && (
+                      <div>
+                        <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1">
+                          👉 Tap directly on 3D globe, or select neighbor:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {demoState.neighbors.map((nb, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                onPlaySound();
+                                handleDemoTap(nb);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/60 text-xs text-white font-bold transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] animate-pulse"
+                            >
+                              +{renderTextWithFlags(nb)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Interactive Globe Hunt Area */}
+                {demoState.mode === 'globe-hunt' && (
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-center">
+                    <span className="text-2xl block mb-0.5">🎯</span>
+                    <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block">
+                      Target Objective:
+                    </span>
+                    <span className="text-lg font-black text-white mt-0.5 block">
+                      🇨🇦 CANADA
+                    </span>
+                    <p className="text-[11px] text-white/50 mt-1">
+                      Drag to rotate the 3D Earth, locate Canada in North America, and click on it!
+                    </p>
+                  </div>
+                )}
+
+                {/* Multiple Choice / Telemetry Area */}
+                {demoState.options && (
+                  <div className="space-y-2">
+                    {demoState.question && (
+                      <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs font-medium text-white/90 whitespace-pre-line leading-relaxed">
+                        {demoState.question}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                      {demoState.options.map((opt, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleDemoChoice(idx)}
+                          disabled={demoState.completed}
+                          className={`p-2.5 sm:p-3 rounded-xl border text-left font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
+                            demoState.completed && idx === demoState.correctIndex
+                              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                              : demoState.selectedIndex === idx && idx !== demoState.correctIndex
+                              ? 'bg-rose-500/20 border-rose-400 text-rose-300'
+                              : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/25'
+                          }`}
+                        >
+                          <span className="truncate">{opt}</span>
+                          {demoState.completed && idx === demoState.correctIndex && <span className="ml-1 shrink-0">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Sticky Bottom Actions Bar (shrink-0) - ALWAYS VISIBLE */}
+          <div className="shrink-0 p-3 sm:p-3.5 border-t border-white/10 bg-slate-950/80 backdrop-blur-md flex gap-2">
             {demoState.completed ? (
               <>
                 <button
                   onClick={startRealGameFromDemo}
-                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all animate-pulse"
                 >
                   🚀 Start Real Game ➔
                 </button>
                 <button
                   onClick={() => startDemo(demoState.mode)}
-                  className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                  className="px-3.5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold text-xs cursor-pointer transition-colors"
                 >
                   🔄 Replay
                 </button>
@@ -2947,13 +2965,14 @@ export default function PlayEarthOverlay({
               <>
                 <button
                   onClick={startRealGameFromDemo}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-cyan-300 hover:text-cyan-200 font-bold text-xs uppercase tracking-wider cursor-pointer transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 hover:text-white font-bold text-xs uppercase tracking-wider cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
-                  ⚡ Skip Demo & Play Real Game ➔
+                  <span>⚡</span>
+                  <span>Play Real Game ➔</span>
                 </button>
                 <button
                   onClick={handleBackToModes}
-                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                  className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white font-bold text-xs cursor-pointer transition-colors"
                 >
                   Modes Menu
                 </button>
@@ -4531,72 +4550,77 @@ export default function PlayEarthOverlay({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col max-h-[58vh] sm:max-h-[68vh] lg:max-h-[84vh]"
           >
-            <div className={`glass rounded-3xl border p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] ${
+            <div className={`glass rounded-3xl border shadow-[0_0_60px_rgba(0,0,0,0.5)] flex flex-col max-h-full overflow-hidden backdrop-blur-xl ${
               selectedAnswer !== null
                 ? isCorrect
                   ? 'border-emerald-500/40'
                   : 'border-red-500/40 animate-[card-shake_0.5s]'
                 : 'border-white/10'
             }`}>
-              {/* Mobile Quick Peek Handle */}
-              <button
-                type="button"
-                onClick={() => setIsHudMinimized(true)}
-                className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
-                title="Tap to peek globe"
-              >
-                <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
-              </button>
+              {/* Header section (shrink-0) */}
+              <div className="shrink-0 p-3 sm:p-5 pb-2 sm:pb-3 border-b border-white/5">
+                {/* Mobile Quick Peek Handle */}
+                <button
+                  type="button"
+                  onClick={() => setIsHudMinimized(true)}
+                  className="sm:hidden w-full flex items-center justify-center py-0.5 -mt-1 mb-1 text-white/40 hover:text-white cursor-pointer"
+                  title="Tap to peek globe"
+                >
+                  <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+                </button>
 
-              {/* Question Header */}
-              <div className="flex items-center justify-between mb-3 gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-lg shrink-0">
-                    {activeMode === 'survival' ? '🔥' : activeMode === 'clock' ? '⏱️' : activeMode === 'flag' ? '🚩' : activeMode === 'capital' ? '🏙️' : '🌍'}
-                  </span>
-                  <div className="truncate">
-                    <span className="text-xs font-bold text-white/80 truncate block">
-                      {activeMode === 'survival' ? `Survival: #${survivalCount + 1} (${survivalCountry})` :
-                       activeMode === 'clock' ? `Clock: ${clockScore} Pts` :
-                       activeMode === 'flag' ? `Flag Streak: ${gameState.streak}` :
-                       activeMode === 'capital' ? `Capital Streak: ${gameState.streak}` :
-                       activeMode === 'daily' ? `Daily ${dailyIndex + 1}/5` :
-                       selectedCountry}
+                {/* Question Header */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-lg shrink-0">
+                      {activeMode === 'survival' ? '🔥' : activeMode === 'clock' ? '⏱️' : activeMode === 'flag' ? '🚩' : activeMode === 'capital' ? '🏙️' : '🌍'}
                     </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Timer */}
-                  <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
-                    timerCritical ? 'border-red-500/60 bg-red-500/15 animate-pulse' : 'border-white/10 bg-white/5'
-                  }`}>
-                    <span className={`text-xs font-black font-mono ${timerCritical ? 'text-red-400' : 'text-white'}`}>
-                      {timer}s
-                    </span>
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-white/80 truncate block">
+                        {activeMode === 'survival' ? `Survival: #${survivalCount + 1} (${survivalCountry})` :
+                         activeMode === 'clock' ? `Clock: ${clockScore} Pts` :
+                         activeMode === 'flag' ? `Flag Streak: ${gameState.streak}` :
+                         activeMode === 'capital' ? `Capital Streak: ${gameState.streak}` :
+                         activeMode === 'daily' ? `Daily ${dailyIndex + 1}/5` :
+                         selectedCountry}
+                      </span>
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsHudMinimized(true)}
-                    className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-[10px] text-cyan-300 hover:text-white font-bold flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Minimize card to peek at the globe"
-                  >
-                    <span>👁️</span>
-                    <span className="hidden sm:inline">Peek Globe</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Timer */}
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
+                      timerCritical ? 'border-red-500/60 bg-red-500/15 animate-pulse' : 'border-white/10 bg-white/5'
+                    }`}>
+                      <span className={`text-xs font-black font-mono ${timerCritical ? 'text-red-400' : 'text-white'}`}>
+                        {timer}s
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsHudMinimized(true)}
+                      className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-[10px] text-cyan-300 hover:text-white font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Minimize card to peek at the globe"
+                    >
+                      <span>👁️</span>
+                      <span className="hidden sm:inline">Peek Globe</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Question Text */}
-              <h3 className="text-sm sm:text-base font-bold text-white mb-4 leading-snug whitespace-pre-wrap">
-                {renderTextWithFlags(currentQuestion.question)}
-              </h3>
+              {/* Scrollable Question & Choices (flex-1 overflow-y-auto scrollbar-thin min-h-0) */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-5 pt-2 sm:pt-3 space-y-2 min-h-0">
+                {/* Question Text */}
+                <h3 className="text-xs sm:text-sm font-bold text-white leading-snug whitespace-pre-wrap">
+                  {renderTextWithFlags(currentQuestion.question)}
+                </h3>
 
-              {/* Answer Choices */}
-              <div className="space-y-2.5">
+                {/* Answer Choices */}
+                <div className="space-y-1.5 sm:space-y-2">
                 {currentQuestion.choices.map((choice, i) => {
                   const isSelected = selectedAnswer === i;
                   const isCorrectChoice = i === currentQuestion.correctIndex;
@@ -4645,6 +4669,7 @@ export default function PlayEarthOverlay({
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
             </div>
           </motion.div>
           )
