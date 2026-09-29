@@ -13,6 +13,7 @@ import {
 } from './types';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
 import { getCanonicalCountryName, matchCountry } from '@/data/questions';
+import { getCoordinatesForCountry } from '@/lib/constants';
 
 // ---- Haversine Geodesic Distance ----
 
@@ -199,7 +200,8 @@ function validateGlobeTap(
   challenge: EarthChallenge,
   response: UserResponse
 ): ValidationResult {
-  if (!challenge.targetCountry || !response.tappedCountry) {
+  const tappedCountry = response.tappedCountry || response.selectedCountry;
+  if (!challenge.targetCountry || !tappedCountry) {
     return {
       correct: false,
       feedback: 'No country selected.',
@@ -207,12 +209,19 @@ function validateGlobeTap(
     };
   }
 
-  const correct = matchCountry(response.tappedCountry, challenge.targetCountry);
+  const correct = matchCountry(tappedCountry, challenge.targetCountry);
 
   // If the user tapped a wrong country, compute approximate distance for feedback
   let distanceKm: number | undefined;
-  if (!correct && challenge.targetCoordinates && response.tappedCoordinate) {
-    distanceKm = Math.round(haversineDistance(response.tappedCoordinate, challenge.targetCoordinates));
+  if (!correct && challenge.targetCoordinates) {
+    if (response.tappedCoordinate) {
+      distanceKm = Math.round(haversineDistance(response.tappedCoordinate, challenge.targetCoordinates));
+    } else {
+      const coords = getCoordinatesForCountry(tappedCountry);
+      if (coords) {
+        distanceKm = Math.round(haversineDistance(coords, challenge.targetCoordinates));
+      }
+    }
   }
 
   return {
@@ -232,15 +241,44 @@ function validateGlobePoint(
   challenge: EarthChallenge,
   response: UserResponse
 ): ValidationResult {
-  if (!challenge.targetCoordinates || !response.tappedCoordinate) {
+  const tapped = response.tappedCountry || response.selectedCountry;
+
+  // 1. Direct country name match check (immediate win if user tapped the target nation)
+  if (challenge.targetCountry && tapped && matchCountry(tapped, challenge.targetCountry)) {
+    return {
+      correct: true,
+      accuracy: 1.0,
+      distanceKm: 0,
+      feedback: `🎯 Direct Hit! You correctly located ${challenge.targetCountry}!`,
+      correctAnswer: challenge.targetCity
+        ? `${challenge.targetCity}, ${challenge.targetCountry}`
+        : challenge.targetCountry,
+    };
+  }
+
+  // 2. Resolve coordinates from tappedCoordinate or fallback to geocoded tappedCountry
+  let userCoords = response.tappedCoordinate;
+  if (!userCoords && tapped) {
+    const geo = getCoordinatesForCountry(tapped);
+    if (geo) {
+      userCoords = { lat: geo.lat, lng: geo.lng };
+    }
+  }
+
+  if (!challenge.targetCoordinates || !userCoords) {
     return {
       correct: false,
-      feedback: 'No location selected.',
+      feedback: tapped
+        ? `Location coordinates could not be resolved for ${tapped}.`
+        : 'No location selected.',
+      correctAnswer: challenge.targetCity
+        ? `${challenge.targetCity}, ${challenge.targetCountry}`
+        : challenge.targetCountry,
     };
   }
 
   const distanceKm = Math.round(
-    haversineDistance(response.tappedCoordinate, challenge.targetCoordinates)
+    haversineDistance(userCoords, challenge.targetCoordinates)
   );
   const tolerance = challenge.toleranceRadius ?? 500; // Default 500 km tolerance
   const correct = distanceKm <= tolerance;

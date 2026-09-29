@@ -17,8 +17,10 @@ import {
   generateFlagQuestion, 
   generateCapitalQuestion, 
   getDailyEarthQuestion, 
-  DEDUPLICATED_STATIC_QUESTIONS
+  DEDUPLICATED_STATIC_QUESTIONS,
+  matchCountry
 } from '@/data/questions';
+import { getCoordinatesForCountry } from '@/lib/constants';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
 import { trackEvent } from '@/services/analytics';
@@ -1003,8 +1005,28 @@ export default function PlayEarthOverlay({
     if (!engineChallenge || phase !== 'engine-challenge') return;
 
     const responseTimeMs = Math.max(400, Date.now() - engineStartTime);
+
+    // Resolve country and coordinates with robust fallbacks from any recent globe interaction
+    const resolvedCountry =
+      userResponse.tappedCountry ||
+      userResponse.selectedCountry ||
+      engineSelectedCountry ||
+      lastGlobeTap?.country ||
+      selectedCountry ||
+      undefined;
+
+    let resolvedCoordinate = userResponse.tappedCoordinate;
+    if (!resolvedCoordinate && resolvedCountry) {
+      const geo = getCoordinatesForCountry(resolvedCountry);
+      if (geo) {
+        resolvedCoordinate = { lat: geo.lat, lng: geo.lng };
+      }
+    }
+
     const fullResponse: UserResponse = {
       ...userResponse,
+      ...(resolvedCountry ? { tappedCountry: resolvedCountry, selectedCountry: resolvedCountry } : {}),
+      ...(resolvedCoordinate ? { tappedCoordinate: resolvedCoordinate } : {}),
       responseTimeMs,
     };
 
@@ -1075,7 +1097,7 @@ export default function PlayEarthOverlay({
     });
 
     setPhase('engine-result');
-  }, [engineChallenge, phase, engineStartTime, engineSessionId, engineStreak, engineScore, onLevelUp, onCorrectSound, onWrongSound]);
+  }, [engineChallenge, phase, engineStartTime, engineSessionId, engineStreak, engineScore, engineSelectedCountry, lastGlobeTap, selectedCountry, onLevelUp, onCorrectSound, onWrongSound]);
 
   // Engine Challenge Countdown Timer
   useEffect(() => {
@@ -1085,7 +1107,14 @@ export default function PlayEarthOverlay({
       setEngineTimer(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          handleEngineAnswer({ responseTimeMs: (engineChallenge.timeLimit || 20) * 1000 });
+          const targetCountry = engineSelectedCountry || lastGlobeTap?.country || selectedCountry || undefined;
+          const coords = targetCountry ? getCoordinatesForCountry(targetCountry) : null;
+          handleEngineAnswer({
+            tappedCountry: targetCountry,
+            selectedCountry: targetCountry,
+            tappedCoordinate: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+            responseTimeMs: (engineChallenge.timeLimit || 20) * 1000,
+          });
           return 0;
         }
         if (prev <= 6) {
@@ -1097,7 +1126,7 @@ export default function PlayEarthOverlay({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [phase, engineChallenge, handleEngineAnswer]);
+  }, [phase, engineChallenge, engineSelectedCountry, lastGlobeTap, selectedCountry, handleEngineAnswer]);
 
   // Globe click listener for engine challenge & demo
   useEffect(() => {
@@ -1111,9 +1140,15 @@ export default function PlayEarthOverlay({
 
     if (phase !== 'engine-challenge' || !engineChallenge) return;
 
-    if (engineChallenge.responseType === 'globe_tap') {
+    if (engineChallenge.responseType === 'globe_tap' || engineChallenge.responseType === 'globe_point') {
       setEngineSelectedCountry(tapped);
       onPlaySound();
+    } else if (engineChallenge.responseType === 'multiple_choice' && engineChallenge.choices) {
+      const matchingIdx = engineChallenge.choices.findIndex((opt: string) => matchCountry(tapped, opt));
+      if (matchingIdx >= 0) {
+        setEngineSelectedChoice(matchingIdx);
+        onPlaySound();
+      }
     } else if (engineChallenge.responseType === 'path_select') {
       setEnginePath(prev => {
         if (prev.length > 0 && prev[prev.length - 1] === tapped) return prev;
@@ -2065,7 +2100,12 @@ export default function PlayEarthOverlay({
                     <button
                       onClick={() => {
                         onPlaySound();
-                        handleEngineAnswer({ tappedCountry: engineSelectedCountry });
+                        const coords = engineSelectedCountry ? getCoordinatesForCountry(engineSelectedCountry) : null;
+                        handleEngineAnswer({
+                          tappedCountry: engineSelectedCountry,
+                          selectedCountry: engineSelectedCountry,
+                          tappedCoordinate: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+                        });
                       }}
                       className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs cursor-pointer shadow-md shrink-0"
                     >
@@ -2092,7 +2132,12 @@ export default function PlayEarthOverlay({
                         onClick={() => {
                           onPlaySound();
                           setEngineSelectedCountry(c);
-                          handleEngineAnswer({ tappedCountry: c });
+                          const coords = getCoordinatesForCountry(c);
+                          handleEngineAnswer({
+                            tappedCountry: c,
+                            selectedCountry: c,
+                            tappedCoordinate: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+                          });
                         }}
                         className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left text-[11px] font-medium text-white truncate flex items-center gap-1.5 cursor-pointer"
                       >
@@ -2239,25 +2284,73 @@ export default function PlayEarthOverlay({
           {/* 5. Globe Point */}
           {engineChallenge.responseType === 'globe_point' && (
             <div className="space-y-3">
-              <p className="text-xs text-white/60 text-center">
-                Point and tap the closest geographic coordinates on the globe.
-              </p>
-              {engineSelectedCountry && (
-                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-center">
-                  <span className="text-xs font-bold text-emerald-300">
-                    Selected: {renderTextWithFlags(engineSelectedCountry)}
+              <div className="p-3.5 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 text-center relative overflow-hidden">
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-cyan-300 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                  <span>Interactive 3D Globe Radar</span>
+                </div>
+                <p className="text-[11px] text-white/70">
+                  Rotate the globe and tap the target location or nation to aim.
+                </p>
+
+                {engineSelectedCountry ? (
+                  <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-emerald-300 flex items-center gap-1.5 truncate">
+                      <span>🎯 Targeted:</span>
+                      <span>{renderTextWithFlags(engineSelectedCountry)}</span>
+                    </span>
+                    <button
+                      onClick={() => {
+                        onPlaySound();
+                        const targetCountry = engineSelectedCountry || lastGlobeTap?.country || selectedCountry;
+                        const coords = targetCountry ? getCoordinatesForCountry(targetCountry) : null;
+                        handleEngineAnswer({
+                          tappedCountry: targetCountry || undefined,
+                          selectedCountry: targetCountry || undefined,
+                          tappedCoordinate: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+                        });
+                      }}
+                      className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs cursor-pointer shadow-md shrink-0"
+                    >
+                      Confirm Lock ➔
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-[10px] text-white/40 font-mono animate-pulse">
+                    [Awaiting location tap on globe...]
+                  </div>
+                )}
+              </div>
+
+              {/* Accessible fallback choice pills if options are available */}
+              {engineChallenge.choices && engineChallenge.choices.length > 0 && (
+                <div>
+                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
+                    Or select candidate nation:
                   </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {engineChallenge.choices.map((c, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          onPlaySound();
+                          setEngineSelectedCountry(c);
+                          const coords = getCoordinatesForCountry(c);
+                          handleEngineAnswer({
+                            tappedCountry: c,
+                            selectedCountry: c,
+                            tappedCoordinate: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+                          });
+                        }}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left text-[11px] font-medium text-white truncate flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="text-[10px] opacity-40 font-mono">#{idx + 1}</span>
+                        <span className="truncate">{renderTextWithFlags(c)}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              <button
-                onClick={() => {
-                  onPlaySound();
-                  handleEngineAnswer({ tappedCountry: engineSelectedCountry || 'Unknown' });
-                }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer shadow-md"
-              >
-                Confirm Point Estimate ➔
-              </button>
             </div>
           )}
         </div>

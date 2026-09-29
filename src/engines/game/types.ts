@@ -148,6 +148,7 @@ export interface ValidationResult {
 export interface UserResponse {
   choiceIndex?: number;          // For multiple_choice
   tappedCountry?: string;        // For globe_tap
+  selectedCountry?: string;      // Alias for tappedCountry
   tappedCoordinate?: GeoCoordinate; // For globe_point
   numericValue?: number;         // For numeric_input / slider
   selectedPath?: string[];       // For path_select
