@@ -172,7 +172,8 @@ export type PlayEarthPhase =
   | 'engine-loading'        // Loading next engine challenge
   | 'engine-challenge'      // Active engine challenge (globe_tap, slider, etc.)
   | 'engine-result'         // Engine challenge result with scoring breakdown
-  | 'engine-summary';       // Engine session summary
+  | 'engine-summary'        // Engine session summary
+  | 'demo';                 // Interactive playable onboarding demo ("Learn by Doing")
 
 export interface ModeStats {
   gamesPlayed: number;

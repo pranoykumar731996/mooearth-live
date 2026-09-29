@@ -77,6 +77,244 @@ import { generateQuestions } from '@/data/questions/generator';
 export { areQuestionsDuplicate };
 export type { QuestionBrief };
 
+export interface PlayableDemoState {
+  mode: PlayEarthMode;
+  title: string;
+  badge: string;
+  step: number;
+  totalSteps: number;
+  completed: boolean;
+  instruction: string;
+  hint?: string;
+  showHint?: boolean;
+  feedback?: { text: string; isError?: boolean } | null;
+  // Border escape specific
+  startCountry?: string;
+  targetCountry?: string;
+  path?: string[];
+  neighbors?: string[];
+  // Choice specific
+  question?: string;
+  options?: string[];
+  correctIndex?: number;
+  selectedIndex?: number | null;
+  // Pinpoint specific
+  targetName?: string;
+  targetEmoji?: string;
+}
+
+export function createDemoForMode(mode: PlayEarthMode): PlayableDemoState {
+  switch (mode) {
+    case 'border-escape':
+      return {
+        mode: 'border-escape',
+        title: 'Border Escape — Route Demo',
+        badge: 'Route Navigation Training',
+        step: 1,
+        totalSteps: 2,
+        completed: false,
+        startCountry: 'Canada',
+        targetCountry: 'Mexico',
+        path: ['Canada'],
+        neighbors: ['United States'],
+        instruction: 'Escape from Canada 🇨🇦 to Mexico 🇲🇽 across shared land borders! Step 1 of 2: Tap bordering neighbor United States 🇺🇸 on the 3D globe or pill below.',
+        hint: 'Canada shares an international land border directly with the United States.',
+        feedback: null,
+      };
+
+    case 'globe-hunt':
+      return {
+        mode: 'globe-hunt',
+        title: 'Globe Hunt — 3D Pinpoint Demo',
+        badge: '3D Coordinate Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        targetName: 'Canada',
+        targetEmoji: '🇨🇦',
+        instruction: 'Rotate the 3D Earth and tap Canada 🇨🇦 to lock in your coordinates!',
+        hint: 'Rotate to North America. Canada is the vast country directly north of the US.',
+        feedback: null,
+      };
+
+    case 'weather-challenge':
+      return {
+        mode: 'weather-challenge',
+        title: 'Weather Watch — Live Telemetry Demo',
+        badge: 'Satellite Radar Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: '🛰️ Live Telemetry: Sub-zero blizzard (-8°C) & heavy snowfall detected. Which nation matches this satellite reading?',
+        options: ['Russia 🇷🇺', 'Egypt 🇪🇬', 'Brazil 🇧🇷', 'Thailand 🇹🇭'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Analyze the live weather radar reading and tap the matching country below!',
+        hint: 'Sub-zero temperatures and blizzards occur in northern high-latitude regions.',
+        feedback: null,
+      };
+
+    case 'earthquake-hunt':
+      return {
+        mode: 'earthquake-hunt',
+        title: 'Earthquake Tracker — Seismic Demo',
+        badge: 'Seismic Telemetry Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        targetName: 'Japan',
+        targetEmoji: '🇯🇵',
+        question: '🌋 Real-Time Alert: Magnitude 6.1 seismic rupture detected at 15km depth near Honshu. Locate the epicenter nation!',
+        options: ['Japan 🇯🇵', 'Germany 🇩🇪', 'Nigeria 🇳🇬', 'Argentina 🇦🇷'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Tap Japan 🇯🇵 on the 3D globe or select it from the options below!',
+        hint: 'Honshu is the largest main island of Japan along the Pacific Ring of Fire.',
+        feedback: null,
+      };
+
+    case 'news-detective':
+      return {
+        mode: 'news-detective',
+        title: 'News Detective — Intel Clue Demo',
+        badge: 'Intelligence Recon Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: '🕵️ Redacted Intelligence: "Researchers in [REDACTED] unveiled a breakthrough 1,000-qubit processor in Tokyo today."',
+        options: ['Japan 🇯🇵', 'France 🇫🇷', 'Canada 🇨🇦', 'India 🇮🇳'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Identify the sovereign nation from the redacted geopolitical intelligence headline!',
+        hint: 'Tokyo is the capital city of Japan.',
+        feedback: null,
+      };
+
+    case 'flag':
+      return {
+        mode: 'flag',
+        title: 'Flag Challenge — Identification Demo',
+        badge: 'Vexillology Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'Which sovereign nation does this flag belong to?\n\n🇯🇵',
+        options: ['Japan 🇯🇵', 'South Korea 🇰🇷', 'China 🇨🇳', 'Vietnam 🇻🇳'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Tap the matching country! Rapid correct guesses increase your streak multiplier.',
+        hint: 'The red disc represents the sun on a pure white field.',
+        feedback: null,
+      };
+
+    case 'capital':
+      return {
+        mode: 'capital',
+        title: 'Capital Challenge — Geography Demo',
+        badge: 'World Capitals Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'What is the sovereign capital of France 🇫🇷?',
+        options: ['Paris', 'Lyon', 'Marseille', 'Nice'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Match cities to their sovereign nations. Choose the capital of France below!',
+        hint: 'Home to the Eiffel Tower and the Louvre on the River Seine.',
+        feedback: null,
+      };
+
+    case 'survival':
+      return {
+        mode: 'survival',
+        title: 'Survival Mode — One-Life Demo',
+        badge: 'Streak Survival Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'Training Check: What continent is Brazil 🇧🇷 located on?',
+        options: ['South America', 'Africa', 'Europe', 'Asia'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Answer carefully! In Survival Mode, ONE single wrong answer ends your entire streak!',
+        hint: 'Brazil is the largest nation in South America.',
+        feedback: null,
+      };
+
+    case 'clock':
+      return {
+        mode: 'clock',
+        title: 'Beat The Clock — Rapid Drill Demo',
+        badge: 'Speed Countdown Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'Speed Check: What is the largest ocean on planet Earth?',
+        options: ['Pacific Ocean', 'Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Beat the Clock tests speed: answer as many questions as possible before the timer runs out!',
+        hint: 'It covers more than 30% of the Earth\'s surface area.',
+        feedback: null,
+      };
+
+    case 'explorer':
+      return {
+        mode: 'explorer',
+        title: 'Country Explorer — 3D Discovery Demo',
+        badge: 'Interactive Globe Discovery',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        targetName: 'Canada',
+        targetEmoji: '🇨🇦',
+        question: 'Country Explorer lets you explore any nation! Tap Canada 🇨🇦 on the 3D globe to discover its facts.',
+        options: ['Canada 🇨🇦', 'Brazil 🇧🇷', 'Australia 🇦🇺', 'Japan 🇯🇵'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Tap Canada 🇨🇦 on the 3D globe or select below to unlock country intelligence!',
+        hint: 'Locate northern North America on the 3D globe.',
+        feedback: null,
+      };
+
+    case 'daily':
+      return {
+        mode: 'daily',
+        title: 'Daily Earth — Global Challenge Demo',
+        badge: 'Daily Challenge Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'Daily Earth features unified global trivia with bonus XP! What is the longest river in South America?',
+        options: ['Amazon River', 'Nile River', 'Mississippi River', 'Danube River'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Answer today\'s training question to learn the Daily Global Challenge format!',
+        hint: 'It flows through Brazil and the Amazon Rainforest.',
+        feedback: null,
+      };
+
+    default: // 'infinite'
+      return {
+        mode: 'infinite',
+        title: 'Infinite Earth — Multi-Sensor Demo',
+        badge: 'Infinite Rotation Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'Infinite Earth rotates automatically between geography, weather, seismic events, news, and time. Try pinpointing Canada 🇨🇦 on the globe!',
+        targetName: 'Canada',
+        targetEmoji: '🇨🇦',
+        options: ['Canada 🇨🇦', 'Australia 🇦🇺', 'India 🇮🇳', 'Egypt 🇪🇬'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Tap Canada 🇨🇦 on the 3D globe or choice card to complete training!',
+        hint: 'Located in northern North America.',
+        feedback: null,
+      };
+  }
+}
+
 /** Load game state from localStorage */
 function loadGameState(username: string): PlayerGameState {
   const base = createDefaultState(username);
@@ -252,6 +490,216 @@ export default function PlayEarthOverlay({
   const [engineStartTime, setEngineStartTime] = useState<number>(() => Date.now());
   const [engineSelectedChoice, setEngineSelectedChoice] = useState<number | null>(null);
   const [engineNeighbors, setEngineNeighbors] = useState<string[]>([]);
+
+  // Interactive Playable Demo ("Learn by Doing") state
+  const [demoState, setDemoState] = useState<PlayableDemoState | null>(null);
+
+  const startDemo = useCallback((mode: PlayEarthMode) => {
+    onPlaySound();
+    setActiveMode(mode);
+    setDemoState(createDemoForMode(mode));
+    setPhase('demo');
+  }, [onPlaySound]);
+
+  const handleDemoChoice = useCallback((index: number) => {
+    if (!demoState || demoState.completed) return;
+
+    if (index === demoState.correctIndex) {
+      onCorrectSound();
+      try { localStorage.setItem(`mooearth_demo_completed_${demoState.mode}`, 'true'); } catch {}
+      setDemoState(prev => prev ? {
+        ...prev,
+        selectedIndex: index,
+        completed: true,
+        feedback: { text: '✓ Correct! Training objective achieved.' },
+        instruction: '🎉 Great job! You have mastered the mechanics for this game mode.',
+      } : null);
+    } else {
+      onWrongSound();
+      setDemoState(prev => prev ? {
+        ...prev,
+        selectedIndex: index,
+        feedback: { text: 'Not quite! Review the clue or telemetry and try again.', isError: true },
+      } : null);
+    }
+  }, [demoState, onCorrectSound, onWrongSound]);
+
+  const handleDemoTap = useCallback((countryName: string) => {
+    if (!demoState || demoState.completed) return;
+
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+    const isMatch = (a: string, b: string) => {
+      const na = norm(a);
+      const nb = norm(b);
+      if (na === nb) return true;
+      const isUSA = (n: string) => n === 'usa' || n === 'us' || n === 'unitedstates' || n === 'unitedstatesofamerica';
+      if (isUSA(na) && isUSA(nb)) return true;
+      return false;
+    };
+
+    if (demoState.mode === 'border-escape') {
+      if (demoState.step === 1) {
+        if (isMatch(countryName, 'United States')) {
+          onCorrectSound();
+          setDemoState(prev => prev ? {
+            ...prev,
+            step: 2,
+            path: ['Canada', 'United States'],
+            neighbors: ['Canada', 'Mexico'],
+            instruction: 'Border crossed into United States 🇺🇸! Step 2 of 2: Now tap destination Mexico 🇲🇽 on the globe or list to complete your route.',
+            feedback: { text: '✓ Border crossed! Canada ➔ United States 🇺🇸' },
+          } : null);
+        } else if (isMatch(countryName, 'Canada')) {
+          onPlaySound();
+          setDemoState(prev => prev ? {
+            ...prev,
+            feedback: { text: "You're already in Canada! Tap bordering United States 🇺🇸 to begin your route.", isError: true },
+          } : null);
+        } else {
+          onWrongSound();
+          setDemoState(prev => prev ? {
+            ...prev,
+            feedback: { text: `⚠️ ${countryName} does not share a land border with Canada! In Border Escape, you can only travel across shared land borders. Try United States 🇺🇸.`, isError: true },
+          } : null);
+        }
+      } else if (demoState.step === 2) {
+        if (isMatch(countryName, 'Mexico')) {
+          onCorrectSound();
+          try { localStorage.setItem('mooearth_demo_completed_border-escape', 'true'); } catch {}
+          setDemoState(prev => prev ? {
+            ...prev,
+            completed: true,
+            path: ['Canada', 'United States', 'Mexico'],
+            neighbors: [],
+            instruction: '🎉 Mission Accomplished! You traveled Canada ➔ United States ➔ Mexico across 2 international land borders.',
+            feedback: { text: '✓ Route Verified! Canada ➔ US ➔ Mexico' },
+          } : null);
+        } else if (isMatch(countryName, 'Canada')) {
+          onPlaySound();
+          setDemoState(prev => prev ? {
+            ...prev,
+            feedback: { text: "That's backtracking to Canada! Tap destination Mexico 🇲🇽 to complete your route.", isError: true },
+          } : null);
+        } else {
+          onWrongSound();
+          setDemoState(prev => prev ? {
+            ...prev,
+            feedback: { text: `⚠️ ${countryName} does not border the United States along this route. Tap Mexico 🇲🇽!`, isError: true },
+          } : null);
+        }
+      }
+      return;
+    }
+
+    if (demoState.mode === 'globe-hunt' || (demoState.targetName && isMatch(countryName, demoState.targetName))) {
+      if (demoState.targetName && isMatch(countryName, demoState.targetName)) {
+        onCorrectSound();
+        try { localStorage.setItem(`mooearth_demo_completed_${demoState.mode}`, 'true'); } catch {}
+        setDemoState(prev => prev ? {
+          ...prev,
+          completed: true,
+          feedback: { text: `🎯 Direct Hit! You pinpointed ${demoState.targetName} on the 3D globe.` },
+          instruction: `🎯 Bullseye! That's how Globe Hunt works: locate and tap countries on the 3D Earth before the timer runs out!`,
+        } : null);
+      } else {
+        onWrongSound();
+        setDemoState(prev => prev ? {
+          ...prev,
+          feedback: { text: `You tapped ${countryName}. ${demoState.targetName || 'Target'} is located elsewhere on the globe! Try again.`, isError: true },
+        } : null);
+      }
+      return;
+    }
+
+    if (demoState.mode === 'earthquake-hunt') {
+      if (isMatch(countryName, 'Japan')) {
+        onCorrectSound();
+        try { localStorage.setItem('mooearth_demo_completed_earthquake-hunt', 'true'); } catch {}
+        setDemoState(prev => prev ? {
+          ...prev,
+          completed: true,
+          selectedIndex: 0,
+          feedback: { text: '🌋 Epicenter Located! Real-time seismic rupture triangulated in Japan 🇯🇵.' },
+          instruction: '🌋 Quake Triangulated! Real-time USGS telemetry connects directly to real-world seismic zones.',
+        } : null);
+      } else {
+        onWrongSound();
+        setDemoState(prev => prev ? {
+          ...prev,
+          feedback: { text: `You tapped ${countryName}. The Honshu earthquake epicenter was in Japan 🇯🇵!`, isError: true },
+        } : null);
+      }
+      return;
+    }
+
+    // Also support choice matching if tapped country matches the correct answer
+    if (demoState.options && demoState.correctIndex !== undefined) {
+      const correctOption = demoState.options[demoState.correctIndex];
+      if (isMatch(countryName, correctOption) || correctOption.toLowerCase().includes(norm(countryName))) {
+        handleDemoChoice(demoState.correctIndex);
+        return;
+      }
+    }
+  }, [demoState, onCorrectSound, onWrongSound, onPlaySound, handleDemoChoice]);
+
+  const startRealGameFromDemo = useCallback(() => {
+    if (!demoState) return;
+    const mode = demoState.mode;
+    onPlaySound();
+    setDemoState(null);
+    
+    if (mode === 'survival') {
+      setActiveMode('survival');
+      setPhase('survival-start');
+    } else if (mode === 'clock') {
+      setActiveMode('clock');
+      setPhase('beat-the-clock-start');
+    } else if (mode === 'flag') {
+      setActiveMode('flag');
+      setPhase('flag-challenge-start');
+    } else if (mode === 'capital') {
+      setActiveMode('capital');
+      setPhase('capital-challenge-start');
+    } else if (mode === 'daily') {
+      setActiveMode('daily');
+      setPhase('daily-earth-start');
+    } else {
+      setActiveMode(mode);
+      setPhase('engine-loading');
+    }
+  }, [demoState, onPlaySound]);
+
+  const handleModeClick = useCallback((mode: PlayEarthMode) => {
+    onPlaySound();
+    let hasCompletedDemo = false;
+    try {
+      hasCompletedDemo = localStorage.getItem(`mooearth_demo_completed_${mode}`) === 'true';
+    } catch {}
+
+    if (!hasCompletedDemo) {
+      startDemo(mode);
+    } else {
+      if (mode === 'survival') {
+        setActiveMode('survival');
+        setPhase('survival-start');
+      } else if (mode === 'clock') {
+        setActiveMode('clock');
+        setPhase('beat-the-clock-start');
+      } else if (mode === 'flag') {
+        setActiveMode('flag');
+        setPhase('flag-challenge-start');
+      } else if (mode === 'capital') {
+        setActiveMode('capital');
+        setPhase('capital-challenge-start');
+      } else if (mode === 'daily') {
+        setActiveMode('daily');
+        setPhase('daily-earth-start');
+      } else {
+        setActiveMode(mode);
+        setPhase('engine-loading');
+      }
+    }
+  }, [onPlaySound, startDemo]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -651,10 +1099,17 @@ export default function PlayEarthOverlay({
     return () => clearInterval(interval);
   }, [phase, engineChallenge, handleEngineAnswer]);
 
-  // Globe click listener for engine challenge
+  // Globe click listener for engine challenge & demo
   useEffect(() => {
     const tapped = lastGlobeTap?.country || selectedCountry;
-    if (!tapped || phase !== 'engine-challenge' || !engineChallenge) return;
+    if (!tapped) return;
+
+    if (phase === 'demo') {
+      handleDemoTap(tapped);
+      return;
+    }
+
+    if (phase !== 'engine-challenge' || !engineChallenge) return;
 
     if (engineChallenge.responseType === 'globe_tap') {
       setEngineSelectedCountry(tapped);
@@ -668,7 +1123,7 @@ export default function PlayEarthOverlay({
       });
       onPlaySound();
     }
-  }, [lastGlobeTap, selectedCountry, phase, engineChallenge, onPlaySound]);
+  }, [lastGlobeTap, selectedCountry, phase, engineChallenge, onPlaySound, handleDemoTap]);
 
   // Standard Quiz Phase Timer Countdown
   useEffect(() => {
@@ -1420,6 +1875,7 @@ export default function PlayEarthOverlay({
   const handleBackToModes = useCallback(() => {
     onPlaySound();
     setActiveMode(null);
+    setDemoState(null);
     setPhase('intro');
   }, [onPlaySound]);
 
@@ -1968,6 +2424,239 @@ export default function PlayEarthOverlay({
     </motion.div>
   );
 
+  const renderPlayableDemo = (isCompact: boolean) => {
+    if (!demoState) return null;
+
+    return (
+      <motion.div
+        key="playable-demo-hud"
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        className={
+          isCompact
+            ? "space-y-4 font-sans text-left"
+            : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-4 pointer-events-auto font-sans"
+        }
+      >
+        <div
+          className="glass rounded-3xl border border-cyan-400/30 p-6 shadow-[0_0_60px_rgba(6,182,212,0.25)] relative overflow-hidden backdrop-blur-xl"
+          style={{ background: 'linear-gradient(135deg, rgba(8,20,30,0.96) 0%, rgba(4,12,22,0.96) 100%)' }}
+        >
+          {/* Header with Title and Mode */}
+          <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[9px] font-black text-cyan-300 uppercase tracking-widest animate-pulse">
+                  🎮 Interactive Practice Demo
+                </span>
+                <span className="text-[10px] text-white/40 font-mono">
+                  {demoState.totalSteps > 1 ? `Step ${demoState.step}/${demoState.totalSteps}` : 'Live Drill'}
+                </span>
+              </div>
+              <h3 className="text-base font-black text-white mt-1 flex items-center gap-2">
+                {demoState.title}
+              </h3>
+              <p className="text-[11px] text-white/50">
+                Safe sandbox mode • Learn by doing with zero time pressure or score penalty.
+              </p>
+            </div>
+            <button
+              onClick={handleBackToModes}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white text-xs transition-colors shrink-0 cursor-pointer"
+              title="Return to Menu"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Current Instruction Banner */}
+          <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 mb-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                Current Objective:
+              </span>
+              {demoState.hint && (
+                <button
+                  onClick={() => setDemoState(prev => prev ? { ...prev, showHint: !prev.showHint } : null)}
+                  className="text-[10px] text-amber-300 hover:text-amber-200 underline cursor-pointer"
+                >
+                  {demoState.showHint ? 'Hide Hint' : '💡 Need a Hint?'}
+                </button>
+              )}
+            </div>
+            <p className="text-xs font-bold text-white leading-relaxed">
+              {demoState.instruction}
+            </p>
+            {demoState.showHint && demoState.hint && (
+              <div className="mt-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
+                💡 {demoState.hint}
+              </div>
+            )}
+          </div>
+
+          {/* Live Feedback Toast */}
+          {demoState.feedback && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mb-3 p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                demoState.feedback.isError
+                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+              }`}
+            >
+              <span>{demoState.feedback.isError ? '⚠️' : '✅'}</span>
+              <span>{demoState.feedback.text}</span>
+            </motion.div>
+          )}
+
+          {/* Interactive Route / Border Escape Area */}
+          {demoState.mode === 'border-escape' && (
+            <div className="space-y-3 mb-3">
+              {/* Route Breadcrumbs */}
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
+                  Border Journey Path ({demoState.path?.length || 1} of 3 Stops):
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-white">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
+                    🇨🇦 Canada (Start)
+                  </span>
+                  <span className="text-white/30 text-xs">➔</span>
+                  <span
+                    className={`px-2.5 py-1 rounded-xl border transition-all ${
+                      (demoState.path?.length || 0) >= 2
+                        ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                        : 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 animate-pulse'
+                    }`}
+                  >
+                    🇺🇸 United States
+                  </span>
+                  <span className="text-white/30 text-xs">➔</span>
+                  <span
+                    className={`px-2.5 py-1 rounded-xl border transition-all ${
+                      (demoState.path?.length || 0) >= 3
+                        ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300 font-black'
+                        : 'bg-white/5 border-white/10 text-white/40'
+                    }`}
+                  >
+                    🇲🇽 Mexico (Destination)
+                  </span>
+                </div>
+              </div>
+
+              {/* Tappable neighbor pills */}
+              {!demoState.completed && demoState.neighbors && demoState.neighbors.length > 0 && (
+                <div>
+                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-mono block mb-1.5">
+                    👉 Tap directly on the 3D globe, or click the verified border neighbor:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {demoState.neighbors.map((nb, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          onPlaySound();
+                          handleDemoTap(nb);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border-2 border-cyan-400/60 hover:border-cyan-300 text-xs text-white font-extrabold transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] animate-pulse"
+                      >
+                        +{renderTextWithFlags(nb)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Interactive Globe Hunt Area */}
+          {demoState.mode === 'globe-hunt' && (
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-center mb-3">
+              <span className="text-3xl block mb-1">🎯</span>
+              <span className="text-xs font-mono text-cyan-400 uppercase tracking-widest block">
+                Target Objective:
+              </span>
+              <span className="text-xl font-black text-white mt-1 block">
+                🇨🇦 CANADA
+              </span>
+              <p className="text-[11px] text-white/50 mt-1">
+                Drag to rotate the 3D Earth, locate Canada in North America, and click on it!
+              </p>
+            </div>
+          )}
+
+          {/* Multiple Choice / Telemetry Area */}
+          {demoState.options && (
+            <div className="space-y-2 mb-3">
+              {demoState.question && (
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs font-medium text-white/90 whitespace-pre-line leading-relaxed">
+                  {demoState.question}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                {demoState.options.map((opt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleDemoChoice(idx)}
+                    disabled={demoState.completed}
+                    className={`p-3 rounded-xl border text-left font-bold text-xs flex items-center justify-between transition-all cursor-pointer ${
+                      demoState.completed && idx === demoState.correctIndex
+                        ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                        : demoState.selectedIndex === idx && idx !== demoState.correctIndex
+                        ? 'bg-rose-500/20 border-rose-400 text-rose-300'
+                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/25'
+                    }`}
+                  >
+                    <span>{opt}</span>
+                    {demoState.completed && idx === demoState.correctIndex && <span>✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Actions */}
+          <div className="flex gap-2 pt-2 border-t border-white/10">
+            {demoState.completed ? (
+              <>
+                <button
+                  onClick={startRealGameFromDemo}
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider cursor-pointer hover:brightness-110 shadow-[0_0_30px_rgba(16,185,129,0.4)] transition-all"
+                >
+                  🚀 Start Real Game ➔
+                </button>
+                <button
+                  onClick={() => startDemo(demoState.mode)}
+                  className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                >
+                  🔄 Replay
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={startRealGameFromDemo}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-cyan-300 hover:text-cyan-200 font-bold text-xs uppercase tracking-wider cursor-pointer transition-all"
+                >
+                  ⚡ Skip Demo & Play Real Game ➔
+                </button>
+                <button
+                  onClick={handleBackToModes}
+                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/50 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Modes Menu
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   if (!isActive) return null;
 
   const countryMeta = selectedCountry ? findCountryMeta(selectedCountry) : null;
@@ -2010,156 +2699,274 @@ export default function PlayEarthOverlay({
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button
+                {/* Country Explorer */}
+                <div
                   onClick={() => {
                     onPlaySound();
                     if (selectedCountry) {
                       setActiveMode('explorer');
                       setPhase('category-select');
                     } else {
-                      // Prompt user to click country
                       setActiveMode('explorer');
                       setPhase('intro');
                     }
                   }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🌍</span>
-                  <span className="text-xs font-black text-white">Country Explorer</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Answer questions on clicked countries.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🌍</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Country Explorer</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Answer questions on clicked countries.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('explorer');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('survival');
-                    setPhase('survival-start');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Survival Mode */}
+                <div
+                  onClick={() => handleModeClick('survival')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🔥</span>
-                  <span className="text-xs font-black text-white">Survival Mode</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Survival streak. Answer wrong & game over!</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🔥</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Survival Mode</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Survival streak. Answer wrong & game over!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('survival');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('clock');
-                    setPhase('beat-the-clock-start');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Beat The Clock */}
+                <div
+                  onClick={() => handleModeClick('clock')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">⏱️</span>
-                  <span className="text-xs font-black text-white">Beat The Clock</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Answer as many as possible before time expires.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">⏱️</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Beat The Clock</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Answer as many as possible before time expires.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('clock');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('flag');
-                    setPhase('flag-challenge-start');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Flag Challenge */}
+                <div
+                  onClick={() => handleModeClick('flag')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🚩</span>
-                  <span className="text-xs font-black text-white">Flag Challenge</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Guess the country from the national flags.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🚩</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Flag Challenge</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Guess the country from the national flags.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('flag');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('capital');
-                    setPhase('capital-challenge-start');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Capital Challenge */}
+                <div
+                  onClick={() => handleModeClick('capital')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🏙️</span>
-                  <span className="text-xs font-black text-white">Capital Challenge</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Match cities to their sovereign nations.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🏙️</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Capital Challenge</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Match cities to their sovereign nations.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('capital');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
+
+                {/* Border Escape (Route Game) */}
+                <div
+                  onClick={() => handleModeClick('border-escape')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
+                >
+                  <div>
+                    <span className="text-xl">🗺️</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Border Escape</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Escape across borders Canada ➔ US ➔ Mexico!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('border-escape');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
                 {/* Infinite Earth Game Engine Modes */}
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('infinite');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col gap-1 cursor-pointer col-span-2"
+                <div
+                  onClick={() => handleModeClick('infinite')}
+                  className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer col-span-2"
                 >
-                  <span className="text-xl">♾️</span>
-                  <span className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">Infinite Earth</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Endless engine — geography, weather, news, earthquakes & more!</span>
-                </button>
+                  <div>
+                    <span className="text-xl">♾️</span>
+                    <span className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 block mt-0.5">Infinite Earth</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Endless engine — geography, weather, news, earthquakes & more!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('infinite');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('globe-hunt');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Globe Hunt */}
+                <div
+                  onClick={() => handleModeClick('globe-hunt')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🎯</span>
-                  <span className="text-xs font-black text-white">Globe Hunt</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Find countries by tapping the 3D globe.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🎯</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Globe Hunt</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Find countries by tapping the 3D globe.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('globe-hunt');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('weather-challenge');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Weather Challenge */}
+                <div
+                  onClick={() => handleModeClick('weather-challenge')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🌧️</span>
-                  <span className="text-xs font-black text-white">Weather Challenge</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Live weather data challenges from around the world.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🌧️</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Weather Challenge</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Live weather data challenges from around the world.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('weather-challenge');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('news-detective');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* News Detective */}
+                <div
+                  onClick={() => handleModeClick('news-detective')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🕵️</span>
-                  <span className="text-xs font-black text-white">News Detective</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Identify countries from real news stories.</span>
-                </button>
+                  <div>
+                    <span className="text-xl">🕵️</span>
+                    <span className="text-xs font-black text-white block mt-0.5">News Detective</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Identify countries from real news stories.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('news-detective');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('earthquake-hunt');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col gap-1 cursor-pointer"
+                {/* Earthquake Hunt */}
+                <div
+                  onClick={() => handleModeClick('earthquake-hunt')}
+                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
                 >
-                  <span className="text-xl">🌋</span>
-                  <span className="text-xs font-black text-white">Earthquake Hunt</span>
-                  <span className="text-[8px] text-white/40 leading-snug">Locate real earthquakes from USGS data.</span>
-                </button>
-
-
+                  <div>
+                    <span className="text-xl">🌋</span>
+                    <span className="text-xs font-black text-white block mt-0.5">Earthquake Hunt</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Locate real earthquakes from USGS data.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('earthquake-hunt');
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  onPlaySound();
-                  setActiveMode('daily');
-                  setPhase('daily-earth-start');
-                }}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+              <div
+                onClick={() => handleModeClick('daily')}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs tracking-wider flex items-center justify-between cursor-pointer"
               >
-                📆 DAILY GLOBAL CHALLENGE
-              </button>
+                <span>📆 DAILY GLOBAL CHALLENGE</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startDemo('daily');
+                  }}
+                  className="text-[9px] font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/40 cursor-pointer"
+                >
+                  🎮 Demo
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -2247,6 +3054,13 @@ export default function PlayEarthOverlay({
                   START CHALLENGE
                 </button>
                 <button
+                  type="button"
+                  onClick={() => startDemo('survival')}
+                  className="px-3.5 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer"
+                >
+                  🎮 DEMO
+                </button>
+                <button
                   onClick={handleBackToModes}
                   className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs"
                 >
@@ -2294,6 +3108,16 @@ export default function PlayEarthOverlay({
                     {label}
                   </button>
                 ))}
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => startDemo('clock')}
+                  className="px-4 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer"
+                >
+                  🎮 Practice Clock Drill Demo
+                </button>
               </div>
 
               <button
@@ -2366,6 +3190,16 @@ export default function PlayEarthOverlay({
                     {diff}
                   </button>
                 ))}
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => startDemo(activeMode as PlayEarthMode)}
+                  className="px-4 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer"
+                >
+                  🎮 Practice Interactive Demo
+                </button>
               </div>
 
               <button
@@ -2680,6 +3514,7 @@ export default function PlayEarthOverlay({
           {phase === 'engine-challenge' && renderEngineChallenge(true)}
           {phase === 'engine-result' && renderEngineResult(true)}
           {phase === 'engine-summary' && renderEngineSummary(true)}
+          {phase === 'demo' && renderPlayableDemo(true)}
         </AnimatePresence>
       </div>
     );
@@ -2760,7 +3595,8 @@ export default function PlayEarthOverlay({
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <button
+                {/* Country Explorer */}
+                <div
                   onClick={() => {
                     onPlaySound();
                     if (selectedCountry) {
@@ -2771,156 +3607,265 @@ export default function PlayEarthOverlay({
                       setPhase('intro');
                     }
                   }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🌍</span>
-                  <span className="text-sm font-bold text-white">Country Explorer</span>
-                  <span className="text-xs text-white/40 leading-snug">Answer questions on clicked countries to earn XP.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🌍</span>
+                    <span className="text-sm font-bold text-white block mt-1">Country Explorer</span>
+                    <span className="text-xs text-white/40 leading-snug">Answer questions on clicked countries to earn XP.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('explorer');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('survival');
-                    setPhase('survival-start');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Survival Mode */}
+                <div
+                  onClick={() => handleModeClick('survival')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🔥</span>
-                  <span className="text-sm font-bold text-white">Survival Mode</span>
-                  <span className="text-xs text-white/40 leading-snug">How many countries can you survive? One wrong is Game Over!</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🔥</span>
+                    <span className="text-sm font-bold text-white block mt-1">Survival Mode</span>
+                    <span className="text-xs text-white/40 leading-snug">How many countries can you survive? One wrong is Game Over!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('survival');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('clock');
-                    setPhase('beat-the-clock-start');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Beat The Clock */}
+                <div
+                  onClick={() => handleModeClick('clock')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">⏱️</span>
-                  <span className="text-sm font-bold text-white">Beat The Clock</span>
-                  <span className="text-xs text-white/40 leading-snug">Continuous global timer challenge. Play against the countdown.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">⏱️</span>
+                    <span className="text-sm font-bold text-white block mt-1">Beat The Clock</span>
+                    <span className="text-xs text-white/40 leading-snug">Continuous global timer challenge. Play against the countdown.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('clock');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('flag');
-                    setPhase('flag-challenge-start');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Flag Challenge */}
+                <div
+                  onClick={() => handleModeClick('flag')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🚩</span>
-                  <span className="text-sm font-bold text-white">Flag Challenge</span>
-                  <span className="text-xs text-white/40 leading-snug">Guess the country from national flags. Easy, Medium, or Hard.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🚩</span>
+                    <span className="text-sm font-bold text-white block mt-1">Flag Challenge</span>
+                    <span className="text-xs text-white/40 leading-snug">Guess the country from national flags. Easy, Medium, or Hard.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('flag');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('capital');
-                    setPhase('capital-challenge-start');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Capital Challenge */}
+                <div
+                  onClick={() => handleModeClick('capital')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🏙️</span>
-                  <span className="text-sm font-bold text-white">Capital Challenge</span>
-                  <span className="text-xs text-white/40 leading-snug">Guess capital cities of nations across various difficulty tiers.</span>
-                </button>
-
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🏙️</span>
+                    <span className="text-sm font-bold text-white block mt-1">Capital Challenge</span>
+                    <span className="text-xs text-white/40 leading-snug">Guess capital cities of nations across various difficulty tiers.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('capital');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
                 {/* Infinite Earth Game Engine Modes */}
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('infinite');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col gap-1.5 cursor-pointer col-span-2 group"
+                <div
+                  onClick={() => handleModeClick('infinite')}
+                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer col-span-2 group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">♾️</span>
-                  <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300">Infinite Earth</span>
-                  <span className="text-xs text-white/40 leading-snug">Endless procedural engine — geography, weather, news, earthquakes & multi-sensor missions!</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">♾️</span>
+                    <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 block mt-1">Infinite Earth</span>
+                    <span className="text-xs text-white/40 leading-snug">Endless procedural engine — geography, weather, news, earthquakes & multi-sensor missions!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('infinite');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('globe-hunt');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Globe Hunt */}
+                <div
+                  onClick={() => handleModeClick('globe-hunt')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🎯</span>
-                  <span className="text-sm font-bold text-white">Globe Hunt</span>
-                  <span className="text-xs text-white/40 leading-snug">Locate nations by rotating and tapping the 3D globe.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🎯</span>
+                    <span className="text-sm font-bold text-white block mt-1">Globe Hunt</span>
+                    <span className="text-xs text-white/40 leading-snug">Locate nations by rotating and tapping the 3D globe.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('globe-hunt');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('weather-challenge');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Weather Watch */}
+                <div
+                  onClick={() => handleModeClick('weather-challenge')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🌧️</span>
-                  <span className="text-sm font-bold text-white">Weather Watch</span>
-                  <span className="text-xs text-white/40 leading-snug">Live satellite temperatures, precipitation & wind comparisons.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🌧️</span>
+                    <span className="text-sm font-bold text-white block mt-1">Weather Watch</span>
+                    <span className="text-xs text-white/40 leading-snug">Live satellite temperatures, precipitation & wind comparisons.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('weather-challenge');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('news-detective');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* News Detective */}
+                <div
+                  onClick={() => handleModeClick('news-detective')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🕵️</span>
-                  <span className="text-sm font-bold text-white">News Detective</span>
-                  <span className="text-xs text-white/40 leading-snug">Identify countries from real global breaking news headlines.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🕵️</span>
+                    <span className="text-sm font-bold text-white block mt-1">News Detective</span>
+                    <span className="text-xs text-white/40 leading-snug">Identify countries from real global breaking news headlines.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('news-detective');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('earthquake-hunt');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Earthquake Tracker */}
+                <div
+                  onClick={() => handleModeClick('earthquake-hunt')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🌋</span>
-                  <span className="text-sm font-bold text-white">Earthquake Tracker</span>
-                  <span className="text-xs text-white/40 leading-snug">Pinpoint live seismic tremors directly from USGS telemetry.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🌋</span>
+                    <span className="text-sm font-bold text-white block mt-1">Earthquake Tracker</span>
+                    <span className="text-xs text-white/40 leading-snug">Pinpoint live seismic tremors directly from USGS telemetry.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('earthquake-hunt');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
 
-                <button
-                  onClick={() => {
-                    onPlaySound();
-                    setActiveMode('border-escape');
-                    setPhase('engine-loading');
-                  }}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col gap-1.5 cursor-pointer group"
+                {/* Border Escape (Route Game) */}
+                <div
+                  onClick={() => handleModeClick('border-escape')}
+                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
                 >
-                  <span className="text-2xl group-hover:scale-105 transition-transform">🗺️</span>
-                  <span className="text-sm font-bold text-white">Border Escape</span>
-                  <span className="text-xs text-white/40 leading-snug">Navigate from country to country via verified geopolitical borders.</span>
-                </button>
+                  <div>
+                    <span className="text-2xl group-hover:scale-105 transition-transform block">🗺️</span>
+                    <span className="text-sm font-bold text-white block mt-1">Border Escape</span>
+                    <span className="text-xs text-white/40 leading-snug">Navigate from country to country via verified geopolitical borders.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('border-escape');
+                    }}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
+                  >
+                    🎮 Practice Demo
+                  </button>
+                </div>
               </div>
 
-              <button
-                onClick={() => {
-                  onPlaySound();
-                  setActiveMode('daily');
-                  setPhase('daily-earth-start');
-                }}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/35 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-extrabold text-sm tracking-wide shadow-md transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+              <div
+                onClick={() => handleModeClick('daily')}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/35 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-extrabold text-sm tracking-wide shadow-md transition-all flex items-center justify-between cursor-pointer"
               >
-                📆 DAILY GLOBAL EARTH CHALLENGE (+500 XP BONUS)
-              </button>
+                <div className="flex items-center gap-2.5">
+                  <span>📆</span>
+                  <span>DAILY GLOBAL EARTH CHALLENGE (+500 XP BONUS)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startDemo('daily');
+                  }}
+                  className="text-[10px] font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded-full border border-amber-500/40 cursor-pointer"
+                >
+                  🎮 Demo Drill
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -3033,6 +3978,13 @@ export default function PlayEarthOverlay({
                   START CHALLENGE
                 </button>
                 <button
+                  type="button"
+                  onClick={() => startDemo('survival')}
+                  className="px-5 py-3 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  🎮 PRACTICE DEMO
+                </button>
+                <button
                   onClick={handleBackToModes}
                   className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-bold text-xs"
                 >
@@ -3082,6 +4034,16 @@ export default function PlayEarthOverlay({
                     {label}
                   </button>
                 ))}
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => startDemo('clock')}
+                  className="px-5 py-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  🎮 Practice Clock Drill Demo
+                </button>
               </div>
 
               <button
@@ -3155,6 +4117,16 @@ export default function PlayEarthOverlay({
                     {diff}
                   </button>
                 ))}
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => startDemo(activeMode as PlayEarthMode)}
+                  className="px-5 py-2.5 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  🎮 Practice Interactive Demo
+                </button>
               </div>
 
               <button
@@ -3506,6 +4478,7 @@ export default function PlayEarthOverlay({
         {phase === 'engine-challenge' && renderEngineChallenge(false)}
         {phase === 'engine-result' && renderEngineResult(false)}
         {phase === 'engine-summary' && renderEngineSummary(false)}
+        {phase === 'demo' && renderPlayableDemo(false)}
       </AnimatePresence>
 
       {/* Badge Unlock Celebration Modal */}
