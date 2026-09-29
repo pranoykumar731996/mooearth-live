@@ -549,6 +549,7 @@ export default function PlayEarthOverlay({
       if (demoState.step === 1) {
         if (isMatch(countryName, 'United States')) {
           onCorrectSound();
+          setIsHudMinimized(false);
           setDemoState(prev => prev ? {
             ...prev,
             step: 2,
@@ -573,6 +574,7 @@ export default function PlayEarthOverlay({
       } else if (demoState.step === 2) {
         if (isMatch(countryName, 'Mexico')) {
           onCorrectSound();
+          setIsHudMinimized(false);
           try { localStorage.setItem('mooearth_demo_completed_border-escape', 'true'); } catch {}
           setDemoState(prev => prev ? {
             ...prev,
@@ -602,6 +604,7 @@ export default function PlayEarthOverlay({
     if (demoState.mode === 'globe-hunt' || (demoState.targetName && isMatch(countryName, demoState.targetName))) {
       if (demoState.targetName && isMatch(countryName, demoState.targetName)) {
         onCorrectSound();
+        setIsHudMinimized(false);
         try { localStorage.setItem(`mooearth_demo_completed_${demoState.mode}`, 'true'); } catch {}
         setDemoState(prev => prev ? {
           ...prev,
@@ -2012,7 +2015,7 @@ export default function PlayEarthOverlay({
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[92vw]"
+          className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[96vw] sm:max-w-md"
         >
           <div
             onClick={() => setIsHudMinimized(false)}
@@ -2055,9 +2058,18 @@ export default function PlayEarthOverlay({
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={isCompact ? "space-y-4" : "fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"}
+        className={isCompact ? "space-y-4" : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"}
       >
-        <div className="glass rounded-3xl border border-white/15 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl relative overflow-hidden max-h-[82vh] overflow-y-auto scrollbar-thin">
+        <div className="glass rounded-3xl border border-white/15 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl relative overflow-hidden">
+          {/* Mobile Quick Peek Handle */}
+          <button
+            type="button"
+            onClick={() => setIsHudMinimized(true)}
+            className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
+            title="Tap to peek globe"
+          >
+            <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+          </button>
           {/* Top telemetry bar */}
           <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
@@ -2431,7 +2443,7 @@ export default function PlayEarthOverlay({
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[92vw]"
+          className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[96vw] sm:max-w-md"
         >
           <div
             onClick={() => setIsHudMinimized(false)}
@@ -2476,11 +2488,20 @@ export default function PlayEarthOverlay({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className={isCompact ? "space-y-4 font-sans" : "fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"}
+        className={isCompact ? "space-y-4 font-sans" : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"}
       >
-        <div className={`glass rounded-3xl border p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl max-h-[82vh] overflow-y-auto scrollbar-thin ${
+        <div className={`glass rounded-3xl border p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl ${
           isCorrectResult ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-rose-500/40 bg-rose-950/20'
         }`}>
+          {/* Mobile Quick Peek Handle */}
+          <button
+            type="button"
+            onClick={() => setIsHudMinimized(true)}
+            className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
+            title="Tap to peek globe"
+          >
+            <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+          </button>
           {/* Header Banner */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
@@ -2584,9 +2605,9 @@ export default function PlayEarthOverlay({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className={isCompact ? "space-y-4 font-sans" : "fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"}
+      className={isCompact ? "space-y-4 font-sans" : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"}
     >
-      <div className="glass rounded-3xl border border-white/15 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
+      <div className="glass rounded-3xl border border-white/15 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl text-center space-y-4">
         <div>
           <span className="text-4xl block mb-2">🎖️</span>
           <h3 className="text-xl font-black text-white">Engine Session Debrief</h3>
@@ -2642,6 +2663,47 @@ export default function PlayEarthOverlay({
   const renderPlayableDemo = (isCompact: boolean) => {
     if (!demoState) return null;
 
+    if (!isCompact && isHudMinimized) {
+      return (
+        <motion.div
+          key="minimized-demo-hud"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[96vw] sm:max-w-md"
+        >
+          <div
+            onClick={() => setIsHudMinimized(false)}
+            className="glass px-3.5 sm:px-4 py-2.5 rounded-2xl border border-cyan-400/40 bg-slate-950/90 hover:bg-slate-900 shadow-[0_0_30px_rgba(6,182,212,0.3)] flex items-center justify-between gap-2.5 cursor-pointer backdrop-blur-xl transition-all hover:scale-[1.01]"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base sm:text-lg shrink-0">🎮</span>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">Demo Drill</span>
+                  {demoState.feedback && (
+                    <span className={`text-[10px] font-bold truncate max-w-[140px] sm:max-w-[200px] ${demoState.feedback.isError ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      {demoState.feedback.isError ? '⚠️ ' : '✓ '}
+                      {demoState.feedback.text}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[190px] sm:max-w-xs">
+                  {demoState.question || demoState.instruction}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="text-[10px] font-bold text-cyan-400 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/30 px-2.5 py-1 rounded-xl shrink-0 cursor-pointer"
+            >
+              Expand ▲
+            </button>
+          </div>
+        </motion.div>
+      );
+    }
+
     return (
       <motion.div
         key="playable-demo-hud"
@@ -2651,13 +2713,23 @@ export default function PlayEarthOverlay({
         className={
           isCompact
             ? "space-y-4 font-sans text-left"
-            : "fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans flex flex-col justify-start max-h-[85vh] overflow-y-auto scrollbar-thin"
+            : "fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
         }
       >
         <div
-          className="glass rounded-3xl border border-cyan-400/30 p-6 shadow-[0_0_60px_rgba(6,182,212,0.25)] relative overflow-hidden backdrop-blur-xl"
+          className="glass rounded-3xl border border-cyan-400/30 p-3.5 sm:p-5 lg:p-6 shadow-[0_0_60px_rgba(6,182,212,0.25)] relative overflow-hidden backdrop-blur-xl"
           style={{ background: 'linear-gradient(135deg, rgba(8,20,30,0.96) 0%, rgba(4,12,22,0.96) 100%)' }}
         >
+          {/* Mobile Quick Peek Handle */}
+          <button
+            type="button"
+            onClick={() => setIsHudMinimized(true)}
+            className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
+            title="Tap to peek globe"
+          >
+            <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+          </button>
+
           {/* Header with Title and Mode */}
           <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-3 mb-3">
             <div>
@@ -2676,17 +2748,28 @@ export default function PlayEarthOverlay({
                 Safe sandbox mode • Learn by doing with zero time pressure or score penalty.
               </p>
             </div>
-            <button
-              onClick={handleBackToModes}
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white text-xs transition-colors shrink-0 cursor-pointer"
-              title="Return to Menu"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsHudMinimized(true)}
+                className="px-2.5 py-1 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-[10px] font-bold text-cyan-300 flex items-center gap-1 cursor-pointer transition-all"
+                title="Minimize card to peek and interact with full 3D globe"
+              >
+                <span>👁️</span>
+                <span className="hidden xs:inline">Peek Globe</span>
+              </button>
+              <button
+                onClick={handleBackToModes}
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white text-xs transition-colors cursor-pointer"
+                title="Return to Menu"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Current Instruction Banner */}
-          <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 mb-3 space-y-1.5">
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 mb-3 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-cyan-400 uppercase tracking-wider font-extrabold flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
@@ -2704,6 +2787,16 @@ export default function PlayEarthOverlay({
             <p className="text-xs font-bold text-white leading-relaxed">
               {demoState.instruction}
             </p>
+            {(demoState.mode === 'globe-hunt' || demoState.mode === 'border-escape' || demoState.mode === 'explorer') && !demoState.completed && (
+              <button
+                type="button"
+                onClick={() => setIsHudMinimized(true)}
+                className="w-full mt-2 py-1.5 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                <span>🌍</span>
+                <span>Peek 3D Globe to Rotate & Tap Target</span>
+              </button>
+            )}
             {demoState.showHint && demoState.hint && (
               <div className="mt-2 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200">
                 💡 {demoState.hint}
@@ -4130,9 +4223,9 @@ export default function PlayEarthOverlay({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                   <CountryFlag flag={countryMeta?.flag} className="w-8 h-6 object-cover rounded-[3px] shadow-sm shrink-0" />
@@ -4171,9 +4264,9 @@ export default function PlayEarthOverlay({
             key="survival-start"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4">
               <span className="text-5xl block">🔥</span>
               <div>
                 <h3 className="text-xl font-black text-white">Survival Mode</h3>
@@ -4216,9 +4309,9 @@ export default function PlayEarthOverlay({
             key="clock-start"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4">
               <span className="text-5xl block">⏱️</span>
               <div>
                 <h3 className="text-xl font-black text-white">Beat The Clock</h3>
@@ -4277,9 +4370,9 @@ export default function PlayEarthOverlay({
             key="diff-select"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4">
               <span className="text-5xl block">{activeMode === 'flag' ? '🚩' : '🏙️'}</span>
               <div>
                 <h3 className="text-xl font-black text-white">
@@ -4360,9 +4453,9 @@ export default function PlayEarthOverlay({
             key="daily-start"
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4">
               <span className="text-5xl block">📆</span>
               <div>
                 <h3 className="text-xl font-black text-white">Daily Global Challenge</h3>
@@ -4407,7 +4500,7 @@ export default function PlayEarthOverlay({
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[92vw]"
+              className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[96vw] sm:max-w-md"
             >
               <div
                 onClick={() => setIsHudMinimized(false)}
@@ -4438,15 +4531,25 @@ export default function PlayEarthOverlay({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className={`glass rounded-3xl border p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] max-h-[82vh] overflow-y-auto scrollbar-thin ${
+            <div className={`glass rounded-3xl border p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] ${
               selectedAnswer !== null
                 ? isCorrect
                   ? 'border-emerald-500/40'
                   : 'border-red-500/40 animate-[card-shake_0.5s]'
                 : 'border-white/10'
             }`}>
+              {/* Mobile Quick Peek Handle */}
+              <button
+                type="button"
+                onClick={() => setIsHudMinimized(true)}
+                className="sm:hidden w-full flex items-center justify-center py-1 -mt-1 mb-1.5 text-white/40 hover:text-white cursor-pointer"
+                title="Tap to peek globe"
+              >
+                <div className="w-10 h-1 rounded-full bg-white/25 hover:bg-white/50 transition-colors" />
+              </button>
+
               {/* Question Header */}
               <div className="flex items-center justify-between mb-3 gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -4488,7 +4591,7 @@ export default function PlayEarthOverlay({
               </div>
 
               {/* Question Text */}
-              <h3 className="text-base sm:text-lg font-bold text-white mb-5 leading-snug whitespace-pre-wrap">
+              <h3 className="text-sm sm:text-base font-bold text-white mb-4 leading-snug whitespace-pre-wrap">
                 {renderTextWithFlags(currentQuestion.question)}
               </h3>
 
@@ -4555,7 +4658,7 @@ export default function PlayEarthOverlay({
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[92vw]"
+              className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] pointer-events-auto font-sans max-w-[96vw] sm:max-w-md"
             >
               <div
                 onClick={() => setIsHudMinimized(false)}
@@ -4591,11 +4694,20 @@ export default function PlayEarthOverlay({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className={`glass rounded-3xl border p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] max-h-[82vh] overflow-y-auto scrollbar-thin ${
+            <div className={`glass rounded-3xl border p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] ${
               isCorrect ? 'border-emerald-500/30' : 'border-red-500/30'
             }`}>
+              {/* Mobile Quick Peek Handle */}
+              <div 
+                onClick={() => setIsHudMinimized(true)}
+                className="sm:hidden flex justify-center pb-2 cursor-pointer touch-none"
+                title="Tap to peek globe"
+              >
+                <div className="w-10 h-1 rounded-full bg-white/25 active:bg-cyan-400" />
+              </div>
+
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2.5">
                   <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
@@ -4673,17 +4785,22 @@ export default function PlayEarthOverlay({
             key="summary"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-full max-w-sm sm:max-w-md px-3 sm:px-0 pointer-events-auto font-sans"
+            className="fixed bottom-3 inset-x-2 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 lg:left-8 lg:translate-x-0 z-[46] w-auto sm:w-full max-w-sm sm:max-w-md pointer-events-auto font-sans flex flex-col justify-start max-h-[50vh] sm:max-h-[62vh] lg:max-h-[82vh] overflow-y-auto scrollbar-thin"
           >
-            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-4 max-h-[82vh] overflow-y-auto scrollbar-thin">
-              <div>
-                <span className="text-4xl block">🏆</span>
-                <h3 className="text-xl font-black text-white mt-2">Challenge Finished</h3>
-                <p className="text-xs text-white/45">Your global trivia report is ready:</p>
+            <div className="glass rounded-3xl border border-white/10 p-3.5 sm:p-5 shadow-[0_0_60px_rgba(0,0,0,0.5)] text-center space-y-3.5 sm:space-y-4">
+              {/* Mobile Quick Handle */}
+              <div className="sm:hidden flex justify-center pb-1">
+                <div className="w-10 h-1 rounded-full bg-white/25" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-left font-mono">
-                <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+              <div>
+                <span className="text-3xl sm:text-4xl block">🏆</span>
+                <h3 className="text-lg sm:text-xl font-black text-white mt-1.5 sm:mt-2">Challenge Finished</h3>
+                <p className="text-[11px] sm:text-xs text-white/45">Your global trivia report is ready:</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 text-left font-mono">
+                <div className="p-2.5 sm:p-3 bg-white/5 rounded-2xl border border-white/5">
                   <span className="text-[9px] text-white/40 block">SCORE / STREAK</span>
                   <span className="text-sm font-black text-white">
                     {activeMode === 'survival' ? `${survivalCount} Survived` :
