@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { WorldEvent } from '@/types';
+import { WorldEvent, EventCategory } from '@/types';
 
 export interface ApiStatus {
   newsActive: boolean;
@@ -13,7 +13,7 @@ export interface ApiStatus {
   }>;
 }
 
-export function useLiveEvents(isFocusMode: boolean = false) {
+export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: EventCategory | null) {
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<ApiStatus>({
@@ -22,9 +22,12 @@ export function useLiveEvents(isFocusMode: boolean = false) {
     earthCastActive: false,
   });
 
+  const categoryCacheRef = useRef<Record<string, { events: WorldEvent[]; status: ApiStatus; timestamp: number }>>({});
   const pendingRefreshRef = useRef(false);
   const hasForceRefreshedRef = useRef(false);
   const lastEventsHashRef = useRef<string | null>(null);
+
+  const categoryKey = activeCategory || 'all';
 
   useEffect(() => {
     let isMounted = true;
@@ -34,17 +37,30 @@ export function useLiveEvents(isFocusMode: boolean = false) {
         pendingRefreshRef.current = true;
         return;
       }
+
+      // If we have cached events (< 60s) for this category and not forcing refresh, apply them immediately
+      const cached = categoryCacheRef.current[categoryKey];
+      if (cached && !forceRefresh && (Date.now() - cached.timestamp < 60000)) {
+        setEvents(cached.events);
+        setApiStatus(cached.status);
+        setIsLoading(false);
+        return;
+      }
+
       try {
+        setIsLoading(events.length === 0);
+        const catParam = activeCategory ? `&category=${activeCategory}` : '';
         const refreshParam = forceRefresh ? '&refresh=true' : '';
-        const response = await fetch(`/api/events?t=${Date.now()}${refreshParam}`);
+        const response = await fetch(`/api/events?t=${Date.now()}${catParam}${refreshParam}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
         
         const data = await response.json();
         
         if (isMounted) {
-          const newEventsStr = JSON.stringify(data.events || []);
+          const newEvents = data.events || [];
+          const newEventsStr = JSON.stringify(newEvents);
           if (newEventsStr !== lastEventsHashRef.current) {
-            setEvents(data.events || []);
+            setEvents(newEvents);
             lastEventsHashRef.current = newEventsStr;
           }
           if (data.status) {
@@ -61,6 +77,14 @@ export function useLiveEvents(isFocusMode: boolean = false) {
               }
             }
           }
+
+          // Cache this category's events
+          categoryCacheRef.current[categoryKey] = {
+            events: newEvents,
+            status: data.status || apiStatus,
+            timestamp: Date.now(),
+          };
+
           setIsLoading(false);
           pendingRefreshRef.current = false;
         }
@@ -78,9 +102,7 @@ export function useLiveEvents(isFocusMode: boolean = false) {
     }
 
     if (!isFocusMode) {
-      if (pendingRefreshRef.current || events.length === 0) {
-        fetchEvents();
-      }
+      fetchEvents();
       
       const intervalId = setInterval(() => {
         // Reset the force-refresh flag every polling cycle so we can try again if still stale
@@ -97,7 +119,7 @@ export function useLiveEvents(isFocusMode: boolean = false) {
         isMounted = false;
       };
     }
-  }, [isFocusMode, events.length]);
+  }, [isFocusMode, activeCategory, categoryKey]);
 
   return { events, isLoading, apiStatus };
 }

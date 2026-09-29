@@ -468,7 +468,7 @@ export default function HomePage({
     return () => clearTimeout(timer);
   }, []);
 
-  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents(isFocusMode);
+  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents(isFocusMode, activeCategory);
 
   // Filtered events
   const filteredEvents = useEventFilter({

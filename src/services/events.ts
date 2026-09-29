@@ -56,13 +56,65 @@ export function isArticleInCategory(title: string, summary: string, category: Ev
   return true; // default/breaking allows all
 }
 
+export function detectCategory(title: string, summary: string): EventCategory {
+  const text = `${title} ${summary}`.toLowerCase();
+  if (['football', 'soccer', 'premier league', 'uefa', 'fifa', 'copa', 'laliga', 'serie a', 'bundesliga', 'striker', 'goalkeeper', 'fc '].some(kw => text.includes(kw))) {
+    return 'football';
+  }
+  if (['sports', 'championship', 'tournament', 'nba', 'nfl', 'olympic', 'tennis', 'basketball', 'baseball', 'cricket', 'rugby', 'golf', 'grand slam', 'formula 1', 'f1', 'athlete'].some(kw => text.includes(kw))) {
+    return 'sports';
+  }
+  if (['technology', 'tech', 'software', 'ai', 'semiconductor', 'computing', 'cyber', 'quantum', 'smartphone', 'apple inc', 'google cloud', 'nvidia', 'chatgpt', 'openai', 'robotics', 'silicon'].some(kw => text.includes(kw))) {
+    return 'technology';
+  }
+  if (['business', 'market', 'stocks', 'nasdaq', 'dow jones', 'inflation', 'federal reserve', 'central bank', 'revenue', 'ipo', 'gdp', 'economy', 'investors', 'wall street'].some(kw => text.includes(kw))) {
+    return 'business';
+  }
+  if (['weather', 'cyclone', 'typhoon', 'hurricane', 'meteorology', 'storm', 'heatwave', 'flooding', 'tornado', 'blizzard', 'snowfall', 'drought', 'forecast'].some(kw => text.includes(kw))) {
+    return 'weather';
+  }
+  if (['entertainment', 'hollywood', 'box office', 'movie', 'film', 'grammy', 'oscar', 'emmy', 'netflix', 'album', 'celebrity', 'broadway', 'billboard', 'cinema'].some(kw => text.includes(kw))) {
+    return 'entertainment';
+  }
+  return 'breaking';
+}
+
 export function sanitizeEventCategory(e: WorldEvent): WorldEvent {
   return e;
 }
 
-export async function fetchAllEvents(refresh = false): Promise<EventsWithStatus> {
+export async function fetchAllEvents(category?: string | null, refresh = false): Promise<EventsWithStatus> {
+  const cat = (category && category !== 'home') ? (category as EventCategory) : null;
+
+  // If a specific category is requested (technology, sports, football, weather, business, entertainment)
+  if (cat && cat !== 'breaking') {
+    const searchTerm = cat === 'football' ? 'football soccer match' : cat;
+    const newsResult = await searchLiveNews(searchTerm, cat, undefined, refresh);
+    let events = (newsResult.events || []).map(e => ({ ...e, category: cat }));
+    
+    // Filter to ensure relevance, falling back to raw results if overly strict
+    const filtered = events.filter(e => isArticleInCategory(e.title, e.summary, cat));
+    if (filtered.length > 0) {
+      events = filtered;
+    }
+
+    events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
+    return {
+      events,
+      status: {
+        newsActive: newsResult.active,
+        footballActive: cat === 'football' || cat === 'sports',
+      }
+    };
+  }
+
+  // Home or breaking: fetch live news and classify each article
   const newsResult = await fetchLiveNews(refresh);
-  const events = newsResult.events.sort((a, b) => {
+  const events = newsResult.events.map(e => {
+    const detected = detectCategory(e.title, e.summary);
+    return detected !== 'breaking' ? { ...e, category: detected } : e;
+  }).sort((a, b) => {
     return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
   });
 

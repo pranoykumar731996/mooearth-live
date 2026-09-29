@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       // Normal search query fallback
       result = await searchAllEvents(query.trim(), category, refresh);
     } else {
-      // Default homepage events
-      result = await fetchAllEvents(refresh);
+      // Category or default homepage events
+      result = await fetchAllEvents(category, refresh);
     }
 
     const { events, status } = result;

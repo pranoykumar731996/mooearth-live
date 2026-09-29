@@ -23,18 +23,11 @@ function readCelebrations(): any[] {
   }
 }
 
+import { matchCountry } from '@/data/questions';
+
 function isSameCountry(c1?: string | null, c2?: string | null): boolean {
   if (!c1 || !c2) return false;
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-  const n1 = norm(c1);
-  const n2 = norm(c2);
-  if (n1 === n2) return true;
-  if (n1 === 'unitedstates' && n2 === 'unitedstatesofamerica') return true;
-  if (n1 === 'unitedstatesofamerica' && n2 === 'unitedstates') return true;
-  if (n1 === 'usa' && (n2 === 'unitedstates' || n2 === 'unitedstatesofamerica')) return true;
-  if (n1 === 'unitedkingdom' && (n2 === 'england' || n2 === 'uk' || n2 === 'greatbritain')) return true;
-  if ((n1 === 'england' || n1 === 'uk' || n1 === 'greatbritain') && n2 === 'unitedkingdom') return true;
-  return false;
+  return matchCountry(c1, c2);
 }
 
 export async function fetchCountryReactions(country: string, category?: string | null): Promise<ReactionEvent> {
