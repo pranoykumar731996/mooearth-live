@@ -2529,7 +2529,7 @@ export default function PlayEarthOverlay({
         className={
           isCompact
             ? "space-y-4 font-sans text-left"
-            : "fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-4 pointer-events-auto font-sans"
+            : "fixed top-24 sm:top-28 bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-3 sm:px-4 pointer-events-auto font-sans flex flex-col justify-start max-h-[85vh] overflow-y-auto scrollbar-thin"
         }
       >
         <div
@@ -3678,16 +3678,17 @@ export default function PlayEarthOverlay({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-4 pointer-events-auto font-sans"
+            className="fixed top-24 sm:top-28 bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 z-[46] w-full max-w-xl px-3 sm:px-4 pointer-events-auto font-sans flex flex-col justify-start"
           >
-            <div className="glass rounded-3xl border border-white/10 p-6 shadow-[0_0_60px_rgba(0,0,0,0.5)]">
-              <div className="text-center mb-5">
-                <span className="text-4xl block mb-2">🌍</span>
-                <h3 className="text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">Play Earth Gaming Platform</h3>
-                <p className="text-xs text-white/45">Choose a world discovery mode to play.</p>
+            <div className="glass rounded-3xl border border-white/10 p-4 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col max-h-full overflow-hidden backdrop-blur-2xl">
+              <div className="text-center mb-3 sm:mb-4 shrink-0">
+                <span className="text-3xl sm:text-4xl block mb-1">🌍</span>
+                <h3 className="text-lg sm:text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">Play Earth Gaming Platform</h3>
+                <p className="text-xs text-white/45">Choose a world discovery mode to play (scroll down for all 11+ modes).</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="flex-1 overflow-y-auto overscroll-contain pr-1.5 sm:pr-2 -mr-1 space-y-3.5 scrollbar-thin">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 {/* Country Explorer */}
                 <div
                   onClick={() => {
@@ -3942,11 +3943,11 @@ export default function PlayEarthOverlay({
 
               <div
                 onClick={() => handleModeClick('daily')}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/35 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-extrabold text-sm tracking-wide shadow-md transition-all flex items-center justify-between cursor-pointer"
+                className="w-full py-3.5 px-4 sm:px-6 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/35 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 font-extrabold text-sm tracking-wide shadow-md transition-all flex items-center justify-between cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <span>📆</span>
-                  <span>DAILY GLOBAL EARTH CHALLENGE (+500 XP BONUS)</span>
+                  <span className="text-xs sm:text-sm">DAILY GLOBAL EARTH CHALLENGE (+500 XP BONUS)</span>
                 </div>
                 <button
                   type="button"
@@ -3954,13 +3955,14 @@ export default function PlayEarthOverlay({
                     e.stopPropagation();
                     startDemo('daily');
                   }}
-                  className="text-[10px] font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded-full border border-amber-500/40 cursor-pointer"
+                  className="text-[10px] font-bold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 px-3 py-1 rounded-full border border-amber-500/40 cursor-pointer shrink-0"
                 >
                   🎮 Demo Drill
                 </button>
               </div>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
         )}
 
         {/* Explorer mode tap country prompt */}
