@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+const ALLOWED_MIME_TYPES: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'audio/webm': '.webm',
+  'audio/mpeg': '.mp3',
+  'audio/mp3': '.mp3',
+  'audio/wav': '.wav',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+};
+
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.webm', '.mp3', '.wav', '.mp4', '.mov']);
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -11,11 +27,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate size (limit to 25MB)
-    const MAX_SIZE = 25 * 1024 * 1024;
+    // Validate size (limit to 20MB)
+    const MAX_SIZE = 20 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File size exceeds 25MB limit' }, { status: 400 });
+      return NextResponse.json({ error: 'File size exceeds 20MB limit' }, { status: 400 });
     }
+
+    // Strict MIME validation
+    const mimeType = (file.type || '').toLowerCase();
+    if (!ALLOWED_MIME_TYPES[mimeType]) {
+      return NextResponse.json(
+        { error: 'Invalid file format. Only images, audio recordings, and videos are allowed.' },
+        { status: 400 }
+      );
+    }
+
+    // Determine safe extension from allowed whitelist
+    const rawExt = path.extname(file.name || '').toLowerCase();
+    const safeExt = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : ALLOWED_MIME_TYPES[mimeType];
 
     const buffer = Buffer.from(await file.arrayBuffer());
     
@@ -25,17 +54,9 @@ export async function POST(request: Request) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Determine file extension
-    let ext = path.extname(file.name);
-    if (!ext) {
-      if (file.type.includes('audio')) ext = '.webm';
-      else if (file.type.includes('video')) ext = '.mp4';
-      else if (file.type.includes('image')) ext = '.png';
-      else ext = '.bin';
-    }
-
-    // Generate unique name
-    const filename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+    // Generate cryptographically safe unique alphanumeric name
+    const randomHex = Math.random().toString(36).substring(2, 10);
+    const filename = `moo_${Date.now()}_${randomHex}${safeExt}`;
     const filePath = path.join(uploadDir, filename);
 
     // Save file

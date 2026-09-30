@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchOrGenerateArticleDetails } from '@/services/article';
+import { fetchOrGenerateArticleDetails, isSafeExternalUrl } from '@/services/article';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +14,10 @@ export async function GET(request: NextRequest) {
 
     if (!title) {
       return NextResponse.json({ error: 'Missing title parameter' }, { status: 400 });
+    }
+
+    if (url && !isSafeExternalUrl(url)) {
+      return NextResponse.json({ error: 'Invalid or prohibited URL address' }, { status: 400 });
     }
 
     const article = await fetchOrGenerateArticleDetails(

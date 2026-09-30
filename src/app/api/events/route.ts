@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     const refresh = searchParams.get('refresh') === 'true';
     const simulateError = searchParams.get('simulateError');
     
-    if (simulateError) {
+    // Security: Only allow error and delay simulation in non-production environments
+    if (simulateError && process.env.NODE_ENV !== 'production') {
       if (simulateError === '500') {
         return NextResponse.json({ error: 'Simulated Internal Server Error' }, { status: 500 });
       }
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ events: [], status: {} });
       }
       if (simulateError === 'delay') {
-        const delayMs = parseInt(searchParams.get('delayMs') || '2000', 10);
+        const rawDelay = parseInt(searchParams.get('delayMs') || '2000', 10);
+        const delayMs = Math.min(Math.max(0, isNaN(rawDelay) ? 2000 : rawDelay), 5000);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }

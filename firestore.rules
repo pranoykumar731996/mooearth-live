@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny: All unspecified paths are closed to unauthorized read/write
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 1. Users & Player Profiles (Leaderboards & Game XP)
+    match /users/{userId} {
+      // Leaderboards and profiles are publicly readable
+      allow read: if true;
+
+      // Creation and updates must satisfy schema validation
+      allow create, update: if request.resource.data.keys().hasAll(['username']) &&
+                               request.resource.data.username is string &&
+                               request.resource.data.username.size() > 0 &&
+                               request.resource.data.username.size() <= 60 &&
+                               (!('xp' in request.resource.data) || request.resource.data.xp is number) &&
+                               (!('level' in request.resource.data) || request.resource.data.level is number);
+
+      // Prevent unauthorized deletion of user accounts
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 2. Celebrations & Fan Reactions
+    match /celebrations/{celebrationId} {
+      // Public fan feed
+      allow read: if true;
+
+      // New celebration submissions must contain required fields with size bounds
+      allow create: if request.resource.data.keys().hasAll(['username', 'country', 'type', 'url', 'timestamp']) &&
+                       request.resource.data.username is string &&
+                       request.resource.data.username.size() <= 60 &&
+                       request.resource.data.country is string &&
+                       request.resource.data.url is string &&
+                       request.resource.data.url.size() <= 1000 &&
+                       (!('comment' in request.resource.data) || (request.resource.data.comment is string && request.resource.data.comment.size() <= 500));
+
+      // Community reporting: only permit incrementing the reports count
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reports']) &&
+                       request.resource.data.reports is int;
+
+      allow delete: if false;
+    }
+
+    // 3. Session Analytics (Anonymous Telemetry)
+    match /sessions/{sessionId} {
+      // Write-only: public can record session telemetry, but cannot read or scrape other users' sessions
+      allow create: if request.resource.data.keys().hasAll(['sessionId', 'createdAt']);
+      allow read, update, delete: if false;
+    }
+
+    // 4. Cached Article Translations
+    match /article_translations/{docId} {
+      // Cached translations are readable by all visitors
+      allow read: if true;
+
+      // Writes must supply article ID and language
+      allow create, update: if request.resource.data.keys().hasAll(['articleId', 'language', 'translatedTitle', 'translatedSummary']) &&
+                               request.resource.data.articleId is string &&
+                               request.resource.data.language is string;
+
+      allow delete: if false;
+    }
+  }
+}

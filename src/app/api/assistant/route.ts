@@ -14,16 +14,66 @@ function isSameCountry(c1?: string | null, c2?: string | null): boolean {
   return false;
 }
 
+// In-memory sliding window rate limiter (prevents API abuse & wallet drain)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 20;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+
+  // Periodically cleanup expired entries
+  if (rateLimitMap.size > 2000) {
+    for (const [key, val] of rateLimitMap.entries()) {
+      if (now > val.resetTime) rateLimitMap.delete(key);
+    }
+  }
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+
+  record.count++;
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     request.headers.get('x-real-ip') || 
+                     'anonymous';
+
+    if (isRateLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait a moment before sending another query.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { messages, events = [], trendingCountries = [], globalEnergyScore = 50 } = body;
 
-    if (!messages || !Array.isArray(messages)) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Invalid or missing messages history' }, { status: 400 });
     }
 
-    const lastUserMessage = messages[messages.length - 1]?.content || '';
+    // Input sanitization: Cap message count and length to prevent token overflow
+    const safeMessages = messages.slice(-6).map((m: any) => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: typeof m.content === 'string' ? m.content.slice(0, 600) : ''
+    }));
+
+    const lastUserMessage = safeMessages[safeMessages.length - 1]?.content || '';
+    if (!lastUserMessage.trim()) {
+      return NextResponse.json({ error: 'Message content cannot be empty' }, { status: 400 });
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (apiKey) {

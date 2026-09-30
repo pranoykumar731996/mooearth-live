@@ -130,6 +130,57 @@ interface RetrievedContent {
   title?: string;
 }
 
+/**
+ * Validates external URLs to prevent Server-Side Request Forgery (SSRF).
+ * Blocks loopback, link-local, cloud metadata, and private IP ranges.
+ */
+export function isSafeExternalUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Block loopback, localhost, and internal domains
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal')
+    ) {
+      return false;
+    }
+
+    // Block IPv4 private & link-local ranges
+    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+    const ipMatch = hostname.match(ipv4Regex);
+    if (ipMatch) {
+      const o1 = parseInt(ipMatch[1], 10);
+      const o2 = parseInt(ipMatch[2], 10);
+      if (o1 === 10) return false;
+      if (o1 === 127) return false;
+      if (o1 === 0) return false;
+      if (o1 === 169 && o2 === 254) return false;
+      if (o1 === 192 && o2 === 168) return false;
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return false;
+      if (o1 === 100 && o2 >= 64 && o2 <= 127) return false;
+    }
+
+    if (hostname.includes('metadata.google') || hostname.includes('instance-data') || hostname.includes('169.254')) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function resolveGNewsUrl(gnewsUrl: string): Promise<string> {
   try {
     const url = new URL(gnewsUrl);
@@ -249,11 +300,19 @@ async function resolveGNewsUrl(gnewsUrl: string): Promise<string> {
 
 async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
   try {
-    if (!url) return { success: false, content: '', excerpt: '' };
+    if (!url || !isSafeExternalUrl(url)) {
+      if (url && !isSafeExternalUrl(url)) {
+        console.warn(`[ArticleService] Blocked unsafe or internal URL (SSRF defense): ${url}`);
+      }
+      return { success: false, content: '', excerpt: '' };
+    }
     
     // Resolve Google News redirect URLs to the original publisher URL
     const resolvedUrl = await resolveGNewsUrl(url);
-    new URL(resolvedUrl);
+    if (!isSafeExternalUrl(resolvedUrl)) {
+      console.warn(`[ArticleService] Blocked unsafe resolved URL (SSRF defense): ${resolvedUrl}`);
+      return { success: false, content: '', excerpt: '' };
+    }
 
     const response = await fetch(resolvedUrl, {
       headers: {
