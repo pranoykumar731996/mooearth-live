@@ -128,11 +128,19 @@ export default function HomePage({
   const [leftPanelTab, setLeftPanelTab] = useState<'explore' | 'views'>('explore');
   const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive || false);
+  const [isPlayEarthBannerDismissed, setIsPlayEarthBannerDismissed] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
   const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(false);
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [lastGlobeTap, setLastGlobeTap] = useState<{ country: string; timestamp: number } | null>(null);
+
+  // Check if mobile Play Earth hero banner was dismissed in this session
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsPlayEarthBannerDismissed(sessionStorage.getItem('mooearth_play_banner_dismissed') === 'true');
+    }
+  }, []);
 
   // Mobile Layers Selector & Toast Notifications
   const [isMobileViewsOpen, setIsMobileViewsOpen] = useState(false);
@@ -963,6 +971,60 @@ export default function HomePage({
         </div>
       </div>
 
+      {/* MOBILE HERO EYE-STOPPER: PLAY EARTH DISCOVERY BANNER */}
+      <AnimatePresence>
+        {isMobile && !isPlayEarthActive && !isFocusMode && !showFirstTimeGuide && !isPlayEarthBannerDismissed && !showInstallBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            className="fixed top-26 left-3 right-3 z-30 pointer-events-auto font-sans"
+          >
+            <div
+              onClick={() => {
+                setIsPlayEarthActive(true);
+                setGlobeView('discovery');
+                handleSelectCountry(null);
+                playHoverBlip();
+              }}
+              className="w-full p-2.5 rounded-2xl glass border border-emerald-500/40 bg-gradient-to-r from-emerald-950/85 via-slate-950/90 to-cyan-950/85 shadow-[0_0_30px_rgba(16,185,129,0.35)] backdrop-blur-xl flex items-center justify-between gap-2.5 cursor-pointer active:scale-[0.98] transition-all group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-lg shadow-[0_0_12px_rgba(16,185,129,0.5)] shrink-0 animate-bounce">
+                  🎮
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-white text-xs tracking-tight">Play Earth Gaming</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[8px] font-black uppercase tracking-wider">
+                      11+ Modes
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/60 truncate mt-0.5">
+                    Tap to test world trivia & explore 3D globe ➔
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPlayEarthBannerDismissed(true);
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('mooearth_play_banner_dismissed', 'true');
+                  }
+                }}
+                className="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white flex items-center justify-center text-xs transition-colors shrink-0"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Phase 3: Cinematic Broadcast HUD Overlay */}
       <AnimatePresence>
         {isCinematicMode && (
@@ -1721,6 +1783,27 @@ export default function HomePage({
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
               </svg>
             )}
+          </button>
+
+          {/* Mobile Play Earth Floating Trigger (Eye-Stopper Thumb Zone) */}
+          <button
+            onClick={() => {
+              const nextActive = !isPlayEarthActive;
+              setIsPlayEarthActive(nextActive);
+              setGlobeView(nextActive ? 'discovery' : 'standard');
+              if (nextActive) handleSelectCountry(null);
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer relative ${
+              isPlayEarthActive
+                ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] scale-105 animate-pulse'
+                : 'bg-gradient-to-br from-emerald-500/35 via-teal-500/30 to-cyan-500/35 border-emerald-400/70 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105'
+            }`}
+            title="Play Earth Gaming Platform"
+          >
+            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-0.5 right-0.5" />
+            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping absolute top-0.5 right-0.5" />
+            <span className="text-xl">🎮</span>
           </button>
 
           {/* Mobile Upload Reaction Trigger (📣) */}

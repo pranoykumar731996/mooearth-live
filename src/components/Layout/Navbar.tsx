@@ -157,7 +157,7 @@ export default function Navbar({
 
         {/* Live Data Production Badge & Freshness */}
         {isDeveloper && (
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <div className="relative group pointer-events-auto cursor-help">
               <div className={`px-2.5 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase flex items-center gap-1.5 transition-all duration-300 border backdrop-blur-md ${badgeClass}`}>
                 <span className="w-1.5 h-1.5 rounded-full relative flex">
@@ -246,14 +246,14 @@ export default function Navbar({
       {/* Right Section */}
       <div className="flex items-center shrink-0">
         {/* Mobile-Only Header Icon Bar (matches user screenshot design) */}
-        <div className="flex sm:hidden items-center gap-3">
+        <div className="flex sm:hidden items-center gap-1.5 xs:gap-2">
           {/* Search Icon */}
           <button
             onClick={() => setIsMobileSearchActive(true)}
-            className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
             title="Search"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -262,44 +262,40 @@ export default function Navbar({
           {/* About & Legal Icon (Mobile) */}
           <Link href="/about">
             <button
-              className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+              className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
               title="About & Legal"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="10" r="10" />
                 <path d="M12 16v-4" />
                 <path d="M12 8h.01" />
               </svg>
             </button>
           </Link>
 
-          {/* Play Earth Game Mode (Gamepad Icon) */}
+          {/* Play Earth Game Mode (Eye-Stopper Pill for Mobile) */}
           <button
             onClick={onTogglePlayEarth}
-            className={`w-9 h-9 flex items-center justify-center active:scale-95 transition-all cursor-pointer relative ${
-              isPlayEarthActive ? 'text-emerald-400' : 'text-white/80 hover:text-white'
+            className={`h-8 px-2.5 rounded-full flex items-center gap-1 font-black text-[10px] tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer relative active:scale-95 shadow-sm ${
+              isPlayEarthActive
+                ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.8)] animate-pulse'
+                : 'bg-gradient-to-r from-emerald-500/30 via-teal-500/35 to-cyan-500/30 border-emerald-400/70 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:border-emerald-300 ring-1 ring-emerald-400/30'
             }`}
-            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
+            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — 11+ Trivia Modes!'}
           >
-            {/* Blinking green light always visible to make it recognizable */}
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" />
-            <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="6" width="20" height="12" rx="3" />
-              <line x1="6" y1="12" x2="10" y2="12" />
-              <line x1="8" y1="10" x2="8" y2="14" />
-              <line x1="15" y1="13" x2="15.01" y2="13" />
-              <line x1="18" y1="11" x2="18.01" y2="11" />
-            </svg>
+            {/* Blinking green live beacon */}
+            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_6px_#10b981]" />
+            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute left-2.5" />
+            <span className="text-xs">🎮</span>
+            <span className="font-black text-[10px] text-emerald-200 tracking-tight">PLAY</span>
           </button>
 
           <button
             onClick={onLeaderboardClick}
-            className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
             title="Leaderboards"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
               <path d="M7.5 13.5v7.25L12 18.5l4.5 2.25v-7.25" />
               <path d="M12 2L4.5 5.5v5a7.5 7.5 0 0 0 15 0v-5L12 2Z" />
@@ -309,7 +305,7 @@ export default function Navbar({
           {isDeveloper && onToggleDebug && (
             <button
               onClick={onToggleDebug}
-              className={`w-9 h-9 flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
+              className={`w-8 h-8 flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
                 showDebugConsole ? 'text-cyan-400' : 'text-white/80 hover:text-white'
               }`}
               title={showDebugConsole ? "Hide UX Debug Console" : "Show UX Debug Console"}
@@ -342,18 +338,21 @@ export default function Navbar({
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
           <button
             onClick={onTogglePlayEarth}
-            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — Quiz the World!'}
-            className={`relative h-9 px-2.5 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer ${
+            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — 11+ Discovery & Trivia Modes!'}
+            className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer group ${
               isPlayEarthActive
-                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-400 shadow-[0_0_18px_rgba(0,255,136,0.3)] animate-[neon-pulse_2s_ease-in-out_infinite]'
-                : 'bg-white/5 border-white/10 text-white/60 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-400/30 hover:shadow-[0_0_15px_rgba(0,255,136,0.15)]'
+                ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] animate-pulse'
+                : 'bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-cyan-500/20 border-emerald-400/50 text-emerald-300 hover:border-emerald-300 hover:shadow-[0_0_22px_rgba(16,185,129,0.5)] shadow-[0_0_14px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/20'
             }`}
           >
-            {/* Blinking green light always visible to make it recognizable */}
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981] absolute top-1 right-1" />
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping absolute top-1 right-1" />
-            <span>🎮</span>
-            <span className="hidden sm:inline">PLAY EARTH</span>
+            {/* Blinking green live beacon */}
+            <span className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-1 right-1" />
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
+            <span className="text-base group-hover:scale-110 transition-transform">🎮</span>
+            <span className="font-black text-emerald-200">PLAY EARTH</span>
+            <span className="hidden md:inline-block px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-widest animate-pulse">
+              11+ MODES
+            </span>
           </button>
 
           {/* Phase 3: Cinematic Mode Toggle */}
