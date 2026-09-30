@@ -4045,7 +4045,7 @@ export default function PlayEarthOverlay({
                 {/* Infinite Earth Game Engine Modes */}
                 <div
                   onClick={() => handleModeClick('infinite')}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer col-span-2 group"
+                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-900/40 to-cyan-900/40 border border-emerald-500/30 hover:border-emerald-400/50 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer col-span-1 sm:col-span-2 group"
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">♾️</span>
