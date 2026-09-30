@@ -25,11 +25,16 @@ export const metadata: Metadata = {
     'mooearth',
     'live globe',
     '3D map',
+    'geography game',
+    'world trivia',
+    'daily earth challenge',
+    'interactive globe',
+    'explore earth',
+    'world news',
     'football reactions',
     'celebrations',
     'world cup',
     'live events',
-    'emotional earth',
   ],
   manifest: '/manifest.json',
   alternates: {
@@ -41,12 +46,19 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: BRANDING.name,
-    description: BRANDING.description,
+    description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
     type: 'website',
     siteName: BRANDING.name,
     url: BRANDING.url,
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: BRANDING.name,
+    description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
+    site: '@mooearth_live',
+  },
 };
+
 
 export const viewport: Viewport = {
   themeColor: BRANDING.themeColor,
@@ -79,6 +91,42 @@ export default function RootLayout({
             });
           `}
         </Script>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'MooEarth Live',
+              url: 'https://www.mooearth.live',
+              logo: 'https://www.mooearth.live/icons/icon-512.svg',
+              sameAs: [
+                'https://twitter.com/mooearth_live',
+                'https://facebook.com/mooearth.live',
+              ],
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: 'MooEarth Live',
+              url: 'https://www.mooearth.live',
+              description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: 'https://www.mooearth.live/?q={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
         <SentryInitializer />
         {children}
       </body>

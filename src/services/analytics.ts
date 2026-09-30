@@ -389,5 +389,45 @@ export function trackEvent(category: string, action: string, label?: string, val
         currentSession.translation.failCount++;
       }
       break;
+
+    // Growth funnel events — these are GA4-only, no local session state needed
+    case 'share':
+    case 'daily_challenge':
+    case 'game':
+    case 'fifa':
+    case 'perspective_lens':
+    case 'funnel':
+      // Already sent to GA4 above — no additional local tracking needed
+      break;
   }
+}
+
+// ============================================================
+// Growth Funnel Convenience Trackers
+// ============================================================
+
+/** Track growth funnel stages */
+export function trackGrowthFunnel(stage: 'visitor' | 'globe_interaction' | 'active_session' | 'share' | 'return') {
+  trackEvent('funnel', `funnel_${stage}`, stage);
+}
+
+/** Track share events */
+export function trackShare(method: 'native' | 'clipboard' | 'x' | 'whatsapp' | 'telegram' | 'facebook' | string, contentType: string) {
+  trackEvent('share', 'share_clicked', method, undefined, { content_type: contentType });
+}
+export const trackShareClick = trackShare;
+
+/** Track share completion */
+export function trackShareComplete(method: string, contentType: string) {
+  trackEvent('share', 'share_completed', method, undefined, { content_type: contentType });
+}
+
+/** Track daily challenge events */
+export function trackDailyChallenge(action: 'started' | 'completed', score?: number, correct?: number, total?: number) {
+  trackEvent('daily_challenge', `daily_challenge_${action}`, undefined, score, { correct, total });
+}
+
+/** Track game lifecycle */
+export function trackGameEvent(action: 'opened' | 'started' | 'completed', mode: string, score?: number) {
+  trackEvent('game', `game_${action}`, mode, score);
 }

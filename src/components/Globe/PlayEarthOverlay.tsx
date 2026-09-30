@@ -23,8 +23,8 @@ import {
 import { getCoordinatesForCountry } from '@/lib/constants';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
-import { trackEvent } from '@/services/analytics';
-import { shareContent } from '@/utils/share';
+import { trackEvent, trackShareClick, trackShareComplete } from '@/services/analytics';
+import { shareContent, getChallengeShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
 import { checkUnlockBadges } from '@/config/badges';
 import { auth, db } from '@/lib/firebase';
@@ -1917,17 +1917,34 @@ export default function PlayEarthOverlay({
 
   const handleShareChallenge = async () => {
     let shareText = `🌍 I am playing MooEarth Quiz and reached Level ${gameState.level}! Can you beat me?`;
+    let modeKey: 'daily' | 'survival' | 'clock' | 'flag' | 'capital' | 'explorer' = 'explorer';
     if (activeMode === 'survival') {
       shareText = `🔥 I survived ${survivalCount} countries in Survival Mode! Can you beat my streak?`;
+      modeKey = 'survival';
     } else if (activeMode === 'clock') {
       shareText = `⏱️ I scored ${clockScore} points in Beat the Clock! Play now on MooEarth Live!`;
+      modeKey = 'clock';
+    } else if (activeMode === 'flag') {
+      modeKey = 'flag';
+    } else if (activeMode === 'capital') {
+      modeKey = 'capital';
+    } else if (activeMode === 'daily') {
+      modeKey = 'daily';
     }
-    
+
+    const shareUrl = getChallengeShareUrl(
+      modeKey,
+      modeKey === 'daily' ? new Date().toISOString().split('T')[0] : undefined
+    );
+
+    trackShareClick('game_result', modeKey);
     const didShare = await shareContent({
       title: `Play Earth Challenge — ${BRANDING.name}`,
       text: shareText,
-      url: `/play-earth`
+      url: shareUrl
     });
+
+    trackShareComplete(didShare ? 'native' : 'clipboard', modeKey);
 
     if (!didShare) {
       setShowShareToast(true);
