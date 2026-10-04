@@ -38,15 +38,15 @@ test.describe('Suite 12 — Live Data Freshness Validation', () => {
     }
   });
 
-  test('should auto-refresh when stale data is detected by the client', async ({ page }) => {
+  test('should auto-refresh when stale data is detected by the client', async ({ page, context }) => {
     test.setTimeout(60000);
 
     let callCount = 0;
     let refreshRequestFired = false;
     const requestUrls: string[] = [];
 
-    // Intercept all API calls
-    await page.route('**/api/events*', async (route, request) => {
+    // Intercept all API calls across the entire context
+    await context.route('**/api/events*', async (route, request) => {
       const url = new URL(request.url());
       requestUrls.push(url.toString());
       

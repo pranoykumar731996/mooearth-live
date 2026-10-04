@@ -33,7 +33,8 @@ function isSameCountry(c1?: string | null, c2?: string | null): boolean {
 export async function fetchCountryReactions(country: string, category?: string | null): Promise<ReactionEvent> {
   const cacheKey = `${country}_${category || 'home'}`;
   const cached = reactionCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 2000) {
+  // Cache for 60 seconds (prevents rapid LLM sentiment burning while remaining fresh)
+  if (cached && Date.now() - cached.timestamp < 60_000) {
     return cached.data;
   }
 

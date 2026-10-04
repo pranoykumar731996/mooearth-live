@@ -1,9 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { fetchCountryReactions } from '@/services/reactions';
+import { aiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // Rate limiting: 15 req/min per IP
+  const clientIp = getClientIp(request);
+  if (aiRateLimiter.isLimited(clientIp)) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait before requesting reactions again.' },
+      { status: 429 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const country = searchParams.get('country');
   const category = searchParams.get('category');
