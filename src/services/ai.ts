@@ -1,8 +1,9 @@
 import { WorldEvent } from '@/types';
+import { BoundedMap } from '@/lib/rate-limiter';
 
-// In-memory cache for AI summaries
+// Bounded in-memory cache for AI summaries (max 500 entries, FIFO eviction)
 // Key: event ID or unique hash of the content
-const summaryCache = new Map<string, string>();
+const summaryCache = new BoundedMap<string, string>(500);
 
 export async function generateEventSummary(event: WorldEvent): Promise<string> {
   // If we already summarized this event, return the cached summary

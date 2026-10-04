@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { translateArticle } from '@/services/translate';
 import { FEATURES } from '@/config/features';
+import { aiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Rate limiting: 15 requests per minute per IP
+    const clientIp = getClientIp(request);
+    if (aiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before requesting another translation.' },
+        { status: 429 }
+      );
+    }
+
+    // Payload size cap: truncate fullContent to 5000 characters to prevent token abuse
+    const safeFullContent = typeof fullContent === 'string' ? fullContent.slice(0, 5000) : '';
 
     // Define cache key and document ref
     // Sanitise ID just in case
@@ -70,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Call translation service
-    const translation = await translateArticle(targetLanguage, title, summary, fullContent || '');
+    const translation = await translateArticle(targetLanguage, title.slice(0, 500), summary.slice(0, 1000), safeFullContent);
 
     // Write back to Firestore cache if database is reachable
     try {

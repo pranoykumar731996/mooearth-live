@@ -7,11 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { EarthQuestion } from '@/types';
+import { aiRateLimiter, getClientIp, BoundedMap } from '@/lib/rate-limiter';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-// In-memory cache for article quizzes
-const articleQuizCache = new Map<string, EarthQuestion[]>();
+// Bounded in-memory cache for article quizzes (max 500 entries, FIFO eviction)
+const articleQuizCache = new BoundedMap<string, EarthQuestion[]>(500);
 
 function getHash(str: string): string {
   let hash = 0;
@@ -103,6 +104,15 @@ function generateProceduralArticleQuestions(
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 15 requests per minute per IP
+    const clientIp = getClientIp(request);
+    if (aiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before generating another quiz.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const {
       title,

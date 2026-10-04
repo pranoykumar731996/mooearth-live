@@ -1,4 +1,3 @@
- 
 import { ReactionEvent, WorldEvent, EventCategory } from '@/types';
 import { fetchLiveNews, searchLiveNews, generateLocalFallbackEvents } from './news';
 import { fetchSocialReactions } from './social';
@@ -7,9 +6,10 @@ import { analyzeSentiment } from './sentiment';
 import fs from 'fs';
 import path from 'path';
 import { analyzeCelebrationSentiment } from './celebration-ai';
+import { BoundedMap } from '@/lib/rate-limiter';
 
-// In-memory cache for country reactions to avoid spamming APIs (reduced to 2s for near-instant live updates)
-const reactionCache = new Map<string, { data: ReactionEvent; timestamp: number }>();
+// Bounded in-memory cache for country reactions (max 300 entries, FIFO eviction)
+const reactionCache = new BoundedMap<string, { data: ReactionEvent; timestamp: number }>(300);
 const dbPath = path.join(process.cwd(), 'src/data/celebrations.json');
 
 function readCelebrations(): any[] {

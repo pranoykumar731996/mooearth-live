@@ -1,4 +1,5 @@
 import { WorldEvent } from '@/types';
+import { BoundedMap } from '@/lib/rate-limiter';
 
 export interface ArticleDetails {
   id: string;
@@ -49,8 +50,8 @@ function getDeterministicAuthor(seed: string): string {
   return AUTHORS_LIST[idx];
 }
 
-// Server-side in-memory cache for expanded articles
-const articleCache = new Map<string, ArticleDetails>();
+// Bounded server-side in-memory cache for expanded articles (max 500 entries, FIFO eviction)
+const articleCache = new BoundedMap<string, ArticleDetails>(500);
 
 /**
  * Normalizes text to fix common RSS formatting errors, run-together words,

@@ -11,6 +11,7 @@ export default function AdminLayout({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [inputKey, setInputKey] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -18,42 +19,64 @@ export default function AdminLayout({
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1';
 
-      const params = new URLSearchParams(window.location.search);
-      const queryKey = params.get('adminKey') || params.get('key');
-      const storedKey = localStorage.getItem('mooearth_admin_key');
-
-      // Default development passkey or configured admin key
-      const expectedKey = process.env.NEXT_PUBLIC_ADMIN_KEY || 'mooearth-admin-2026';
-
-      if (isLocal || queryKey === expectedKey || storedKey === expectedKey) {
-        if (queryKey === expectedKey) {
-          localStorage.setItem('mooearth_admin_key', expectedKey);
-        }
+      if (isLocal) {
+        // Auto-authenticate on local development
         setIsAuthenticated(true);
+        return;
+      }
+
+      // Check if we have a stored session token
+      const storedToken = localStorage.getItem('mooearth_admin_token');
+      if (storedToken) {
+        // Verify the stored token server-side
+        verifyKey(storedToken, true);
       } else {
-        setIsAuthenticated(false);
+        // Check for query parameter key
+        const params = new URLSearchParams(window.location.search);
+        const queryKey = params.get('adminKey') || params.get('key');
+        if (queryKey) {
+          verifyKey(queryKey, true);
+        } else {
+          setIsAuthenticated(false);
+        }
       }
     }
   }, []);
 
+  async function verifyKey(key: string, silent = false) {
+    if (!silent) setIsVerifying(true);
+    try {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      const data = await res.json();
+      if (data.authenticated) {
+        localStorage.setItem('mooearth_admin_token', key);
+        setIsAuthenticated(true);
+        setErrorMsg('');
+      } else {
+        localStorage.removeItem('mooearth_admin_token');
+        setIsAuthenticated(false);
+        if (!silent) setErrorMsg('Invalid administrator credentials.');
+      }
+    } catch {
+      setIsAuthenticated(false);
+      if (!silent) setErrorMsg('Verification failed. Please try again.');
+    } finally {
+      if (!silent) setIsVerifying(false);
+    }
+  }
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    const expectedKey = process.env.NEXT_PUBLIC_ADMIN_KEY || 'mooearth-admin-2026';
-
-    if (inputKey.trim() === expectedKey) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mooearth_admin_key', expectedKey);
-      }
-      setIsAuthenticated(true);
-      setErrorMsg('');
-    } else {
-      setErrorMsg('Invalid administrator credentials.');
-    }
+    verifyKey(inputKey.trim());
   };
 
   const handleLock = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('mooearth_admin_key');
+      localStorage.removeItem('mooearth_admin_token');
     }
     setIsAuthenticated(false);
   };
@@ -110,9 +133,10 @@ export default function AdminLayout({
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] cursor-pointer"
+              disabled={isVerifying}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Authenticate & Access ➔
+              {isVerifying ? 'Verifying...' : 'Authenticate & Access ➔'}
             </button>
           </form>
 

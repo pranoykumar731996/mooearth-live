@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isCountryWhitelisted } from '@/config/publishers';
 import { generateCacheKey, getCachedPerspective, setCachedPerspective } from '@/lib/perspective-cache';
 import { getPerspective } from '@/services/perspective';
+import { expensiveAiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing location/country or topic parameter' },
         { status: 400 }
+      );
+    }
+
+    // Rate limiting: 8 requests per minute per IP (expensive: multiple RSS + LLM calls)
+    const clientIp = getClientIp(request);
+    if (expensiveAiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before requesting another perspective comparison.' },
+        { status: 429 }
       );
     }
 

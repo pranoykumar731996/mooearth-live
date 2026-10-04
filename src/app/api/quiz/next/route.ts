@@ -9,6 +9,7 @@ import {
   isQuestionExpired
 } from '@/data/questions';
 import { generateQuestions } from '@/data/questions/generator';
+import { aiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -288,6 +289,15 @@ export async function POST(request: NextRequest) {
   let requestCountry = 'Global';
   let requestCategory = 'geography';
   try {
+    // Rate limiting: 15 requests per minute per IP
+    const clientIp = getClientIp(request);
+    if (aiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before requesting another question.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { country, category, username = 'Anonymous', answeredIds = [], answeredQuestions = [] } = body;
     requestCountry = country || 'Global';

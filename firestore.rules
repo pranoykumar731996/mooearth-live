@@ -13,13 +13,22 @@ service cloud.firestore {
       // Leaderboards and profiles are publicly readable
       allow read: if true;
 
-      // Creation and updates must satisfy schema validation
-      allow create, update: if request.resource.data.keys().hasAll(['username']) &&
-                               request.resource.data.username is string &&
-                               request.resource.data.username.size() > 0 &&
-                               request.resource.data.username.size() <= 60 &&
-                               (!('xp' in request.resource.data) || request.resource.data.xp is number) &&
-                               (!('level' in request.resource.data) || request.resource.data.level is number);
+      // Creation must satisfy schema validation with bounded XP/level values
+      allow create: if request.resource.data.keys().hasAll(['username']) &&
+                       request.resource.data.username is string &&
+                       request.resource.data.username.size() > 0 &&
+                       request.resource.data.username.size() <= 60 &&
+                       (!('xp' in request.resource.data) || (request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 1000000)) &&
+                       (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 0 && request.resource.data.level <= 100));
+
+      // Updates must also satisfy schema validation; XP cannot jump by more than 1000 per write
+      allow update: if request.resource.data.keys().hasAll(['username']) &&
+                       request.resource.data.username is string &&
+                       request.resource.data.username.size() > 0 &&
+                       request.resource.data.username.size() <= 60 &&
+                       (!('xp' in request.resource.data) || (request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 1000000)) &&
+                       (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 0 && request.resource.data.level <= 100)) &&
+                       (!('xp' in request.resource.data) || !('xp' in resource.data) || request.resource.data.xp - resource.data.xp <= 1000);
 
       // Prevent unauthorized deletion of user accounts
       allow delete: if request.auth != null && request.auth.uid == userId;

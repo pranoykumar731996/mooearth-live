@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+import { writeRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 const dbPath = path.join(process.cwd(), 'src/data/celebrations.json');
 
@@ -44,8 +46,17 @@ export async function GET() {
   });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 30 writes per minute per IP
+    const clientIp = getClientIp(request);
+    if (writeRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before posting again.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { username, avatar, country, match, type, url, comment, lat, lng } = body;
 
@@ -88,8 +99,17 @@ export async function POST(request: Request) {
 }
 
 // Support reporting a celebration (PUT /api/celebrations)
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
+    // Rate limiting: 30 writes per minute per IP
+    const clientIp = getClientIp(request);
+    if (writeRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before reporting again.' },
+        { status: 429 }
+      );
+    }
+
     const { id, action } = await request.json();
     if (!id || action !== 'report') {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });

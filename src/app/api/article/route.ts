@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOrGenerateArticleDetails } from '@/services/article';
+import { aiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting: 15 requests per minute per IP
+    const clientIp = getClientIp(request);
+    if (aiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before requesting another article.' },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id') || '';
     const url = searchParams.get('url') || '';

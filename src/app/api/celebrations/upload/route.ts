@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { uploadRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 const ALLOWED_MIME_TYPES: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -18,8 +19,17 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
 
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.webm', '.mp3', '.wav', '.mp4', '.mov']);
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 5 uploads per 10 minutes per IP
+    const clientIp = getClientIp(request);
+    if (uploadRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Upload rate limit exceeded. Please wait before uploading again.' },
+        { status: 429 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 

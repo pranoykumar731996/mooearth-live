@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAINarration, renderTemplateCommentary, EarthCastContext } from '@/services/earthcast-ai';
 import { cacheEngine, CachedNarration } from '@/services/ai-event-engine';
+import { expensiveAiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
 // GET: Returns current server-side AI analytics stats
 export async function GET() {
@@ -22,6 +23,15 @@ export async function GET() {
 // POST: Triggers or retrieves narration (with caching and deduplication)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 8 requests per minute per IP (expensive: TTS + GPT calls)
+    const clientIp = getClientIp(request);
+    if (expensiveAiRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before requesting another narration.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const context: EarthCastContext = body.context;
 
