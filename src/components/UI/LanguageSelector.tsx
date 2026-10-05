@@ -57,7 +57,7 @@ export default function LanguageSelector({ compact = false, className = '' }: La
     const segments = pathname.split('/').filter(Boolean);
     const hasLangPrefix = segments.length > 0 && isSupportedLocale(segments[0]);
 
-    let cleanPathSegments = hasLangPrefix ? segments.slice(1) : segments;
+    const cleanPathSegments = hasLangPrefix ? segments.slice(1) : segments;
     let newPath = '';
 
     if (targetLocale === 'en') {
