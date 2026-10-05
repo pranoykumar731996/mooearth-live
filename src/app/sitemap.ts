@@ -13,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/games',
     '/daily',
     '/party',
+    '/war-room',
+    '/tournament',
     '/challenges',
     '/trending',
     '/play-earth',
@@ -67,12 +69,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return true;
   });
 
-  // 5. Dynamic Articles
+  // 5. Dynamic Articles & War Room Situation Pages
   const articles = fallbackEvents.map(event => ({
     url: `${baseUrl}/article/${event.id}`,
     lastModified: new Date(event.publishedAt || new Date()),
     changeFrequency: 'weekly' as const,
     priority: 0.7
+  }));
+
+  const warRoomPages = fallbackEvents.map(event => ({
+    url: `${baseUrl}/war-room/${event.id}`,
+    lastModified: new Date(event.publishedAt || new Date()),
+    changeFrequency: 'daily' as const,
+    priority: 0.8
   }));
 
   // 6. Multilingual Hubs (Spanish, French, Portuguese, German, Japanese, Hindi, Arabic)
@@ -136,6 +145,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...uniqueCountries,
     ...multilingualPages,
     ...articles,
+    ...warRoomPages,
     ...legalPages
   ];
 }

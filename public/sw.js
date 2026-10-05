@@ -143,5 +143,58 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// ============================================================
+// PWA Re-Engagement: Web Push & Streak Notification Listeners
+// ============================================================
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'MooEarth Live — Planetary Alert',
+    body: 'Your daily Earth streak is about to expire! Complete today\'s 3-minute challenge.',
+    url: '/daily',
+  };
 
-// Build Timestamp: 2026-10-05T19:55:30.820Z
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: '/icons/icon-192.svg',
+    badge: '/favicon.ico',
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || '/daily',
+    },
+    actions: [
+      { action: 'open', title: 'Open Challenge' },
+      { action: 'dismiss', title: 'Later' },
+    ],
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  if (event.action === 'dismiss') return;
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/daily';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Build Timestamp: 2026-10-05T20:19:24.998Z

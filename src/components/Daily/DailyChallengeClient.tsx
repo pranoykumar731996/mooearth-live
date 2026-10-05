@@ -6,6 +6,7 @@ import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
 import { SupportedLocale, getTranslation } from '@/lib/i18n';
+import StreakNotificationPrompt from '@/components/PWA/StreakNotificationPrompt';
 
 // Calculate day index from reference epoch (Jan 1, 2026)
 function getDailyNumber(date: Date = new Date()): number {
@@ -845,6 +846,9 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
           </div>
         )}
       </main>
+
+      {/* PWA Streak Retention Alert Prompt */}
+      <StreakNotificationPrompt streak={streak} />
     </div>
   );
 }
