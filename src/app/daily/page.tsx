@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import DailyChallengeClient from '@/components/Daily/DailyChallengeClient';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Daily Earth Challenge — Test Your World Knowledge | MooEarth Live';
 const description = 'Take on today\'s Daily Earth Challenge. 5 synchronized geography questions, build your streak, earn XP, and compete with players worldwide. A new challenge every day on MooEarth Live.';
@@ -7,7 +8,10 @@ const description = 'Take on today\'s Daily Earth Challenge. 5 synchronized geog
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: '/daily' },
+  alternates: {
+    canonical: 'https://www.mooearth.live/daily',
+    languages: generateHreflangs('/daily'),
+  },
   openGraph: {
     title,
     description,

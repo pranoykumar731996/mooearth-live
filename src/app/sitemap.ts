@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { fallbackEvents } from '@/data/events';
+import { SUPPORTED_LOCALES } from '@/lib/i18n';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.mooearth.live';
@@ -11,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/explore',
     '/games',
     '/daily',
+    '/party',
     '/challenges',
     '/trending',
     '/play-earth',
@@ -73,7 +75,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7
   }));
 
-  // 6. Legal & Info Pages
+  // 6. Multilingual Hubs (Spanish, French, Portuguese, German, Japanese, Hindi, Arabic)
+  const nonEnLocales = SUPPORTED_LOCALES.filter(l => l !== 'en');
+  const multilingualPages: MetadataRoute.Sitemap = [];
+
+  nonEnLocales.forEach(lang => {
+    // Localized Home
+    multilingualPages.push({
+      url: `${baseUrl}/${lang}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.95
+    });
+    // Localized Daily Challenge
+    multilingualPages.push({
+      url: `${baseUrl}/${lang}/daily`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.95
+    });
+    // Localized Countries
+    uniqueCountries.forEach(countryItem => {
+      const countryPath = countryItem.url.replace(`${baseUrl}/country/`, '');
+      multilingualPages.push({
+        url: `${baseUrl}/${lang}/country/${countryPath}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily' as const,
+        priority: 0.85
+      });
+    });
+  });
+
+  // 7. Legal & Info Pages
   const legalPages = [
     '/about',
     '/contact',
@@ -101,6 +134,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...contentPages,
     ...categories,
     ...uniqueCountries,
+    ...multilingualPages,
     ...articles,
     ...legalPages
   ];

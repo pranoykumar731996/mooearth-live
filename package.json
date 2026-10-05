@@ -9,6 +9,7 @@
     "lint": "eslint",
     "generate-questions": "npx tsx scripts/generateQuestions.ts",
     "generate-country-questions": "npx tsx scripts/generateCountryQuestions.ts",
+    "generate:viral-short": "npx tsx scripts/generate-viral-short.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",

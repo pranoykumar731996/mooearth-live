@@ -1,0 +1,22 @@
+{
+  "title": "Can you solve today's Earth Challenge? (Tajikistan)",
+  "caption": "🚨 97% of people fail this question! Test your world knowledge on today's MooEarth Daily.\n\nQuestion: [Daily Challenge #1] What is the capital city of Tajikistan?\n\n👉 Play free right now in your browser at https://mooearth.live/daily\n\n#geography #geographyquiz #trivia #mooearth #earthdaily #quiz #worldnews #learnontiktok",
+  "question": "[Daily Challenge #1] What is the capital city of Tajikistan?",
+  "choices": [
+    "Damascus",
+    "Dushanbe",
+    "Luxembourg City",
+    "Dhaka"
+  ],
+  "correctAnswer": "Dushanbe",
+  "funFact": "Tajikistan has a population of approximately 10 million. Tajikistan is home to the Pamir Mountains, nicknamed the \"Roof of the World\".",
+  "date": "2026-10-05",
+  "renderedAt": "2026-10-05T19:53:04.559Z",
+  "templates": {
+    "html": "public/shorts/daily-short-player.html",
+    "frames": [
+      "public/shorts/frame-1-hook.png",
+      "public/shorts/frame-2-reveal.png"
+    ]
+  }
+}

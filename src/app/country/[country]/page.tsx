@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 interface CountryPageProps {
   params: Promise<{
@@ -18,7 +19,8 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
     title,
     description,
     alternates: {
-      canonical: `/country/${rawCountry.toLowerCase()}`,
+      canonical: `https://www.mooearth.live/country/${rawCountry.toLowerCase()}`,
+      languages: generateHreflangs(`/country/${rawCountry.toLowerCase()}`),
     },
     openGraph: {
       title,

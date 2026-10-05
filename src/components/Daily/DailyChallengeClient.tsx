@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
+import { SupportedLocale, getTranslation } from '@/lib/i18n';
 
 // Calculate day index from reference epoch (Jan 1, 2026)
 function getDailyNumber(date: Date = new Date()): number {
@@ -68,7 +69,12 @@ interface StoredDailyResult {
   completedAt: number;
 }
 
-export default function DailyChallengeClient() {
+export interface DailyChallengeClientProps {
+  locale?: SupportedLocale;
+}
+
+export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeClientProps = {}) {
+  const dict = useMemo(() => getTranslation(locale), [locale]);
   const [mounted, setMounted] = useState(false);
   const [dateStr] = useState(getTodayDateStr);
   const dailyNumber = useMemo(() => getDailyNumber(), []);
@@ -253,23 +259,27 @@ export default function DailyChallengeClient() {
   }, [answers]);
 
   function getShareText(): string {
+    const baseUrl = locale === 'en' ? 'https://www.mooearth.live/daily' : `https://www.mooearth.live/${locale}/daily`;
+    const shareUrl = `${baseUrl}?c=${dailyNumber}`;
     return `🌍 MooEarth Daily #${dailyNumber} — ${correctCount}/5 🟢\n` +
       `⏱️ ${elapsedSeconds}s | 🏆 ${score.toLocaleString()} XP | 🔥 ${streak}-Day Streak\n` +
       `${emojiGrid}\n` +
       `Can you beat my score?\n` +
-      `👉 https://mooearth.live/daily?c=${dailyNumber}`;
+      `👉 ${shareUrl}`;
   }
 
   async function handleShare() {
     const text = getShareText();
+    const baseUrl = locale === 'en' ? 'https://www.mooearth.live/daily' : `https://www.mooearth.live/${locale}/daily`;
+    const shareUrl = `${baseUrl}?c=${dailyNumber}`;
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: `MooEarth Daily #${dailyNumber}`,
           text,
-          url: `https://mooearth.live/daily?c=${dailyNumber}`,
+          url: shareUrl,
         });
-        showToast('Shared successfully!');
+        showToast(dict.daily.copiedToast || 'Shared successfully!');
         return;
       } catch {
         // User cancelled or unsupported, fallback to copy
@@ -418,7 +428,7 @@ export default function DailyChallengeClient() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              Daily Earth Challenge
+              {dict.daily.title}
             </h1>
 
             <p style={{
@@ -428,7 +438,7 @@ export default function DailyChallengeClient() {
               maxWidth: '480px',
               margin: '0 auto 32px',
             }}>
-              5 curated world questions. One synchronized global challenge every 24 hours. Test your geography, speed, and build your streak.
+              {dict.daily.subtitle}
             </p>
 
             {/* Quick Overview Badges */}
@@ -466,7 +476,7 @@ export default function DailyChallengeClient() {
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '4px' }}>🔥</div>
                 <div style={{ fontSize: '18px', fontWeight: 800, color: '#f472b6' }}>{streak}</div>
-                <div style={{ fontSize: '12px', color: '#94a3b8' }}>Day Streak</div>
+                <div style={{ fontSize: '12px', color: '#94a3b8' }}>{dict.daily.streakLabel}</div>
               </div>
             </div>
 
@@ -490,7 +500,7 @@ export default function DailyChallengeClient() {
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
-              ▶ Play Today&apos;s Challenge
+              ▶ {dict.daily.startBtn}
             </button>
           </div>
         )}
