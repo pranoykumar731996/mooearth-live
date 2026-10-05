@@ -27,6 +27,9 @@ const securityHeaders = [
   },
 ];
 
+// Embed route headers permit iframe embedding on third-party blogs, newsrooms, and Substack
+const embedHeaders = securityHeaders.filter(h => h.key !== 'X-Frame-Options');
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -39,7 +42,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/embed/:path*',
+        headers: embedHeaders,
+      },
+      {
+        source: '/((?!embed).*)',
         headers: securityHeaders,
       },
     ];
