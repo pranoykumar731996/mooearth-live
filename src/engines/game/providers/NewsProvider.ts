@@ -23,7 +23,7 @@ import { adjustTimeLimit } from '../DifficultyEngine';
 import { getDefaultTimeLimit, getBasePoints } from '../registry';
 import { WorldEvent } from '@/types';
 import { fetchLiveNews } from '@/services/news';
-import { demoEvents } from '@/data/events';
+import { fallbackEvents } from '@/data/events';
 import { COUNTRY_METADATA, CountryMeta } from '@/data/questions/countryMetadata';
 
 // ---- Configuration ----
@@ -93,7 +93,7 @@ async function getNewsEvents(): Promise<WorldEvent[]> {
       e => e.country && e.title && e.lat && e.lng
     );
 
-    const finalEvents = events.length >= 4 ? events : demoEvents;
+    const finalEvents = events.length >= 4 ? events : fallbackEvents;
 
     newsCache = {
       events: finalEvents,
@@ -103,7 +103,7 @@ async function getNewsEvents(): Promise<WorldEvent[]> {
 
     return finalEvents;
   } catch {
-    return newsCache?.events || demoEvents;
+    return newsCache?.events || fallbackEvents;
   }
 }
 

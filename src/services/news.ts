@@ -1,6 +1,5 @@
- 
 import { WorldEvent, EventCategory } from '@/types';
-import { demoEvents } from '@/data/events';
+import { fallbackEvents } from '@/data/events';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 
 function assignCoordinates(title: string, content: string, countryHint?: string) {
@@ -140,7 +139,7 @@ export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEve
     return { events, active: true };
   } catch (error) {
     console.warn('Failed to fetch live news from RSS, using fallback static events:', error);
-    return { events: demoEvents, active: true };
+    return { events: fallbackEvents, active: true };
   }
 }
 

@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../../page';
-import { demoEvents } from '@/data/events';
+import { fallbackEvents } from '@/data/events';
 import { fetchOrGenerateArticleDetails } from '@/services/article';
 
 interface ArticlePageProps {
@@ -10,7 +10,7 @@ interface ArticlePageProps {
 }
 
 async function getArticleDetailsHelper(id: string) {
-  const event = demoEvents.find(e => e.id === id);
+  const event = fallbackEvents.find(e => e.id === id);
   if (!event) return null;
 
   try {

@@ -1,13 +1,13 @@
 // ============================================================
-// MooEarth Live — Demo Event Data
+// MooEarth Live — Degraded Fallback Event Data
 // ============================================================
-// Replace this file's export with an API call to swap to live data.
+// High-quality baseline events used when live RSS feeds are temporarily unreachable.
 
 import { WorldEvent } from '@/types';
 
-/** Generate demo events with timestamps relative to current time.
+/** Generate fallback events with timestamps relative to current time.
  *  Called lazily on the client to avoid SSR/client mismatch. */
-function createDemoEvents(): WorldEvent[] {
+function createFallbackEvents(): WorldEvent[] {
   const now = Date.now();
   const rawEvents = [
     {
@@ -138,5 +138,6 @@ function createDemoEvents(): WorldEvent[] {
   }));
 }
 
-/** Static demo events — safe for SSR since timestamps are fixed strings */
-export const demoEvents: WorldEvent[] = createDemoEvents();
+/** Static fallback events — safe for SSR since timestamps are fixed strings */
+export const fallbackEvents: WorldEvent[] = createFallbackEvents();
+export const demoEvents: WorldEvent[] = fallbackEvents;

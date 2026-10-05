@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
-import { demoEvents } from '@/data/events';
+import { fallbackEvents } from '@/data/events';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.mooearth.live';
@@ -65,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   // 5. Dynamic Articles
-  const articles = demoEvents.map(event => ({
+  const articles = fallbackEvents.map(event => ({
     url: `${baseUrl}/article/${event.id}`,
     lastModified: new Date(event.publishedAt || new Date()),
     changeFrequency: 'weekly' as const,
