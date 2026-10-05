@@ -78,7 +78,7 @@ export default function LanguageSelector({ compact = false, className = '' }: La
   const activeMeta = LOCALES_META[currentLocale] || LOCALES_META.en;
 
   return (
-    <div ref={dropdownRef} className={`relative inline-block text-left ${className}`}>
+    <div ref={dropdownRef} className={`relative z-50 inline-block text-left ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -108,7 +108,7 @@ export default function LanguageSelector({ compact = false, className = '' }: La
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#090d22]/95 border border-cyan-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl z-50 p-2 animate-fadeIn"
+          className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#090d22] border border-cyan-500/40 shadow-[0_20px_50px_rgba(0,0,0,0.95)] z-[60] p-2 animate-fadeIn"
           style={{
             maxHeight: '380px',
             overflowY: 'auto',

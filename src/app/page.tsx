@@ -866,7 +866,7 @@ export default function HomePage({
       />
 
       {/* Top Navbar & Search */}
-      <div className="relative z-30 pointer-events-none">
+      <div className="relative z-50 pointer-events-none">
         <Navbar
           events={filteredEvents}
           activeCategory={activeCategory}
