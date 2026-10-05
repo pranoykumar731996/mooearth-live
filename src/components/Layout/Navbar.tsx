@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 import { BRANDING } from '@/config/branding';
 import { ApiStatus } from '@/hooks/useLiveEvents';
 
@@ -273,6 +274,9 @@ export default function Navbar({
             </button>
           </Link>
 
+          {/* Language Selector (Mobile) */}
+          <LanguageSelector compact={true} />
+
           {/* Play Earth Game Mode (Eye-Stopper Pill for Mobile) */}
           <button
             onClick={onTogglePlayEarth}
@@ -411,6 +415,9 @@ export default function Navbar({
               ⚙️
             </button>
           )}
+
+          {/* Phase 2: Multilingual Language Selector */}
+          <LanguageSelector />
 
           <InstallButton />
           {currentUser ? (

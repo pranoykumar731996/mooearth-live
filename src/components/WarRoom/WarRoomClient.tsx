@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { fallbackEvents } from '@/data/events';
 import { WorldEvent } from '@/types';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 
 // Dynamically import GlobeScene for tactical 3D mini-view
 const GlobeScene = dynamic(() => import('@/components/Globe/GlobeScene'), {
@@ -123,7 +124,7 @@ export default function WarRoomClient({ initialEventId }: WarRoomClientProps) {
         </div>
 
         {/* Live Telemetry Bar */}
-        <div className="flex items-center gap-4 text-xs font-mono">
+        <div className="flex items-center gap-3 text-xs font-mono">
           <div className="hidden md:flex items-center gap-2 text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span>UTC: <strong className="text-white">{utcTime || 'SYNCHRONIZING...'}</strong></span>
@@ -134,10 +135,11 @@ export default function WarRoomClient({ initialEventId }: WarRoomClientProps) {
           </div>
           <Link
             href="/daily"
-            className="px-3 py-1 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition-colors"
+            className="hidden sm:inline-flex px-3 py-1 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs font-bold text-cyan-300 transition-colors"
           >
             🌍 Daily Challenge
           </Link>
+          <LanguageSelector compact={true} />
         </div>
       </header>
 

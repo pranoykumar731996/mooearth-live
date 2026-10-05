@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 
 // Simple Web Audio sounds for challenge mode
 function playChallengeTone(freq: number, type: OscillatorType, duration: number, delay: number = 0) {
@@ -212,18 +213,21 @@ export default function ChallengeArenaClient({ challengeId }: ChallengeArenaClie
           <span>Daily Challenge</span>
         </Link>
 
-        <div style={{
-          fontSize: '12px',
-          fontWeight: 800,
-          color: '#f472b6',
-          letterSpacing: '1px',
-          textTransform: 'uppercase',
-          background: 'rgba(236, 72, 153, 0.12)',
-          border: '1px solid rgba(236, 72, 153, 0.3)',
-          padding: '4px 12px',
-          borderRadius: '9999px',
-        }}>
-          1v1 Head-to-Head Arena
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            fontSize: '12px',
+            fontWeight: 800,
+            color: '#f472b6',
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            background: 'rgba(236, 72, 153, 0.12)',
+            border: '1px solid rgba(236, 72, 153, 0.3)',
+            padding: '4px 12px',
+            borderRadius: '9999px',
+          }}>
+            1v1 Head-to-Head Arena
+          </div>
+          <LanguageSelector compact={true} />
         </div>
       </header>
 

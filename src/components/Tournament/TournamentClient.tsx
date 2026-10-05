@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 
 // Web Audio sound effects
 function playTone(freq: number, type: OscillatorType, duration: number, delay: number = 0) {
@@ -241,7 +242,7 @@ export default function TournamentClient() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-amber-300">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-mono text-amber-300">
             <span>🌍</span>
             <span>28,400+ CONTENDERS</span>
           </div>
@@ -251,6 +252,7 @@ export default function TournamentClient() {
           >
             ⚡ Classroom & Party
           </Link>
+          <LanguageSelector compact={true} />
         </div>
       </header>
 

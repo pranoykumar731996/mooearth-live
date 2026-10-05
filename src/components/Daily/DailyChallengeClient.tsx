@@ -7,6 +7,7 @@ import { getDailyEarthQuestion } from '@/data/questions';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
 import { SupportedLocale, getTranslation } from '@/lib/i18n';
 import StreakNotificationPrompt from '@/components/PWA/StreakNotificationPrompt';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 
 // Calculate day index from reference epoch (Jan 1, 2026)
 function getDailyNumber(date: Date = new Date()): number {
@@ -350,7 +351,7 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         marginBottom: '28px',
       }}>
-        <Link href="/" style={{
+        <Link href={locale === 'en' ? '/' : `/${locale}`} style={{
           color: '#94a3b8',
           textDecoration: 'none',
           fontSize: '14px',
@@ -362,7 +363,7 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
           <span>Back to Globe</span>
         </Link>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -378,6 +379,8 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
             <span>🔥</span>
             <span>{streak} Day Streak</span>
           </div>
+
+          <LanguageSelector compact={true} />
 
           <Link href="/play-earth" style={{
             color: '#00e5ff',

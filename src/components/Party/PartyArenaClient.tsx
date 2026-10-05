@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
+import LanguageSelector from '@/components/UI/LanguageSelector';
 
 // Simple Web Audio synthesizer for party room
 function playAudioChime(freq: number, type: OscillatorType, duration: number, delay: number = 0) {
@@ -280,20 +281,23 @@ export default function PartyArenaClient({ initialRoomCode }: PartyArenaProps) {
           </div>
         </Link>
 
-        {roomCode && (
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          {roomCode && (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 font-mono text-xs text-cyan-300">
               <span className="text-gray-400">PIN:</span>
               <span className="font-bold tracking-wider">{roomCode}</span>
             </div>
+          )}
+          {roomCode && (
             <button
               onClick={handleCopyInvite}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs font-semibold text-cyan-300 transition-colors"
             >
               📋 {copiedToast ? 'Copied!' : 'Copy Link'}
             </button>
-          </div>
-        )}
+          )}
+          <LanguageSelector compact={true} />
+        </div>
       </header>
 
       {/* Main Body */}
