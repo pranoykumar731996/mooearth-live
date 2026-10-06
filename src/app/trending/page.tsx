@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Trending Around Earth — What\'s Happening Now | MooEarth Live';
 const description = 'Discover what\'s trending around the world right now. See the most active locations, top stories, and popular games on MooEarth Live.';
@@ -7,7 +8,10 @@ const description = 'Discover what\'s trending around the world right now. See t
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: '/trending' },
+  alternates: {
+    canonical: 'https://www.mooearth.live/trending',
+    languages: generateHreflangs('/trending'),
+  },
   openGraph: {
     title,
     description,

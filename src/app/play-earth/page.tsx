@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Play Earth - Interactive Global Trivia Game | MooEarth Live';
 const description = 'Test your global trivia knowledge on geography, sports, weather, history, and science. Answer country-specific questions on MooEarth Live\'s interactive 3D globe.';
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/play-earth',
+    canonical: 'https://www.mooearth.live/play-earth',
+    languages: generateHreflangs('/play-earth'),
   },
   openGraph: {
     title,

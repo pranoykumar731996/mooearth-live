@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Explore Earth — Discover Places Around the World | MooEarth Live';
 const description = 'Explore countries, cities, and locations around the world on MooEarth Live\'s interactive 3D globe. Discover news, weather, sports, and events from any place on Earth.';
@@ -8,7 +9,10 @@ const description = 'Explore countries, cities, and locations around the world o
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: '/explore' },
+  alternates: {
+    canonical: 'https://www.mooearth.live/explore',
+    languages: generateHreflangs('/explore'),
+  },
   openGraph: {
     title,
     description,

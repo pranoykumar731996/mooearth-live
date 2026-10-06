@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Live Sports Updates, Matches & Results | MooEarth Live';
 const description = 'Follow real-time sports results, tournament tables, player stats, and match highlights on MooEarth Live\'s interactive 3D globe.';
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/sports',
+    canonical: 'https://www.mooearth.live/sports',
+    languages: generateHreflangs('/sports'),
   },
   openGraph: {
     title,

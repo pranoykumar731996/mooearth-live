@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Live Business News, Market Indices & Trade Reports | MooEarth Live';
 const description = 'Follow real-time stock indexes, trade summaries, GDP growth indicators, inflation statistics, and commercial developments on MooEarth Live.';
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/business',
+    canonical: 'https://www.mooearth.live/business',
+    languages: generateHreflangs('/business'),
   },
   openGraph: {
     title,

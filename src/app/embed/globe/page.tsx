@@ -6,8 +6,8 @@ export const metadata: Metadata = {
   title: 'Interactive 3D Globe Widget | MooEarth Live',
   description: 'Embed live 3D world events, breaking news, and interactive globe visualizations directly on your website or publication.',
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 

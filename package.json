@@ -21,7 +21,8 @@
     "test:sentry:fix": "npx tsx scripts/regression-sentry.ts --auto-fix",
     "test:sentry:full": "npx tsx scripts/regression-sentry.ts --full",
     "test:regression": "npx tsx scripts/regression-sentry.ts",
-    "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts"
+    "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts",
+    "test:seo": "playwright test tests/seo-technical.spec.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",

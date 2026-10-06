@@ -194,7 +194,7 @@ export default function TournamentClient() {
       `I scored ${score.toLocaleString()} XP for Team ${selectedNation.flag} ${selectedNation.name}!\n` +
       `Rank: ${badgeRank.medal} ${badgeRank.title}\n` +
       `Can your country beat our score?\n` +
-      `👉 https://mooearth.live/tournament`;
+      `👉 https://www.mooearth.live/tournament`;
   }
 
   function handleShare() {
@@ -203,7 +203,7 @@ export default function TournamentClient() {
       navigator.share({
         title: `MooEarth Tournament — Team ${selectedNation.name}`,
         text,
-        url: 'https://mooearth.live/tournament',
+        url: 'https://www.mooearth.live/tournament',
       }).catch(() => {});
       return;
     }

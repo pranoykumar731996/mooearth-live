@@ -145,7 +145,7 @@ export default function ChallengeArenaClient({ challengeId }: ChallengeArenaClie
       `Me: ${playerScore.toLocaleString()} XP (${elapsedSeconds}s) vs ${challengerName}: ${targetScore.toLocaleString()} XP (${targetTime}s)\n` +
       `Verdict: ${verdict}\n` +
       `Can you beat us both?\n` +
-      `👉 https://mooearth.live/challenge/${challengeId}?score=${playerScore}&time=${elapsedSeconds}&name=Player`;
+      `👉 https://www.mooearth.live/challenge/${challengeId}?score=${playerScore}&time=${elapsedSeconds}&name=Player`;
   }
 
   function copyResult() {

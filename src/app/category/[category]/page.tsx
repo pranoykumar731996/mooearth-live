@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import HomePage from '../../page';
 import { EventCategory } from '@/types';
+import { generateHreflangs } from '@/lib/i18n';
 
 interface CategoryPageProps {
   params: Promise<{
@@ -29,7 +30,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     title,
     description,
     alternates: {
-      canonical: `/category/${cat}`,
+      canonical: `https://www.mooearth.live/category/${cat}`,
+      languages: generateHreflangs(`/category/${cat}`),
     },
     openGraph: {
       title,

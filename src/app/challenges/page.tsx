@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Earth Challenges — Compete & Share | MooEarth Live';
 const description = 'Challenge your friends to Earth quizzes. Share your scores, build streaks, and compete on global leaderboards. Daily, weekly, and event-driven challenges on MooEarth Live.';
@@ -7,7 +8,10 @@ const description = 'Challenge your friends to Earth quizzes. Share your scores,
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: '/challenges' },
+  alternates: {
+    canonical: 'https://www.mooearth.live/challenges',
+    languages: generateHreflangs('/challenges'),
+  },
   openGraph: {
     title,
     description,

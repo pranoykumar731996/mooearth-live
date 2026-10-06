@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Earth Games — Play Interactive Geography Challenges | MooEarth Live';
 const description = 'Test your knowledge of the world with interactive geography games. Play country explorer, flag challenge, capital challenge, survival mode, beat the clock, and daily earth challenges on MooEarth Live.';
@@ -7,7 +8,10 @@ const description = 'Test your knowledge of the world with interactive geography
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: '/games' },
+  alternates: {
+    canonical: 'https://www.mooearth.live/games',
+    languages: generateHreflangs('/games'),
+  },
   openGraph: {
     title,
     description,

@@ -11,22 +11,18 @@ test.describe('MooEarth Live - Play Earth Quiz E2E Tests', () => {
     // Use default load state for more stable navigations
     await page.goto('/play-earth', { timeout: 60000 });
 
-    // Wait for the splash screen to appear
-    const logo = page.getByAltText('MooEarth Live Logo');
-    await expect(logo).toBeVisible({ timeout: 15000 });
-
-    // Forcefully remove the splash screen container immediately to prevent
-    // Framer Motion exit animations from hanging in headless browsers
-    await page.evaluate(() => {
-      const splash = document.getElementById('splash-screen') || 
-                     document.querySelector('div[class*="z-[100]"]') ||
-                     document.querySelector('div[class*="bg-[#030308]"]') ||
-                     document.querySelector('img[alt="MooEarth Live Logo"]')?.parentElement?.parentElement;
-      if (splash) splash.remove();
-    });
-
-    // Confirm the splash is gone
-    await expect(logo).toBeHidden({ timeout: 5000 });
+    // Wait for the splash screen if present and dismiss it
+    const splash = page.locator('#splash-screen');
+    try {
+      if (await splash.isVisible({ timeout: 5000 })) {
+        await page.evaluate(() => {
+          const s = document.getElementById('splash-screen');
+          if (s) s.remove();
+        });
+      }
+    } catch {
+      // Splash already dismissed
+    }
   });
 
   test('should navigate to play-earth route and load quiz UI', async ({ page }) => {

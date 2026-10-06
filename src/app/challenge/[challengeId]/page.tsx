@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: ChallengePageProps): Promise<
   return {
     title,
     description,
-    alternates: { canonical: `/challenge/${challengeId}` },
+    alternates: { canonical: `https://www.mooearth.live/challenge/${challengeId}` },
     openGraph: {
       title,
       description,

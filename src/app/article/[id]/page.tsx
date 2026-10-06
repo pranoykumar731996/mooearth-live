@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     title,
     description,
     alternates: {
-      canonical: `/article/${id}`,
+      canonical: `https://www.mooearth.live/article/${id}`,
     },
     openGraph: {
       title,

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Real-time Global Weather Maps & Climate Updates | MooEarth Live';
 const description = 'Monitor dynamic weather shifts, high-pressure systems, storm paths, temperature readings, and climate sensor grids globally on MooEarth Live.';
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/weather',
+    canonical: 'https://www.mooearth.live/weather',
+    languages: generateHreflangs('/weather'),
   },
   openGraph: {
     title,

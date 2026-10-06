@@ -7,6 +7,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLiveEvents } from '@/hooks/useLiveEvents';
 import { useEventFilter } from '@/hooks/useEventFilter';
@@ -813,7 +814,30 @@ export default function HomePage({
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#030308]" id="main">
-      <h1 className="sr-only">MooEarth Live - The Ultimate Interactive Globe</h1>
+      {/* Search Engine Optimization — Logical H1 and Semantic Content */}
+      <h1 className="sr-only">MooEarth Live — 3D Interactive World Globe & Live News Reactions</h1>
+      <section className="sr-only" aria-label="About MooEarth Live">
+        <p>
+          MooEarth Live is an interactive 3D emotional globe visualizing real-time global news, live sports reactions,
+          celebrations, and worldwide energy. Touch any country to explore breaking international events, weather updates,
+          business reports, and technology developments. Test your global knowledge with daily geography challenges, flag quizzes,
+          capital trivia, and the weekly Global Nations Cup tournament.
+        </p>
+        <nav aria-label="Primary Platform Navigation">
+          <Link href="/explore">Explore Earth</Link>
+          <Link href="/news">Global News</Link>
+          <Link href="/sports">World Sports</Link>
+          <Link href="/weather">Global Weather</Link>
+          <Link href="/business">Business & Markets</Link>
+          <Link href="/technology">Technology Trends</Link>
+          <Link href="/games">Play Earth Games</Link>
+          <Link href="/daily">Daily Earth Challenge</Link>
+          <Link href="/tournament">Global Nations Cup</Link>
+          <Link href="/war-room">Situation War Room</Link>
+          <Link href="/trending">Trending Worldwide</Link>
+        </nav>
+      </section>
+
       {/* Splash Screen */}
       <AnimatePresence>
         {isLoading && (
@@ -836,10 +860,10 @@ export default function HomePage({
                 <div className="absolute w-24 h-24 rounded-full border border-purple-500/20 border-b-purple-400 animate-[spin_2s_linear_infinite_reverse]" />
                 <span className="text-6xl relative z-10 select-none">🌍</span>
               </div>
-              <h1 className="text-2xl font-bold text-white mt-6 tracking-tight flex items-center gap-1 select-none">
+              <div role="heading" aria-level={2} className="text-2xl font-bold text-white mt-6 tracking-tight flex items-center gap-1 select-none">
                 <span>Moo</span><span className="text-cyan-400">Earth</span>
                 <span className="text-xs bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 px-2 py-0.5 rounded-full ml-1 uppercase tracking-widest font-black">Live</span>
-              </h1>
+              </div>
             </motion.div>
             <motion.p 
               initial={{ opacity: 0, y: 10 }}

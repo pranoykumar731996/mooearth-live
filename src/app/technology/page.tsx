@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import HomePage from '../page';
+import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Latest Technology News & Tech Trends | MooEarth Live';
 const description = 'Explore real-time technology breakthroughs, global product launches, and digital innovation trends on MooEarth Live\'s interactive 3D emotional globe.';
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/technology',
+    canonical: 'https://www.mooearth.live/technology',
+    languages: generateHreflangs('/technology'),
   },
   openGraph: {
     title,
