@@ -32,7 +32,7 @@ export function isSupportedLocale(locale: string): locale is SupportedLocale {
  * Generate hreflang language alternate URLs for Next.js metadata
  */
 export function generateHreflangs(path: string, baseUrl: string = 'https://www.mooearth.live'): Record<string, string> {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const cleanPath = (!path || path === '/') ? '' : (path.startsWith('/') ? path : `/${path}`);
   const alternates: Record<string, string> = {
     'x-default': `${baseUrl}${cleanPath}`,
   };

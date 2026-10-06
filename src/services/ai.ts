@@ -5,16 +5,26 @@ import { BoundedMap } from '@/lib/rate-limiter';
 // Key: event ID or unique hash of the content
 const summaryCache = new BoundedMap<string, string>(500);
 
+// Circuit breaker for OpenAI API during 429 quota exhaustion or network downtime
+let lastOpenAIFailure = 0;
+const OPENAI_COOLDOWN_MS = 60 * 1000; // 60 seconds cooldown
+
 export async function generateEventSummary(event: WorldEvent): Promise<string> {
   // If we already summarized this event, return the cached summary
   if (summaryCache.has(event.id)) {
     return summaryCache.get(event.id)!;
   }
 
+  // If currently in cooldown after a 429 / network error, immediately return event summary
+  if (Date.now() - lastOpenAIFailure < OPENAI_COOLDOWN_MS) {
+    summaryCache.set(event.id, event.summary);
+    return event.summary;
+  }
+
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.warn('OPENAI_API_KEY is missing. Falling back to original summary.');
+      summaryCache.set(event.id, event.summary);
       return event.summary;
     }
 
@@ -39,10 +49,16 @@ export async function generateEventSummary(event: WorldEvent): Promise<string> {
         max_tokens: 100,
         temperature: 0.3,
       }),
+      signal: AbortSignal.timeout(4000),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API returned ${response.status}`);
+      if (response.status === 429) {
+        lastOpenAIFailure = Date.now();
+        console.warn('[AI Service] OpenAI rate limited (429). Activating 60s cooldown and falling back to direct summary.');
+      }
+      summaryCache.set(event.id, event.summary);
+      return event.summary;
     }
 
     const data = await response.json();
@@ -53,10 +69,11 @@ export async function generateEventSummary(event: WorldEvent): Promise<string> {
       return aiSummary;
     }
 
+    summaryCache.set(event.id, event.summary);
     return event.summary;
-  } catch (error) {
-    console.error('Failed to generate AI summary:', error);
-    // Fallback to the raw summary if AI fails
+  } catch {
+    lastOpenAIFailure = Date.now();
+    summaryCache.set(event.id, event.summary);
     return event.summary;
   }
 }

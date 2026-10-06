@@ -484,28 +484,95 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
               </div>
             </div>
 
-            <button
-              onClick={startDailyGame}
-              id="start-daily-challenge-btn"
-              style={{
-                width: '100%',
-                maxWidth: '400px',
-                padding: '18px 36px',
-                fontSize: '18px',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%', maxWidth: '400px', margin: '0 auto' }}>
+              <button
+                onClick={startDailyGame}
+                id="start-daily-challenge-btn"
+                style={{
+                  width: '100%',
+                  padding: '18px 36px',
+                  fontSize: '18px',
+                  fontWeight: 800,
+                  color: '#05040d',
+                  background: 'linear-gradient(135deg, #00e5ff 0%, #38bdf8 50%, #ec4899 100%)',
+                  border: 'none',
+                  borderRadius: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 12px 30px rgba(0, 229, 255, 0.35)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                ▶ {dict.daily.startBtn}
+              </button>
+
+              <Link
+                href="/play-earth"
+                id="start-daily-challenge"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  padding: '14px 28px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#00e5ff',
+                  background: 'rgba(0, 229, 255, 0.1)',
+                  border: '1px solid rgba(0, 229, 255, 0.3)',
+                  borderRadius: '14px',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s',
+                }}
+              >
+                🌍 Play on 3D Interactive Globe
+              </Link>
+            </div>
+
+            {/* Today's Featured Countries Section */}
+            <div style={{
+              marginTop: '36px',
+              textAlign: 'left',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '20px',
+              padding: '24px',
+              width: '100%',
+            }}>
+              <h3 style={{
+                fontSize: '14px',
                 fontWeight: 800,
-                color: '#05040d',
-                background: 'linear-gradient(135deg, #00e5ff 0%, #38bdf8 50%, #ec4899 100%)',
-                border: 'none',
-                borderRadius: '16px',
-                cursor: 'pointer',
-                boxShadow: '0 12px 30px rgba(0, 229, 255, 0.35)',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            >
-              ▶ {dict.daily.startBtn}
-            </button>
+                color: '#38bdf8',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                margin: '0 0 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span>📍</span>
+                <span>Today&apos;s Featured Countries</span>
+              </h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {Array.from(new Set(questions.map(q => q.country))).map((cName) => (
+                  <span
+                    key={cName}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      padding: '6px 14px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#ffffff',
+                    }}
+                  >
+                    {cName}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

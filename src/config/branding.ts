@@ -6,8 +6,8 @@
 export const BRANDING = {
   name: 'MooEarth Live',
   shortName: 'MooEarth',
-  domain: 'mooearth.live',
-  url: 'https://mooearth.live',
+  domain: 'www.mooearth.live',
+  url: 'https://www.mooearth.live',
   description: 'An immersive emotional globe visualizing global news, live sports reactions, celebrations, and world energy.',
   tagline: 'WATCH THE WORLD REACT',
   themeColor: '#000000',

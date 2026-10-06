@@ -281,6 +281,11 @@ export default function SearchBar({
                               <p className="text-[10px] font-semibold text-white/40 mt-0.5">
                                 {labelType} {subtitle && `• ${subtitle}`} • Pop: {(loc.population / 1000000).toFixed(2)}M
                               </p>
+                              {loc.type === 'country' && (
+                                <p className="text-[11px] font-semibold text-cyan-400 mt-0.5">
+                                  View Reactions in {loc.name}
+                                </p>
+                              )}
                             </div>
                           </button>
                         );

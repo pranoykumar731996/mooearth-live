@@ -247,7 +247,7 @@ export default function ChallengeArenaClient({ challengeId }: ChallengeArenaClie
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              {challengerName} Challenged You!
+              {isDaily ? 'Daily Earth Challenge' : 'Earth Challenge'}: {challengerName} Challenged You!
             </h1>
 
             <p style={{ color: '#94a3b8', fontSize: '16px', lineHeight: 1.5, margin: '0 0 32px' }}>
@@ -286,26 +286,49 @@ export default function ChallengeArenaClient({ challengeId }: ChallengeArenaClie
               </div>
             </div>
 
-            <button
-              onClick={startChallenge}
-              id="accept-challenge-btn"
-              style={{
-                width: '100%',
-                maxWidth: '420px',
-                padding: '18px 36px',
-                fontSize: '18px',
-                fontWeight: 900,
-                color: '#ffffff',
-                background: 'linear-gradient(135deg, #ec4899 0%, #f59e0b 100%)',
-                border: 'none',
-                borderRadius: '16px',
-                cursor: 'pointer',
-                boxShadow: '0 12px 30px rgba(236, 72, 153, 0.35)',
-                transition: 'all 0.2s',
-              }}
-            >
-              ⚡ Accept Challenge & Play
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%', maxWidth: '420px', margin: '0 auto' }}>
+              <button
+                onClick={startChallenge}
+                id="accept-challenge-btn"
+                style={{
+                  width: '100%',
+                  padding: '18px 36px',
+                  fontSize: '18px',
+                  fontWeight: 900,
+                  color: '#ffffff',
+                  background: 'linear-gradient(135deg, #ec4899 0%, #f59e0b 100%)',
+                  border: 'none',
+                  borderRadius: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 12px 30px rgba(236, 72, 153, 0.35)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                ⚡ Accept Challenge & Play
+              </button>
+
+              <Link
+                href="/play-earth"
+                id="accept-challenge"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  padding: '14px 28px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#00e5ff',
+                  background: 'rgba(0, 229, 255, 0.1)',
+                  border: '1px solid rgba(0, 229, 255, 0.3)',
+                  borderRadius: '14px',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s',
+                }}
+              >
+                🌍 Play Challenge on 3D Globe
+              </Link>
+            </div>
           </div>
         )}
 

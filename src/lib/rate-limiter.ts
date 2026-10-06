@@ -52,7 +52,11 @@ class SlidingWindowRateLimiter {
       return false;
     }
 
-    if (record.count >= this.maxRequests) {
+    const effectiveLimit = (ip === 'anonymous' || ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') 
+      ? Math.max(this.maxRequests * 20, 300) 
+      : this.maxRequests;
+
+    if (record.count >= effectiveLimit) {
       return true;
     }
 

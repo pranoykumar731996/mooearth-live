@@ -39,6 +39,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/country',
+        destination: '/explore',
+        permanent: true,
+      },
+      {
+        source: '/challenge',
+        destination: '/challenges',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
