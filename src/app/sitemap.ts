@@ -9,6 +9,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 1. Core Pages — highest priority
   const corePages = [
     '',
+    '/globe',
+    '/world-map',
+    '/interactive-globe',
+    '/interactive-world-map',
+    '/geography',
+    '/world-geography',
     '/explore',
     '/games',
     '/daily',

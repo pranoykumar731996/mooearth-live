@@ -19,6 +19,10 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
       'Allow: /',
       'Allow: /globe',
       'Allow: /world-map',
+      'Allow: /interactive-globe',
+      'Allow: /interactive-world-map',
+      'Allow: /geography',
+      'Allow: /world-geography',
       'Allow: /countries',
       'Allow: /games',
       'Allow: /news',
@@ -88,6 +92,12 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
     // Must contain core public hubs
     const requiredUrls = [
       'https://www.mooearth.live',
+      'https://www.mooearth.live/globe',
+      'https://www.mooearth.live/world-map',
+      'https://www.mooearth.live/interactive-globe',
+      'https://www.mooearth.live/interactive-world-map',
+      'https://www.mooearth.live/geography',
+      'https://www.mooearth.live/world-geography',
       'https://www.mooearth.live/explore',
       'https://www.mooearth.live/games',
       'https://www.mooearth.live/daily',
@@ -187,6 +197,12 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
   // =========================================================================
   test('Canonical Consistency: all public hubs use absolute https://www.mooearth.live URLs', async ({ page }) => {
     const hubTests = [
+      { path: '/globe', expectedCanonical: 'https://www.mooearth.live/globe' },
+      { path: '/world-map', expectedCanonical: 'https://www.mooearth.live/world-map' },
+      { path: '/interactive-globe', expectedCanonical: 'https://www.mooearth.live/interactive-globe' },
+      { path: '/interactive-world-map', expectedCanonical: 'https://www.mooearth.live/interactive-world-map' },
+      { path: '/geography', expectedCanonical: 'https://www.mooearth.live/geography' },
+      { path: '/world-geography', expectedCanonical: 'https://www.mooearth.live/world-geography' },
       { path: '/explore', expectedCanonical: 'https://www.mooearth.live/explore' },
       { path: '/news', expectedCanonical: 'https://www.mooearth.live/news' },
       { path: '/sports', expectedCanonical: 'https://www.mooearth.live/sports' },
@@ -218,10 +234,8 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
   // =========================================================================
   test('Redirects: legacy aliases return permanent 308 redirects to 200 destinations', async ({ request }) => {
     const redirectTests = [
-      { source: '/country', target: '/explore' },
-      { source: '/countries', target: '/explore' },
-      { source: '/globe', target: '/' },
-      { source: '/world-map', target: '/explore' },
+      { source: '/country', target: '/world-map' },
+      { source: '/countries', target: '/world-map' },
       { source: '/challenge', target: '/challenges' },
     ];
 
@@ -252,6 +266,12 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
   test('Internal links: all primary navigation targets respond with 200 OK', async ({ request }) => {
     const routes = [
       '/',
+      '/globe',
+      '/world-map',
+      '/interactive-globe',
+      '/interactive-world-map',
+      '/geography',
+      '/world-geography',
       '/explore',
       '/news',
       '/sports',
@@ -388,6 +408,175 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
     // Semantic section intact on mobile
     const semanticSection = page.locator('section[aria-label="About MooEarth Live"]');
     await expect(semanticSection).toHaveCount(1);
+
+    await context.close();
+  });
+
+  // =========================================================================
+  // 11. PHASE 3: GLOBE & WORLD MAP SEARCH HUBS (ALL 6 PRIMARY HUBS)
+  // =========================================================================
+  test('Phase 3 Hubs: return 200, unique metadata, single H1, and correct canonicals', async ({ page }) => {
+    const hubs = [
+      {
+        path: '/globe',
+        canonical: 'https://www.mooearth.live/globe',
+        h1Substring: 'Interactive 3D Globe & Earth Explorer',
+      },
+      {
+        path: '/world-map',
+        canonical: 'https://www.mooearth.live/world-map',
+        h1Substring: 'Interactive World Map & Country Atlas',
+      },
+      {
+        path: '/interactive-globe',
+        canonical: 'https://www.mooearth.live/interactive-globe',
+        h1Substring: 'Interactive 3D Globe Simulator',
+      },
+      {
+        path: '/interactive-world-map',
+        canonical: 'https://www.mooearth.live/interactive-world-map',
+        h1Substring: 'Clickable Interactive World Map',
+      },
+      {
+        path: '/geography',
+        canonical: 'https://www.mooearth.live/geography',
+        h1Substring: 'World Geography — Continents, Countries & Capitals',
+      },
+      {
+        path: '/world-geography',
+        canonical: 'https://www.mooearth.live/world-geography',
+        h1Substring: 'World Geography Atlas & Earth Records',
+      },
+    ];
+
+    const titles: string[] = [];
+    const descriptions: string[] = [];
+
+    for (const hub of hubs) {
+      const response = await page.goto(hub.path, { waitUntil: 'domcontentloaded' });
+      expect(response?.status()).toBe(200);
+
+      // Title
+      const title = await page.title();
+      expect(title).toBeTruthy();
+      expect(title).toContain('MooEarth Live');
+      titles.push(title);
+
+      // Canonical
+      const canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
+      expect(canonical).toBe(hub.canonical);
+
+      // Description
+      const metaDesc = await page.locator('meta[name="description"]').getAttribute('content');
+      expect(metaDesc).toBeTruthy();
+      expect(metaDesc!.length).toBeGreaterThan(60);
+      descriptions.push(metaDesc!);
+
+      // Single H1
+      const h1Count = await page.locator('h1').count();
+      expect(h1Count).toBe(1);
+      const h1Text = await page.locator('h1').textContent();
+      expect(h1Text).toContain(hub.h1Substring);
+
+      // Indexable (no 'noindex')
+      const robotsMeta = page.locator('meta[name="robots"]');
+      if (await robotsMeta.count() > 0) {
+        const robotsContent = await robotsMeta.getAttribute('content');
+        expect(robotsContent).not.toContain('noindex');
+      }
+
+      // Breadcrumb element present
+      const breadcrumbNav = page.locator('nav[aria-label="Breadcrumb"]');
+      await expect(breadcrumbNav).toHaveCount(1);
+
+      // Structured Data (BreadcrumbList & WebPage)
+      const jsonLdScripts = await page.locator('script[type="application/ld+json"]').allTextContents();
+      const hasBreadcrumbs = jsonLdScripts.some(t => t.includes('"@type":"BreadcrumbList"'));
+      const hasWebPage = jsonLdScripts.some(t => t.includes('"@type":"WebPage"') && t.includes(hub.canonical));
+      expect(hasBreadcrumbs).toBeTruthy();
+      expect(hasWebPage).toBeTruthy();
+    }
+
+    // Distinct Search Intent: Titles and Descriptions must all be unique
+    const uniqueTitles = new Set(titles);
+    expect(uniqueTitles.size).toBe(hubs.length);
+
+    const uniqueDescriptions = new Set(descriptions);
+    expect(uniqueDescriptions.size).toBe(hubs.length);
+  });
+
+  test('Phase 3 Hub Components: distinct interactive globe, map atlas, and geography features', async ({ page }) => {
+    // 1. /globe: working 3D globe viewer, country links, game links
+    await page.goto('/globe', { waitUntil: 'domcontentloaded' });
+    const globeViewer = page.locator('[data-testid="webgl-globe-viewer"]');
+    await expect(globeViewer).toHaveCount(1);
+    const countryLinks = page.locator('a[href^="/country/"]');
+    expect(await countryLinks.count()).toBeGreaterThan(5);
+    const gameLinks = page.locator('a[href="/games"]');
+    expect(await gameLinks.count()).toBeGreaterThan(0);
+
+    // 2. /world-map: interactive world map atlas, continent filters, country hubs
+    await page.goto('/world-map', { waitUntil: 'domcontentloaded' });
+    const mapAtlas = page.locator('[data-testid="interactive-world-map-atlas"]');
+    await expect(mapAtlas).toHaveCount(1);
+    const regionButtons = mapAtlas.locator('button');
+    expect(await regionButtons.count()).toBeGreaterThan(4);
+
+    // 3. /interactive-globe: 3D globe simulator with layer switcher
+    await page.goto('/interactive-globe', { waitUntil: 'domcontentloaded' });
+    const simViewer = page.locator('[data-testid="webgl-globe-viewer"]');
+    await expect(simViewer).toHaveCount(1);
+    expect(await page.locator('text=Geospatial Simulation Layers').count()).toBeGreaterThan(0);
+
+    // 4. /interactive-world-map: atlas and comparative table
+    await page.goto('/interactive-world-map', { waitUntil: 'domcontentloaded' });
+    const interMapAtlas = page.locator('[data-testid="interactive-world-map-atlas"]');
+    await expect(interMapAtlas).toHaveCount(1);
+    const table = page.locator('table');
+    await expect(table).toHaveCount(1);
+
+    // 5. /geography: 7 continents, 5 oceans, capitals directory, games launcher
+    await page.goto('/geography', { waitUntil: 'domcontentloaded' });
+    expect(await page.locator('text=The Seven Continents of Earth').count()).toBeGreaterThan(0);
+    expect(await page.locator('text=The Five World Oceans').count()).toBeGreaterThan(0);
+    expect(await page.locator('text=World Capitals & Sovereign Nations').count()).toBeGreaterThan(0);
+
+    // 6. /world-geography: planetary extremes, mountain summits, river systems, deserts
+    await page.goto('/world-geography', { waitUntil: 'domcontentloaded' });
+    expect(await page.locator('text=Planetary Summits & Major Mountain Ranges').count()).toBeGreaterThan(0);
+    expect(await page.locator('text=Mount Everest').count()).toBeGreaterThan(0);
+    expect(await page.locator('text=Nile River').count()).toBeGreaterThan(0);
+    expect(await page.locator('text=Sahara Desert').count()).toBeGreaterThan(0);
+  });
+
+  test('Phase 3 Mobile Viewport: all 6 search hubs render cleanly on mobile screens', async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    });
+
+    const page = await context.newPage();
+    const hubs = [
+      '/globe',
+      '/world-map',
+      '/interactive-globe',
+      '/interactive-world-map',
+      '/geography',
+      '/world-geography',
+    ];
+
+    for (const hub of hubs) {
+      const response = await page.goto(hub, { waitUntil: 'domcontentloaded' });
+      expect(response?.status()).toBe(200);
+
+      // Single H1 intact on mobile
+      const h1 = page.locator('h1');
+      await expect(h1).toHaveCount(1);
+
+      // Breadcrumbs intact on mobile
+      const breadcrumbs = page.locator('nav[aria-label="Breadcrumb"]');
+      await expect(breadcrumbs).toHaveCount(1);
+    }
 
     await context.close();
   });

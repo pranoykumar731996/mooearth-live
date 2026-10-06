@@ -43,22 +43,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/country',
-        destination: '/explore',
+        destination: '/world-map',
         permanent: true,
       },
       {
         source: '/countries',
-        destination: '/explore',
-        permanent: true,
-      },
-      {
-        source: '/globe',
-        destination: '/',
-        permanent: true,
-      },
-      {
-        source: '/world-map',
-        destination: '/explore',
+        destination: '/world-map',
         permanent: true,
       },
       {

@@ -828,6 +828,12 @@ export default function HomePage({
           becomes an interactive adventure featuring daily flag quizzes, capital challenges, and the Global Nations Cup tournament.
         </p>
         <nav aria-label="Primary Platform Navigation">
+          <Link href="/globe">3D Earth Globe</Link>
+          <Link href="/world-map">Interactive World Map</Link>
+          <Link href="/interactive-globe">3D Globe Simulator</Link>
+          <Link href="/interactive-world-map">Clickable World Map</Link>
+          <Link href="/geography">World Geography</Link>
+          <Link href="/world-geography">World Geography Atlas</Link>
           <Link href="/explore">Explore Earth & World Map</Link>
           <Link href="/news">Global News</Link>
           <Link href="/sports">World Sports</Link>
