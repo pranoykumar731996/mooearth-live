@@ -205,6 +205,29 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
         </header>
 
         <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-12 flex-1">
+          {/* Quick Intent Navigation Pill Bar */}
+          <nav aria-label="Country Intent Navigation" className="flex flex-wrap items-center gap-2 text-xs border-b border-white/5 pb-4">
+            <span className="text-white/40 uppercase font-mono text-[10px] mr-1">Explore {country.name}:</span>
+            <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
+              Atlas Overview (Active)
+            </span>
+            <Link href={`/countries/${country.slug}/news`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              📰 News
+            </Link>
+            <Link href={`/countries/${country.slug}/geography`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              🏔️ Geography
+            </Link>
+            <Link href={`/countries/${country.slug}/weather`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              🌤️ Weather
+            </Link>
+            <Link href={`/countries/${country.slug}/map`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              🗺️ 3D Map
+            </Link>
+            <Link href={`/countries/${country.slug}/quiz`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              🎮 Quiz
+            </Link>
+          </nav>
+
           {/* Key Quick Metrics Bar */}
           <section aria-label="Quick Country Facts" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
@@ -424,14 +447,14 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <Link
-                href={`/play-earth?country=${encodeURIComponent(country.name)}`}
+                href={`/countries/${country.slug}/quiz`}
                 className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/50 transition-all group"
               >
                 <div className="text-2xl mb-1">🎮</div>
                 <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                  Play Earth Quiz
+                  Play Earth Quiz Challenge
                 </h3>
-                <p className="text-xs text-white/50 mt-1">Play procedural geography trivia centered on {country.name}.</p>
+                <p className="text-xs text-white/50 mt-1">Play verified geography trivia challenge for {country.name}.</p>
               </Link>
 
               <Link
