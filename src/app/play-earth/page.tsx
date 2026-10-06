@@ -2,26 +2,37 @@ import { Metadata } from 'next';
 import HomePage from '../page';
 import { generateHreflangs } from '@/lib/i18n';
 
-const title = 'Play Earth - Interactive Global Trivia Game | MooEarth Live';
-const description = 'Test your global trivia knowledge on geography, sports, weather, history, and science. Answer country-specific questions on MooEarth Live\'s interactive 3D globe.';
+const pageTitle = 'Interactive 3D Globe & Trivia Explorer';
+const fullTitle = 'Interactive 3D Globe & Trivia Explorer | MooEarth Live';
+const description = 'Explore the interactive 3D Earth globe on MooEarth Live. Rotate the planet, touch any country, and test your global knowledge with daily geography challenges, flag quizzes, and trivia.';
 
 export const metadata: Metadata = {
-  title,
+  title: pageTitle,
   description,
   alternates: {
     canonical: 'https://www.mooearth.live/play-earth',
     languages: generateHreflangs('/play-earth'),
   },
   openGraph: {
-    title,
+    title: fullTitle,
     description,
     url: 'https://www.mooearth.live/play-earth',
     type: 'website',
+    siteName: 'MooEarth Live',
+    images: [
+      {
+        url: 'https://www.mooearth.live/icons/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'MooEarth Live — Interactive 3D Globe & Trivia Explorer',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title,
+    title: fullTitle,
     description,
+    images: ['https://www.mooearth.live/icons/icon-512.png'],
   }
 };
 
@@ -45,11 +56,32 @@ export default function PlayEarthShortcutPage() {
     ]
   };
 
+  const webPageJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: fullTitle,
+    url: 'https://www.mooearth.live/play-earth',
+    description,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MooEarth Live',
+      url: 'https://www.mooearth.live',
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Interactive 3D Globe and World Exploration Games',
+    },
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
       <HomePage initialPlayEarthActive={true} />
     </>

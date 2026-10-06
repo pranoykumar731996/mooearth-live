@@ -2,11 +2,18 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | MooEarth.Live',
-  description: 'Privacy Policy for MooEarth.Live. Learn how we collect, use, and protect your information.',
+  title: 'Privacy Policy',
+  description: 'Privacy Policy for MooEarth Live. Learn how we collect, use, and protect your information.',
   alternates: {
-    canonical: 'https://www.mooearth.live/privacy'
-  }
+    canonical: 'https://www.mooearth.live/privacy',
+  },
+  openGraph: {
+    title: 'Privacy Policy | MooEarth Live',
+    description: 'Privacy Policy for MooEarth Live. Learn how we collect, use, and protect your information.',
+    url: 'https://www.mooearth.live/privacy',
+    type: 'website',
+    siteName: 'MooEarth Live',
+  },
 };
 
 export default function PrivacyPolicy() {

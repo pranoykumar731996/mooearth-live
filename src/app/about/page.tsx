@@ -2,20 +2,58 @@ import { Metadata } from 'next';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 
 export const metadata: Metadata = {
-  title: 'About MooEarth.Live',
-  description: 'Our mission to bring the world together through live football coverage.',
+  title: 'About Us',
+  description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
   alternates: {
-    canonical: 'https://www.mooearth.live/about'
-  }
+    canonical: 'https://www.mooearth.live/about',
+  },
+  openGraph: {
+    title: 'About Us | MooEarth Live',
+    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
+    url: 'https://www.mooearth.live/about',
+    type: 'website',
+    siteName: 'MooEarth Live',
+    images: [
+      {
+        url: 'https://www.mooearth.live/icons/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'About MooEarth Live',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About Us | MooEarth Live',
+    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
+    images: ['https://www.mooearth.live/icons/icon-512.png'],
+  },
 };
 
 export default function About() {
+  const aboutJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: 'About MooEarth Live',
+    url: 'https://www.mooearth.live/about',
+    description: 'Learn about MooEarth Live, the interactive 3D globe and real-time world exploration platform.',
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MooEarth Live',
+      url: 'https://www.mooearth.live',
+    },
+  };
+
   return (
     <div className="h-screen overflow-y-auto scrollbar-thin bg-[var(--background)] pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }}
+      />
       <div className="max-w-4xl mx-auto bg-[var(--surface-color)]/30 border border-white/5 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden">
         <div className="p-8 sm:p-12 md:p-16 text-[var(--foreground)] prose prose-invert prose-emerald max-w-none prose-headings:text-emerald-400">
           <h1 className="text-3xl md:text-5xl font-bold mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-            About MooEarth.Live
+            About MooEarth Live
           </h1>
           
           <div className="space-y-8">

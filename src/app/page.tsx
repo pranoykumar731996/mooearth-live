@@ -814,17 +814,21 @@ export default function HomePage({
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#030308]" id="main">
-      {/* Search Engine Optimization — Logical H1 and Semantic Content */}
-      <h1 className="sr-only">MooEarth Live — 3D Interactive World Globe & Live News Reactions</h1>
+      {/* Search Engine Optimization — Logical H1, Semantic Brand Entity Content & WebPage Schema */}
+      <h1 className="sr-only">MooEarth Live — Interactive 3D Earth & World Exploration</h1>
       <section className="sr-only" aria-label="About MooEarth Live">
         <p>
-          MooEarth Live is an interactive 3D emotional globe visualizing real-time global news, live sports reactions,
-          celebrations, and worldwide energy. Touch any country to explore breaking international events, weather updates,
-          business reports, and technology developments. Test your global knowledge with daily geography challenges, flag quizzes,
-          capital trivia, and the weekly Global Nations Cup tournament.
+          Welcome to MooEarth Live, the interactive 3D globe and real-time world exploration platform.
+          Whether you know us as MooEarth or Moo Earth, our mission is to bring our planet to life through
+          immersive 3D cartography, live international news, and engaging geography discovery.
+        </p>
+        <p>
+          Explore continents and oceans on the 3D world globe, track real-time global events, monitor live weather,
+          and discover in-depth country profiles across every sovereign nation. With MooEarth Live, geography
+          becomes an interactive adventure featuring daily flag quizzes, capital challenges, and the Global Nations Cup tournament.
         </p>
         <nav aria-label="Primary Platform Navigation">
-          <Link href="/explore">Explore Earth</Link>
+          <Link href="/explore">Explore Earth & World Map</Link>
           <Link href="/news">Global News</Link>
           <Link href="/sports">World Sports</Link>
           <Link href="/weather">Global Weather</Link>
@@ -835,8 +839,33 @@ export default function HomePage({
           <Link href="/tournament">Global Nations Cup</Link>
           <Link href="/war-room">Situation War Room</Link>
           <Link href="/trending">Trending Worldwide</Link>
+          <Link href="/about">About MooEarth</Link>
+          <Link href="/contact">Contact</Link>
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
         </nav>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: 'MooEarth Live — Interactive 3D Globe & World Explorer',
+            url: 'https://www.mooearth.live',
+            description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring global news, geography challenges, live weather, and country insights across Earth.',
+            isPartOf: {
+              '@type': 'WebSite',
+              name: 'MooEarth Live',
+              url: 'https://www.mooearth.live',
+            },
+            about: {
+              '@type': 'Thing',
+              name: 'Interactive 3D Earth & World Exploration',
+            },
+          }),
+        }}
+      />
 
       {/* Splash Screen */}
       <AnimatePresence>
@@ -964,8 +993,11 @@ export default function HomePage({
           </div>
           <span className="text-white/10">|</span>
           <div className="flex items-center gap-1">
-            <span className="text-white/30">Users Online:</span>
-            <span className="text-white font-bold animate-[pulse_2s_infinite]">1,482</span>
+            <span className="text-white/30">Network:</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
+              Live
+            </span>
           </div>
           <span className="text-white/10 hidden md:inline">|</span>
           <div className="hidden md:flex items-center gap-1">

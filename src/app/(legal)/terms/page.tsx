@@ -2,11 +2,18 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | MooEarth.Live',
-  description: 'Terms of Service and usage conditions for MooEarth.Live.',
+  title: 'Terms of Service',
+  description: 'Terms of Service and usage conditions for MooEarth Live.',
   alternates: {
-    canonical: 'https://www.mooearth.live/terms'
-  }
+    canonical: 'https://www.mooearth.live/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service | MooEarth Live',
+    description: 'Terms of Service and usage conditions for MooEarth Live.',
+    url: 'https://www.mooearth.live/terms',
+    type: 'website',
+    siteName: 'MooEarth Live',
+  },
 };
 
 export default function TermsOfService() {

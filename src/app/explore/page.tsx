@@ -3,27 +3,37 @@ import Link from 'next/link';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { generateHreflangs } from '@/lib/i18n';
 
-const title = 'Explore Earth — Discover Places Around the World | MooEarth Live';
-const description = 'Explore countries, cities, and locations around the world on MooEarth Live\'s interactive 3D globe. Discover news, weather, sports, and events from any place on Earth.';
+const pageTitle = 'Interactive World Map & Earth Explorer';
+const fullTitle = 'Interactive World Map & Earth Explorer | MooEarth Live';
+const description = 'Explore every country on the interactive world map with MooEarth Live. Discover nations, capitals, regional facts, live news, and geographic insights across Earth.';
 
 export const metadata: Metadata = {
-  title,
+  title: pageTitle,
   description,
   alternates: {
     canonical: 'https://www.mooearth.live/explore',
     languages: generateHreflangs('/explore'),
   },
   openGraph: {
-    title,
+    title: fullTitle,
     description,
     url: 'https://www.mooearth.live/explore',
     type: 'website',
     siteName: 'MooEarth Live',
+    images: [
+      {
+        url: 'https://www.mooearth.live/icons/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'MooEarth Live — Interactive World Map & Earth Explorer',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title,
+    title: fullTitle,
     description,
+    images: ['https://www.mooearth.live/icons/icon-512.png'],
   },
 };
 
@@ -46,9 +56,27 @@ export default function ExplorePage() {
     ],
   };
 
+  const webPageJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: fullTitle,
+    url: 'https://www.mooearth.live/explore',
+    description,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'MooEarth Live',
+      url: 'https://www.mooearth.live',
+    },
+    about: {
+      '@type': 'Thing',
+      name: 'Interactive World Map and Earth Exploration',
+    },
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }} />
 
       <div style={{
         minHeight: '100vh',

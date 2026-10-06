@@ -18,23 +18,26 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.mooearth.live'),
-  title: 'MooEarth Live — 3D Interactive World Globe & Live News Reactions',
+  title: {
+    default: BRANDING.title,
+    template: '%s | MooEarth Live',
+  },
   description: BRANDING.description,
   keywords: [
     BRANDING.name,
     BRANDING.shortName,
+    'Moo Earth',
     'mooearth',
     'live globe',
     '3D map',
+    'world explorer',
     'geography game',
     'world trivia',
     'daily earth challenge',
     'interactive globe',
     'explore earth',
     'world news',
-    'football reactions',
-    'celebrations',
-    'world cup',
+    'world map',
     'live events',
   ],
   manifest: '/manifest.json',
@@ -44,20 +47,29 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icons/icon-192.svg',
-    apple: '/icons/icon-512.svg',
+    apple: '/icons/icon-512.png',
   },
   openGraph: {
-    title: 'MooEarth Live — 3D Interactive World Globe & Live News Reactions',
-    description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
+    title: BRANDING.title,
+    description: BRANDING.description,
     type: 'website',
     siteName: BRANDING.name,
     url: BRANDING.url,
+    images: [
+      {
+        url: 'https://www.mooearth.live/icons/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'MooEarth Live — Interactive 3D Globe & World Explorer',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MooEarth Live — 3D Interactive World Globe & Live News Reactions',
-    description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
+    title: BRANDING.title,
+    description: BRANDING.description,
     site: '@mooearth_live',
+    images: ['https://www.mooearth.live/icons/icon-512.png'],
   },
 };
 
@@ -100,8 +112,9 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'MooEarth Live',
+              alternateName: BRANDING.alternateNames,
               url: 'https://www.mooearth.live',
-              logo: 'https://www.mooearth.live/icons/icon-512.svg',
+              logo: 'https://www.mooearth.live/icons/icon-512.png',
               sameAs: [
                 'https://twitter.com/mooearth_live',
                 'https://facebook.com/mooearth.live',
@@ -116,8 +129,9 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'WebSite',
               name: 'MooEarth Live',
+              alternateName: BRANDING.alternateNames,
               url: 'https://www.mooearth.live',
-              description: 'Explore the Living Earth. Discover what\'s happening around the world. Play Earth.',
+              description: BRANDING.description,
               potentialAction: {
                 '@type': 'SearchAction',
                 target: {

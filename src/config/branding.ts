@@ -6,9 +6,11 @@
 export const BRANDING = {
   name: 'MooEarth Live',
   shortName: 'MooEarth',
+  alternateNames: ['MooEarth', 'Moo Earth', 'MooEarth Live'],
   domain: 'www.mooearth.live',
   url: 'https://www.mooearth.live',
-  description: 'An immersive emotional globe visualizing global news, live sports reactions, celebrations, and world energy.',
+  title: 'MooEarth Live — Interactive 3D Globe & World Explorer',
+  description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring global news, geography challenges, live weather, and country insights across Earth.',
   tagline: 'WATCH THE WORLD REACT',
   themeColor: '#000000',
   backgroundColor: '#000000',

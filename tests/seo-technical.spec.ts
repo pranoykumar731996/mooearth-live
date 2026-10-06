@@ -119,10 +119,9 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
   test('Homepage: returns 200, indexable, canonical tag, meta description, single H1, structured data', async ({ page }) => {
     const response = await page.goto('/', { waitUntil: 'load' });
     expect(response?.status()).toBe(200);
-
     // Title
     const title = await page.title();
-    expect(title).toContain('MooEarth Live');
+    expect(title).toBe('MooEarth Live — Interactive 3D Globe & World Explorer');
 
     // Canonical tag (must be absolute https://www.mooearth.live)
     const canonical = page.locator('link[rel="canonical"]');
@@ -133,7 +132,8 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
     await expect(metaDesc).toHaveCount(1);
     const descContent = await metaDesc.getAttribute('content');
     expect(descContent).toBeTruthy();
-    expect(descContent!.length).toBeGreaterThan(20);
+    expect(descContent!.length).toBeGreaterThan(50);
+    expect(descContent).toContain('MooEarth Live');
 
     // No accidental noindex
     const robotsMeta = page.locator('meta[name="robots"]');
@@ -142,11 +142,11 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
       expect(robotsContent).not.toContain('noindex');
     }
 
-    // Single logical H1
+    // Single logical H1 communicating interactive 3D Earth / world exploration
     const h1Elements = page.locator('h1');
     await expect(h1Elements).toHaveCount(1);
     const h1Text = await h1Elements.first().textContent();
-    expect(h1Text).toContain('MooEarth Live');
+    expect(h1Text).toBe('MooEarth Live — Interactive 3D Earth & World Exploration');
 
     // Server-rendered crawlable semantic content section
     const semanticSection = page.locator('section[aria-label="About MooEarth Live"]');
@@ -154,13 +154,32 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
     await expect(semanticSection.locator('a[href="/explore"]')).toHaveCount(1);
     await expect(semanticSection.locator('a[href="/news"]')).toHaveCount(1);
     await expect(semanticSection.locator('a[href="/games"]')).toHaveCount(1);
+    await expect(semanticSection.locator('a[href="/about"]')).toHaveCount(1);
+    await expect(semanticSection.locator('a[href="/contact"]')).toHaveCount(1);
+    await expect(semanticSection.locator('a[href="/privacy"]')).toHaveCount(1);
+    await expect(semanticSection.locator('a[href="/terms"]')).toHaveCount(1);
 
-    // Organization and WebSite JSON-LD structured data
+    // Natural Brand entity occurrences in server-rendered content
+    const sectionText = await semanticSection.textContent();
+    expect(sectionText).toContain('MooEarth Live');
+    expect(sectionText).toContain('MooEarth');
+    expect(sectionText).toContain('Moo Earth');
+
+    // Organization, WebSite, and WebPage JSON-LD structured data
     const jsonLdScripts = await page.locator('script[type="application/ld+json"]').allTextContents();
-    const hasOrg = jsonLdScripts.some(t => t.includes('"@type":"Organization"') && t.includes('https://www.mooearth.live'));
-    const hasWebSite = jsonLdScripts.some(t => t.includes('"@type":"WebSite"') && t.includes('https://www.mooearth.live'));
+    const hasOrg = jsonLdScripts.some(t => t.includes('"@type":"Organization"') && t.includes('MooEarth Live') && t.includes('Moo Earth'));
+    const hasWebSite = jsonLdScripts.some(t => t.includes('"@type":"WebSite"') && t.includes('MooEarth Live') && t.includes('Moo Earth'));
+    const hasWebPage = jsonLdScripts.some(t => t.includes('"@type":"WebPage"') && t.includes('MooEarth Live'));
     expect(hasOrg).toBeTruthy();
     expect(hasWebSite).toBeTruthy();
+    expect(hasWebPage).toBeTruthy();
+
+    // Verify factual information: NO invented ratings, aggregateRating, or review in schema
+    for (const jsonText of jsonLdScripts) {
+      expect(jsonText).not.toContain('aggregateRating');
+      expect(jsonText).not.toContain('"ratingValue"');
+      expect(jsonText).not.toContain('"reviewCount"');
+    }
   });
 
   // =========================================================================
@@ -208,7 +227,6 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
 
     for (const { source, target } of redirectTests) {
       const response = await request.get(source, { maxRedirects: 0 });
-      // Next.js permanent redirect status is 308
       expect(response.status()).toBe(308);
       const location = response.headers()['location'];
       expect(location).toBe(target);
@@ -257,5 +275,120 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
       const res = await request.get(route);
       expect(res.status()).toBe(200);
     }
+  });
+
+  // =========================================================================
+  // 8. PHASE 2: OPEN GRAPH & SOCIAL METADATA
+  // =========================================================================
+  test('Open Graph & Twitter Cards: Homepage, 3D Globe, and World Map have valid metadata', async ({ page }) => {
+    // 1. Homepage
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const ogTitleHome = await page.locator('meta[property="og:title"]').getAttribute('content');
+    const ogDescHome = await page.locator('meta[property="og:description"]').getAttribute('content');
+    const ogUrlHome = await page.locator('meta[property="og:url"]').getAttribute('content');
+    const ogImageHome = await page.locator('meta[property="og:image"]').getAttribute('content');
+    const twitterCardHome = await page.locator('meta[name="twitter:card"]').getAttribute('content');
+
+    expect(ogTitleHome).toBe('MooEarth Live — Interactive 3D Globe & World Explorer');
+    expect(ogDescHome).toBeTruthy();
+    expect(ogUrlHome).toBe('https://www.mooearth.live');
+    expect(ogImageHome).toContain('/icons/icon-512.png');
+    expect(twitterCardHome).toBe('summary_large_image');
+
+    // 2. Globe (/play-earth)
+    await page.goto('/play-earth', { waitUntil: 'domcontentloaded' });
+    const ogTitleGlobe = await page.locator('meta[property="og:title"]').getAttribute('content');
+    const ogUrlGlobe = await page.locator('meta[property="og:url"]').getAttribute('content');
+    const ogImageGlobe = await page.locator('meta[property="og:image"]').getAttribute('content');
+
+    expect(ogTitleGlobe).toContain('Interactive 3D Globe');
+    expect(ogUrlGlobe).toBe('https://www.mooearth.live/play-earth');
+    expect(ogImageGlobe).toContain('/icons/icon-512.png');
+
+    // 3. World Map (/explore)
+    await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+    const ogTitleMap = await page.locator('meta[property="og:title"]').getAttribute('content');
+    const ogUrlMap = await page.locator('meta[property="og:url"]').getAttribute('content');
+    const ogImageMap = await page.locator('meta[property="og:image"]').getAttribute('content');
+
+    expect(ogTitleMap).toContain('Interactive World Map');
+    expect(ogUrlMap).toBe('https://www.mooearth.live/explore');
+    expect(ogImageMap).toContain('/icons/icon-512.png');
+  });
+
+  // =========================================================================
+  // 9. PHASE 2: TRUST PAGES METADATA & INTEGRITY
+  // =========================================================================
+  test('Trust Pages: /about, /contact, /privacy, /terms are complete, indexable, and branded', async ({ page }) => {
+    const trustPages = [
+      {
+        path: '/about',
+        expectedTitle: 'About Us | MooEarth Live',
+        h1Substring: 'About',
+        expectedCanonical: 'https://www.mooearth.live/about',
+      },
+      {
+        path: '/contact',
+        expectedTitle: 'Contact Us | MooEarth Live',
+        h1Substring: 'Contact',
+        expectedCanonical: 'https://www.mooearth.live/contact',
+      },
+      {
+        path: '/privacy',
+        expectedTitle: 'Privacy Policy | MooEarth Live',
+        h1Substring: 'Privacy Policy',
+        expectedCanonical: 'https://www.mooearth.live/privacy',
+      },
+      {
+        path: '/terms',
+        expectedTitle: 'Terms of Service | MooEarth Live',
+        h1Substring: 'Terms of Service',
+        expectedCanonical: 'https://www.mooearth.live/terms',
+      },
+    ];
+
+    for (const trustPage of trustPages) {
+      const response = await page.goto(trustPage.path, { waitUntil: 'domcontentloaded' });
+      expect(response?.status()).toBe(200);
+
+      const title = await page.title();
+      expect(title).toBe(trustPage.expectedTitle);
+
+      const canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
+      expect(canonical).toBe(trustPage.expectedCanonical);
+
+      const h1Text = await page.locator('h1').textContent();
+      expect(h1Text).toContain(trustPage.h1Substring);
+
+      const metaDesc = await page.locator('meta[name="description"]').getAttribute('content');
+      expect(metaDesc).toBeTruthy();
+      expect(metaDesc!.length).toBeGreaterThan(20);
+    }
+  });
+
+  // =========================================================================
+  // 10. PHASE 2: MOBILE VIEWPORT & SERVER-RENDERED CONTENT VERIFICATION
+  // =========================================================================
+  test('Mobile Viewport: server-rendered SEO content and single H1 are preserved on mobile', async ({ browser }) => {
+    // Emulate iPhone mobile viewport
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    });
+
+    const page = await context.newPage();
+    const response = await page.goto('/', { waitUntil: 'domcontentloaded' });
+    expect(response?.status()).toBe(200);
+
+    // Single H1 intact on mobile
+    const h1 = page.locator('h1');
+    await expect(h1).toHaveCount(1);
+    await expect(h1).toHaveText('MooEarth Live — Interactive 3D Earth & World Exploration');
+
+    // Semantic section intact on mobile
+    const semanticSection = page.locator('section[aria-label="About MooEarth Live"]');
+    await expect(semanticSection).toHaveCount(1);
+
+    await context.close();
   });
 });
