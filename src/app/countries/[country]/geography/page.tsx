@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: CountryGeographyPageProps): P
     };
   }
 
-  const gateResult = shouldIndexCountryIntentPage(country.slug, 'geography', country);
+  const gateResult = shouldIndexCountryIntentPage(decoded, 'geography', country);
 
   const title = `${country.name} Geography, Terrain & Natural Landmarks | MooEarth Live`;
   const description = `Comprehensive physical geography of ${country.name} (${country.region}). Surface area ${country.areaKm2.toLocaleString()} km², natural landmark (${country.landmark}), climate zones, and spatial topography.`;

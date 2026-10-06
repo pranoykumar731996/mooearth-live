@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: CountryMapPageProps): Promise
     };
   }
 
-  const gateResult = shouldIndexCountryIntentPage(country.slug, 'map', country);
+  const gateResult = shouldIndexCountryIntentPage(decoded, 'map', country);
 
   const title = `${country.name} Interactive 3D Map & Satellite Coordinates | MooEarth Live`;
   const description = `Explore ${country.name} on the interactive 3D WebGL globe. Precise geospatial centroid (${country.coordinates.lat.toFixed(2)}°, ${country.coordinates.lng.toFixed(2)}°), capital ${country.capital}, and metropolitan coordinates.`;

@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: CountryWeatherPageProps): Pro
   }
 
   const weatherResult = await fetchCountryWeather(country.coordinates.lat, country.coordinates.lng);
-  const gateResult = shouldIndexCountryIntentPage(country.slug, 'weather', weatherResult);
+  const gateResult = shouldIndexCountryIntentPage(decoded, 'weather', weatherResult);
 
   const title = `${country.name} Weather & Live Climate Telemetry | MooEarth Live`;
   const description = weatherResult.observation

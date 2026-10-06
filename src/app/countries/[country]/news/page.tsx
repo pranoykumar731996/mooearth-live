@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: CountryNewsPageProps): Promis
   }
 
   const newsResult = await fetchNewsForCountry(country.name);
-  const gateResult = shouldIndexCountryIntentPage(country.slug, 'news', newsResult);
+  const gateResult = shouldIndexCountryIntentPage(decoded, 'news', newsResult);
 
   const title = `${country.name} News & Live Updates — Verified Wire Dispatches | MooEarth Live`;
   const description = `Read real-time, verified news dispatches and breaking stories from ${country.name} (${country.capital}). Direct source attributions, timestamps, and live regional context.`;

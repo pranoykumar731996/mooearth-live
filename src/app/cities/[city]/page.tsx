@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     };
   }
 
-  const gateResult = shouldIndexCityPage(city.slug);
+  const gateResult = shouldIndexCityPage(decoded);
 
   const title = `${city.name}, ${city.country} — Weather, Map, Geography & City Guide | MooEarth Live`;
   const description = `Explore ${city.name} (${city.state ? `${city.state}, ` : ''}${city.country}). Live meteorological telemetry, 3D interactive globe, coordinates (${city.coordinates.lat.toFixed(2)}°, ${city.coordinates.lng.toFixed(2)}°), verified wire news, and nearby destinations.`;

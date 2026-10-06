@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
 
   const title = `${country.name} — Interactive Map, Geography & Country Atlas | MooEarth Live`;
   const description = `Explore ${country.name} (${country.capital}, ${country.region}) on MooEarth Live. Discover physical geography, major cities (${country.majorCities.slice(0, 3).join(', ')}), real-time weather, latest news, and interactive 3D globe visualization.`;
+  const isAlias = decoded !== country.slug;
   const canonicalUrl = `https://www.mooearth.live/countries/${country.slug}`;
 
   return {
@@ -41,6 +42,7 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
     alternates: {
       canonical: canonicalUrl,
     },
+    robots: isAlias ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: {
       title,
       description,

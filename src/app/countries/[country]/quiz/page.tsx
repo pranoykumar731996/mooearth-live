@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: CountryQuizPageProps): Promis
   }
 
   const quizResult = fetchQuizForCountry(country.name);
-  const gateResult = shouldIndexCountryIntentPage(country.slug, 'quiz', quizResult);
+  const gateResult = shouldIndexCountryIntentPage(decoded, 'quiz', quizResult);
 
   const title = `${country.name} Quiz & Geography Trivia Challenge | MooEarth Live`;
   const description = `Test your knowledge with authentic Play Earth trivia for ${country.name} (${country.region}). ${quizResult.questions.length} questions on landmarks (${country.landmark}), geography, capital (${country.capital}), and history.`;
