@@ -14,7 +14,7 @@ export interface ShareData {
  * Generate a challenge share URL.
  */
 export function getChallengeShareUrl(
-  mode: 'daily' | 'survival' | 'clock' | 'flag' | 'capital' | 'explorer',
+  mode: 'daily' | 'survival' | 'clock' | 'flag' | 'capital' | 'explorer' | 'geography' | 'country' | 'world-map' | string,
   dateStr?: string
 ): string {
   const base = 'https://www.mooearth.live';
@@ -37,16 +37,26 @@ export function getShareText(params: {
   xp?: number;
 }): string {
   const { mode, score, correct, total, streak, xp } = params;
-  const modeLabel = {
+  const modeLabel: Record<string, string> = {
     daily: 'Daily Earth Challenge',
     survival: 'Survival Mode',
     clock: 'Beat the Clock',
     flag: 'Flag Challenge',
     capital: 'Capital Challenge',
     explorer: 'Country Explorer',
-  }[mode] || 'Earth Challenge';
+    geography: 'Geography Challenge',
+    'geography-quiz': 'Geography Quiz',
+    'world-geography-quiz': 'World Geography Quiz',
+    'country-quiz': 'Country Quiz',
+    'capital-quiz': 'Capital Quiz',
+    'flag-quiz': 'Flag Quiz',
+    'world-map-quiz': 'World Map Quiz',
+    'country': 'Country Quiz',
+    'world-map': 'World Map Challenge',
+  };
+  const label = modeLabel[mode] || (mode.includes('-') ? mode.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Earth Challenge');
 
-  let text = `🌍 ${modeLabel}\n\n`;
+  let text = `🌍 ${label}\n\n`;
   if (xp) {
     text += `Score: ${xp.toLocaleString()} XP\n`;
   } else if (score > 0) {

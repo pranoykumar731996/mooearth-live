@@ -17,6 +17,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/world-geography',
     '/explore',
     '/games',
+    '/geography-games',
+    '/geography-quiz',
+    '/world-geography-quiz',
+    '/country-quiz',
+    '/capital-quiz',
+    '/flag-quiz',
+    '/world-map-quiz',
     '/daily',
     '/party',
     '/war-room',
@@ -29,6 +36,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
     priority: 1.0
+  }));
+
+  // 1b. Country Geography Games
+  const countryGamePages = getAllCountries().map(country => ({
+    url: `${baseUrl}/games/geography/${country.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.85
   }));
 
   // 2. Content Category Pages
@@ -133,6 +148,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...corePages,
+    ...countryGamePages,
     ...contentPages,
     ...categories,
     ...canonicalCountryPages,

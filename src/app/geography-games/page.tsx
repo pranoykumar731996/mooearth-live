@@ -3,14 +3,14 @@ import { generateHreflangs } from '@/lib/i18n';
 import { GAME_LANDING_CONFIGS, fetchQuestionsForGameMode } from '@/services/gameLandingService';
 import GameLandingTemplate from '@/components/Games/GameLandingTemplate';
 
-const config = GAME_LANDING_CONFIGS['games'];
+const config = GAME_LANDING_CONFIGS['geography-games'];
 
 export const metadata: Metadata = {
   title: config.metaTitle,
   description: config.metaDescription,
   alternates: {
     canonical: config.canonical,
-    languages: generateHreflangs('/games'),
+    languages: generateHreflangs('/geography-games'),
   },
   openGraph: {
     title: config.metaTitle,
@@ -35,8 +35,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function GamesPage() {
-  const initialQuestions = fetchQuestionsForGameMode('games');
+export default function GeographyGamesPage() {
+  const initialQuestions = fetchQuestionsForGameMode('geography-games');
 
   return (
     <GameLandingTemplate
