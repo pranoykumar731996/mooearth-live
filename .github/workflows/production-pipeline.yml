@@ -30,10 +30,11 @@ jobs:
       - name: 🛡️ Run Sentry Regression Sentinel
         run: npm run test:sentry
 
-      - name: 🚀 Build Next.js Production Bundle (81 Routes)
+      - name: 🚀 Build Next.js Production Bundle
         run: npm run build
         env:
           NEXT_PUBLIC_ENABLE_TRANSLATION: 'true'
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
   deploy-vercel:
     name: 🔼 Deploy to Vercel (Production)
