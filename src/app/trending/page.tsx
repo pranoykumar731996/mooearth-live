@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { generateHreflangs } from '@/lib/i18n';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 const title = 'Trending Around Earth — What\'s Happening Now | MooEarth Live';
 const description = 'Discover what\'s trending around the world right now. See the most active locations, top stories, and popular games on MooEarth Live.';
@@ -110,7 +111,7 @@ export default function TrendingPage() {
               {TRENDING_LOCATIONS.map((loc, index) => (
                 <Link
                   key={loc.name}
-                  href={`/country/${encodeURIComponent(loc.country.toLowerCase())}`}
+                  href={`/countries/${resolveCanonicalSlug(loc.country) || encodeURIComponent(loc.country.toLowerCase())}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

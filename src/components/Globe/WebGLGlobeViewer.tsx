@@ -7,6 +7,7 @@ import { WorldEvent } from '@/types';
 import { fallbackEvents } from '@/data/events';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 // Dynamically import GlobeScene to ensure bundle code-splitting
 const GlobeScene = dynamic(() => import('@/components/Globe/GlobeScene'), {
@@ -116,7 +117,7 @@ export default function WebGLGlobeViewer({
             <span className="font-bold text-cyan-400 text-sm">{currentCountry}</span>
           </div>
           <Link
-            href={`/country/${encodeURIComponent(currentCountry.toLowerCase())}`}
+            href={`/countries/${resolveCanonicalSlug(currentCountry) || currentCountry.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
             className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-semibold transition-colors border border-cyan-500/30 text-[11px]"
           >
             View Country Hub &rarr;

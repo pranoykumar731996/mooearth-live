@@ -52,6 +52,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/country/:country',
+        destination: '/countries/:country',
+        permanent: true,
+      },
+      {
         source: '/challenge',
         destination: '/challenges',
         permanent: true,

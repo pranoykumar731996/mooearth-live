@@ -3,6 +3,7 @@ import Link from 'next/link';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { generateHreflangs } from '@/lib/i18n';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 const pageTitle = 'World Geography Hub — Continents, Countries & Capitals';
 const fullTitle = 'World Geography Hub — Continents, Countries & Capitals | MooEarth Live';
@@ -272,7 +273,7 @@ export default function GeographyHubPage() {
               {sampleCapitals.map(item => (
                 <Link
                   key={item.country}
-                  href={`/country/${encodeURIComponent(item.country.toLowerCase())}`}
+                  href={`/countries/${resolveCanonicalSlug(item.country) || item.country.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                   className="p-3.5 rounded-xl border border-white/5 bg-white/[0.02] hover:border-emerald-500/40 transition-all group"
                 >
                   <div className="flex items-center justify-between mb-1.5">

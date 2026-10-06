@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 interface InteractiveWorldMapAtlasProps {
   initialRegion?: string;
@@ -123,7 +124,7 @@ export default function InteractiveWorldMapAtlas({
 
           <div className="flex items-center gap-3 shrink-0">
             <Link
-              href={`/country/${encodeURIComponent(activeCountryData.name.toLowerCase())}`}
+              href={`/countries/${resolveCanonicalSlug(activeCountryData.name) || activeCountryData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
               className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs transition-colors shadow-lg shadow-cyan-500/20"
             >
               Open Full Country Hub &rarr;
@@ -178,7 +179,7 @@ export default function InteractiveWorldMapAtlas({
               <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[11px]">
                 <span className="text-cyan-400/80 hover:text-cyan-300 font-medium">Quick Inspect</span>
                 <Link
-                  href={`/country/${encodeURIComponent(country.name.toLowerCase())}`}
+                  href={`/countries/${resolveCanonicalSlug(country.name) || country.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                   onClick={e => e.stopPropagation()}
                   className="text-white/40 hover:text-white transition-colors"
                   title={`Go to ${country.name} hub`}

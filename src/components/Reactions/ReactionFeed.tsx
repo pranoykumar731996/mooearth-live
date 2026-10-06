@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 interface ReactionFeedProps {
   headlines: WorldEvent[];
@@ -89,7 +90,7 @@ export default function ReactionFeed({
                     {getCountryRecommendations(country).map((rec) => (
                       <Link
                         key={rec}
-                        href={`/country/${encodeURIComponent(rec.toLowerCase())}`}
+                        href={`/countries/${resolveCanonicalSlug(rec) || encodeURIComponent(rec.toLowerCase())}`}
                         onClick={(e) => {
                           e.preventDefault();
                           if (onSelectCountry) onSelectCountry(rec);

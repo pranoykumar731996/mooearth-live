@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { generateHreflangs } from '@/lib/i18n';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 const pageTitle = 'Interactive World Map & Earth Explorer';
 const fullTitle = 'Interactive World Map & Earth Explorer | MooEarth Live';
@@ -152,7 +153,7 @@ export default function ExplorePage() {
                   return (
                     <Link
                       key={country}
-                      href={`/country/${encodeURIComponent(slug)}`}
+                      href={`/countries/${resolveCanonicalSlug(slug) || encodeURIComponent(slug)}`}
                       style={{
                         display: 'block',
                         padding: '16px 20px',

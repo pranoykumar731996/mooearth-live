@@ -4,6 +4,7 @@ import WebGLGlobeViewer from '@/components/Globe/WebGLGlobeViewer';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { generateHreflangs } from '@/lib/i18n';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
+import { resolveCanonicalSlug } from '@/data/countries';
 
 const pageTitle = 'Interactive 3D Globe — Explore Earth in Real Time';
 const fullTitle = 'Interactive 3D Globe — Explore Earth in Real Time | MooEarth Live';
@@ -169,7 +170,7 @@ export default function GlobeHubPage() {
                 return (
                   <Link
                     key={country}
-                    href={`/country/${encodeURIComponent(country.toLowerCase())}`}
+                    href={`/countries/${resolveCanonicalSlug(country) || country.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                     className="p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-cyan-500/40 transition-all flex flex-col justify-between group"
                   >
                     <div className="flex items-center justify-between mb-2">

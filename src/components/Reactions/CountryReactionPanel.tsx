@@ -10,6 +10,7 @@ import ReactionFeed from './ReactionFeed';
 import { shareContent } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
 import { isCountryWhitelisted } from '@/config/publishers';
+import { resolveCanonicalSlug } from '@/data/countries';
 import dynamic from 'next/dynamic';
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -277,7 +278,7 @@ export default function CountryReactionPanel({
     const didShare = await shareContent({
       title: `${cleanCountry} Dashboard — ${BRANDING.name}`,
       text: ` Explore live updates, sports reactions, and trivia challenges for ${cleanCountry} on MooEarth Live!`,
-      url: `/country/${encodeURIComponent(cleanCountry.toLowerCase())}${refQuery}`
+      url: `/countries/${resolveCanonicalSlug(cleanCountry) || encodeURIComponent(cleanCountry.toLowerCase())}${refQuery}`
     });
     if (!didShare) {
       setShowShareToast(true);
@@ -630,7 +631,7 @@ export default function CountryReactionPanel({
                 {getCountryRecommendations(country).map(rec => (
                   <Link
                     key={rec}
-                    href={`/country/${encodeURIComponent(rec.toLowerCase())}`}
+                    href={`/countries/${resolveCanonicalSlug(rec) || encodeURIComponent(rec.toLowerCase())}`}
                     onClick={(e) => {
                       e.preventDefault();
                       if (onSelectCountry) onSelectCountry(rec);

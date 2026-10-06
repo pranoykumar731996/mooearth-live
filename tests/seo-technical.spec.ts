@@ -510,7 +510,7 @@ test.describe('MOOEARTH LIVE — SEO PHASE 1: TECHNICAL SEO & INDEXING FOUNDATIO
     await page.goto('/globe', { waitUntil: 'domcontentloaded' });
     const globeViewer = page.locator('[data-testid="webgl-globe-viewer"]');
     await expect(globeViewer).toHaveCount(1);
-    const countryLinks = page.locator('a[href^="/country/"]');
+    const countryLinks = page.locator('a[href^="/countries/"], a[href^="/country/"]');
     expect(await countryLinks.count()).toBeGreaterThan(5);
     const gameLinks = page.locator('a[href="/games"]');
     expect(await gameLinks.count()).toBeGreaterThan(0);

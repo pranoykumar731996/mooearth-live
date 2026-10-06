@@ -13,6 +13,7 @@ export default function robots(): MetadataRoute.Robots {
         '/geography',
         '/world-geography',
         '/countries',
+        '/countries/*',
         '/games',
         '/news',
         '/weather',

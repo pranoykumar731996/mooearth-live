@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { COUNTRY_COORDINATES } from '@/lib/constants';
+import { getAllCountries } from '@/data/countries';
 import { fallbackEvents } from '@/data/events';
 import { SUPPORTED_LOCALES } from '@/lib/i18n';
 
@@ -55,24 +55,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8
   }));
 
-  // 4. Dynamic Countries — only include countries with verified coordinate data
-  const countries = Object.keys(COUNTRY_COORDINATES).map(countryKey => {
-    const countryName = COUNTRY_COORDINATES[countryKey].country;
-    return {
-      url: `${baseUrl}/country/${encodeURIComponent(countryName.toLowerCase())}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9
-    };
-  });
-
-  // Deduplicate country URLs (e.g., 'usa', 'united states', 'us' all resolve to same country)
-  const seenCountryUrls = new Set<string>();
-  const uniqueCountries = countries.filter(c => {
-    if (seenCountryUrls.has(c.url)) return false;
-    seenCountryUrls.add(c.url);
-    return true;
-  });
+  // 4. Canonical 195 Sovereign Countries Hubs
+  const canonicalCountryPages = getAllCountries().map(country => ({
+    url: `${baseUrl}/countries/${country.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }));
 
   // 5. Dynamic Articles & War Room Situation Pages
   const articles = fallbackEvents.map(event => ({
@@ -109,12 +98,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.95
     });
     // Localized Countries
-    uniqueCountries.forEach(countryItem => {
-      const countryPath = countryItem.url.replace(`${baseUrl}/country/`, '');
+    getAllCountries().forEach(country => {
       multilingualPages.push({
-        url: `${baseUrl}/${lang}/country/${countryPath}`,
+        url: `${baseUrl}/${lang}/country/${country.slug}`,
         lastModified: new Date(),
-        changeFrequency: 'daily' as const,
+        changeFrequency: 'weekly' as const,
         priority: 0.85
       });
     });
@@ -147,7 +135,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...corePages,
     ...contentPages,
     ...categories,
-    ...uniqueCountries,
+    ...canonicalCountryPages,
     ...multilingualPages,
     ...articles,
     ...warRoomPages,
