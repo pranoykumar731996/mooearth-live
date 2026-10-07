@@ -45,6 +45,7 @@ export default function robots(): MetadataRoute.Robots {
         '/security',
         '/ai-transparency',
         '/advertising',
+        '/embed',
       ],
       disallow: [
         '/api/',
@@ -53,6 +54,7 @@ export default function robots(): MetadataRoute.Robots {
         '/account/',
         '/debug/',
         '/private/',
+        '/embed/globe',
       ],
     },
     sitemap: 'https://www.mooearth.live/sitemap.xml',
