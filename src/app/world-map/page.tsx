@@ -103,35 +103,133 @@ export default function WorldMapPage() {
 
           {/* Regional Continental Breakdown */}
           <section className="space-y-6 pt-6 border-t border-white/10">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Major Continental Regions & Cartography</h2>
-              <p className="text-xs text-white/60">Overview of the primary geographic landmasses across Earth.</p>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Major Continental Regions & Cartography</h2>
+                <p className="text-xs text-white/60">Explore dedicated continental atlases, sovereign states, and regional geography.</p>
+              </div>
+              <Link
+                href="/continents"
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-mono tracking-wider transition-colors inline-flex items-center gap-1 shrink-0"
+              >
+                Continental Directory Hub &rarr;
+              </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02]">
-                <span className="text-2xl mb-2 block">🌍</span>
-                <h3 className="text-base font-bold text-white mb-1">Africa & Europe</h3>
-                <p className="text-xs text-white/60 leading-relaxed">
-                  Home to over 100 sovereign states spanning the Mediterranean, Sahara, European plains, and the Great Rift Valley. High density of diverse languages, legal traditions, and historic capitals.
-                </p>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Link
+                href="/continents/africa"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🌍</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">54 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">Africa</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    The Sahara, Great Rift Valley, Nile River basin, and high cultural and linguistic diversity across 54 sovereign states.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore Africa Atlas &rarr;
+                </span>
+              </Link>
 
-              <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02]">
-                <span className="text-2xl mb-2 block">🌏</span>
-                <h3 className="text-base font-bold text-white mb-1">Asia & Oceania</h3>
-                <p className="text-xs text-white/60 leading-relaxed">
-                  The most populous continental sphere, encompassing the Himalayas, vast archipelagos of Southeast Asia, the Pacific Rim, and the Australian continent.
-                </p>
-              </div>
+              <Link
+                href="/continents/asia"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🌏</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">48 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">Asia</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Earth's most populous landmass, home to the Himalayas, East Asian tech centers, and vibrant South Asian cultures.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore Asia Atlas &rarr;
+                </span>
+              </Link>
 
-              <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02]">
-                <span className="text-2xl mb-2 block">🌎</span>
-                <h3 className="text-base font-bold text-white mb-1">The Americas</h3>
-                <p className="text-xs text-white/60 leading-relaxed">
-                  Stretching from the Canadian Arctic across the Rocky Mountains, Central American isthmus, and Amazon Basin down to Tierra del Fuego in Argentina.
-                </p>
-              </div>
+              <Link
+                href="/continents/europe"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🏛️</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">44 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">Europe</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Spanning the Iberian peninsula to the Ural Mountains, historic capitals, the Alps, and deep economic integration.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore Europe Atlas &rarr;
+                </span>
+              </Link>
+
+              <Link
+                href="/continents/north-america"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🌎</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">23 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">North America</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    From the Canadian Arctic and Greenland ice sheets across the Rocky Mountains and Great Plains to Central America.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore North America Atlas &rarr;
+                </span>
+              </Link>
+
+              <Link
+                href="/continents/south-america"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🐆</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">12 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">South America</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Encompassing the Andes Mountain range, the Amazon Rainforest, Patagonian steppes, and rich biodiversity.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore South America Atlas &rarr;
+                </span>
+              </Link>
+
+              <Link
+                href="/continents/oceania"
+                className="group p-5 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-emerald-500/30 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl">🏝️</span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">14 Nations</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors mb-1">Oceania</h3>
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    Australia, New Zealand, and thousands of Pacific island archipelagos spanning Polynesia, Micronesia, and Melanesia.
+                  </p>
+                </div>
+                <span className="text-[11px] text-white/40 group-hover:text-emerald-400 mt-4 inline-flex items-center gap-1 font-mono">
+                  Explore Oceania Atlas &rarr;
+                </span>
+              </Link>
             </div>
           </section>
 

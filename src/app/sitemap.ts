@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getAllCountries } from '@/data/countries';
 import { getAllCities } from '@/data/places';
+import { getAllContinents } from '@/data/continents';
 import { fallbackEvents } from '@/data/events';
 import { SUPPORTED_LOCALES } from '@/lib/i18n';
 
@@ -12,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '',
     '/globe',
     '/world-map',
+    '/continents',
+    '/countries',
     '/interactive-globe',
     '/interactive-world-map',
     '/geography',
@@ -47,7 +50,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0
   }));
 
-  // 1b. Country Geography Games
+  // 1b. Continent Knowledge Hubs (All 7 Continents)
+  const continentPages = getAllContinents().map(continent => ({
+    url: `${baseUrl}/continents/${continent.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.95
+  }));
+
+  // 1c. Canonical City Atlas Pages (16 Metropolises)
+  const canonicalCityPages = getAllCities().map(city => ({
+    url: `${baseUrl}/cities/${city.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.90
+  }));
+
+  // 1d. Country Geography Games
   const countryGamePages = getAllCountries().map(country => ({
     url: `${baseUrl}/games/geography/${country.slug}`,
     lastModified: new Date(),
@@ -55,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85
   }));
 
-  // 1c. Sovereign Country Weather Pages
+  // 1e. Sovereign Country Weather Pages
   const countryWeatherPages = getAllCountries().map(country => ({
     url: `${baseUrl}/weather/${country.slug}`,
     lastModified: new Date(),
@@ -63,7 +82,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85
   }));
 
-  // 1d. Canonical City Weather Pages
+  // 1f. Canonical City Weather Pages
   const cityWeatherPages = getAllCities().map(city => ({
     url: `${baseUrl}/weather/${city.slug}`,
     lastModified: new Date(),
@@ -191,6 +210,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...corePages,
+    ...continentPages,
+    ...canonicalCityPages,
     ...countryGamePages,
     ...countryWeatherPages,
     ...cityWeatherPages,

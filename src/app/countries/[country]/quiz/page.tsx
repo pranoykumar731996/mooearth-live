@@ -7,6 +7,8 @@ import { fetchQuizForCountry } from '@/services/countryQuizService';
 import { shouldIndexCountryIntentPage } from '@/lib/seo/countryIntentQualityGate';
 import CountryQuizRunner from '@/components/Quiz/CountryQuizRunner';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
+import { getContinentForCountry } from '@/data/continents';
+import { getCountryKnowledgeGraph } from '@/lib/seo/knowledgeGraph';
 
 interface CountryQuizPageProps {
   params: Promise<{
@@ -76,6 +78,8 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
   const quizResult = fetchQuizForCountry(country.name);
   const { questions } = quizResult;
   const canonicalUrl = `https://www.mooearth.live/countries/${country.slug}/quiz`;
+  const continent = getContinentForCountry(country);
+  const kg = getCountryKnowledgeGraph(country);
 
   // Breadcrumbs JSON-LD
   const breadcrumbJsonLd = {
@@ -97,12 +101,18 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
       {
         '@type': 'ListItem',
         position: 3,
+        name: continent.name,
+        item: `https://www.mooearth.live/continents/${continent.slug}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 4,
         name: country.name,
         item: `https://www.mooearth.live/countries/${country.slug}`,
       },
       {
         '@type': 'ListItem',
-        position: 4,
+        position: 5,
         name: 'Quiz',
         item: canonicalUrl,
       },
@@ -150,10 +160,12 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
       <div className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
         {/* Header & Breadcrumb */}
         <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6 pb-4">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/50 mb-4">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/50 mb-4 flex-wrap">
             <Link href="/" className="hover:text-cyan-400 transition-colors">Home</Link>
             <span>/</span>
             <Link href="/world-map" className="hover:text-cyan-400 transition-colors">World Map</Link>
+            <span>/</span>
+            <Link href={`/continents/${continent.slug}`} className="hover:text-cyan-400 transition-colors">{continent.name}</Link>
             <span>/</span>
             <Link href={`/countries/${country.slug}`} className="hover:text-cyan-400 transition-colors">{country.name}</Link>
             <span>/</span>
@@ -165,9 +177,16 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-4xl" role="img" aria-label={`Flag of ${country.name}`}>{country.flag}</span>
                 <div>
-                  <span className="text-cyan-400 text-xs font-mono tracking-widest uppercase font-semibold block">
-                    Play Earth Gaming &bull; {country.region}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/continents/${continent.slug}`}
+                      className="text-cyan-400 hover:text-cyan-300 text-xs font-mono tracking-widest uppercase font-semibold transition-colors"
+                    >
+                      {continent.name} Atlas
+                    </Link>
+                    <span className="text-white/20">&bull;</span>
+                    <span className="text-xs text-white/40 font-mono">Play Earth Gaming</span>
+                  </div>
                   <span className="text-xs text-white/40 font-mono">
                     {questions.length} Questions Loaded &bull; Capital: {country.capital} &bull; Landmark: {country.landmark}
                   </span>
@@ -206,6 +225,9 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
             <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
               🎮 Quiz (Active)
             </span>
+            <Link href={`/continents/${continent.slug}`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
+              🌍 {continent.name} Hub
+            </Link>
           </nav>
 
           {/* Interactive Quiz Runner */}
@@ -231,16 +253,38 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
             </div>
           )}
 
-          {/* Neighboring Country Quizzes */}
+          {/* Neighboring Country Quizzes & Continental Challenge */}
           <section className="p-6 sm:p-8 rounded-2xl border border-white/10 bg-white/[0.02] space-y-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-              <span>🏆</span> Neighboring Country Challenges in {country.region}
-            </h2>
-            <p className="text-sm text-white/70">
-              Test your knowledge on other nations in {country.region}:
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                  <span>🏆</span> Neighboring Country Challenges in {country.region}
+                </h2>
+                <p className="text-sm text-white/70">
+                  Test your knowledge on other nations in {country.region}:
+                </p>
+              </div>
+              <Link
+                href={`/continents/${continent.slug}`}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-mono tracking-wider transition-colors inline-flex items-center gap-1 shrink-0"
+              >
+                {continent.name} Hub &rarr;
+              </Link>
+            </div>
 
             <div className="flex flex-wrap gap-2 pt-1">
+              <Link
+                href={`/games/geography/${country.slug}`}
+                className="px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors text-xs font-semibold text-cyan-300 flex items-center gap-1.5"
+              >
+                <span>🎮</span> Play Dedicated {country.name} Interactive Game &rarr;
+              </Link>
+              <Link
+                href={`/continents/${continent.slug}`}
+                className="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors text-xs font-semibold text-emerald-300 flex items-center gap-1.5"
+              >
+                <span>🌍</span> {continent.name} Continental Hub &rarr;
+              </Link>
               {country.relatedSlugs.map(slug => (
                 <Link
                   key={slug}
@@ -253,14 +297,53 @@ export default async function CountryQuizPage({ params }: CountryQuizPageProps) 
             </div>
           </section>
 
-          {/* Related Navigation */}
-          <section className="pt-6 border-t border-white/10 flex flex-wrap gap-4 text-xs text-white/60">
-            <span className="text-white font-semibold">More {country.name} Links:</span>
-            <Link href={`/countries/${country.slug}`} className="text-cyan-400 hover:underline">Full Country Atlas</Link>
-            <Link href={`/countries/${country.slug}/news`} className="text-cyan-400 hover:underline">Live News Dispatches</Link>
-            <Link href={`/countries/${country.slug}/geography`} className="text-cyan-400 hover:underline">Physical Geography</Link>
-            <Link href={`/countries/${country.slug}/weather`} className="text-cyan-400 hover:underline">Live Weather Telemetry</Link>
-            <Link href={`/countries/${country.slug}/map`} className="text-cyan-400 hover:underline">Interactive 3D Map</Link>
+          {/* Knowledge Graph Internal Links */}
+          <section className="pt-8 border-t border-white/10 space-y-5">
+            <div>
+              <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block mb-1">Contextual Knowledge Graph</span>
+              <h2 className="text-base font-bold text-white">Connected Portals for {country.name}</h2>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs">
+              <Link href={`/countries/${country.slug}`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
+                🏛️ Overview Atlas
+              </Link>
+              <Link href={`/countries/${country.slug}/news`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
+                📰 Live News Dispatches
+              </Link>
+              <Link href={`/countries/${country.slug}/geography`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
+                🏔️ Physical Geography
+              </Link>
+              <Link href={`/countries/${country.slug}/weather`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
+                🌤️ Live Weather
+              </Link>
+              <Link href={`/countries/${country.slug}/map`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
+                🗺️ Interactive 3D Map
+              </Link>
+              <Link href={`/games/geography/${country.slug}`} className="px-3.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-colors">
+                🎯 {country.name} Game
+              </Link>
+              <Link href={`/continents/${continent.slug}`} className="px-3.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-colors">
+                🌍 {continent.name} Hub
+              </Link>
+            </div>
+
+            {kg.canonicalCities.length > 0 && (
+              <div className="pt-2">
+                <span className="text-xs text-white/50 font-mono block mb-2">Major Canonical Cities in {country.name}:</span>
+                <div className="flex flex-wrap gap-2">
+                  {kg.canonicalCities.map(({ city, href, isCapital }) => (
+                    <Link
+                      key={city.slug}
+                      href={href}
+                      className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 border border-white/5 text-xs transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <span>📍</span> {city.name} {isCapital && <span className="text-[10px] text-cyan-400 font-mono">(Capital)</span>}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </main>
 

@@ -3,6 +3,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCountryBySlug, getAllCountrySlugs, getCountryByName } from '@/data/countries';
+import { getCountryKnowledgeGraph } from '@/lib/seo/knowledgeGraph';
+import { resolveCanonicalCitySlug, getCityBySlug, CANONICAL_CITIES } from '@/data/places';
 import WebGLGlobeViewer from '@/components/Globe/WebGLGlobeViewer';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { fallbackEvents } from '@/data/events';
@@ -75,32 +77,18 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
     notFound();
   }
 
-  // Canonical structured data
+  const kg = getCountryKnowledgeGraph(country);
   const canonicalUrl = `https://www.mooearth.live/countries/${country.slug}`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: 'Home',
-        item: 'https://www.mooearth.live',
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: 'World Map',
-        item: 'https://www.mooearth.live/world-map',
-      },
-      {
-        '@type': 'ListItem',
-        position: 3,
-        name: country.name,
-        item: canonicalUrl,
-      },
-    ],
+    itemListElement: kg.breadcrumbs.map(b => ({
+      '@type': 'ListItem',
+      position: b.position,
+      name: b.name,
+      item: `https://www.mooearth.live${b.href}`,
+    })),
   };
 
   const countryPlaceJsonLd = {
@@ -118,7 +106,7 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
     },
     containedInPlace: {
       '@type': 'Place',
-      name: country.region,
+      name: kg.continent.name,
     },
     address: {
       '@type': 'PostalAddress',
@@ -180,6 +168,8 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             <span>/</span>
             <Link href="/world-map" className="hover:text-cyan-400 transition-colors">World Map</Link>
             <span>/</span>
+            <Link href={`/continents/${kg.continent.slug}`} className="hover:text-cyan-400 transition-colors">{kg.continent.name}</Link>
+            <span>/</span>
             <span className="text-white/80 font-medium">{country.name}</span>
           </nav>
 
@@ -188,9 +178,15 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-4xl" role="img" aria-label={`Flag of ${country.name}`}>{country.flag}</span>
                 <div>
-                  <span className="text-cyan-400 text-xs font-mono tracking-widest uppercase font-semibold block">
-                    {country.region} &bull; {country.subregion}
-                  </span>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Link
+                      href={`/continents/${kg.continent.slug}`}
+                      className="text-cyan-400 text-xs font-mono tracking-widest uppercase font-semibold hover:underline"
+                    >
+                      {kg.continent.name}
+                    </Link>
+                    <span className="text-xs text-white/40 font-mono">&bull; {country.subregion}</span>
+                  </div>
                   <span className="text-xs text-white/40 font-mono">
                     ISO: {country.iso2} / {country.iso3} &bull; ID: {country.id}
                   </span>
@@ -227,6 +223,9 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             </Link>
             <Link href={`/countries/${country.slug}/quiz`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               🎮 Quiz
+            </Link>
+            <Link href={`/games/geography/${country.slug}`} className="px-3 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-medium border border-purple-500/30 transition-colors">
+              🌍 Play {country.name} Game
             </Link>
           </nav>
 
@@ -338,20 +337,53 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {country.majorCities.map((city, idx) => (
-                <div
-                  key={city}
-                  className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between space-y-2 hover:border-cyan-500/30 transition-all"
-                >
-                  <div>
-                    <span className="text-[10px] font-mono text-cyan-400 block uppercase">
-                      {idx === 0 ? 'Capital City' : 'Metropolitan Hub'}
-                    </span>
-                    <h3 className="text-sm font-bold text-white mt-1">{city}</h3>
+              {country.majorCities.map((city, idx) => {
+                const canonicalSlug = resolveCanonicalCitySlug(city);
+                const cityRecord = canonicalSlug ? getCityBySlug(canonicalSlug) : null;
+                const isOurCountry = cityRecord && (
+                  cityRecord.countrySlug === country.slug ||
+                  cityRecord.country.toLowerCase() === country.name.toLowerCase()
+                );
+
+                if (isOurCountry && canonicalSlug) {
+                  return (
+                    <Link
+                      key={city}
+                      href={`/cities/${canonicalSlug}`}
+                      className="p-4 rounded-xl border border-cyan-500/30 bg-cyan-950/20 hover:border-cyan-400 hover:bg-cyan-950/40 flex flex-col justify-between space-y-2 transition-all group shadow-sm"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] font-mono">
+                          <span className="text-cyan-400 uppercase font-semibold">
+                            {idx === 0 ? '★ Capital' : 'Metropolitan'}
+                          </span>
+                          <span className="text-emerald-400">Live ↗</span>
+                        </div>
+                        <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors mt-1">{city}</h3>
+                      </div>
+                      <span className="text-[11px] text-cyan-300/80 font-mono flex items-center justify-between pt-1 border-t border-cyan-500/10">
+                        <span>City Guide</span>
+                        <span>&rarr;</span>
+                      </span>
+                    </Link>
+                  );
+                }
+
+                return (
+                  <div
+                    key={city}
+                    className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between space-y-2 hover:border-white/10 transition-all"
+                  >
+                    <div>
+                      <span className="text-[10px] font-mono text-white/40 block uppercase">
+                        {idx === 0 ? 'Capital City' : 'Urban Center'}
+                      </span>
+                      <h3 className="text-sm font-bold text-white mt-1">{city}</h3>
+                    </div>
+                    <span className="text-[11px] text-white/40 font-mono">{country.name}</span>
                   </div>
-                  <span className="text-[11px] text-white/40 font-mono">{country.name}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -366,12 +398,20 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
                   Regional climate conditions centered on {country.capital} ({country.coordinates.lat.toFixed(2)}°, {country.coordinates.lng.toFixed(2)}°).
                 </p>
               </div>
-              <Link
-                href="/weather"
-                className="text-xs text-cyan-400 hover:underline shrink-0"
-              >
-                View Global Weather Map &rarr;
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/weather/${country.slug}`}
+                  className="text-xs text-cyan-400 hover:underline shrink-0"
+                >
+                  {country.name} Weather Station &rarr;
+                </Link>
+                <Link
+                  href="/weather-map"
+                  className="text-xs text-cyan-400 hover:underline shrink-0"
+                >
+                  3D Weather Map &rarr;
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
@@ -386,7 +426,9 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
               </div>
               <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-1">
                 <span className="text-white/40 block text-[10px] font-mono uppercase">Continent Climate Belt</span>
-                <span className="text-white font-bold text-sm block">{country.region} ({country.subregion})</span>
+                <Link href={`/continents/${kg.continent.slug}`} className="text-white hover:text-cyan-400 font-bold text-sm block">
+                  {kg.continent.name} ({country.subregion}) &rarr;
+                </Link>
               </div>
             </div>
           </section>
@@ -400,9 +442,14 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
                 </h2>
                 <p className="text-xs text-white/60">Real-time global news dispatches, cultural events, and technological breakthroughs.</p>
               </div>
-              <Link href="/news" className="text-xs text-cyan-400 hover:underline shrink-0">
-                View all world news &rarr;
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link href={`/countries/${country.slug}/news`} className="text-xs text-cyan-400 hover:underline shrink-0">
+                  {country.name} News Wire &rarr;
+                </Link>
+                <Link href="/news" className="text-xs text-cyan-400 hover:underline shrink-0">
+                  Global Wire &rarr;
+                </Link>
+              </div>
             </div>
 
             {relevantEvents.length > 0 ? (
@@ -430,10 +477,10 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
                   No breaking alerts currently logged for {country.name}. Connect with live global feeds or inspect neighboring regional news.
                 </p>
                 <Link
-                  href="/news"
+                  href={`/countries/${country.slug}/news`}
                   className="inline-block text-xs text-cyan-400 hover:underline font-semibold"
                 >
-                  Explore Global News Dispatch Feed &rarr;
+                  Explore {country.name} News Wire Dispatches &rarr;
                 </Link>
               </div>
             )}
@@ -447,7 +494,18 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
               <p className="text-xs text-white/60">Test your knowledge of {country.name}’s flag, capital, borders, and history.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+              <Link
+                href={`/games/geography/${country.slug}`}
+                className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-400 hover:bg-purple-950/40 transition-all group"
+              >
+                <div className="text-2xl mb-1">{country.flag || '🌍'}</div>
+                <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+                  {country.name} Geography Game
+                </h3>
+                <p className="text-xs text-white/50 mt-1">Timed 15s official country challenge with live scorecards.</p>
+              </Link>
+
               <Link
                 href={`/countries/${country.slug}/quiz`}
                 className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/50 transition-all group"
@@ -471,14 +529,14 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
               </Link>
 
               <Link
-                href="/challenges"
+                href="/country-quiz"
                 className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-emerald-400/50 transition-all group"
               >
-                <div className="text-2xl mb-1">🏆</div>
+                <div className="text-2xl mb-1">🏛️</div>
                 <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
-                  Flag & Capital Arena
+                  195 Country Quiz
                 </h3>
-                <p className="text-xs text-white/50 mt-1">Master all 195 sovereign nation flags and world capitals.</p>
+                <p className="text-xs text-white/50 mt-1">Master all sovereign nation flags and borders.</p>
               </Link>
             </div>
           </section>
@@ -489,7 +547,9 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
               <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
                 <span>🌐</span> Related & Neighboring Countries
               </h2>
-              <p className="text-xs text-white/60">Explore bordering nations and regional partners in {country.region}.</p>
+              <p className="text-xs text-white/60">
+                Explore bordering nations and regional partners in {country.region} ({country.subregion}).
+              </p>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -514,15 +574,18 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             </div>
           </section>
 
-          {/* Internal Navigation Links */}
+          {/* Knowledge Graph Internal Navigation Links */}
           <section className="pt-6 border-t border-white/10 flex flex-wrap gap-4 text-xs text-white/60">
-            <span className="text-white font-semibold">More Destinations:</span>
+            <span className="text-white font-semibold">Knowledge Graph Portals:</span>
             <Link href="/world-map" className="text-cyan-400 hover:underline">World Map Atlas</Link>
+            <Link href={`/continents/${kg.continent.slug}`} className="text-cyan-400 hover:underline">{kg.continent.name} Continental Hub</Link>
+            <Link href="/continents" className="text-cyan-400 hover:underline">7 Continents Directory</Link>
             <Link href="/globe" className="text-cyan-400 hover:underline">3D Globe Explorer</Link>
-            <Link href="/interactive-world-map" className="text-cyan-400 hover:underline">Clickable World Map</Link>
-            <Link href="/geography" className="text-cyan-400 hover:underline">World Geography Hub</Link>
-            <Link href="/world-geography" className="text-cyan-400 hover:underline">Physical Geography Records</Link>
-            <Link href="/games" className="text-cyan-400 hover:underline">Geography Games</Link>
+            <Link href={`/countries/${country.slug}/geography`} className="text-cyan-400 hover:underline">{country.name} Geography</Link>
+            <Link href={`/countries/${country.slug}/news`} className="text-cyan-400 hover:underline">{country.name} News Wire</Link>
+            <Link href={`/weather/${country.slug}`} className="text-cyan-400 hover:underline">{country.name} Weather Station</Link>
+            <Link href={`/games/geography/${country.slug}`} className="text-cyan-400 hover:underline">{country.name} Game</Link>
+            <Link href="/games" className="text-cyan-400 hover:underline">Geography Games Hub</Link>
           </section>
         </main>
 

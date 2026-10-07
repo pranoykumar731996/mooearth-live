@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAllCities, getCityBySlug, getNearbyCities } from '@/data/places';
 import { getCountryByName } from '@/data/countries';
+import { getCityKnowledgeGraph } from '@/lib/seo/knowledgeGraph';
 import { fetchCountryWeather } from '@/services/weatherService';
 import { fetchNewsForCity } from '@/services/cityNewsService';
 import { shouldIndexCityPage } from '@/lib/seo/cityQualityGate';
@@ -82,6 +83,7 @@ export default async function CityPage({ params }: CityPageProps) {
   }
 
   const country = getCountryByName(city.country);
+  const kg = getCityKnowledgeGraph(city);
   const canonicalUrl = `https://www.mooearth.live/cities/${city.slug}`;
 
   // Fetch live weather telemetry for this city's exact coordinates
@@ -99,32 +101,12 @@ export default async function CityPage({ params }: CityPageProps) {
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        name: 'Home',
-        item: 'https://www.mooearth.live',
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        name: 'World Map',
-        item: 'https://www.mooearth.live/world-map',
-      },
-      {
-        '@type': 'ListItem',
-        position: 3,
-        name: city.country,
-        item: `https://www.mooearth.live/countries/${city.countrySlug}`,
-      },
-      {
-        '@type': 'ListItem',
-        position: 4,
-        name: city.name,
-        item: canonicalUrl,
-      },
-    ],
+    itemListElement: kg.breadcrumbs.map(b => ({
+      '@type': 'ListItem',
+      position: b.position,
+      name: b.name,
+      item: `https://www.mooearth.live${b.href}`,
+    })),
   };
 
   // City Schema.org JSON-LD
@@ -181,6 +163,8 @@ export default async function CityPage({ params }: CityPageProps) {
             <span>/</span>
             <Link href="/world-map" className="hover:text-cyan-400 transition-colors">World Map</Link>
             <span>/</span>
+            <Link href={`/continents/${kg.continent.slug}`} className="hover:text-cyan-400 transition-colors">{kg.continent.name}</Link>
+            <span>/</span>
             <Link href={`/countries/${city.countrySlug}`} className="hover:text-cyan-400 transition-colors">{city.country}</Link>
             <span>/</span>
             <span className="text-white/80 font-medium">{city.name}</span>
@@ -191,9 +175,15 @@ export default async function CityPage({ params }: CityPageProps) {
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-4xl" role="img" aria-label={`Flag of ${city.country}`}>{country?.flag || '🏙️'}</span>
                 <div>
-                  <span className="text-cyan-400 text-xs font-mono tracking-widest uppercase font-semibold block">
-                    Metropolitan Location &bull; {city.state ? `${city.state}, ` : ''}{city.country}
-                  </span>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Link
+                      href={`/continents/${kg.continent.slug}`}
+                      className="text-cyan-400 text-xs font-mono tracking-widest uppercase font-semibold hover:underline"
+                    >
+                      {kg.continent.name}
+                    </Link>
+                    <span className="text-xs text-white/40 font-mono">&bull; {city.state ? `${city.state}, ` : ''}{city.country}</span>
+                  </div>
                   <span className="text-xs text-white/40 font-mono">
                     GPS: {Math.abs(city.coordinates.lat).toFixed(2)}°{latCardinal}, {Math.abs(city.coordinates.lng).toFixed(2)}°{lngCardinal} &bull; Timezone: {city.timezone}
                   </span>
@@ -231,6 +221,12 @@ export default async function CityPage({ params }: CityPageProps) {
             </Link>
             <Link href={`/countries/${city.countrySlug}/quiz`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               Country Quiz
+            </Link>
+            <Link href={`/games/geography/${city.countrySlug}`} className="px-3 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 font-medium border border-purple-500/30 transition-colors">
+              Play {city.country} Game
+            </Link>
+            <Link href={`/continents/${kg.continent.slug}`} className="px-3 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-medium border border-emerald-500/30 transition-colors">
+              {kg.continent.name} Atlas
             </Link>
           </nav>
 
@@ -485,6 +481,50 @@ export default async function CityPage({ params }: CityPageProps) {
             )}
           </section>
 
+          {/* Sister Cities in Same Country */}
+          {kg.sisterCities.length > 0 && (
+            <section aria-label="Sister Cities in Same Country" className="space-y-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                  <span>🏛️</span> Sister Metropolitan Centers in {city.country}
+                </h2>
+                <p className="text-xs text-white/60">
+                  Other canonical urban centers and demographic hubs within {city.country}.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {kg.sisterCities.map(sister => (
+                  <Link
+                    key={sister.id}
+                    href={`/cities/${sister.slug}`}
+                    className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-cyan-500/40 hover:bg-white/[0.04] transition-all group flex flex-col justify-between space-y-2"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-[10px] font-mono text-cyan-400 uppercase">
+                          {sister.isCapital ? '★ National Capital' : 'Metropolitan Hub'}
+                        </span>
+                        <span className="text-white/40 font-mono text-[10px]">{sister.countryCode}</span>
+                      </div>
+                      <h3 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
+                        {sister.name}
+                      </h3>
+                      <p className="text-xs text-white/50 mt-0.5">
+                        {sister.state ? `${sister.state}, ` : ''}{sister.country}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/40 font-mono">
+                      <span>Pop: {sister.population ? sister.population.toLocaleString() : 'N/A'}</span>
+                      <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform">Inspect City &rarr;</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Related Games & Quizzes */}
           <section aria-label="City & Country Games" className="p-6 sm:p-8 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/20 via-black to-blue-950/20 space-y-4">
             <div>
@@ -493,7 +533,18 @@ export default async function CityPage({ params }: CityPageProps) {
               <p className="text-xs text-white/60">Test your planetary knowledge with geography trivia, daily challenges, and coordinate speed runs.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+              <Link
+                href={`/games/geography/${city.countrySlug}`}
+                className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-400 transition-all group"
+              >
+                <div className="text-2xl mb-1">{country?.flag || '🌍'}</div>
+                <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+                  {city.country} Geography Game
+                </h3>
+                <p className="text-xs text-white/50 mt-1">Official timed country challenge covering {city.country} landmarks.</p>
+              </Link>
+
               <Link
                 href={`/countries/${city.countrySlug}/quiz`}
                 className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/50 transition-all group"
@@ -502,18 +553,7 @@ export default async function CityPage({ params }: CityPageProps) {
                 <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
                   {city.country} Quiz Challenge
                 </h3>
-                <p className="text-xs text-white/50 mt-1">Authentic Play Earth questions testing knowledge of {city.country} landmarks and geography.</p>
-              </Link>
-
-              <Link
-                href={`/play-earth?country=${encodeURIComponent(city.country)}`}
-                className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-purple-400/50 transition-all group"
-              >
-                <div className="text-2xl mb-1">🌍</div>
-                <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
-                  Play Earth Live Mode
-                </h3>
-                <p className="text-xs text-white/50 mt-1">Compete globally on 3D spherical trivia challenges focused on {city.name}’s region.</p>
+                <p className="text-xs text-white/50 mt-1">Authentic questions testing knowledge of {city.country} landmarks and geography.</p>
               </Link>
 
               <Link
@@ -526,17 +566,32 @@ export default async function CityPage({ params }: CityPageProps) {
                 </h3>
                 <p className="text-xs text-white/50 mt-1">Timed world quest testing planetary knowledge against players worldwide.</p>
               </Link>
+
+              <Link
+                href="/country-quiz"
+                className="p-4 rounded-xl border border-white/10 bg-white/[0.03] hover:border-sky-400/50 transition-all group"
+              >
+                <div className="text-2xl mb-1">🏛️</div>
+                <h3 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors">
+                  195 Country Quiz
+                </h3>
+                <p className="text-xs text-white/50 mt-1">Identify sovereign nations, flags, and geopolitical borders.</p>
+              </Link>
             </div>
           </section>
 
           {/* Related Navigation */}
           <section className="pt-6 border-t border-white/10 flex flex-wrap gap-4 text-xs text-white/60">
-            <span className="text-white font-semibold">Explore More:</span>
+            <span className="text-white font-semibold">Knowledge Graph Portals:</span>
             <Link href={`/countries/${city.countrySlug}`} className="text-cyan-400 hover:underline">{city.country} Country Atlas</Link>
+            <Link href={`/continents/${kg.continent.slug}`} className="text-cyan-400 hover:underline">{kg.continent.name} Continental Hub</Link>
+            <Link href="/continents" className="text-cyan-400 hover:underline">7 Continents Directory</Link>
             <Link href={`/countries/${city.countrySlug}/weather`} className="text-cyan-400 hover:underline">{city.country} Weather</Link>
+            <Link href={`/weather/${city.slug}`} className="text-cyan-400 hover:underline">{city.name} Weather Station</Link>
             <Link href={`/countries/${city.countrySlug}/news`} className="text-cyan-400 hover:underline">{city.country} News Desk</Link>
             <Link href={`/countries/${city.countrySlug}/map`} className="text-cyan-400 hover:underline">{city.country} 3D Map</Link>
-            <Link href="/world-map" className="text-cyan-400 hover:underline">Full World Map</Link>
+            <Link href={`/games/geography/${city.countrySlug}`} className="text-cyan-400 hover:underline">{city.country} Game</Link>
+            <Link href="/world-map" className="text-cyan-400 hover:underline">Interactive World Map</Link>
           </section>
         </main>
 
