@@ -1,7 +1,14 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import DailyChallengeClient from '@/components/Daily/DailyChallengeClient';
-import { SUPPORTED_LOCALES, isSupportedLocale, getTranslation, generateHreflangs, LOCALES_META } from '@/lib/i18n';
+import {
+  SUPPORTED_LOCALES,
+  isSupportedLocale,
+  getTranslation,
+  generateHreflangs,
+  getCanonicalUrl,
+  LOCALES_META,
+} from '@/lib/i18n';
 
 interface LocalizedDailyPageProps {
   params: Promise<{
@@ -10,7 +17,7 @@ interface LocalizedDailyPageProps {
 }
 
 export async function generateStaticParams() {
-  return SUPPORTED_LOCALES.filter((l) => l !== 'en').map((lang) => ({ lang }));
+  return SUPPORTED_LOCALES.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: LocalizedDailyPageProps): Promise<Metadata> {
@@ -22,7 +29,7 @@ export async function generateMetadata({ params }: LocalizedDailyPageProps): Pro
   const dict = getTranslation(lang);
   const title = `${dict.daily.title} | MooEarth Live`;
   const description = dict.daily.subtitle;
-  const canonicalUrl = `https://www.mooearth.live/${lang}/daily`;
+  const canonicalUrl = getCanonicalUrl('/daily', lang);
 
   return {
     title,
@@ -62,11 +69,39 @@ export default async function LocalizedDailyPage({ params }: LocalizedDailyPageP
     notFound();
   }
 
+  const dict = getTranslation(lang);
   const meta = LOCALES_META[lang];
+  const canonicalUrl = getCanonicalUrl('/daily', lang);
+  const homeUrl = getCanonicalUrl('/', lang);
+
+  const breadcrumbsJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: dict.nav.home,
+        item: homeUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: dict.daily.title,
+        item: canonicalUrl,
+      },
+    ],
+  };
 
   return (
-    <div dir={meta.dir} lang={lang} className="min-h-screen bg-[#060814] text-white">
-      <DailyChallengeClient locale={lang} />
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbsJsonLd) }}
+      />
+      <div dir={meta.dir} lang={lang} className="min-h-screen bg-[#060814] text-white">
+        <DailyChallengeClient locale={lang} />
+      </div>
+    </>
   );
 }

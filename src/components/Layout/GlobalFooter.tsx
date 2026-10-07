@@ -1,8 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
+import { SupportedLocale, getLocalizedPath } from '@/lib/i18n';
 
-export default function GlobalFooter() {
+interface GlobalFooterProps {
+  locale?: SupportedLocale;
+}
+
+export default function GlobalFooter({ locale = 'en' }: GlobalFooterProps) {
   const currentYear = new Date().getFullYear();
+  const getHref = (path: string) => getLocalizedPath(path, locale);
 
   return (
     <footer className="bg-[var(--background)] border-t border-white/10 pt-12 pb-8 mt-auto">
@@ -25,9 +31,9 @@ export default function GlobalFooter() {
           <div>
             <h4 className="text-white font-semibold mb-4">Explore</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><Link href="/" className="hover:text-emerald-400 transition-colors">Home</Link></li>
-              <li><Link href="/about" className="hover:text-emerald-400 transition-colors">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link href={getHref('/')} className="hover:text-emerald-400 transition-colors">Home</Link></li>
+              <li><Link href={getHref('/about')} className="hover:text-emerald-400 transition-colors">About Us</Link></li>
+              <li><Link href={getHref('/contact')} className="hover:text-emerald-400 transition-colors">Contact</Link></li>
             </ul>
           </div>
 
@@ -35,11 +41,11 @@ export default function GlobalFooter() {
           <div>
             <h4 className="text-white font-semibold mb-4">Legal & Privacy</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-emerald-400 transition-colors">Terms of Service</Link></li>
-              <li><Link href="/cookies" className="hover:text-emerald-400 transition-colors">Cookie Policy</Link></li>
-              <li><Link href="/data-sources" className="hover:text-emerald-400 transition-colors">Data Sources</Link></li>
-              <li><Link href="/security" className="hover:text-emerald-400 transition-colors">Security Policy</Link></li>
+              <li><Link href={getHref('/privacy')} className="hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
+              <li><Link href={getHref('/terms')} className="hover:text-emerald-400 transition-colors">Terms of Service</Link></li>
+              <li><Link href={getHref('/cookies')} className="hover:text-emerald-400 transition-colors">Cookie Policy</Link></li>
+              <li><Link href={getHref('/data-sources')} className="hover:text-emerald-400 transition-colors">Data Sources</Link></li>
+              <li><Link href={getHref('/security')} className="hover:text-emerald-400 transition-colors">Security Policy</Link></li>
             </ul>
           </div>
 
@@ -47,13 +53,13 @@ export default function GlobalFooter() {
           <div>
             <h4 className="text-white font-semibold mb-4">Policies</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><Link href="/disclaimer" className="hover:text-emerald-400 transition-colors">Disclaimer</Link></li>
-              <li><Link href="/copyright" className="hover:text-emerald-400 transition-colors">Copyright Policy</Link></li>
-              <li><Link href="/dmca" className="hover:text-emerald-400 transition-colors">DMCA Complaints</Link></li>
-              <li><Link href="/community" className="hover:text-emerald-400 transition-colors">Community Guidelines</Link></li>
-              <li><Link href="/ai-transparency" className="hover:text-emerald-400 transition-colors">AI Transparency</Link></li>
-              <li><Link href="/advertising" className="hover:text-emerald-400 transition-colors">Advertising Disclosure</Link></li>
-              <li><Link href="/accessibility" className="hover:text-emerald-400 transition-colors">Accessibility</Link></li>
+              <li><Link href={getHref('/disclaimer')} className="hover:text-emerald-400 transition-colors">Disclaimer</Link></li>
+              <li><Link href={getHref('/copyright')} className="hover:text-emerald-400 transition-colors">Copyright Policy</Link></li>
+              <li><Link href={getHref('/dmca')} className="hover:text-emerald-400 transition-colors">DMCA Complaints</Link></li>
+              <li><Link href={getHref('/community')} className="hover:text-emerald-400 transition-colors">Community Guidelines</Link></li>
+              <li><Link href={getHref('/ai-transparency')} className="hover:text-emerald-400 transition-colors">AI Transparency</Link></li>
+              <li><Link href={getHref('/advertising')} className="hover:text-emerald-400 transition-colors">Advertising Disclosure</Link></li>
+              <li><Link href={getHref('/accessibility')} className="hover:text-emerald-400 transition-colors">Accessibility</Link></li>
             </ul>
           </div>
         </div>

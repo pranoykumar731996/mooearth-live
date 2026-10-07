@@ -9,12 +9,20 @@ import {
 } from '@/services/gameLandingService';
 import PlayableGameLandingRunner from './PlayableGameLandingRunner';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
+import {
+  SupportedLocale,
+  getLocalizedPath,
+  getCanonicalUrl,
+  getTranslation,
+  LOCALES_META,
+} from '@/lib/i18n';
 
 interface GameLandingTemplateProps {
   config: GameLandingConfig;
   initialQuestions: EarthQuestion[];
   countryName?: string;
   countrySlug?: string;
+  locale?: SupportedLocale;
 }
 
 export default function GameLandingTemplate({
@@ -22,7 +30,13 @@ export default function GameLandingTemplate({
   initialQuestions,
   countryName,
   countrySlug,
+  locale = 'en',
 }: GameLandingTemplateProps) {
+  const dict = getTranslation(locale);
+  const meta = LOCALES_META[locale];
+  const canonicalUrl = getCanonicalUrl('/' + config.slug, locale);
+  const getHref = (path: string) => getLocalizedPath(path, locale);
+
   // Breadcrumb Schema.org JSON-LD
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -31,14 +45,14 @@ export default function GameLandingTemplate({
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Home',
-        item: 'https://www.mooearth.live',
+        name: dict.nav.home,
+        item: getCanonicalUrl('/', locale),
       },
       {
         '@type': 'ListItem',
         position: 2,
-        name: 'Games',
-        item: 'https://www.mooearth.live/games',
+        name: dict.nav.games,
+        item: getCanonicalUrl('/games', locale),
       },
       ...(countryName
         ? [
@@ -46,7 +60,7 @@ export default function GameLandingTemplate({
               '@type': 'ListItem',
               position: 3,
               name: `${countryName} Geography Game`,
-              item: config.canonical,
+              item: canonicalUrl,
             },
           ]
         : config.slug !== 'games'
@@ -55,7 +69,7 @@ export default function GameLandingTemplate({
               '@type': 'ListItem',
               position: 3,
               name: config.name,
-              item: config.canonical,
+              item: canonicalUrl,
             },
           ]
         : []),
@@ -67,13 +81,13 @@ export default function GameLandingTemplate({
     '@context': 'https://schema.org',
     '@type': 'VideoGame',
     name: config.h1,
-    url: config.canonical,
+    url: canonicalUrl,
     description: config.metaDescription,
     genre: ['Geography', 'Trivia', 'Educational', 'Puzzle'],
     gamePlatform: ['Web Browser', 'Mobile Browser'],
     applicationCategory: 'Game',
     operatingSystem: 'Any',
-    inLanguage: 'en',
+    inLanguage: locale,
     author: {
       '@type': 'Organization',
       name: 'MooEarth Live',
@@ -97,7 +111,7 @@ export default function GameLandingTemplate({
     .map(slug => GAME_LANDING_CONFIGS[slug])
     .filter(Boolean);
 
-  const shareText = `Play ${config.name} on MooEarth Live! Free online geography trivia and 1v1 challenges: ${config.canonical}`;
+  const shareText = `Play ${config.name} on MooEarth Live! Free online geography trivia and 1v1 challenges: ${canonicalUrl}`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const xUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
@@ -112,13 +126,13 @@ export default function GameLandingTemplate({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(gameJsonLd) }}
       />
 
-      <div className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+      <div dir={meta.dir} lang={locale} className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
         {/* Navigation & Header */}
         <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6 pb-4">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/50 mb-6">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">Home</Link>
+            <Link href={getHref('/')} className="hover:text-cyan-400 transition-colors">{dict.nav.home}</Link>
             <span>/</span>
-            <Link href="/games" className="hover:text-cyan-400 transition-colors">Games</Link>
+            <Link href={getHref('/games')} className="hover:text-cyan-400 transition-colors">{dict.nav.games}</Link>
             {config.slug !== 'games' && (
               <>
                 <span>/</span>
@@ -195,7 +209,7 @@ export default function GameLandingTemplate({
               ) : (
                 <Link
                   key={g.slug}
-                  href={`/${g.slug}`}
+                  href={getHref('/' + g.slug)}
                   className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors"
                 >
                   {g.emoji} {g.name}
@@ -298,7 +312,7 @@ export default function GameLandingTemplate({
                 </p>
               </div>
               <Link
-                href="/games"
+                href={getHref('/games')}
                 className="text-xs font-semibold text-cyan-400 hover:underline shrink-0"
               >
                 View All Games &rarr;
@@ -309,7 +323,7 @@ export default function GameLandingTemplate({
               {relatedGames.map(game => (
                 <Link
                   key={game.slug}
-                  href={`/${game.slug}`}
+                  href={getHref('/' + game.slug)}
                   className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/40 hover:bg-white/[0.06] transition-all group space-y-2"
                 >
                   <div className="flex items-center justify-between">
@@ -346,7 +360,7 @@ export default function GameLandingTemplate({
               {FEATURED_COUNTRY_SELECTION.map(c => (
                 <Link
                   key={c.slug}
-                  href={`/games/geography/${c.slug}`}
+                  href={locale === 'en' ? `/games/geography/${c.slug}` : getHref(`/country/${c.slug}`)}
                   className="p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.07] text-center space-y-1 transition-all group"
                 >
                   <span className="text-xl block">{c.flag}</span>
@@ -365,7 +379,7 @@ export default function GameLandingTemplate({
               {FEATURED_COUNTRY_SELECTION.slice(0, 8).map(c => (
                 <Link
                   key={`hub-${c.slug}`}
-                  href={`/countries/${c.slug}`}
+                  href={locale === 'en' ? `/countries/${c.slug}` : getHref(`/country/${c.slug}`)}
                   className="hover:text-cyan-400 transition-colors"
                 >
                   {c.name} Atlas
@@ -383,7 +397,7 @@ export default function GameLandingTemplate({
               {GEOGRAPHY_NAVIGATION_LINKS.map(link => (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={getHref(link.href)}
                   className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.06] transition-all space-y-1 group"
                 >
                   <div className="flex items-center gap-2">
@@ -401,7 +415,7 @@ export default function GameLandingTemplate({
           </section>
         </main>
 
-        <GlobalFooter />
+        <GlobalFooter locale={locale} />
       </div>
     </>
   );

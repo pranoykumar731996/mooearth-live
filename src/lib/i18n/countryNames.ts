@@ -265,6 +265,36 @@ export const LOCALIZED_COUNTRIES: Record<string, Record<SupportedLocale, string>
     hi: 'भारत',
     ar: 'الهند',
   },
+  egypt: {
+    en: 'Egypt',
+    es: 'Egipto',
+    fr: 'Égypte',
+    pt: 'Egito',
+    de: 'Ägypten',
+    ja: 'エジプト',
+    hi: 'मिस्र',
+    ar: 'مصر',
+  },
+  'saudi arabia': {
+    en: 'Saudi Arabia',
+    es: 'Arabia Saudita',
+    fr: 'Arabie saoudite',
+    pt: 'Arábia Saudita',
+    de: 'Saudi-Arabien',
+    ja: 'サウジアラビア',
+    hi: 'सऊदी अरब',
+    ar: 'المملكة العربية السعودية',
+  },
+  'saudi-arabia': {
+    en: 'Saudi Arabia',
+    es: 'Arabia Saudita',
+    fr: 'Arabie saoudite',
+    pt: 'Arábia Saudita',
+    de: 'Saudi-Arabien',
+    ja: 'サウジアラビア',
+    hi: 'सऊदी अरब',
+    ar: 'المملكة العربية السعودية',
+  },
 };
 
 export function getLocalizedCountryName(countryKey: string, locale: SupportedLocale = 'en'): string {

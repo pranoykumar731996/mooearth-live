@@ -12,6 +12,71 @@ export interface LocaleMeta {
   dir: 'ltr' | 'rtl';
 }
 
+export interface WorldMapTranslation {
+  title: string;
+  description: string;
+  h1: string;
+  badge: string;
+  summary: string;
+  regionsTitle: string;
+  regionsDesc: string;
+  regionAfricaEuropeTitle: string;
+  regionAfricaEuropeText: string;
+  regionAsiaOceaniaTitle: string;
+  regionAsiaOceaniaText: string;
+  regionAmericasTitle: string;
+  regionAmericasText: string;
+  globeCtaTitle: string;
+  globeCtaDesc: string;
+  globeCtaBtn: string;
+  worldGeographyBtn: string;
+}
+
+export interface WeatherTranslation {
+  title: string;
+  description: string;
+  h1: string;
+  badge: string;
+  summary: string;
+  radarHeading: string;
+  radarSubtitle: string;
+  liveTelemetry: string;
+  physicalSensors: string;
+}
+
+export interface WorldNewsTranslation {
+  title: string;
+  description: string;
+  h1: string;
+  badge: string;
+  summary: string;
+  liveMapHeading: string;
+  wireDispatchesHeading: string;
+}
+
+export interface WorldEventsTranslation {
+  title: string;
+  description: string;
+  h1: string;
+  badge: string;
+  summary: string;
+  observatoryHeading: string;
+  liveMapHeading: string;
+}
+
+export interface GameModeTranslation {
+  title: string;
+  description: string;
+  h1: string;
+  badge: string;
+  summary: string;
+  aboutTitle: string;
+  howToPlayTitle: string;
+  rulesTitle: string;
+  relatedTitle: string;
+  countriesTitle: string;
+}
+
 export interface TranslationDictionary {
   locale: SupportedLocale;
   nav: {
@@ -28,6 +93,9 @@ export interface TranslationDictionary {
     technology: string;
     about: string;
     language: string;
+    worldMap: string;
+    worldNews: string;
+    worldEvents: string;
   };
   hero: {
     title: string;
@@ -43,10 +111,14 @@ export interface TranslationDictionary {
     descriptionTemplate: (country: string) => string;
     capitalLabel: string;
     populationLabel: string;
+    regionLabel: string;
     liveUpdates: string;
     backToGlobe: string;
     exploreCountry: string;
     playCountryQuiz: string;
+    majorCitiesLabel: string;
+    weatherForecastLabel: string;
+    overviewHeading: string;
   };
   daily: {
     title: string;
@@ -95,4 +167,12 @@ export interface TranslationDictionary {
     back: string;
     poweredBy: string;
   };
+  worldMap: WorldMapTranslation;
+  weather: WeatherTranslation;
+  worldNews: WorldNewsTranslation;
+  worldEvents: WorldEventsTranslation;
+  gamesHub: GameModeTranslation;
+  geographyQuiz: GameModeTranslation;
+  flagQuiz: GameModeTranslation;
+  countryQuiz: GameModeTranslation;
 }

@@ -136,6 +136,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily' as const,
       priority: 0.95
     });
+    // Localized Core Pages & Top Search Hubs
+    const coreLocalizedRoutes = [
+      '/world-map',
+      '/weather',
+      '/world-news',
+      '/world-events',
+      '/games',
+      '/geography-quiz',
+      '/flag-quiz',
+      '/country-quiz',
+    ];
+    coreLocalizedRoutes.forEach(route => {
+      multilingualPages.push({
+        url: `${baseUrl}/${lang}${route}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily' as const,
+        priority: 0.92
+      });
+    });
     // Localized Countries
     getAllCountries().forEach(country => {
       multilingualPages.push({

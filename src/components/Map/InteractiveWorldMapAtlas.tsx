@@ -4,15 +4,18 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
 import { resolveCanonicalSlug } from '@/data/countries';
+import { SupportedLocale, getLocalizedCountryName, getLocalizedPath } from '@/lib/i18n';
 
 interface InteractiveWorldMapAtlasProps {
   initialRegion?: string;
   className?: string;
+  locale?: SupportedLocale;
 }
 
 export default function InteractiveWorldMapAtlas({
   initialRegion = 'All',
   className = '',
+  locale = 'en',
 }: InteractiveWorldMapAtlasProps) {
   const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -149,6 +152,12 @@ export default function InteractiveWorldMapAtlas({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filteredCountries.map(country => {
           const isSelected = activeCountry === country.name;
+          const localizedCountryName = getLocalizedCountryName(country.name, locale);
+          const rawSlug = resolveCanonicalSlug(country.name) || country.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const hubHref = locale === 'en'
+            ? `/countries/${rawSlug}`
+            : getLocalizedPath(`/country/${rawSlug}`, locale);
+
           return (
             <div
               key={country.name}
@@ -168,7 +177,7 @@ export default function InteractiveWorldMapAtlas({
 
               <div>
                 <h4 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                  {country.name}
+                  {localizedCountryName}
                 </h4>
                 <div className="flex items-center justify-between text-[11px] text-white/50 mt-1">
                   <span>Cap: {country.capital}</span>
@@ -179,10 +188,10 @@ export default function InteractiveWorldMapAtlas({
               <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[11px]">
                 <span className="text-cyan-400/80 hover:text-cyan-300 font-medium">Quick Inspect</span>
                 <Link
-                  href={`/countries/${resolveCanonicalSlug(country.name) || country.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                  href={hubHref}
                   onClick={e => e.stopPropagation()}
                   className="text-white/40 hover:text-white transition-colors"
-                  title={`Go to ${country.name} hub`}
+                  title={`Go to ${localizedCountryName} hub`}
                 >
                   Hub &rarr;
                 </Link>

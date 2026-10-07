@@ -47,3 +47,25 @@ export function generateHreflangs(path: string, baseUrl: string = 'https://www.m
 
   return alternates;
 }
+
+/**
+ * Returns a localized path string prefixed with the locale (except for default locale 'en')
+ */
+export function getLocalizedPath(path: string, locale: SupportedLocale = DEFAULT_LOCALE): string {
+  const cleanPath = (!path || path === '/') ? '' : (path.startsWith('/') ? path : `/${path}`);
+  if (locale === DEFAULT_LOCALE) {
+    return cleanPath || '/';
+  }
+  return `/${locale}${cleanPath}`;
+}
+
+/**
+ * Returns the canonical URL for a given route path and locale
+ */
+export function getCanonicalUrl(path: string, locale: SupportedLocale = DEFAULT_LOCALE, baseUrl: string = 'https://www.mooearth.live'): string {
+  const cleanPath = (!path || path === '/') ? '' : (path.startsWith('/') ? path : `/${path}`);
+  if (locale === DEFAULT_LOCALE) {
+    return `${baseUrl}${cleanPath}`;
+  }
+  return `${baseUrl}/${locale}${cleanPath}`;
+}

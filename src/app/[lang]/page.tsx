@@ -1,7 +1,14 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import HomePage from '../page';
-import { SUPPORTED_LOCALES, isSupportedLocale, getTranslation, generateHreflangs, LOCALES_META } from '@/lib/i18n';
+import {
+  SUPPORTED_LOCALES,
+  isSupportedLocale,
+  getTranslation,
+  generateHreflangs,
+  getCanonicalUrl,
+  LOCALES_META,
+} from '@/lib/i18n';
 
 interface LocalizedPageProps {
   params: Promise<{
@@ -10,8 +17,7 @@ interface LocalizedPageProps {
 }
 
 export async function generateStaticParams() {
-  // Pre-render the 7 international locales (en is handled by root /)
-  return SUPPORTED_LOCALES.filter((l) => l !== 'en').map((lang) => ({ lang }));
+  return SUPPORTED_LOCALES.map((lang) => ({ lang }));
 }
 
 export async function generateMetadata({ params }: LocalizedPageProps): Promise<Metadata> {
@@ -21,10 +27,9 @@ export async function generateMetadata({ params }: LocalizedPageProps): Promise<
   }
 
   const dict = getTranslation(lang);
-  const meta = LOCALES_META[lang];
   const title = `${dict.hero.title} — ${dict.hero.subtitle}`;
   const description = dict.hero.tagline;
-  const canonicalUrl = `https://www.mooearth.live/${lang}`;
+  const canonicalUrl = getCanonicalUrl('/', lang);
 
   return {
     title,
@@ -66,13 +71,14 @@ export default async function LocalizedHomePage({ params }: LocalizedPageProps) 
 
   const dict = getTranslation(lang);
   const meta = LOCALES_META[lang];
+  const canonicalUrl = getCanonicalUrl('/', lang);
 
   const websiteSchema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: dict.hero.title,
     alternateName: dict.hero.subtitle,
-    url: `https://www.mooearth.live/${lang}`,
+    url: canonicalUrl,
     inLanguage: lang,
     description: dict.hero.tagline,
   };

@@ -3,13 +3,21 @@ import Link from 'next/link';
 import WorldEventsClient from './WorldEventsClient';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { WorldMajorEvent } from '@/services/worldEventsService';
+import {
+  SupportedLocale,
+  getLocalizedPath,
+  getCanonicalUrl,
+  getTranslation,
+  LOCALES_META,
+} from '@/lib/i18n';
 
 interface WorldEventsTemplateProps {
-  currentPath: '/world-events' | '/live-events';
+  currentPath: string;
   title: string;
   subtitle: string;
   badgeText: string;
   events: WorldMajorEvent[];
+  locale?: SupportedLocale;
 }
 
 export default function WorldEventsTemplate({
@@ -18,8 +26,12 @@ export default function WorldEventsTemplate({
   subtitle,
   badgeText,
   events,
+  locale = 'en',
 }: WorldEventsTemplateProps) {
-  const canonicalUrl = `https://www.mooearth.live${currentPath}`;
+  const dict = getTranslation(locale);
+  const meta = LOCALES_META[locale];
+  const canonicalUrl = getCanonicalUrl(currentPath, locale);
+  const getHref = (path: string) => getLocalizedPath(path, locale);
 
   // Breadcrumbs JSON-LD
   const breadcrumbJsonLd = {
@@ -29,8 +41,8 @@ export default function WorldEventsTemplate({
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Home',
-        item: 'https://www.mooearth.live',
+        name: dict.nav.home,
+        item: getCanonicalUrl('/', locale),
       },
       {
         '@type': 'ListItem',
@@ -86,15 +98,15 @@ export default function WorldEventsTemplate({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }}
       />
 
-      <div className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+      <div dir={meta.dir} lang={locale} className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
         {/* Navigation & Header */}
         <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6 pb-4">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/50 mb-6">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">
-              Home
+            <Link href={getHref('/')} className="hover:text-cyan-400 transition-colors">
+              {dict.nav.home}
             </Link>
             <span>/</span>
-            <span className="text-white/80 font-medium">World Events Desk</span>
+            <span className="text-white/80 font-medium">{title}</span>
           </nav>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-white/10 pb-8">
@@ -279,21 +291,21 @@ export default function WorldEventsTemplate({
             <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-white/60">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-semibold text-white">Explore Regional Hubs:</span>
-                <Link href="/world-news" className="hover:text-cyan-400 underline">Global News Hub</Link>
-                <Link href="/weather" className="hover:text-cyan-400 underline">World Weather</Link>
-                <Link href="/world-news-map" className="hover:text-cyan-400 underline">World News Map</Link>
-                <Link href="/countries/united-states" className="hover:text-cyan-400 underline">United States</Link>
-                <Link href="/countries/japan" className="hover:text-cyan-400 underline">Japan</Link>
-                <Link href="/countries/germany" className="hover:text-cyan-400 underline">Germany</Link>
+                <Link href={getHref('/world-news')} className="hover:text-cyan-400 underline">Global News Hub</Link>
+                <Link href={getHref('/weather')} className="hover:text-cyan-400 underline">World Weather</Link>
+                <Link href={getHref('/world-news-map')} className="hover:text-cyan-400 underline">World News Map</Link>
+                <Link href={getHref('/countries/united-states')} className="hover:text-cyan-400 underline">United States</Link>
+                <Link href={getHref('/countries/japan')} className="hover:text-cyan-400 underline">Japan</Link>
+                <Link href={getHref('/countries/germany')} className="hover:text-cyan-400 underline">Germany</Link>
               </div>
-              <Link href="/live-world-news" className="text-cyan-400 hover:text-cyan-300 font-medium">
+              <Link href={getHref('/live-world-news')} className="text-cyan-400 hover:text-cyan-300 font-medium">
                 View Live Breaking Wire →
               </Link>
             </div>
           </section>
         </main>
 
-        <GlobalFooter />
+        <GlobalFooter locale={locale} />
       </div>
     </>
   );

@@ -4,6 +4,13 @@ import { WorldNewsMapData, WorldNewsStory } from '@/services/worldNewsService';
 import WorldNewsMapClient from './WorldNewsMapClient';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { FEATURED_COUNTRY_SELECTION } from '@/services/gameLandingService';
+import {
+  SupportedLocale,
+  getLocalizedPath,
+  getCanonicalUrl,
+  getTranslation,
+  LOCALES_META,
+} from '@/lib/i18n';
 
 export interface WorldNewsTemplateConfig {
   title: string;
@@ -18,13 +25,19 @@ export interface WorldNewsTemplateConfig {
 interface WorldNewsMapTemplateProps {
   config: WorldNewsTemplateConfig;
   data: WorldNewsMapData;
+  locale?: SupportedLocale;
 }
 
 export default function WorldNewsMapTemplate({
   config,
   data,
+  locale = 'en',
 }: WorldNewsMapTemplateProps) {
   const { stories, totalStories, lastUpdated } = data;
+  const dict = getTranslation(locale);
+  const meta = LOCALES_META[locale];
+  const canonicalUrl = getCanonicalUrl('/' + config.currentRouteSlug, locale);
+  const getHref = (path: string) => getLocalizedPath(path, locale);
 
   // Breadcrumb Schema.org JSON-LD
   const breadcrumbJsonLd = {
@@ -34,14 +47,14 @@ export default function WorldNewsMapTemplate({
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Home',
-        item: 'https://www.mooearth.live',
+        name: dict.nav.home,
+        item: getCanonicalUrl('/', locale),
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: config.title,
-        item: config.canonicalUrl,
+        item: canonicalUrl,
       },
     ],
   };
@@ -93,11 +106,13 @@ export default function WorldNewsMapTemplate({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(newsItemListJsonLd) }}
       />
 
-      <div className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+      <div dir={meta.dir} lang={locale} className="min-h-screen bg-[#030308] text-white flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
         {/* Navigation Breadcrumb & Hero Header */}
         <header className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6 pb-4">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-white/50 mb-6">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">Home</Link>
+            <Link href={getHref('/')} className="hover:text-cyan-400 transition-colors">
+              {dict.nav.home}
+            </Link>
             <span>/</span>
             <span className="text-white/80 font-medium">{config.badge}</span>
           </nav>
@@ -329,16 +344,16 @@ export default function WorldNewsMapTemplate({
           {/* SECTION 5: RELATED EXPLORATION LINKS */}
           <section aria-label="Related Planetary Explorations" className="pt-6 border-t border-white/10 flex flex-wrap gap-4 text-xs text-white/60">
             <span className="text-white font-semibold">Explore More of MooEarth Live:</span>
-            <Link href="/world-map" className="text-cyan-400 hover:underline">Interactive World Map</Link>
-            <Link href="/interactive-globe" className="text-cyan-400 hover:underline">3D Interactive Globe</Link>
-            <Link href="/games" className="text-cyan-400 hover:underline">Earth Games Hub</Link>
-            <Link href="/geography" className="text-cyan-400 hover:underline">Physical Geography Atlas</Link>
-            <Link href="/cities" className="text-cyan-400 hover:underline">World Cities Directory</Link>
-            <Link href="/daily" className="text-cyan-400 hover:underline">Daily Earth Challenge</Link>
+            <Link href={getHref('/world-map')} className="text-cyan-400 hover:underline">Interactive World Map</Link>
+            <Link href={getHref('/interactive-globe')} className="text-cyan-400 hover:underline">3D Interactive Globe</Link>
+            <Link href={getHref('/games')} className="text-cyan-400 hover:underline">Earth Games Hub</Link>
+            <Link href={getHref('/geography')} className="text-cyan-400 hover:underline">Physical Geography Atlas</Link>
+            <Link href={getHref('/cities')} className="text-cyan-400 hover:underline">World Cities Directory</Link>
+            <Link href={getHref('/daily')} className="text-cyan-400 hover:underline">Daily Earth Challenge</Link>
           </section>
         </main>
 
-        <GlobalFooter />
+        <GlobalFooter locale={locale} />
       </div>
     </>
   );
