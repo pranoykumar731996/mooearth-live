@@ -169,6 +169,10 @@ export default function AdminLayout({
           <Link href="/admin/analytics" className="text-white/60 hover:text-white transition-colors">
             Analytics
           </Link>
+          <span className="text-white/20">|</span>
+          <Link href="/admin/seo" className="text-white/60 hover:text-white transition-colors">
+            SEO & Search Console
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">

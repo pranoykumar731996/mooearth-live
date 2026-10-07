@@ -2,6 +2,7 @@
 // MooEarth Live — Root Layout
 // ============================================================
 
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
@@ -9,6 +10,7 @@ import './globals.css';
 import { BRANDING } from '@/config/branding';
 import { generateHreflangs } from '@/lib/i18n';
 import SentryInitializer from '@/components/UI/SentryInitializer';
+import OrganicTelemetryTracker from '@/components/SEO/OrganicTelemetryTracker';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -144,6 +146,9 @@ export default function RootLayout({
           }}
         />
         <SentryInitializer />
+        <Suspense fallback={null}>
+          <OrganicTelemetryTracker />
+        </Suspense>
         {children}
       </body>
     </html>
