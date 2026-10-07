@@ -1,9 +1,12 @@
 import { Metadata } from 'next';
-import HomePage from '../page';
+import { fetchGlobalWeatherHighlights } from '@/services/weatherService';
+import GlobalWeatherTemplate from '@/components/Weather/GlobalWeatherTemplate';
 import { generateHreflangs } from '@/lib/i18n';
 
-const title = 'Real-time Global Weather Maps & Climate Updates | MooEarth Live';
-const description = 'Monitor dynamic weather shifts, high-pressure systems, storm paths, temperature readings, and climate sensor grids globally on MooEarth Live.';
+export const revalidate = 600; // 10 minutes cache
+
+const title = 'Global Weather — Live World Climate & Atmospheric Telemetry | MooEarth Live';
+const description = 'Monitor verified real-time global weather on MooEarth Live. 3D climate map, atmospheric barometric pressure, wind vectors, and live telemetry from physical meteorological stations.';
 
 export const metadata: Metadata = {
   title,
@@ -17,41 +20,33 @@ export const metadata: Metadata = {
     description,
     url: 'https://www.mooearth.live/weather',
     type: 'website',
+    images: [
+      {
+        url: 'https://www.mooearth.live/icons/icon-512.png',
+        width: 512,
+        height: 512,
+        alt: 'Global Weather - Live Telemetry on 3D Earth Globe',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
-  }
+    images: ['https://www.mooearth.live/icons/icon-512.png'],
+  },
 };
 
-export default function WeatherShortcutPage() {
-  const breadcrumbJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    'itemListElement': [
-      {
-        '@type': 'ListItem',
-        'position': 1,
-        'name': 'Home',
-        'item': 'https://www.mooearth.live'
-      },
-      {
-        '@type': 'ListItem',
-        'position': 2,
-        'name': 'Weather',
-        'item': 'https://www.mooearth.live/weather'
-      }
-    ]
-  };
+export default async function WeatherHubPage() {
+  const stations = await fetchGlobalWeatherHighlights();
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <HomePage initialCategory="weather" />
-    </>
+    <GlobalWeatherTemplate
+      currentPath="/weather"
+      title="Global Weather — Live World Climate & Atmospheric Telemetry"
+      subtitle="Continuous real-world meteorological station telemetry mapped to geographic coordinates on an interactive 3D globe. Verified physical ground sensor readings with zero simulated weather."
+      badgeText="Global Meteorological Desk"
+      stations={stations}
+    />
   );
 }

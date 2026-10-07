@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { getAllCountries } from '@/data/countries';
+import { getAllCities } from '@/data/places';
 import { fallbackEvents } from '@/data/events';
 import { SUPPORTED_LOCALES } from '@/lib/i18n';
 
@@ -34,6 +35,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/world-news',
     '/world-news-map',
     '/live-world-news',
+    '/weather',
+    '/world-weather',
+    '/weather-map',
+    '/world-events',
+    '/live-events',
   ].map(route => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
@@ -49,11 +55,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85
   }));
 
+  // 1c. Sovereign Country Weather Pages
+  const countryWeatherPages = getAllCountries().map(country => ({
+    url: `${baseUrl}/weather/${country.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.85
+  }));
+
+  // 1d. Canonical City Weather Pages
+  const cityWeatherPages = getAllCities().map(city => ({
+    url: `${baseUrl}/weather/${city.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.85
+  }));
+
   // 2. Content Category Pages
   const contentPages = [
     '/news',
     '/sports',
-    '/weather',
     '/business',
     '/technology',
   ].map(route => ({
@@ -152,6 +173,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...corePages,
     ...countryGamePages,
+    ...countryWeatherPages,
+    ...cityWeatherPages,
     ...contentPages,
     ...categories,
     ...canonicalCountryPages,
