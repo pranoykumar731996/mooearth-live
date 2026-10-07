@@ -10,6 +10,7 @@ import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { CountryFlag } from '../UI/CountryFlag';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName } from '@/lib/i18n';
 
 interface LiveFeedProps {
   events: WorldEvent[];
@@ -60,12 +61,63 @@ function getTeamFlag(team: string): string {
   return TEAM_FLAGS[team] || '🏳️';
 }
 
-function formatRelativeTime(dateStr: string | undefined): string {
-  if (!dateStr) return 'Just now';
+function formatRelativeTime(dateStr: string | undefined, locale: string = 'en', t?: (key: string, fallback?: string) => string): string {
+  if (!dateStr) return t ? t('liveFeed.justNow', 'Just now') : 'Just now';
   const diff = Date.now() - new Date(dateStr).getTime();
-  if (Number.isNaN(diff)) return 'Just now';
+  if (Number.isNaN(diff)) return t ? t('liveFeed.justNow', 'Just now') : 'Just now';
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'Just now';
+  if (minutes < 1) return t ? t('liveFeed.justNow', 'Just now') : 'Just now';
+
+  if (locale === 'ja') {
+    if (minutes < 60) return `${minutes}分前`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}時間前`;
+    const days = Math.floor(hours / 24);
+    return `${days}日前`;
+  }
+  if (locale === 'es') {
+    if (minutes < 60) return `hace ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `hace ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `hace ${days}d`;
+  }
+  if (locale === 'fr') {
+    if (minutes < 60) return `il y a ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `il y a ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `il y a ${days}j`;
+  }
+  if (locale === 'de') {
+    if (minutes < 60) return `vor ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `vor ${hours} Std.`;
+    const days = Math.floor(hours / 24);
+    return `vor ${days} T.`;
+  }
+  if (locale === 'pt') {
+    if (minutes < 60) return `há ${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `há ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `há ${days}d`;
+  }
+  if (locale === 'hi') {
+    if (minutes < 60) return `${minutes} मिनट पहले`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} घंटे पहले`;
+    const days = Math.floor(hours / 24);
+    return `${days} दिन पहले`;
+  }
+  if (locale === 'ar') {
+    if (minutes < 60) return `منذ ${minutes} د`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `منذ ${hours} س`;
+    const days = Math.floor(hours / 24);
+    return `منذ ${days} ي`;
+  }
+
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -86,7 +138,7 @@ export default function LiveFeed({
   onCategoryChange,
   onCloseSheet
 }: LiveFeedProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [footballTab, setFootballTab] = useState<FootballTab>('matches');
   const [mobileActiveTab, setMobileActiveTab] = useState<'matches' | 'news' | 'weather' | 'tech' | 'business' | 'entertainment'>('matches');
   const [mounted, setMounted] = useState(false);
@@ -579,10 +631,10 @@ export default function LiveFeed({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.color }}>
-                              {config.label}
+                              {t(`categories.${event.category}`, config.label)}
                             </span>
                             <span className="text-[10px] text-white/30 tabular-nums font-medium" suppressHydrationWarning>
-                              {formatRelativeTime(event.publishedAt)}
+                              {formatRelativeTime(event.publishedAt, locale, t)}
                             </span>
                           </div>
                           <p className="text-sm text-white/90 font-medium leading-relaxed mb-2 group-hover:text-white transition-colors line-clamp-2">
@@ -593,7 +645,7 @@ export default function LiveFeed({
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                               <circle cx="12" cy="10" r="3" />
                             </svg>
-                            <span className="text-xs text-white/40">{event.city}, {event.country}</span>
+                            <span className="text-xs text-white/40">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
                           </div>
                         </div>
                       </div>
@@ -683,10 +735,10 @@ export default function LiveFeed({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: config.color }}>
-                          {config.label}
+                          {t(`categories.${event.category}`, config.label)}
                         </span>
                         <span className="text-[10px] text-white/30 tabular-nums font-medium">
-                          {formatRelativeTime(event.publishedAt)}
+                          {formatRelativeTime(event.publishedAt, locale, t)}
                         </span>
                       </div>
                       <h3 className="text-sm font-bold text-white leading-snug mt-2 group-hover:text-white transition-colors">
@@ -700,7 +752,7 @@ export default function LiveFeed({
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                           <circle cx="12" cy="10" r="3" />
                         </svg>
-                        <span className="text-xs text-white/40">{event.city}, {event.country}</span>
+                        <span className="text-xs text-white/40">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
                       </div>
                     </div>
                   );

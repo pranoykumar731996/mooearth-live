@@ -295,9 +295,110 @@ export const LOCALIZED_COUNTRIES: Record<string, Record<SupportedLocale, string>
     hi: 'सऊदी अरब',
     ar: 'المملكة العربية السعودية',
   },
+  afghanistan: {
+    en: 'Afghanistan',
+    es: 'Afganistán',
+    fr: 'Afghanistan',
+    pt: 'Afeganistão',
+    de: 'Afghanistan',
+    ja: 'アフガニスタン',
+    hi: 'अफ़ग़ानिस्तान',
+    ar: 'أفغانستان',
+  },
+  albania: {
+    en: 'Albania',
+    es: 'Albania',
+    fr: 'Albanie',
+    pt: 'Albânia',
+    de: 'Albanien',
+    ja: 'アルバニア',
+    hi: 'अल्बानिया',
+    ar: 'ألبانيا',
+  },
+  algeria: {
+    en: 'Algeria',
+    es: 'Argelia',
+    fr: 'Algérie',
+    pt: 'Argélia',
+    de: 'Algerien',
+    ja: 'アルジェリア',
+    hi: 'अल्जीरिया',
+    ar: 'الجزائر',
+  },
+  armenia: {
+    en: 'Armenia',
+    es: 'Armenia',
+    fr: 'Arménie',
+    pt: 'Armênia',
+    de: 'Armenien',
+    ja: 'アルメニア',
+    hi: 'आर्मेनिया',
+    ar: 'أرمينيا',
+  },
+  austria: {
+    en: 'Austria',
+    es: 'Austria',
+    fr: 'Autriche',
+    pt: 'Áustria',
+    de: 'Österreich',
+    ja: 'オーストリア',
+    hi: 'ऑस्ट्रिया',
+    ar: 'النمसा',
+  },
+  nigeria: {
+    en: 'Nigeria',
+    es: 'Nigeria',
+    fr: 'Nigéria',
+    pt: 'Nigéria',
+    de: 'Nigeria',
+    ja: 'ナイジェリア',
+    hi: 'नाइजीरिया',
+    ar: 'نيجيريا',
+  },
+  russia: {
+    en: 'Russia',
+    es: 'Rusia',
+    fr: 'Russie',
+    pt: 'Rússia',
+    de: 'Russland',
+    ja: 'ロシア',
+    hi: 'रूस',
+    ar: 'روسيا',
+  },
+  turkey: {
+    en: 'Turkey',
+    es: 'Turquía',
+    fr: 'Turquie',
+    pt: 'Turquia',
+    de: 'Türkei',
+    ja: 'トルコ',
+    hi: 'तुर्की',
+    ar: 'تركيا',
+  },
+  'south africa': {
+    en: 'South Africa',
+    es: 'Sudáfrica',
+    fr: 'Afrique du Sud',
+    pt: 'África do Sul',
+    de: 'Südafrika',
+    ja: '南アフリカ',
+    hi: 'दक्षिण अफ्रीका',
+    ar: 'جنوب إفريقيا',
+  },
+};
+
+export const LOCALIZED_CONTINENTS: Record<string, Record<SupportedLocale, string>> = {
+  asia: { en: 'Asia', es: 'Asia', fr: 'Asie', pt: 'Ásia', de: 'Asien', ja: 'アジア', hi: 'एशिया', ar: 'آسيا' },
+  europe: { en: 'Europe', es: 'Europa', fr: 'Europe', pt: 'Europa', de: 'Europa', ja: 'ヨーロッパ', hi: 'यूरोप', ar: 'أوروبا' },
+  africa: { en: 'Africa', es: 'África', fr: 'Afrique', pt: 'África', de: 'Afrika', ja: 'アフリカ', hi: 'अफ़्रीका', ar: 'إفريقيا' },
+  'north america': { en: 'North America', es: 'Norteamérica', fr: 'Amérique du Nord', pt: 'América do Norte', de: 'Nordamerika', ja: '北アメリカ', hi: 'उत्तरी अमेरिका', ar: 'أمريكا الشمالية' },
+  'south america': { en: 'South America', es: 'Sudamérica', fr: 'Amérique du Sud', pt: 'América do Sul', de: 'Südamerika', ja: '南アメリカ', hi: 'दक्षिण अमेरिका', ar: 'أمريكا الجنوبية' },
+  oceania: { en: 'Oceania', es: 'Oceanía', fr: 'Océanie', pt: 'Oceania', de: 'Ozeanien', ja: 'オセアニア', hi: 'ओशिनिया', ar: 'أوقيانوسيا' },
+  antarctica: { en: 'Antarctica', es: 'Antártida', fr: 'Antarctique', pt: 'Antártida', de: 'Antarktis', ja: '南極', hi: 'अंटार्कटिका', ar: 'القارة القطبية الجنوبية' }
 };
 
 export function getLocalizedCountryName(countryKey: string, locale: SupportedLocale = 'en'): string {
+  if (!countryKey) return '';
   const norm = countryKey.toLowerCase().trim();
   const entry = LOCALIZED_COUNTRIES[norm];
   if (entry && entry[locale]) {
@@ -305,4 +406,14 @@ export function getLocalizedCountryName(countryKey: string, locale: SupportedLoc
   }
   // Fallback to capitalizing the key
   return countryKey.charAt(0).toUpperCase() + countryKey.slice(1);
+}
+
+export function getLocalizedContinentName(continentKey: string, locale: SupportedLocale = 'en'): string {
+  if (!continentKey) return '';
+  const norm = continentKey.toLowerCase().trim();
+  const entry = LOCALIZED_CONTINENTS[norm];
+  if (entry && entry[locale]) {
+    return entry[locale];
+  }
+  return continentKey;
 }

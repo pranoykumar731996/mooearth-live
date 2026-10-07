@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSoundDesign } from '@/hooks/useSoundDesign';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function TimelineSlider() {
+  const { t } = useTranslation();
   const [progress, setProgress] = useState(100); // 100 = Live
   const { playHoverBlip } = useSoundDesign();
 
@@ -21,9 +23,9 @@ export default function TimelineSlider() {
 
   return (
     <div className="hidden md:flex flex-col items-center gap-2 pointer-events-auto mb-4 w-full max-w-[600px] mx-auto z-40">
-      <div className="text-[10px] text-white/50 uppercase tracking-[0.3em] font-medium">World Cup Timeline</div>
+      <div className="text-[10px] text-white/50 uppercase tracking-[0.3em] font-medium">{t('timeline.title', 'World Cup Timeline')}</div>
       <div className="glass px-6 py-4 rounded-3xl flex items-center gap-6 w-full shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 backdrop-blur-xl">
-        <span className="text-xs text-white/40 uppercase tracking-wider font-bold">Past 24H</span>
+        <span className="text-xs text-white/40 uppercase tracking-wider font-bold">{t('timeline.past24h', 'Past 24H')}</span>
         
         <div className="flex-1 h-2 bg-black/40 rounded-full relative cursor-pointer overflow-hidden border border-white/5">
           {/* Progress Bar Fill */}
@@ -50,7 +52,7 @@ export default function TimelineSlider() {
         <div className="flex items-center gap-2">
           {isLive && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_10px_red]" />}
           <span className={`text-xs uppercase tracking-wider font-bold ${isLive ? 'text-cyan-400' : 'text-white/40'}`}>
-            {isLive ? 'Live' : 'Replay'}
+            {isLive ? t('timeline.live', 'Live') : t('timeline.replay', 'Replay')}
           </span>
         </div>
       </div>

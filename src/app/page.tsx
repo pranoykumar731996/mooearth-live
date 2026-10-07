@@ -23,6 +23,7 @@ import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName, getLocalizedContinentName } from '@/lib/i18n';
 const CountryReactionPanel = dynamic(() => import('@/components/Reactions/CountryReactionPanel'));
 const ArticleViewer = dynamic(() => import('@/components/Reactions/ArticleViewer'));
 const MobileCountrySheet = dynamic(() => import('@/components/UI/MobileCountrySheet'));
@@ -96,7 +97,7 @@ export default function HomePage({
   initialArticleId,
   initialPlayEarthActive
 }: HomePageProps = {}) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<EventCategory | null>(initialCategory || null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
@@ -479,7 +480,7 @@ export default function HomePage({
     return () => clearTimeout(timer);
   }, []);
 
-  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents(isFocusMode, activeCategory);
+  const { events: liveEvents, isLoading: isEventsLoading, apiStatus } = useLiveEvents(isFocusMode, activeCategory, locale);
 
   // Filtered events
   const filteredEvents = useEventFilter({
@@ -1152,7 +1153,7 @@ export default function HomePage({
                   : 'text-white/40 border-transparent hover:text-white/70'
               }`}
             >
-              🌍 EXPLORE
+              🌍 {t('explorePanel.explore', 'EXPLORE')}
             </button>
             <button
               onClick={() => {
@@ -1165,7 +1166,7 @@ export default function HomePage({
                   : 'text-white/40 border-transparent hover:text-white/70'
               }`}
             >
-              🌌 VIEWS
+              🌌 {t('explorePanel.views', 'VIEWS')}
             </button>
           </div>
 
@@ -1173,12 +1174,12 @@ export default function HomePage({
             {leftPanelTab === 'explore' ? (
               <>
                 <div className="px-1 pb-1">
-                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Explore Countries</h2>
+                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{t('explorePanel.exploreCountries', 'Explore Countries')}</h2>
                 </div>
                 <div className="space-y-3">
                   <input
                     type="text"
-                    placeholder="Search countries..."
+                    placeholder={t('explorePanel.searchPlaceholder', 'Search countries...')}
                     aria-label="Search countries"
                     value={directorySearch}
                     onChange={(e) => setDirectorySearch(e.target.value)}
@@ -1234,11 +1235,11 @@ export default function HomePage({
                               <div className="flex items-center gap-2 min-w-0">
                                 <CountryFlag flag={meta?.flag} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
                                 <div className="min-w-0">
-                                  <div className="text-[11px] font-bold text-white truncate">{c}</div>
-                                  <div className="text-[9px] text-white/40 truncate">{meta?.capital} • {meta?.continent}</div>
+                                  <div className="text-[11px] font-bold text-white truncate">{getLocalizedCountryName(c, locale)}</div>
+                                  <div className="text-[9px] text-white/40 truncate">{meta?.capital} • {getLocalizedContinentName(meta?.continent || '', locale)}</div>
                                 </div>
                               </div>
-                              <span className="text-[8px] text-white/30 font-bold tracking-tight shrink-0">FOCUS ↗</span>
+                              <span className="text-[8px] text-white/30 font-bold tracking-tight shrink-0">{t('explorePanel.focus', 'FOCUS ↗')}</span>
                             </div>
                           );
                         })}
@@ -1246,7 +1247,7 @@ export default function HomePage({
                     ))}
                     {Object.keys(grouped).length === 0 && (
                       <div className="text-center py-6 text-[10px] text-white/30">
-                        No countries match &quot;{directorySearch}&quot;
+                        {t('explorePanel.noMatch', 'No countries match')} &quot;{directorySearch}&quot;
                       </div>
                     )}
                   </div>
@@ -1255,15 +1256,15 @@ export default function HomePage({
             ) : (
               <>
                 <div className="px-1 pb-1">
-                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Globe View Modes</h2>
+                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{t('explorePanel.globeViewModes', 'Globe View Modes')}</h2>
                 </div>
                 <div className="space-y-3 pb-4">
                   {[
-                    { id: 'standard', name: '🌍 Standard View', desc: 'Default night lights map with active news category glows.' },
-                    { id: 'night', name: '🌃 Night Lights', desc: 'Realistic city lights map showing raw night-side electricity.' },
-                    { id: 'weather', name: '🌦 Weather Radar', desc: 'Day satellite base, rotating clouds, and temperature heatmaps.' },
-                    { id: 'satellite', name: '🛰 Satellite View', desc: 'Pure satellite imagery with ultra-thin border mappings.' },
-                    { id: 'discovery', name: '🎮 Earth Discovery', desc: 'Holographic grid blueprint with quiz question counters.' },
+                    { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active news category glows.') },
+                    { id: 'night', name: `🌃 ${t('explorePanel.nightLights', 'Night Lights')}`, desc: t('explorePanel.nightLightsDesc', 'Realistic city lights map showing raw night-side electricity.') },
+                    { id: 'weather', name: `🌦 ${t('explorePanel.weatherRadar', 'Weather Radar')}`, desc: t('explorePanel.weatherRadarDesc', 'Day satellite base, rotating clouds, and temperature heatmaps.') },
+                    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
+                    { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', 'Earth Discovery')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Holographic grid blueprint with quiz question counters.') },
                   ].map((v) => (
                     <motion.div
                       key={v.id}

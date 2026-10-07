@@ -14,6 +14,8 @@ import { isCountryWhitelisted } from '@/config/publishers';
 import { CountryFlag } from './CountryFlag';
 import { locations, LocationRecord } from '@/data/locations';
 import dynamic from 'next/dynamic';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName, getLocalizedContinentName } from '@/lib/i18n';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -279,6 +281,7 @@ export default function MobileCountrySheet({
   isFocusMode = false,
   onUploadClick,
 }: MobileCountrySheetProps) {
+  const { t, locale } = useTranslation();
   const [sheetState, setSheetState] = useState<SheetHeightState>('half');
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -650,10 +653,10 @@ export default function MobileCountrySheet({
               ) : (
                 <>
                   <h3 className="text-base font-black text-white leading-tight flex items-center gap-2">
-                    <span>{country}</span>
+                    <span>{getLocalizedCountryName(country, locale)}</span>
                   </h3>
                   <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
-                    {countryMeta?.continent} • Capital: {countryMeta?.capital}
+                    {getLocalizedContinentName(countryMeta?.continent || '', locale)} • {t('countryHub.capital', 'Capital')}: {countryMeta?.capital}
                   </p>
                 </>
               )}
@@ -666,7 +669,7 @@ export default function MobileCountrySheet({
                 className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 text-white font-bold text-[9px] tracking-wider active:scale-95 transition-all cursor-pointer shadow-[0_0_10px_rgba(230,64,251,0.2)]"
                 title="Upload Reaction"
               >
-                📣 REACT
+                📣 {t('countryHub.uploadReaction', 'REACT')}
               </button>
             )}
             <button
@@ -690,6 +693,11 @@ export default function MobileCountrySheet({
       >
         {MOBILE_CATEGORIES.map((tab) => {
           const isActiveTab = currentActiveTabValue === tab.categoryValue;
+          const translatedLabel = tab.id === 'play'
+            ? t('navbar.playEarth', tab.label)
+            : tab.id === 'discovery'
+            ? t('explorePanel.explore', tab.label)
+            : t(`categories.${tab.categoryValue}`, tab.label);
           return (
             <button
               key={tab.id}
@@ -701,7 +709,7 @@ export default function MobileCountrySheet({
               }`}
             >
               <span>{tab.emoji}</span>
-              <span>{tab.label}</span>
+              <span>{translatedLabel}</span>
             </button>
           );
         })}

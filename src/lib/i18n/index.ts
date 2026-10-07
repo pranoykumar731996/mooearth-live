@@ -9,16 +9,30 @@ import { getLocalizedCountryName } from './countryNames';
 export * from './types';
 export * from './dictionaries';
 export * from './countryNames';
+export * from './uiTranslations';
+import { UI_EXTENSIONS } from './uiTranslations';
 
 /**
  * Retrieve translation dictionary for a given locale, falling back to English
  */
 export function getTranslation(locale: string = DEFAULT_LOCALE): TranslationDictionary {
-  const norm = locale.toLowerCase() as SupportedLocale;
-  if (DICTIONARIES[norm]) {
-    return DICTIONARIES[norm];
-  }
-  return DICTIONARIES[DEFAULT_LOCALE];
+  const norm = (locale.toLowerCase() as SupportedLocale) || DEFAULT_LOCALE;
+  const targetNorm: SupportedLocale = DICTIONARIES[norm] ? norm : DEFAULT_LOCALE;
+  const baseDict = DICTIONARIES[targetNorm];
+  const extensions = UI_EXTENSIONS[targetNorm] || UI_EXTENSIONS[DEFAULT_LOCALE];
+
+  return {
+    ...baseDict,
+    navbar: {
+      ...baseDict.navbar,
+      ...extensions.navbar,
+    },
+    categories: extensions.categories,
+    explorePanel: extensions.explorePanel,
+    timeline: extensions.timeline,
+    bottomBar: extensions.bottomBar,
+    searchBar: extensions.searchBar,
+  };
 }
 
 /**

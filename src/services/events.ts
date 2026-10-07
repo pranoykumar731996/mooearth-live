@@ -83,13 +83,13 @@ export function sanitizeEventCategory(e: WorldEvent): WorldEvent {
   return e;
 }
 
-export async function fetchAllEvents(category?: string | null, refresh = false): Promise<EventsWithStatus> {
+export async function fetchAllEvents(category?: string | null, refresh = false, lang = 'en'): Promise<EventsWithStatus> {
   const cat = (category && category !== 'home') ? (category as EventCategory) : null;
 
   // If a specific category is requested (technology, sports, football, weather, business, entertainment)
   if (cat && cat !== 'breaking') {
     const searchTerm = cat === 'football' ? 'football soccer match' : cat;
-    const newsResult = await searchLiveNews(searchTerm, cat, undefined, refresh);
+    const newsResult = await searchLiveNews(searchTerm, cat, undefined, refresh, lang);
     let events = (newsResult.events || []).map(e => ({ ...e, category: cat }));
     
     // Filter to ensure relevance, falling back to raw results if overly strict
@@ -110,7 +110,7 @@ export async function fetchAllEvents(category?: string | null, refresh = false):
   }
 
   // Home or breaking: fetch live news and classify each article
-  const newsResult = await fetchLiveNews(refresh);
+  const newsResult = await fetchLiveNews(refresh, lang);
   const events = newsResult.events.map(e => {
     const detected = detectCategory(e.title, e.summary);
     return detected !== 'breaking' ? { ...e, category: detected } : e;
@@ -127,12 +127,12 @@ export async function fetchAllEvents(category?: string | null, refresh = false):
   };
 }
 
-export async function searchAllEvents(query: string, category?: string | null, refresh = false): Promise<EventsWithStatus> {
+export async function searchAllEvents(query: string, category?: string | null, refresh = false, lang = 'en'): Promise<EventsWithStatus> {
   const detectedCountry = detectCountry(query);
   const cat = (category && category !== 'home') ? (category as EventCategory) : null;
   const searchTerm = cat ? (cat === 'breaking' ? `${query} news` : `${query} ${cat}`) : query;
   
-  const newsResult = await searchLiveNews(searchTerm, cat, detectedCountry, refresh);
+  const newsResult = await searchLiveNews(searchTerm, cat, detectedCountry, refresh, lang);
   let newsEvents = (newsResult.events || []).map(e => ({ ...e, ...(cat ? { category: cat } : {}) }));
 
   if (cat) {
@@ -171,7 +171,8 @@ function buildLocationQuery(locName: string, category?: string | null): string {
 export async function getLocationEvents(
   locationId: string,
   category?: string | null,
-  refresh = false
+  refresh = false,
+  lang = 'en'
 ): Promise<LocationEventsResult> {
   const resolvedLocation = locations.find(l => l.id === locationId);
   if (!resolvedLocation) {
@@ -201,7 +202,7 @@ export async function getLocationEvents(
   // 1. Try City level (if resolved is city)
   if (resolvedLocation.type === 'city') {
     const q = buildLocationQuery(resolvedLocation.name, category);
-    const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh);
+    const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh, lang);
     if (res.events && res.events.length > 0) {
       events = tagArticles(res.events, resolvedLocation);
       newsActive = res.active;
@@ -216,7 +217,7 @@ export async function getLocationEvents(
     
     if (stateName) {
       const q = buildLocationQuery(stateName, category);
-      const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh);
+      const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh, lang);
       if (res.events && res.events.length > 0) {
         events = tagArticles(res.events, stateLoc || resolvedLocation);
         newsActive = res.active;

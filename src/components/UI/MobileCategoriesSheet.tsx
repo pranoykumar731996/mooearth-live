@@ -6,6 +6,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { EventCategory } from '@/types';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export interface CategoryOption {
   id: EventCategory | null;
@@ -24,16 +25,6 @@ interface MobileCategoriesSheetProps {
   onSettingsClick: () => void;
 }
 
-const CATEGORY_OPTIONS: CategoryOption[] = [
-  { id: null, name: 'Home Feed', desc: 'All live event updates globally.', icon: '🏠' },
-  { id: 'breaking', name: 'Breaking News', desc: 'Global headlines and stories.', icon: '📰' },
-  { id: 'football', name: 'Sports & Football', desc: 'Global matches and sports updates.', icon: '⚽' },
-  { id: 'technology', name: 'Technology', desc: 'AI, space, and tech developments.', icon: '💻' },
-  { id: 'weather', name: 'Weather Radar', desc: 'Climate warnings and weather alerts.', icon: '🌦️' },
-  { id: 'business', name: 'Business', desc: 'GDP and tech funding indicators.', icon: '📈' },
-  { id: 'entertainment', name: 'Entertainment', desc: 'Media, cinema, and cultural beats.', icon: '🎬' },
-];
-
 export default function MobileCategoriesSheet({
   isOpen,
   onClose,
@@ -43,6 +34,17 @@ export default function MobileCategoriesSheet({
   globalEnergyScore,
   onSettingsClick,
 }: MobileCategoriesSheetProps) {
+  const { t } = useTranslation();
+
+  const categoryOptions: CategoryOption[] = [
+    { id: null, name: t('categories.home', 'Home Feed'), desc: t('liveFeed.allLiveEvents', 'All live event updates globally.'), icon: '🏠' },
+    { id: 'breaking', name: t('categories.breaking', 'Breaking News'), desc: t('liveFeed.globalHeadlines', 'Global headlines and stories.'), icon: '📰' },
+    { id: 'football', name: t('categories.sports', 'Sports & Football'), desc: t('liveFeed.sportsUpdates', 'Global matches and sports updates.'), icon: '⚽' },
+    { id: 'technology', name: t('categories.technology', 'Technology'), desc: t('liveFeed.techDevelopments', 'AI, space, and tech developments.'), icon: '💻' },
+    { id: 'weather', name: t('categories.weather', 'Weather Radar'), desc: t('liveFeed.weatherAlerts', 'Climate warnings and weather alerts.'), icon: '🌦️' },
+    { id: 'business', name: t('categories.business', 'Business'), desc: t('liveFeed.businessIndicators', 'GDP and tech funding indicators.'), icon: '📈' },
+    { id: 'entertainment', name: t('categories.entertainment', 'Entertainment'), desc: t('liveFeed.entertainmentBeats', 'Media, cinema, and cultural beats.'), icon: '🎬' },
+  ];
   return (
     <AnimatePresence>
       {isOpen && (
@@ -75,10 +77,10 @@ export default function MobileCategoriesSheet({
             <div className="flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
-                  <span>🗂️</span> Event Categories
+                  <span>🗂️</span> {t('liveFeed.categories', 'Event Categories')}
                 </h3>
                 <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5">
-                  Select global event feed filter
+                  {t('liveFeed.filterStories', 'Select global event feed filter')}
                 </p>
               </div>
               <button
@@ -103,19 +105,19 @@ export default function MobileCategoriesSheet({
                   💓
                 </div>
                 <div>
-                  <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Global Pulse Energy</h4>
-                  <p className="text-lg font-black text-white leading-tight mt-1">{globalEnergyScore}% Intensity</p>
+                  <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">{t('liveFeed.pulse', 'Global Pulse Energy')}</h4>
+                  <p className="text-lg font-black text-white leading-tight mt-1">{globalEnergyScore}% {t('liveFeed.intensity', 'Intensity')}</p>
                 </div>
               </div>
               
               <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[9px] font-bold text-cyan-400 uppercase tracking-wider">
-                Live Pulse
+                {t('liveFeed.livePulse', 'Live Pulse')}
               </div>
             </div>
 
             {/* 2-Column Grid Selector */}
             <div className="grid grid-cols-2 gap-3 overflow-y-auto max-h-[35vh] pr-1 py-1 scrollbar-none">
-              {CATEGORY_OPTIONS.map((opt) => {
+              {categoryOptions.map((opt) => {
                 const isActive = currentCategory === opt.id;
                 return (
                   <motion.div
@@ -150,7 +152,7 @@ export default function MobileCategoriesSheet({
                     {isActive && (
                       <div className="mt-auto pt-1 relative z-10">
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold text-emerald-400 uppercase tracking-wider">
-                          ✓ Selected
+                          ✓ {t('liveFeed.selected', 'Selected')}
                         </span>
                       </div>
                     )}
@@ -170,12 +172,12 @@ export default function MobileCategoriesSheet({
               >
                 <div className="flex items-start justify-between gap-1.5 relative z-10">
                   <span className="font-extrabold text-xs text-white tracking-tight leading-tight flex items-center gap-1.5">
-                    <span>⚙️</span> Settings & Profile
+                    <span>⚙️</span> {t('settings.settingsTitle', 'Settings & Profile')}
                   </span>
                 </div>
 
                 <span className="text-[9px] text-white/40 leading-relaxed font-medium relative z-10">
-                  Manage account, profile, and app settings.
+                  {t('settings.settingsSubtitle', 'Manage account, profile, and app settings.')}
                 </span>
               </motion.div>
             </div>

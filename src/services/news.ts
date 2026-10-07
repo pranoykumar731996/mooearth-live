@@ -97,9 +97,21 @@ function parseGoogleNewsRss(xmlText: string): { title: string; link: string; pub
 
 import { recordFetch } from './freshness';
 
-export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEvent[]; active: boolean }> {
+export const GOOGLE_NEWS_LOCALE_PARAMS: Record<string, string> = {
+  en: 'hl=en-US&gl=US&ceid=US:en',
+  ja: 'hl=ja&gl=JP&ceid=JP:ja',
+  es: 'hl=es&gl=ES&ceid=ES:es',
+  fr: 'hl=fr&gl=FR&ceid=FR:fr',
+  de: 'hl=de&gl=DE&ceid=DE:de',
+  pt: 'hl=pt-BR&gl=BR&ceid=BR:pt-419',
+  hi: 'hl=hi&gl=IN&ceid=IN:hi',
+  ar: 'hl=ar&gl=SA&ceid=SA:ar',
+};
+
+export async function fetchLiveNews(refresh = false, lang = 'en'): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
-    const url = `https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
+    const localeParams = GOOGLE_NEWS_LOCALE_PARAMS[lang] || GOOGLE_NEWS_LOCALE_PARAMS.en;
+    const url = `https://news.google.com/rss?${localeParams}${refresh ? `&refresh=${Date.now()}` : ''}`;
     const response = await fetch(url, {
       signal: AbortSignal.timeout(1800),
       next: { revalidate: refresh ? 0 : 60 },
@@ -123,7 +135,7 @@ export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEve
       const geo = assignCoordinates(article.title, article.summary);
       
       return {
-        id: `news-${Date.now()}-${index}`,
+        id: `news-${lang}-${Date.now()}-${index}`,
         title: article.title,
         summary: article.summary,
         category: 'breaking' as EventCategory,
@@ -143,9 +155,16 @@ export async function fetchLiveNews(refresh = false): Promise<{ events: WorldEve
   }
 }
 
-export async function searchLiveNews(query: string, category?: EventCategory | null, countryHint?: string, refresh = false): Promise<{ events: WorldEvent[]; active: boolean }> {
+export async function searchLiveNews(
+  query: string,
+  category?: EventCategory | null,
+  countryHint?: string,
+  refresh = false,
+  lang = 'en'
+): Promise<{ events: WorldEvent[]; active: boolean }> {
   try {
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en${refresh ? `&refresh=${Date.now()}` : ''}`;
+    const localeParams = GOOGLE_NEWS_LOCALE_PARAMS[lang] || GOOGLE_NEWS_LOCALE_PARAMS.en;
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&${localeParams}${refresh ? `&refresh=${Date.now()}` : ''}`;
     const response = await fetch(url, {
       signal: AbortSignal.timeout(1800),
       next: { revalidate: refresh ? 0 : 60 },

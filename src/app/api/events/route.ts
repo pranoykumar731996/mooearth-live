@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || '';
     const locationId = searchParams.get('locationId') || '';
     const refresh = searchParams.get('refresh') === 'true';
+    const lang = searchParams.get('lang') || 'en';
     const simulateError = searchParams.get('simulateError');
     
     // Security: Only allow error and delay simulation in non-production environments
@@ -42,13 +43,13 @@ export async function GET(request: NextRequest) {
 
     if (locationId.trim()) {
       // Fetch events specifically for this Location ID (City / State / Country)
-      result = await getLocationEvents(locationId.trim(), category, refresh);
+      result = await getLocationEvents(locationId.trim(), category, refresh, lang);
     } else if (query.trim()) {
       // Normal search query fallback
-      result = await searchAllEvents(query.trim(), category, refresh);
+      result = await searchAllEvents(query.trim(), category, refresh, lang);
     } else {
       // Category or default homepage events
-      result = await fetchAllEvents(category, refresh);
+      result = await fetchAllEvents(category, refresh, lang);
     }
 
     const { events, status } = result;

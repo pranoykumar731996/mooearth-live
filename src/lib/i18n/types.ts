@@ -95,6 +95,75 @@ export interface NavbarTranslation {
   selectLanguage: string;
   localesCount: string;
   viewProfileStats: string;
+  installApp?: string;
+  logoSubtitle?: string;
+}
+
+export interface CategoriesTranslation {
+  breaking: string;
+  sports: string;
+  football: string;
+  technology: string;
+  business: string;
+  weather: string;
+  entertainment: string;
+}
+
+export interface RelativeTimeTranslation {
+  justNow: string;
+  minutesAgo: (n: number) => string;
+  hoursAgo: (n: number) => string;
+  daysAgo: (n: number) => string;
+}
+
+export interface ExplorePanelTranslation {
+  explore: string;
+  views: string;
+  exploreCountries: string;
+  searchPlaceholder: string;
+  focus: string;
+  globalPulseEnergy: string;
+  noMatch: string;
+  globeViewModes: string;
+  standardView: string;
+  standardViewDesc: string;
+  nightLights: string;
+  nightLightsDesc: string;
+  weatherRadar: string;
+  weatherRadarDesc: string;
+  satelliteView: string;
+  satelliteViewDesc: string;
+  earthDiscovery: string;
+  earthDiscoveryDesc: string;
+}
+
+export interface TimelineTranslation {
+  title: string;
+  past24h: string;
+  live: string;
+  replay: string;
+}
+
+export interface BottomBarTranslation {
+  uploadReaction: string;
+}
+
+export interface SearchBarTranslation {
+  placeholders: string[];
+  matchingCountries: string;
+  matchingCities: string;
+  matchingStories: string;
+  noResults: string;
+}
+
+export interface ContinentsTranslation {
+  asia: string;
+  africa: string;
+  europe: string;
+  northAmerica: string;
+  southAmerica: string;
+  oceania: string;
+  antarctica: string;
 }
 
 export interface StatusBarTranslation {
@@ -296,4 +365,11 @@ export interface TranslationDictionary {
   playEarthOverlay: PlayEarthOverlayTranslation;
   settings: SettingsTranslation;
   notifications: NotificationsTranslation;
+  categories?: CategoriesTranslation;
+  relativeTime?: RelativeTimeTranslation;
+  explorePanel?: ExplorePanelTranslation;
+  timeline?: TimelineTranslation;
+  bottomBar?: BottomBarTranslation;
+  searchBar?: SearchBarTranslation;
+  continents?: ContinentsTranslation;
 }

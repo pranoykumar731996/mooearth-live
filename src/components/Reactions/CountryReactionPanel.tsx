@@ -12,6 +12,7 @@ import { BRANDING } from '@/config/branding';
 import { isCountryWhitelisted } from '@/config/publishers';
 import { resolveCanonicalSlug } from '@/data/countries';
 import dynamic from 'next/dynamic';
+import { useTranslation } from '@/contexts/LanguageContext';
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
 const CLIENT_REACTION_CACHE = new Map<string, { data: ReactionEvent; timestamp: number }>();
@@ -237,6 +238,7 @@ export default function CountryReactionPanel({
   onSelectCountry,
   isFocusMode = false,
 }: CountryReactionPanelProps) {
+  const { t } = useTranslation();
   const [reactionData, setReactionData] = useState<ReactionEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -415,20 +417,20 @@ export default function CountryReactionPanel({
         </button>
         <div className="flex flex-col pr-20">
           <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
-            <span>Country:</span>
+            <span>{t('countryHub.stats.country', 'Country')}:</span>
             <span className="text-white font-extrabold mr-1.5">{country}</span>
             <span className="text-white/20">|</span>
-            <span className="ml-1.5">Category:</span>
+            <span className="ml-1.5">{t('countryHub.category', 'Category')}:</span>
             <span className="text-white font-extrabold flex items-center gap-1">
               <span>{categoryEmoji}</span>
               <span>{categoryLabel}</span>
             </span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">{country} Dashboard</h2>
+          <h2 className="text-xl font-bold text-white tracking-tight">{country} {t('countryHub.title', 'Dashboard')}</h2>
           {/* Social Proof Marker */}
           <div className="flex items-center gap-2 mt-1.5 text-[9px] text-white/40 font-bold font-sans uppercase tracking-wider">
             <span className="flex items-center gap-1 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5">
-              🌍 {Math.floor(Math.abs(Math.sin(country.charCodeAt(0))) * 12000 + 2300).toLocaleString()} fans explored this country
+              🌍 {Math.floor(Math.abs(Math.sin(country.charCodeAt(0))) * 12000 + 2300).toLocaleString()} {t('countryHub.stats.fans', 'fans explored this country')}
             </span>
           </div>
         </div>
@@ -442,7 +444,7 @@ export default function CountryReactionPanel({
               exit={{ opacity: 0, y: -20 }}
               className="absolute top-16 left-4 right-4 z-50 py-2 px-4 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-center text-xs font-bold text-cyan-200"
             >
-              📋 Link copied to clipboard!
+              📋 {t('common.copied', 'Link copied to clipboard!')}
             </motion.div>
           )}
         </AnimatePresence>
@@ -452,7 +454,7 @@ export default function CountryReactionPanel({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
-            <p className="text-xs text-cyan-400/60 uppercase tracking-widest font-bold animate-pulse">Syncing Reactions...</p>
+            <p className="text-xs text-cyan-400/60 uppercase tracking-widest font-bold animate-pulse">{t('liveFeed.syncing', 'Syncing Reactions...')}</p>
           </div>
         ) : reactionData ? (
           <div className="p-6 space-y-6">

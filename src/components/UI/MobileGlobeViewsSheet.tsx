@@ -5,6 +5,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export interface GlobeViewOption {
   id: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
@@ -20,14 +21,6 @@ interface MobileGlobeViewsSheetProps {
   playHoverBlip?: () => void;
 }
 
-const VIEW_OPTIONS: GlobeViewOption[] = [
-  { id: 'standard', name: '🌍 Standard View', desc: 'Default night lights map with active news category glows.' },
-  { id: 'night', name: '🌃 Night Lights', desc: 'Realistic city lights map showing raw night-side electricity.' },
-  { id: 'weather', name: '🌦 Weather Radar', desc: 'Day satellite base, rotating clouds, and temperature heatmaps.' },
-  { id: 'satellite', name: '🛰 Satellite View', desc: 'Pure satellite imagery with ultra-thin border mappings.' },
-  { id: 'discovery', name: '🎮 Earth Discovery', desc: 'Holographic grid blueprint with quiz question counters.' },
-];
-
 export default function MobileGlobeViewsSheet({
   isOpen,
   onClose,
@@ -35,6 +28,16 @@ export default function MobileGlobeViewsSheet({
   onSelectView,
   playHoverBlip,
 }: MobileGlobeViewsSheetProps) {
+  const { t } = useTranslation();
+
+  const viewOptions: GlobeViewOption[] = [
+    { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active news category glows.') },
+    { id: 'night', name: `🌃 ${t('explorePanel.nightLights', 'Night Lights')}`, desc: t('explorePanel.nightLightsDesc', 'Realistic city lights map showing raw night-side electricity.') },
+    { id: 'weather', name: `🌦 ${t('explorePanel.weatherRadar', 'Weather Radar')}`, desc: t('explorePanel.weatherRadarDesc', 'Day satellite base, rotating clouds, and temperature heatmaps.') },
+    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
+    { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', 'Earth Discovery')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Holographic grid blueprint with quiz question counters.') },
+  ];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -67,10 +70,10 @@ export default function MobileGlobeViewsSheet({
             <div className="flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
-                  <span>🗺️</span> Globe View Layers
+                  <span>🗺️</span> {t('explorePanel.globeViewModes', 'Globe View Layers')}
                 </h3>
                 <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5">
-                  Select visual mapping layout
+                  {t('explorePanel.selectLayer', 'Select visual mapping layout')}
                 </p>
               </div>
               <button
@@ -86,7 +89,7 @@ export default function MobileGlobeViewsSheet({
 
             {/* 2-Column Grid Selector */}
             <div className="grid grid-cols-2 gap-3 overflow-y-auto max-h-[45vh] pr-1 py-1 scrollbar-none">
-              {VIEW_OPTIONS.map((opt) => {
+              {viewOptions.map((opt) => {
                 const isActive = currentView === opt.id;
                 return (
                   <motion.div

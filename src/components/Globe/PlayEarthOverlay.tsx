@@ -23,6 +23,7 @@ import {
 import { getCoordinatesForCountry } from '@/lib/constants';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { trackEvent, trackShareClick, trackShareComplete } from '@/services/analytics';
 import { shareContent, getChallengeShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
@@ -447,6 +448,7 @@ export default function PlayEarthOverlay({
   isInline = false, initialMode = null,
   lastGlobeTap = null,
 }: PlayEarthOverlayProps) {
+  const { t, locale } = useTranslation();
   // Game Mode States
   const [activeMode, setActiveMode] = useState<PlayEarthMode | 'discovery' | null>(null);
   const [phase, setPhase] = useState<PlayEarthPhase>('intro');
@@ -3038,8 +3040,8 @@ export default function PlayEarthOverlay({
               className="space-y-3"
             >
               <div className="text-center py-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">Select Game Mode</h3>
-                <p className="text-[10px] text-white/40">Select a discovery challenge to play.</p>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">{t('playEarthOverlay.selectGameMode', 'Select Game Mode')}</h3>
+                <p className="text-[10px] text-white/40">{t('playEarthOverlay.selectChallenge', 'Select a discovery challenge to play.')}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -3059,8 +3061,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-xl">🌍</span>
-                    <span className="text-xs font-black text-white block mt-0.5">Country Explorer</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Answer questions on clicked countries.</span>
+                    <span className="text-xs font-black text-white block mt-0.5">{t('playEarthOverlay.countryExplorer', 'Country Explorer')}</span>
+                    <span className="text-[8px] text-white/40 leading-snug">{t('countryQuiz.description', 'Answer questions on clicked countries.')}</span>
                   </div>
                   <button
                     type="button"
@@ -3070,7 +3072,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3081,8 +3083,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-xl">🔥</span>
-                    <span className="text-xs font-black text-white block mt-0.5">Survival Mode</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Survival streak. Answer wrong & game over!</span>
+                    <span className="text-xs font-black text-white block mt-0.5">{t('playEarthOverlay.survivalMode', 'Survival Mode')}</span>
+                    <span className="text-[8px] text-white/40 leading-snug">{t('playEarthOverlay.survivalDesc', 'Survival streak. Answer wrong & game over!')}</span>
                   </div>
                   <button
                     type="button"
@@ -3092,7 +3094,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3103,8 +3105,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-xl">⏱️</span>
-                    <span className="text-xs font-black text-white block mt-0.5">Beat The Clock</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Answer as many as possible before time expires.</span>
+                    <span className="text-xs font-black text-white block mt-0.5">{t('playEarthOverlay.beatTheClock', 'Beat The Clock')}</span>
+                    <span className="text-[8px] text-white/40 leading-snug">{t('playEarthOverlay.clockDesc', 'Answer as many as possible before time expires.')}</span>
                   </div>
                   <button
                     type="button"
@@ -3114,7 +3116,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3125,8 +3127,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-xl">🚩</span>
-                    <span className="text-xs font-black text-white block mt-0.5">Flag Challenge</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Guess the country from the national flags.</span>
+                    <span className="text-xs font-black text-white block mt-0.5">{t('flagQuiz.title', 'Flag Challenge')}</span>
+                    <span className="text-[8px] text-white/40 leading-snug">{t('flagQuiz.description', 'Guess the country from the national flags.')}</span>
                   </div>
                   <button
                     type="button"
@@ -3136,7 +3138,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3147,8 +3149,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-xl">🏙️</span>
-                    <span className="text-xs font-black text-white block mt-0.5">Capital Challenge</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Match cities to their sovereign nations.</span>
+                    <span className="text-xs font-black text-white block mt-0.5">{t('geographyQuiz.title', 'Capital Challenge')}</span>
+                    <span className="text-[8px] text-white/40 leading-snug">{t('geographyQuiz.description', 'Match cities to their sovereign nations.')}</span>
                   </div>
                   <button
                     type="button"
@@ -3158,7 +3160,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3934,8 +3936,8 @@ export default function PlayEarthOverlay({
             <div className="glass rounded-3xl border border-white/10 p-4 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] flex flex-col max-h-full overflow-hidden backdrop-blur-2xl">
               <div className="text-center mb-3 sm:mb-4 shrink-0">
                 <span className="text-3xl sm:text-4xl block mb-1">🌍</span>
-                <h3 className="text-lg sm:text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">Play Earth Gaming Platform</h3>
-                <p className="text-xs text-white/45">Choose a world discovery mode to play (scroll down for all 11+ modes).</p>
+                <h3 className="text-lg sm:text-xl font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">{t('playEarthOverlay.title', 'Play Earth Gaming Platform')}</h3>
+                <p className="text-xs text-white/45">{t('playEarthOverlay.subtitle', 'Choose a world discovery mode to play (scroll down for all 11+ modes).')}</p>
               </div>
 
               <div className="flex-1 overflow-y-auto overscroll-contain pr-1.5 sm:pr-2 -mr-1 space-y-3.5 scrollbar-thin">
@@ -3956,8 +3958,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">🌍</span>
-                    <span className="text-sm font-bold text-white block mt-1">Country Explorer</span>
-                    <span className="text-xs text-white/40 leading-snug">Answer questions on clicked countries to earn XP.</span>
+                    <span className="text-sm font-bold text-white block mt-1">{t('playEarthOverlay.countryExplorer', 'Country Explorer')}</span>
+                    <span className="text-xs text-white/40 leading-snug">{t('countryQuiz.description', 'Answer questions on clicked countries to earn XP.')}</span>
                   </div>
                   <button
                     type="button"
@@ -3967,7 +3969,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -3978,8 +3980,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">🔥</span>
-                    <span className="text-sm font-bold text-white block mt-1">Survival Mode</span>
-                    <span className="text-xs text-white/40 leading-snug">How many countries can you survive? One wrong is Game Over!</span>
+                    <span className="text-sm font-bold text-white block mt-1">{t('playEarthOverlay.survivalMode', 'Survival Mode')}</span>
+                    <span className="text-xs text-white/40 leading-snug">{t('playEarthOverlay.survivalDesc', 'How many countries can you survive? One wrong is Game Over!')}</span>
                   </div>
                   <button
                     type="button"
@@ -3989,7 +3991,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -4000,8 +4002,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">⏱️</span>
-                    <span className="text-sm font-bold text-white block mt-1">Beat The Clock</span>
-                    <span className="text-xs text-white/40 leading-snug">Continuous global timer challenge. Play against the countdown.</span>
+                    <span className="text-sm font-bold text-white block mt-1">{t('playEarthOverlay.beatTheClock', 'Beat The Clock')}</span>
+                    <span className="text-xs text-white/40 leading-snug">{t('playEarthOverlay.clockDesc', 'Continuous global timer challenge. Play against the countdown.')}</span>
                   </div>
                   <button
                     type="button"
@@ -4011,7 +4013,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -4022,8 +4024,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">🚩</span>
-                    <span className="text-sm font-bold text-white block mt-1">Flag Challenge</span>
-                    <span className="text-xs text-white/40 leading-snug">Guess the country from national flags. Easy, Medium, or Hard.</span>
+                    <span className="text-sm font-bold text-white block mt-1">{t('flagQuiz.title', 'Flag Challenge')}</span>
+                    <span className="text-xs text-white/40 leading-snug">{t('flagQuiz.description', 'Guess the country from national flags. Easy, Medium, or Hard.')}</span>
                   </div>
                   <button
                     type="button"
@@ -4033,7 +4035,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 
@@ -4044,8 +4046,8 @@ export default function PlayEarthOverlay({
                 >
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">🏙️</span>
-                    <span className="text-sm font-bold text-white block mt-1">Capital Challenge</span>
-                    <span className="text-xs text-white/40 leading-snug">Guess capital cities of nations across various difficulty tiers.</span>
+                    <span className="text-sm font-bold text-white block mt-1">{t('geographyQuiz.title', 'Capital Challenge')}</span>
+                    <span className="text-xs text-white/40 leading-snug">{t('geographyQuiz.description', 'Guess capital cities of nations across various difficulty tiers.')}</span>
                   </div>
                   <button
                     type="button"
@@ -4055,7 +4057,7 @@ export default function PlayEarthOverlay({
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >
-                    🎮 Practice Demo
+                    🎮 {t('playEarthOverlay.practiceDemo', 'Practice Demo')}
                   </button>
                 </div>
 

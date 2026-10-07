@@ -13,7 +13,7 @@ export interface ApiStatus {
   }>;
 }
 
-export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: EventCategory | null) {
+export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: EventCategory | null, locale: string = 'en') {
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiStatus, setApiStatus] = useState<ApiStatus>({
@@ -27,7 +27,7 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
   const hasForceRefreshedRef = useRef(false);
   const lastEventsHashRef = useRef<string | null>(null);
 
-  const categoryKey = activeCategory || 'all';
+  const categoryKey = `${activeCategory || 'all'}_${locale}`;
 
   useEffect(() => {
     let isMounted = true;
@@ -50,8 +50,9 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
       try {
         setIsLoading(events.length === 0);
         const catParam = activeCategory ? `&category=${activeCategory}` : '';
+        const langParam = locale ? `&lang=${locale}` : '';
         const refreshParam = forceRefresh ? '&refresh=true' : '';
-        const response = await fetch(`/api/events?t=${Date.now()}${catParam}${refreshParam}`);
+        const response = await fetch(`/api/events?t=${Date.now()}${catParam}${langParam}${refreshParam}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
         
         const data = await response.json();
@@ -119,7 +120,7 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
         isMounted = false;
       };
     }
-  }, [isFocusMode, activeCategory, categoryKey]);
+  }, [isFocusMode, activeCategory, categoryKey, locale]);
 
   return { events, isLoading, apiStatus };
 }
