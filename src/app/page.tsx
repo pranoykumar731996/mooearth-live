@@ -22,6 +22,7 @@ import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
 import StarField from '@/components/UI/StarField';
+import { useTranslation } from '@/contexts/LanguageContext';
 const CountryReactionPanel = dynamic(() => import('@/components/Reactions/CountryReactionPanel'));
 const ArticleViewer = dynamic(() => import('@/components/Reactions/ArticleViewer'));
 const MobileCountrySheet = dynamic(() => import('@/components/UI/MobileCountrySheet'));
@@ -95,6 +96,7 @@ export default function HomePage({
   initialArticleId,
   initialPlayEarthActive
 }: HomePageProps = {}) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<EventCategory | null>(initialCategory || null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
@@ -995,31 +997,31 @@ export default function HomePage({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 text-cyan-400">
             <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shrink-0" />
-            <span className="uppercase tracking-widest font-black text-[9px] hidden sm:inline">Living Earth Network</span>
+            <span className="uppercase tracking-widest font-black text-[9px] hidden sm:inline">{t('statusBar.livingEarthNetwork', 'Living Earth Network')}</span>
           </div>
           <span className="text-white/10">|</span>
           <div className="flex items-center gap-1">
-            <span className="text-white/30">Network:</span>
+            <span className="text-white/30">{t('statusBar.network', 'Network:')}</span>
             <span className="text-emerald-400 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
-              Live
+              {t('statusBar.live', 'Live')}
             </span>
           </div>
           <span className="text-white/10 hidden md:inline">|</span>
           <div className="hidden md:flex items-center gap-1">
-            <span className="text-white/30">Tracked Countries:</span>
+            <span className="text-white/30">{t('statusBar.trackedCountries', 'Tracked Countries:')}</span>
             <span className="text-white font-bold">{getMetadataCountries().length}</span>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
-            <span className="text-white/30"><span className="hidden sm:inline">Active </span>Stories:</span>
+            <span className="text-white/30">{t('statusBar.activeStories', 'Active Stories:')}</span>
             <span className="text-cyan-400 font-bold">{filteredEvents.length}</span>
           </div>
           <span className="text-white/10">|</span>
           <div className="flex items-center gap-1">
-            <span className="text-white/30"><span className="hidden sm:inline">Live </span>Matches:</span>
+            <span className="text-white/30">{t('statusBar.liveMatches', 'Live Matches:')}</span>
             <span className="text-emerald-400 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping shrink-0" />
               {liveEvents.filter(e => e.category === 'football' && e.footballData?.status === 'LIVE').length}
@@ -1027,8 +1029,8 @@ export default function HomePage({
           </div>
           <span className="text-white/10 hidden sm:inline">|</span>
           <div className="hidden sm:flex items-center gap-1">
-            <span className="text-white/30">Global Pulse:</span>
-            <span className="text-purple-400 font-bold">{globalEnergyScore}% Intensity</span>
+            <span className="text-white/30">{t('statusBar.globalPulse', 'Global Pulse:')}</span>
+            <span className="text-purple-400 font-bold">{globalEnergyScore}% {t('statusBar.intensity', 'Intensity')}</span>
           </div>
         </div>
       </div>
@@ -1057,13 +1059,13 @@ export default function HomePage({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-black text-white text-xs tracking-tight">Play Earth Gaming</span>
+                    <span className="font-black text-white text-xs tracking-tight">{t('playEarthOverlay.title', 'Play Earth')}</span>
                     <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[8px] font-black uppercase tracking-wider">
-                      11+ Modes
+                      {t('navbar.modesBadge', '11+ MODES')}
                     </span>
                   </div>
                   <p className="text-[10px] text-white/60 truncate mt-0.5">
-                    Tap to test world trivia & explore 3D globe ➔
+                    {t('playEarthOverlay.subtitle', '11+ Quiz & Discovery Modes')} ➔
                   </p>
                 </div>
               </div>

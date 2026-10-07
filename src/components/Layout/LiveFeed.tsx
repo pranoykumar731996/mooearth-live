@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
 import { CountryFlag } from '../UI/CountryFlag';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface LiveFeedProps {
   events: WorldEvent[];
@@ -85,6 +86,7 @@ export default function LiveFeed({
   onCategoryChange,
   onCloseSheet
 }: LiveFeedProps) {
+  const { t } = useTranslation();
   const [footballTab, setFootballTab] = useState<FootballTab>('matches');
   const [mobileActiveTab, setMobileActiveTab] = useState<'matches' | 'news' | 'weather' | 'tech' | 'business' | 'entertainment'>('matches');
   const [mounted, setMounted] = useState(false);
@@ -222,22 +224,22 @@ export default function LiveFeed({
   const renderTabSelector = () => (
     <div className="flex border-b border-white/10 bg-black/40">
       {[
-        { id: 'matches', label: 'MATCHES' },
-        { id: 'knockout', label: 'KNOCKOUT' },
-        { id: 'players', label: 'PLAYERS' },
-        { id: 'stats', label: 'STATS' },
-        { id: 'table', label: 'TABLE' }
-      ].map((t) => (
+        { id: 'matches', label: t('liveFeed.matches', 'MATCHES') },
+        { id: 'knockout', label: t('liveFeed.knockout', 'KNOCKOUT') },
+        { id: 'players', label: t('liveFeed.players', 'PLAYERS') },
+        { id: 'stats', label: t('liveFeed.stats', 'STATS') },
+        { id: 'table', label: t('liveFeed.table', 'TABLE') }
+      ].map((tabItem) => (
         <button
-          key={t.id}
-          onClick={() => setFootballTab(t.id as FootballTab)}
+          key={tabItem.id}
+          onClick={() => setFootballTab(tabItem.id as FootballTab)}
           className={`flex-1 py-3 text-center text-[10px] font-bold tracking-wider transition-colors cursor-pointer border-b-2 ${
-            footballTab === t.id
+            footballTab === tabItem.id
               ? 'text-cyan-400 border-cyan-400 bg-white/[0.02]'
               : 'text-white/40 border-transparent hover:text-white/70'
           }`}
         >
-          {t.label}
+          {tabItem.label}
         </button>
       ))}
     </div>
@@ -518,9 +520,9 @@ export default function LiveFeed({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-400" />
                 </span>
-                <h2 className="text-lg font-semibold tracking-wide text-white">Live Events</h2>
+                <h2 className="text-lg font-semibold tracking-wide text-white">{t('liveFeed.liveEvents', 'Live Events')}</h2>
                 <span className="ml-auto text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full tabular-nums">
-                  {sortedEvents.length} Total
+                  {sortedEvents.length} {t('liveFeed.total', 'Total')}
                 </span>
               </div>
               
@@ -545,8 +547,8 @@ export default function LiveFeed({
               {sortedEvents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-white/40 text-xs text-center px-4">
                   <span className="text-2xl mb-2">📡</span>
-                  <span>No live events reported at this moment</span>
-                  <p className="text-[10px] text-white/20 mt-1 lowercase normal-case">Check back later for global updates</p>
+                  <span>{t('liveFeed.noLiveEvents', 'No live events reported at this moment')}</span>
+                  <p className="text-[10px] text-white/20 mt-1 lowercase normal-case">{t('liveFeed.checkBackLater', 'Check back later for global updates')}</p>
                 </div>
               ) : (
                 sortedEvents.map((event) => {
@@ -624,11 +626,11 @@ export default function LiveFeed({
 
           {/* Live Events Title */}
           <div className="flex items-center justify-between px-6 py-2">
-            <h2 className="text-lg font-black tracking-tight text-white">Live Events</h2>
+            <h2 className="text-lg font-black tracking-tight text-white">{t('liveFeed.liveEvents', 'Live Events')}</h2>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2.5 py-0.5 rounded-full select-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                LIVE
+                {t('liveFeed.live', 'LIVE')}
               </div>
               {onCloseSheet && (
                 <button

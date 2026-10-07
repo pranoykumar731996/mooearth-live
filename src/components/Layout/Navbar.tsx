@@ -10,6 +10,7 @@ import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
 import LanguageSelector from '@/components/UI/LanguageSelector';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { BRANDING } from '@/config/branding';
 import { ApiStatus } from '@/hooks/useLiveEvents';
 
@@ -58,6 +59,7 @@ export default function Navbar({
   showDebugConsole = false,
   onToggleDebug,
 }: NavbarProps) {
+  const { t } = useTranslation();
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
 
@@ -88,7 +90,11 @@ export default function Navbar({
 
   const dotPingClass = isSystemActive ? 'bg-emerald-400' : isSystemDegraded ? 'bg-amber-400' : 'bg-red-400';
   const dotColorClass = isSystemActive ? 'bg-emerald-500' : isSystemDegraded ? 'bg-amber-500' : 'bg-red-500';
-  const badgeLabel = isSystemActive ? 'LIVE DATA ACTIVE' : isSystemDegraded ? 'PARTIAL LIVE DATA' : 'LIVE DATA OFFLINE';
+  const badgeLabel = isSystemActive
+    ? t('navbar.liveDataActive', 'LIVE DATA ACTIVE')
+    : isSystemDegraded
+    ? t('navbar.partialLiveData', 'PARTIAL LIVE DATA')
+    : t('navbar.liveDataOffline', 'LIVE DATA OFFLINE');
 
   return (
     <nav
@@ -264,7 +270,7 @@ export default function Navbar({
           <Link href="/about">
             <button
               className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
-              title="About & Legal"
+              title={t('navbar.aboutLegal', 'About & Legal')}
             >
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="10" r="10" />
@@ -285,19 +291,19 @@ export default function Navbar({
                 ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.8)] animate-pulse'
                 : 'bg-gradient-to-r from-emerald-500/30 via-teal-500/35 to-cyan-500/30 border-emerald-400/70 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:border-emerald-300 ring-1 ring-emerald-400/30'
             }`}
-            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — 11+ Trivia Modes!'}
+            title={isPlayEarthActive ? t('playEarthOverlay.exitMode', 'Exit Play Earth Mode') : `${t('navbar.playEarth', 'Play Earth')} — ${t('navbar.modesBadge', '11+ MODES')}!`}
           >
             {/* Blinking green live beacon */}
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_6px_#10b981]" />
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute left-2.5" />
             <span className="text-xs">🎮</span>
-            <span className="font-black text-[10px] text-emerald-200 tracking-tight">PLAY</span>
+            <span className="font-black text-[10px] text-emerald-200 tracking-tight">{t('navbar.play', 'PLAY')}</span>
           </button>
 
           <button
             onClick={onLeaderboardClick}
             className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
-            title="Leaderboards"
+            title={t('navbar.leaderboards', 'Leaderboards')}
           >
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
@@ -334,7 +340,7 @@ export default function Navbar({
               onClick={onAuthClick}
               className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-[9px] tracking-wider shadow-[0_0_10px_rgba(0,229,255,0.15)] active:scale-95 transition-all duration-300 pointer-events-auto"
             >
-              SIGN IN
+              {t('navbar.signIn', 'SIGN IN')}
             </button>
           )}
         </div>
@@ -342,7 +348,7 @@ export default function Navbar({
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
           <button
             onClick={onTogglePlayEarth}
-            title={isPlayEarthActive ? 'Exit Play Earth Mode' : 'Play Earth — 11+ Discovery & Trivia Modes!'}
+            title={isPlayEarthActive ? t('playEarthOverlay.exitMode', 'Exit Play Earth Mode') : `${t('navbar.playEarth', 'Play Earth')} — ${t('navbar.modesBadge', '11+ MODES')}!`}
             className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer group ${
               isPlayEarthActive
                 ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] animate-pulse'
@@ -353,16 +359,16 @@ export default function Navbar({
             <span className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-1 right-1" />
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
             <span className="text-base group-hover:scale-110 transition-transform">🎮</span>
-            <span className="font-black text-emerald-200">PLAY EARTH</span>
+            <span className="font-black text-emerald-200">{t('navbar.playEarth', 'PLAY EARTH')}</span>
             <span className="hidden md:inline-block px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-widest animate-pulse">
-              11+ MODES
+              {t('navbar.modesBadge', '11+ MODES')}
             </span>
           </button>
 
           {/* Phase 3: Cinematic Mode Toggle */}
           <button
             onClick={onToggleCinematicMode}
-            title={isCinematicModeActive ? "Stop Watch the World React Mode" : "Start Watch the World React Mode"}
+            title={isCinematicModeActive ? "Stop Watch the World React Mode" : t('navbar.cinematicMode', 'Watch the World React')}
             className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer relative ${
               isCinematicModeActive
                 ? 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.3)]'
@@ -382,7 +388,7 @@ export default function Navbar({
           {/* Phase 7: Sound Toggle Button */}
           <button
             onClick={onToggleMute}
-            title={isMuted ? "Unmute Audio" : "Mute Audio"}
+            title={isMuted ? t('navbar.unmuteAudio', 'Unmute Audio') : t('navbar.muteAudio', 'Mute Audio')}
             className={`hidden md:flex w-9 h-9 rounded-xl items-center justify-center text-sm border transition-all duration-300 pointer-events-auto cursor-pointer ${
               !isMuted
                 ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
@@ -395,7 +401,7 @@ export default function Navbar({
           {/* Global Leaderboard Button */}
           <button
             onClick={onLeaderboardClick}
-            title="View Leaderboards"
+            title={t('navbar.leaderboards', 'Leaderboards')}
             className="hidden sm:flex w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white/60 hover:text-amber-400 transition-all duration-300 pointer-events-auto cursor-pointer items-center justify-center text-sm"
           >
             🏆
@@ -436,7 +442,7 @@ export default function Navbar({
               <div className="absolute right-0 top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 <div className="glass px-3 py-1.5 rounded-xl text-[10px] font-semibold text-white/90 whitespace-nowrap shadow-xl border border-white/5 flex flex-col items-center">
                   <span>@{currentUser.username} ({currentUser.country})</span>
-                  <span className="text-cyan-400 text-[8px] mt-0.5 uppercase tracking-widest font-bold">View Profile & Stats</span>
+                  <span className="text-cyan-400 text-[8px] mt-0.5 uppercase tracking-widest font-bold">{t('navbar.viewProfileStats', 'View Profile & Stats')}</span>
                 </div>
               </div>
             </div>
@@ -445,7 +451,7 @@ export default function Navbar({
               onClick={onAuthClick}
               className="hidden sm:block px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs tracking-wider shadow-[0_0_20px_rgba(0,229,255,0.25)] hover:shadow-[0_0_25px_rgba(0,229,255,0.45)] transition-all duration-300 pointer-events-auto cursor-pointer"
             >
-              SIGN IN
+              {t('navbar.signIn', 'SIGN IN')}
             </button>
           )}
         </div>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { SIDEBAR_ITEMS } from '@/lib/constants';
 import { EventCategory } from '@/types';
 import { trackEvent } from '@/services/analytics';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface SidebarProps {
   activeCategory: EventCategory | null;
@@ -13,6 +14,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeCategory, onCategoryChange, onSettingsClick }: SidebarProps) {
+  const { t } = useTranslation();
   const getHref = (itemId: string, category?: EventCategory) => {
     if (itemId === 'home') return '/';
     if (itemId === 'info') return '/about';
@@ -40,6 +42,8 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
       {SIDEBAR_ITEMS.map((item) => {
         const isActive = item.category ? activeCategory === item.category : !activeCategory && item.id === 'home';
         const href = getHref(item.id, item.category);
+        const translationKey = item.id === 'breaking' ? 'news' : item.id === 'info' ? 'aboutLegal' : item.id;
+        const itemLabel = t(`sidebar.${translationKey}`, item.label);
 
         return (
           <Link
@@ -75,7 +79,7 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
                              ? 'bg-cyan-500/15 shadow-[0_0_20px_rgba(0,229,255,0.15)]'
                              : 'hover:bg-white/[0.06]'
                          }`}
-              title={item.label}
+              title={itemLabel}
             >
               <span className={isActive ? 'drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]' : ''}>
                 {item.icon}
@@ -89,7 +93,7 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
                            transition-all duration-200 pointer-events-none"
                 style={{ background: 'rgba(10,10,20,0.95)', border: '1px solid rgba(255,255,255,0.1)' }}
               >
-                {item.label}
+                {itemLabel}
               </span>
 
               {/* Active indicator */}

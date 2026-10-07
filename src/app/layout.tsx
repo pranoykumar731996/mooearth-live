@@ -9,6 +9,7 @@ import Script from 'next/script';
 import './globals.css';
 import { BRANDING } from '@/config/branding';
 import { generateHreflangs } from '@/lib/i18n';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import SentryInitializer from '@/components/UI/SentryInitializer';
 import OrganicTelemetryTracker from '@/components/SEO/OrganicTelemetryTracker';
 
@@ -149,7 +150,9 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <OrganicTelemetryTracker />
         </Suspense>
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

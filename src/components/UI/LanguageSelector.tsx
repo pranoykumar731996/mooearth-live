@@ -1,35 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { SUPPORTED_LOCALES, LOCALES_META, SupportedLocale, isSupportedLocale } from '@/lib/i18n';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LOCALES_META, SupportedLocale } from '@/lib/i18n';
 
 interface LanguageSelectorProps {
   compact?: boolean;
   className?: string;
+  id?: string;
 }
 
-export default function LanguageSelector({ compact = false, className = '' }: LanguageSelectorProps) {
+export default function LanguageSelector({ compact = false, className = '', id }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>('en');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname() || '/';
-  const router = useRouter();
-
-  // Detect current language from URL pathname or localStorage
-  useEffect(() => {
-    const segments = pathname.split('/').filter(Boolean);
-    const firstSegment = segments[0];
-
-    if (firstSegment && isSupportedLocale(firstSegment)) {
-      setCurrentLocale(firstSegment);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mooearth_locale', firstSegment);
-      }
-    } else {
-      setCurrentLocale('en');
-    }
-  }, [pathname]);
+  const { locale, setLocale, allLocales, meta: activeMeta, t } = useLanguage();
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -50,41 +34,19 @@ export default function LanguageSelector({ compact = false, className = '' }: La
   // Handle switching language
   function handleSelectLocale(targetLocale: SupportedLocale) {
     setIsOpen(false);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mooearth_locale', targetLocale);
-    }
-
-    const segments = pathname.split('/').filter(Boolean);
-    const hasLangPrefix = segments.length > 0 && isSupportedLocale(segments[0]);
-
-    const cleanPathSegments = hasLangPrefix ? segments.slice(1) : segments;
-    let newPath = '';
-
-    if (targetLocale === 'en') {
-      // English is root default
-      newPath = cleanPathSegments.length === 0 ? '/' : `/${cleanPathSegments.join('/')}`;
-    } else {
-      newPath = `/${targetLocale}/${cleanPathSegments.join('/')}`;
-    }
-
-    // Preserve any existing search params
-    if (typeof window !== 'undefined' && window.location.search) {
-      newPath += window.location.search;
-    }
-
-    router.push(newPath);
+    setLocale(targetLocale);
   }
 
-  const activeMeta = LOCALES_META[currentLocale] || LOCALES_META.en;
+  const buttonId = id || (compact ? 'language-selector-btn-mobile' : 'language-selector-btn');
 
   return (
     <div ref={dropdownRef} className={`relative z-50 inline-block text-left ${className}`}>
       {/* Trigger Button */}
       <button
         type="button"
-        id="language-selector-btn"
+        id={buttonId}
         onClick={() => setIsOpen(!isOpen)}
-        title={`Change Language (Current: ${activeMeta.nativeName})`}
+        title={`${t('navbar.selectLanguage', 'Select Language')} (${activeMeta.nativeName})`}
         className={`flex items-center gap-1.5 rounded-xl border transition-all duration-200 pointer-events-auto cursor-pointer ${
           compact
             ? 'h-8 px-2 bg-white/5 border-white/10 hover:bg-white/10 text-xs text-white/90 active:scale-95'
@@ -116,20 +78,24 @@ export default function LanguageSelector({ compact = false, className = '' }: La
         >
           <div className="px-3 py-2 border-b border-white/10 mb-1 flex items-center justify-between">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400">
-              Select Language
+              {t('navbar.selectLanguage', 'Select Language')}
             </span>
-            <span className="text-[10px] text-cyan-400 font-mono">8 Locales</span>
+            <span className="text-[10px] text-cyan-400 font-mono">
+              {t('navbar.localesCount', '8 Locales')}
+            </span>
           </div>
 
           <div className="space-y-1">
-            {SUPPORTED_LOCALES.map((localeCode) => {
+            {allLocales.map((localeCode) => {
               const meta = LOCALES_META[localeCode];
-              const isSelected = localeCode === currentLocale;
+              const isSelected = localeCode === locale;
 
               return (
                 <button
                   key={localeCode}
                   type="button"
+                  id={`locale-option-${localeCode}${compact ? '-mobile' : ''}`}
+                  data-locale={localeCode}
                   onClick={() => handleSelectLocale(localeCode)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all ${
                     isSelected
@@ -139,14 +105,17 @@ export default function LanguageSelector({ compact = false, className = '' }: La
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{meta.flag}</span>
-                    <div className="text-left">
-                      <div className="font-semibold">{meta.nativeName}</div>
-                      <div className="text-[10px] text-slate-400">{meta.name}</div>
+                    <div className="flex flex-col text-left">
+                      <span className="font-semibold text-white/90 leading-tight">
+                        {meta.nativeName}
+                      </span>
+                      <span className="text-[10px] text-slate-400 leading-tight">
+                        {meta.name}
+                      </span>
                     </div>
                   </div>
-
                   {isSelected && (
-                    <span className="text-xs text-cyan-400 font-bold font-mono">✓</span>
+                    <span className="text-cyan-400 text-xs font-bold">✓</span>
                   )}
                 </button>
               );
