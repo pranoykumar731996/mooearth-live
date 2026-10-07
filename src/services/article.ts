@@ -1,5 +1,6 @@
 import { WorldEvent } from '@/types';
 import { BoundedMap } from '@/lib/rate-limiter';
+import { resolveArticleAccess, findRelatedCluster } from './newsEngine';
 
 export interface ArticleDetails {
   id: string;
@@ -14,6 +15,10 @@ export interface ArticleDetails {
   author?: string;
   image?: string;
   description?: string;
+  accessLevel?: 'full' | 'synthesis' | 'dispatch';
+  accessLabel?: string;
+  relatedSources?: Array<{ publisher: string; url: string; title: string }>;
+  topicKeywords?: string[];
   debug?: {
     articleId: string;
     publisher: string;
@@ -451,21 +456,35 @@ function generateUnavailableArticle(
   country: string,
   category: string,
   source: string,
-  publishedAt: string
+  publishedAt: string,
+  summary?: string,
+  publisher?: string
 ): ArticleDetails {
+  const cleanTitle = cleanText(title);
+  const cleanSource = cleanText(source);
+  const resolution = resolveArticleAccess({
+    url: cleanSource,
+    title: cleanTitle,
+    summary,
+    country,
+    publisher,
+  });
+
   return {
     id,
-    title: cleanText(title),
-    source: cleanText(source),
+    title: cleanTitle,
+    source: cleanSource,
     publishedAt,
     country,
     category,
-    aiSummary: "Summary unavailable. Please open the original article.",
-    fullContent: "The full content of this article could not be retrieved from the publisher's website. Please use the link below to read the original article on their official site.",
-    keyFacts: [],
-    author: "MooEarth Newsroom",
+    aiSummary: resolution.cleanedBody || "Summary unavailable. Please open the original article.",
+    fullContent: resolution.cleanedBody || "The full content of this article could not be retrieved from the publisher's website. Please use the link below to read the original article on their official site.",
+    keyFacts: resolution.extractedKeyFacts || [],
+    author: publisher || "MooEarth Newsroom",
     image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-    description: "Summary unavailable."
+    description: resolution.cleanedBody || "Summary unavailable.",
+    accessLevel: resolution.accessLevel,
+    accessLabel: resolution.accessLabel,
   };
 }
 
@@ -636,6 +655,22 @@ export async function fetchOrGenerateArticleDetails(
     };
   }
 
+  const finalizeDetails = async (det: ArticleDetails): Promise<ArticleDetails> => {
+    if (!det.relatedSources || det.relatedSources.length === 0) {
+      try {
+        const cluster = await findRelatedCluster(cleanTitle, country);
+        if (cluster && cluster.primaryArticle.relatedSources && cluster.primaryArticle.relatedSources.length > 0) {
+          det.relatedSources = cluster.primaryArticle.relatedSources;
+          det.topicKeywords = cluster.topicKeywords;
+        }
+      } catch {
+        // Non-blocking
+      }
+    }
+    articleCache.set(cacheKey, det);
+    return det;
+  };
+
   // Validate URL structure
   let isValidUrl = false;
   try {
@@ -647,7 +682,7 @@ export async function fetchOrGenerateArticleDetails(
 
   if (!isValidUrl) {
     console.warn(`[ArticleService] Invalid article URL: ${url}`);
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, "Global Wire");
     details.debug = {
       articleId: id,
       publisher: "Unknown",
@@ -657,7 +692,7 @@ export async function fetchOrGenerateArticleDetails(
       cacheHit: false,
       validationPassed: false
     };
-    return details;
+    return await finalizeDetails(details);
   }
 
   // Retrieve article HTML content
@@ -711,6 +746,8 @@ export async function fetchOrGenerateArticleDetails(
         author: publisherName,
         image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
         description: cleanSummary,
+        accessLevel: 'synthesis',
+        accessLabel: 'Verified Synthesis',
         debug: {
           articleId: id,
           publisher: publisherName,
@@ -721,10 +758,9 @@ export async function fetchOrGenerateArticleDetails(
           validationPassed: false
         }
       };
-      articleCache.set(cacheKey, details);
-      return details;
+      return await finalizeDetails(details);
     }
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
     details.debug = {
       articleId: id,
       publisher: publisherName,
@@ -734,8 +770,7 @@ export async function fetchOrGenerateArticleDetails(
       cacheHit: false,
       validationPassed: false
     };
-    articleCache.set(cacheKey, details);
-    return details;
+    return await finalizeDetails(details);
   }
 
   // Determine if publisher provides a valid official description/excerpt
@@ -779,6 +814,8 @@ export async function fetchOrGenerateArticleDetails(
       author: publisherName,
       image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
       description: cleanSummary,
+      accessLevel: 'synthesis',
+      accessLabel: 'Verified Synthesis',
       debug: {
         articleId: id,
         publisher: publisherName,
@@ -790,8 +827,7 @@ export async function fetchOrGenerateArticleDetails(
       }
     };
 
-    articleCache.set(cacheKey, details);
-    return details;
+    return await finalizeDetails(details);
   }
 
   // If content was not retrieved successfully, we cannot summarize it reliably. No fake summaries allowed.
@@ -817,6 +853,8 @@ export async function fetchOrGenerateArticleDetails(
         author: publisherName,
         image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
         description: cleanSummary,
+        accessLevel: 'synthesis',
+        accessLabel: 'Verified Synthesis',
         debug: {
           articleId: id,
           publisher: publisherName,
@@ -827,10 +865,9 @@ export async function fetchOrGenerateArticleDetails(
           validationPassed: false
         }
       };
-      articleCache.set(cacheKey, details);
-      return details;
+      return await finalizeDetails(details);
     }
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
     details.debug = {
       articleId: id,
       publisher: publisherName,
@@ -840,8 +877,7 @@ export async function fetchOrGenerateArticleDetails(
       cacheHit: false,
       validationPassed: false
     };
-    articleCache.set(cacheKey, details);
-    return details;
+    return await finalizeDetails(details);
   }
 
   // AI Summarization is required
@@ -905,7 +941,7 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
     // Check if the AI returned 'Summary unavailable'
     if (aiSummaryText.toLowerCase().includes('summary unavailable') || parsed.keyFacts.length === 0) {
       console.warn(`[ArticleService] AI returned 'Summary unavailable' for: ${cleanTitle}`);
-      const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+      const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
       details.debug = {
         articleId: id,
         publisher: publisherName,
@@ -915,8 +951,7 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
         cacheHit: false,
         validationPassed: true
       };
-      articleCache.set(cacheKey, details);
-      return details;
+      return await finalizeDetails(details);
     }
 
     const details: ArticleDetails = {
@@ -932,6 +967,8 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
       author: parsed.author ? cleanText(parsed.author) : publisherName,
       image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
       description: cleanSummary,
+      accessLevel: 'full',
+      accessLabel: 'Full Report',
       debug: {
         articleId: id,
         publisher: publisherName,
@@ -943,13 +980,12 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
       }
     };
 
-    articleCache.set(cacheKey, details);
-    return details;
+    return await finalizeDetails(details);
   }
 
   // AI Generation failed/timed out: fallback to Summary Unavailable (No fake summaries allowed!)
   console.warn(`[ArticleService] AI article summarization failed or timed out for "${title}". Returning unavailable.`);
-  const details = generateUnavailableArticle(id, title, country, category, url, publishedAt);
+  const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
   details.debug = {
     articleId: id,
     publisher: publisherName,
@@ -959,6 +995,5 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
     cacheHit: false,
     validationPassed: true
   };
-  articleCache.set(cacheKey, details);
-  return details;
+  return await finalizeDetails(details);
 }

@@ -628,7 +628,7 @@ export default function CountryReactionPanel({
 
             {/* V2 Smart Recommendations (Feature 9) */}
             <div className="border-t border-white/5 pt-5 space-y-3">
-              <div className="text-[10px] text-white/45 uppercase tracking-widest font-bold">Related Destinations</div>
+              <div className="text-[10px] text-white/45 uppercase tracking-widest font-bold">{t('countryHub.relatedDestinations', 'Related Destinations')}</div>
               <div className="grid grid-cols-2 gap-2">
                 {getCountryRecommendations(country).map(rec => (
                   <Link
@@ -648,7 +648,7 @@ export default function CountryReactionPanel({
             </div>
           </div>
         ) : (
-          <div className="p-6 text-center text-white/50">Failed to load reactions.</div>
+          <div className="p-6 text-center text-white/50">{t('common.error', 'Failed to load reactions.')}</div>
         )}
       </div>
 

@@ -23,7 +23,8 @@
     "test:regression": "npx tsx scripts/regression-sentry.ts",
     "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts",
     "test:seo": "playwright test tests/seo-technical.spec.ts",
-    "test:multilingual": "npx tsx scripts/test-multilingual.ts"
+    "test:multilingual": "npx tsx scripts/test-multilingual.ts",
+    "test:news-engine": "npx tsx scripts/test-news-engine.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",

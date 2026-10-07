@@ -67,48 +67,48 @@ function parseRss(xmlText: string, geoLevel: 'city' | 'state' | 'national' | 'in
   return items;
 }
 
+import { searchGlobalNewsFeed } from './newsEngine';
+
 async function fetchArticles(
   query: string, 
   geoLevel: 'city' | 'state' | 'national' | 'international',
   fallbackQuery?: string
 ): Promise<PerspectiveArticle[]> {
-  let xmlText = '';
   try {
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-    const res = await fetch(url, { 
-      next: { revalidate: 300 },
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-      }
-    });
-    if (res.ok) {
-      xmlText = await res.text();
+    const events = await searchGlobalNewsFeed(query);
+    if (events.length > 0) {
+      return events.slice(0, 5).map(e => ({
+        title: e.title,
+        link: e.source,
+        source: e.city && e.city !== 'Global' ? `${e.city} Dispatch` : 'Global Media Wire',
+        publishedAt: e.publishedAt,
+        snippet: e.summary ? e.summary.substring(0, 200) : e.title,
+        geoLevel
+      }));
     }
   } catch (err) {
-    console.error(`Error fetching RSS for query "${query}":`, err);
+    console.warn(`[Perspective] searchGlobalNewsFeed notice on "${query}":`, err);
   }
 
-  let articles = xmlText ? parseRss(xmlText, geoLevel) : [];
-  if (articles.length === 0 && fallbackQuery) {
-    console.log(`No articles found for query "${query}". Trying fallback: "${fallbackQuery}"`);
+  if (fallbackQuery) {
     try {
-      const url = `https://news.google.com/rss/search?q=${encodeURIComponent(fallbackQuery)}&hl=en-US&gl=US&ceid=US:en`;
-      const res = await fetch(url, { 
-        next: { revalidate: 300 },
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        }
-      });
-      if (res.ok) {
-        xmlText = await res.text();
-        articles = parseRss(xmlText, geoLevel);
+      const fallbackEvents = await searchGlobalNewsFeed(fallbackQuery);
+      if (fallbackEvents.length > 0) {
+        return fallbackEvents.slice(0, 5).map(e => ({
+          title: e.title,
+          link: e.source,
+          source: e.city && e.city !== 'Global' ? `${e.city} Dispatch` : 'Global Media Wire',
+          publishedAt: e.publishedAt,
+          snippet: e.summary ? e.summary.substring(0, 200) : e.title,
+          geoLevel
+        }));
       }
-    } catch (err) {
-      console.error(`Error fetching fallback RSS for query "${fallbackQuery}":`, err);
+    } catch {
+      // Non-blocking
     }
   }
 
-  return articles.slice(0, 5);
+  return [];
 }
 
 // ─── AI COMPARISON SYSTEM ─────────────────────────────────────────────────────

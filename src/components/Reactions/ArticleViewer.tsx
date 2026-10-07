@@ -12,6 +12,7 @@ import { isCountryWhitelisted } from '@/config/publishers';
 import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
 import { CountryFlag } from '@/components/UI/CountryFlag';
+import { useTranslation, useLanguage } from '@/contexts/LanguageContext';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -153,7 +154,9 @@ export default function ArticleViewer({
   const [showShareToast, setShowShareToast] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
-  const [targetLanguage, setTargetLanguage] = useState<string>('en');
+  const { t } = useTranslation();
+  const { locale } = useLanguage();
+  const [targetLanguage, setTargetLanguage] = useState<string>(locale || 'en');
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translatedSummary, setTranslatedSummary] = useState<string | null>(null);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
@@ -449,6 +452,8 @@ export default function ArticleViewer({
           author: `${pubInfo.publisher} Editorial`,
           image: categoryImg,
           description: activeEvent.summary,
+          accessLevel: 'synthesis',
+          accessLabel: 'Verified Synthesis',
           debug: {
             articleId: activeEvent.id || '',
             publisher: pubInfo.publisher,
@@ -704,6 +709,12 @@ export default function ArticleViewer({
               </span>
             </div>
             <div className="flex justify-between items-center">
+              <span className="text-white/30 font-bold">ACCESS TIER:</span>
+              <span className="font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                {articleDetails?.accessLabel || (contentRetrieved ? 'FULL REPORT' : 'VERIFIED SYNTHESIS')}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
               <span className="text-white/30 font-bold">SUMMARY TYPE:</span>
               <span className={`font-bold px-2 py-0.5 rounded-[4px] text-[9px] tracking-wide ${summaryGenerated ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                 {summaryGenerated ? 'AI GENERATED' : 'PUBLISHER BYPASS'}
@@ -787,6 +798,12 @@ export default function ArticleViewer({
               <span suppressHydrationWarning>{formatRelativeTime(activeEvent.publishedAt)}</span>
               <span>•</span>
               <span className="italic">{publisher}</span>
+              {articleDetails?.accessLabel && (
+                <>
+                  <span>•</span>
+                  <span className="text-cyan-400 font-semibold">{articleDetails.accessLabel}</span>
+                </>
+              )}
             </div>
 
             {renderDebugPanel()}
@@ -859,6 +876,35 @@ export default function ArticleViewer({
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Cross-Publisher Coverage (Multi-Source Cluster Attribution) */}
+            {articleDetails?.relatedSources && articleDetails.relatedSources.length > 0 && (
+              <div className="rounded-xl p-3 border border-white/10 bg-white/[0.02] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">
+                    Cross-Publisher Coverage ({articleDetails.relatedSources.length + 1} Sources)
+                  </span>
+                  <span className="text-[9px] text-white/40 font-medium">Verified Multi-Wire</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {articleDetails.relatedSources.map((source, sIdx) => (
+                    <a
+                      key={sIdx}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/5 transition-all"
+                    >
+                      <span>{source.publisher}</span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Share / Read Source / Translate buttons */}
@@ -1154,6 +1200,14 @@ export default function ArticleViewer({
                     <span suppressHydrationWarning>Published {formatRelativeTime(activeEvent.publishedAt)}</span>
                     <span className="text-white/20">•</span>
                     <span className="italic">{publisher}</span>
+                    {articleDetails?.accessLabel && (
+                      <>
+                        <span className="text-white/20">•</span>
+                        <span className="text-cyan-400 font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[11px]">
+                          {articleDetails.accessLabel}
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   {renderDebugPanel()}

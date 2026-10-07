@@ -133,7 +133,7 @@ export async function fetchWorldNewsMapData(): Promise<WorldNewsMapData> {
       title: cleanTitle,
       summary: evt.summary || cleanTitle,
       source: publisher,
-      originalUrl: evt.source || `https://news.google.com/search?q=${encodeURIComponent(countryName)}`,
+      originalUrl: evt.source || `/countries/${encodeURIComponent(canonicalSlug)}`,
       publishedAt: evt.publishedAt || new Date().toISOString(),
       country: countryName,
       countrySlug: canonicalSlug,
