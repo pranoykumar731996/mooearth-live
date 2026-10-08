@@ -1317,11 +1317,11 @@ export default function HomePage({
 
       {/* Massive Cinematic Globe */}
       <div
-        className="absolute z-[2] pointer-events-none"
+        className={`absolute pointer-events-none ${isStopTheEarthActive ? 'z-[44]' : 'z-[2]'}`}
         style={isMobile
           ? {
               width: '100vw',
-              height: `${mobileSheet.globeAvailableVh}vh`,
+              height: isStopTheEarthActive ? '100vh' : `${mobileSheet.globeAvailableVh}vh`,
               top: 0,
               left: 0,
               display: 'flex',

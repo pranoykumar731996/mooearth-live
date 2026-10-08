@@ -4141,39 +4141,43 @@ export default function PlayEarthOverlay({
       )}
 
       {/* Top HUD Bar */}
-      <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed top-20 left-1/2 -translate-x-1/2 z-[46] pointer-events-auto"
-      >
-        <div className="glass px-5 py-2.5 rounded-full border border-emerald-500/30 flex items-center gap-3 shadow-[0_0_25px_rgba(0,255,136,0.15)] font-sans">
-          <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shrink-0" />
-          <span className="text-[10px] text-emerald-400 uppercase tracking-[0.25em] font-black">
-            PLAY EARTH {activeMode ? `— ${activeMode.toUpperCase()}` : 'V2'}
-          </span>
-          <span className="text-white/20">|</span>
-          <span className="text-xs text-white/80 font-bold">
-            ⭐ {gameState.xp.toLocaleString()} XP
-          </span>
-          <span className="text-white/20">|</span>
-          <span className="text-xs text-white/80 font-bold">
-            Lv.{gameState.level}
-          </span>
-        </div>
-      </motion.div>
+      {!phase.startsWith('stop-the-earth-') && (
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[46] pointer-events-auto"
+        >
+          <div className="glass px-5 py-2.5 rounded-full border border-emerald-500/30 flex items-center gap-3 shadow-[0_0_25px_rgba(0,255,136,0.15)] font-sans">
+            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse shrink-0" />
+            <span className="text-[10px] text-emerald-400 uppercase tracking-[0.25em] font-black">
+              PLAY EARTH {activeMode ? `— ${activeMode.toUpperCase()}` : 'V2'}
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="text-xs text-white/80 font-bold">
+              ⭐ {gameState.xp.toLocaleString()} XP
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="text-xs text-white/80 font-bold">
+              Lv.{gameState.level}
+            </span>
+          </div>
+        </motion.div>
+      )}
 
       {/* Close button */}
-      <motion.button
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className="fixed top-24 right-6 z-[47] w-10 h-10 rounded-full glass border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all pointer-events-auto cursor-pointer"
-      >
-        ✕
-      </motion.button>
+      {!phase.startsWith('stop-the-earth-') && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="fixed top-24 right-6 z-[47] w-10 h-10 rounded-full glass border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all pointer-events-auto cursor-pointer"
+        >
+          ✕
+        </motion.button>
+      )}
 
       {/* ═══════════════ MAIN SELECTION HUD ═══════════════ */}
       <AnimatePresence mode="wait">

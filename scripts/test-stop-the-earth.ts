@@ -115,11 +115,162 @@ for (const coord of testCandidateCoords) {
   }
 }
 
+// 6. Game State Machine & Interaction Simulation Tests
+console.log('\n🎮 Testing Game State Machine & Globe Pointer Interaction Flow...');
+
+type StopTheEarthState = 
+  | 'IDLE' 
+  | 'COUNTDOWN' 
+  | 'SPINNING' 
+  | 'STOPPED' 
+  | 'LOCATION_SELECTION' 
+  | 'RESULT' 
+  | 'COMPLETE';
+
+interface MockGlobeController {
+  autoRotate: boolean;
+  autoRotateSpeed: number;
+  enableRotate: boolean;
+  enableZoom: boolean;
+  enablePan: boolean;
+}
+
+class MockStopTheEarthGame {
+  public state: StopTheEarthState = 'IDLE';
+  public timer: number = 5.0;
+  public stopAlreadyTriggered: boolean = false;
+  public stoppedCoordinate: { lat: number; lng: number } | null = null;
+  public candidates: any[] = [];
+  public globe: MockGlobeController = {
+    autoRotate: true,
+    autoRotateSpeed: 0.5,
+    enableRotate: true,
+    enableZoom: true,
+    enablePan: true,
+  };
+
+  startGame() {
+    this.state = 'COUNTDOWN';
+    // Countdown completes, transition to SPINNING
+    this.state = 'SPINNING';
+    this.timer = 5.0;
+    this.stopAlreadyTriggered = false;
+    this.stoppedCoordinate = null;
+    this.candidates = [];
+
+    // Globe spins rapidly and camera rotation dragging is locked
+    this.globe.autoRotate = true;
+    this.globe.autoRotateSpeed = 16.0;
+    this.globe.enableRotate = false;
+    this.globe.enableZoom = false;
+    this.globe.enablePan = false;
+  }
+
+  handleGlobePointer(clientX: number, clientY: number, hitMesh: boolean, coords?: { lat: number; lng: number }): boolean {
+    // 1. Only allow interaction if SPINNING
+    if (this.state !== 'SPINNING') return false;
+
+    // 2. Section 8: Prevent double click. First valid click wins!
+    if (this.stopAlreadyTriggered) return false;
+
+    // 3. Pointer must intersect globe
+    if (!hitMesh || !coords) return false;
+
+    this.stopAlreadyTriggered = true;
+
+    // 4. Immediately freeze globe rotation
+    this.globe.autoRotate = false;
+    this.globe.autoRotateSpeed = 0;
+
+    // 5. Freeze timer and capture coordinate
+    this.stoppedCoordinate = coords;
+
+    // 6. Transition to STOPPED & LOCATION_SELECTION
+    this.state = 'STOPPED';
+    const loc = resolveLocationFromCoordinates(coords);
+    this.candidates = generateCandidateOptions(loc, 'medium');
+    this.state = 'LOCATION_SELECTION';
+
+    return true;
+  }
+
+  handleTimeout() {
+    if (this.state !== 'SPINNING') return;
+    this.stopAlreadyTriggered = true;
+    this.globe.autoRotate = false;
+    this.globe.autoRotateSpeed = 0;
+    this.stoppedCoordinate = { lat: 0, lng: 0 }; // Current POV center
+    this.state = 'STOPPED';
+    const loc = resolveLocationFromCoordinates(this.stoppedCoordinate);
+    this.candidates = generateCandidateOptions(loc, 'medium');
+    this.state = 'LOCATION_SELECTION';
+  }
+
+  exitGame() {
+    this.state = 'IDLE';
+    this.stopAlreadyTriggered = false;
+    // Restore normal globe controls
+    this.globe.autoRotate = true;
+    this.globe.autoRotateSpeed = 0.5;
+    this.globe.enableRotate = true;
+    this.globe.enableZoom = true;
+    this.globe.enablePan = true;
+  }
+}
+
+// Test Flow: Start -> Spin -> Click at 4.5s -> Freeze -> Options
+const game = new MockStopTheEarthGame();
+assert(game.state === 'IDLE', 'Initial state is IDLE');
+
+game.startGame();
+assert(game.state === 'SPINNING', 'State transitions to SPINNING after start');
+assert(game.globe.autoRotate === true && game.globe.autoRotateSpeed === 16.0, 'Globe is rotating rapidly at speed 16');
+assert(game.globe.enableRotate === false, 'Camera drag controls are disabled during spin so click is pure stop');
+
+// Simulate click off the globe (miss)
+const missResult = game.handleGlobePointer(10, 10, false);
+assert(!missResult, 'Pointer outside globe is ignored');
+assert(game.state === 'SPINNING', 'State remains SPINNING after miss');
+assert(game.globe.autoRotateSpeed === 16.0, 'Globe continues rotating after miss');
+
+// Simulate valid globe click at 4.5s (hit)
+const hitCoord = { lat: 35.6762, lng: 139.6503 }; // Tokyo
+game.timer = 4.5;
+const hitResult = game.handleGlobePointer(500, 300, true, hitCoord);
+assert(hitResult, 'First valid globe click is accepted');
+assert(game.state === 'LOCATION_SELECTION', 'State transitions to LOCATION_SELECTION');
+assert(game.globe.autoRotate === false && game.globe.autoRotateSpeed === 0, 'Globe immediately frozen at current orientation');
+assert(game.stoppedCoordinate?.lat === 35.6762, 'Exact clicked coordinate (lat) preserved');
+assert(game.candidates.length === 4, '4 location options generated immediately');
+
+// Section 8: Prevent Double-Click
+const secondClickCoord = { lat: 51.5074, lng: -0.1278 }; // London
+const secondResult = game.handleGlobePointer(400, 200, true, secondClickCoord);
+assert(!secondResult, 'Second click is ignored (prevent double click)');
+assert(game.stoppedCoordinate?.lat === 35.6762, 'Original coordinate is retained, second click did not overwrite');
+assert(game.globe.autoRotateSpeed === 0, 'Globe remains frozen');
+
+// Test Exit: Restores normal globe
+game.exitGame();
+assert(game.state === 'IDLE', 'Game exited to IDLE');
+assert(game.globe.enableRotate === true && game.globe.enableZoom === true, 'Normal globe interaction controls fully restored');
+
+// Test 5-Second Timeout auto-stop
+const timeoutGame = new MockStopTheEarthGame();
+timeoutGame.startGame();
+assert(timeoutGame.state === 'SPINNING', 'Timeout test game starts spinning');
+timeoutGame.timer = 0.0;
+timeoutGame.handleTimeout();
+assert(timeoutGame.state === 'LOCATION_SELECTION', 'Auto-stop on timeout transitions to LOCATION_SELECTION');
+assert(timeoutGame.globe.autoRotateSpeed === 0, 'Globe is frozen on timeout');
+assert(timeoutGame.candidates.length === 4, 'Candidates generated on timeout');
+
 console.log('\n========================================');
 if (failures === 0) {
-  console.log('🎉 ALL STOP THE EARTH RESOLVER TESTS PASSED!');
+  console.log('🎉 ALL STOP THE EARTH RESOLVER & INTERACTION TESTS PASSED!');
   process.exit(0);
 } else {
   console.error(`💥 ${failures} TESTS FAILED.`);
   process.exit(1);
 }
+

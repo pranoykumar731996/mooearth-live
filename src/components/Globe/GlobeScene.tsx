@@ -203,10 +203,15 @@ const GlobeScene = React.memo(function GlobeScene({
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
   const isStopTheEarthActiveRef = useRef(isStopTheEarthActive);
+  const stopAlreadyTriggeredRef = useRef(false);
 
   useEffect(() => {
     isStopTheEarthSpinningRef.current = isStopTheEarthSpinning;
     isStopTheEarthActiveRef.current = isStopTheEarthActive;
+
+    if (isStopTheEarthSpinning) {
+      stopAlreadyTriggeredRef.current = false;
+    }
 
     if (!globeRef.current) return;
     const controls = globeRef.current.controls();
@@ -215,9 +220,20 @@ const GlobeScene = React.memo(function GlobeScene({
     if (isStopTheEarthSpinning) {
       controls.autoRotate = true;
       controls.autoRotateSpeed = 16.0;
+      controls.enableRotate = false; // Lock camera dragging during 5s spin so pointerdown is pure stop
+      controls.enableZoom = false;
+      controls.enablePan = false;
     } else if (isStopTheEarthActive) {
       controls.autoRotate = false;
       controls.autoRotateSpeed = 0;
+      controls.enableRotate = false; // Keep exact orientation frozen
+      controls.enableZoom = false;
+      controls.enablePan = false;
+    } else {
+      // Restore normal controls outside game
+      controls.enableRotate = true;
+      controls.enableZoom = true;
+      controls.enablePan = true;
     }
   }, [isStopTheEarthSpinning, isStopTheEarthActive, globeRef]);
 
@@ -676,10 +692,10 @@ const GlobeScene = React.memo(function GlobeScene({
       // 3. Modulate Auto-Rotate Speed (Phase 8 Rotation & Phase 10 Energy + Stop The Earth Rapid Spin)
       const controls = globe.controls();
       if (controls) {
-        if (isStopTheEarthSpinningRef.current) {
+        if (isStopTheEarthSpinningRef.current && !stopAlreadyTriggeredRef.current) {
           controls.autoRotate = true;
           controls.autoRotateSpeed = 16.0; // Rapid cinematic 5-second whirl
-        } else if (isStopTheEarthActiveRef.current) {
+        } else if (isStopTheEarthActiveRef.current || stopAlreadyTriggeredRef.current) {
           controls.autoRotate = false;
           controls.autoRotateSpeed = 0; // Frozen completely on stop
         } else {
@@ -1738,15 +1754,114 @@ const GlobeScene = React.memo(function GlobeScene({
     return 'rgba(255, 255, 255, 0.2)'; // Brighter normal borders
   }, [selectedCountry, hoveredPolygon, adjustOpacity, globeView, failsafeActive]);
 
-  const handlePolygonClick = useCallback((feat: any, event?: any, coords?: { lat: number; lng: number; altitude: number }) => {
-    if (isStopTheEarthSpinningRef.current || isStopTheEarthActiveRef.current) {
-      freezeRotation();
-      const pov = globeRef.current?.pointOfView();
-      const finalLat = (coords && typeof coords.lat === 'number') ? coords.lat : (pov?.lat ?? 0);
-      const finalLng = (coords && typeof coords.lng === 'number') ? coords.lng : (pov?.lng ?? 0);
-      if (onStopTheEarthCoordCaptured) {
-        onStopTheEarthCoordCaptured({ lat: finalLat, lng: finalLng, timestamp: Date.now() });
+  // Unified pointer handler for STOP THE EARTH using Three.js Raycaster
+  const handleStopTheEarthPointer = useCallback((clientX: number, clientY: number, fallbackCoords?: { lat: number; lng: number }) => {
+    // Only active during spinning phase
+    if (!isStopTheEarthSpinningRef.current) return;
+    // Section 8: Prevent double click. First valid click wins!
+    if (stopAlreadyTriggeredRef.current) return;
+
+    const globe = globeRef.current;
+    if (!globe) return;
+
+    let finalLat: number | null = null;
+    let finalLng: number | null = null;
+
+    // 1. Raycaster calculation via toGlobeCoords(x, y)
+    const renderer = globe.renderer?.();
+    const domElement = renderer?.domElement;
+    if (domElement) {
+      const rect = domElement.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
+        const globeCoords = globe.toGlobeCoords?.(x, y);
+        if (globeCoords && typeof globeCoords.lat === 'number' && typeof globeCoords.lng === 'number') {
+          finalLat = globeCoords.lat;
+          finalLng = globeCoords.lng;
+        }
       }
+    }
+
+    // 2. Direct Three.js Raycaster intersection against globe mesh
+    if (finalLat === null || finalLng === null) {
+      if (fallbackCoords && typeof fallbackCoords.lat === 'number' && typeof fallbackCoords.lng === 'number') {
+        finalLat = fallbackCoords.lat;
+        finalLng = fallbackCoords.lng;
+      } else if (domElement && globe.camera && globe.scene) {
+        const camera = globe.camera();
+        const scene = globe.scene();
+        const rect = domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((clientX - rect.left) / rect.width) * 2 - 1,
+          -((clientY - rect.top) / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+        const hit = intersects.find((i: any) => {
+          const obj = i.object;
+          return obj && (obj.__globeObjType || obj.parent?.__globeObjType || obj.type === 'Mesh');
+        });
+        if (hit && globe.toGeoCoords) {
+          const geo = globe.toGeoCoords(hit.point);
+          if (geo && typeof geo.lat === 'number' && typeof geo.lng === 'number') {
+            finalLat = geo.lat;
+            finalLng = geo.lng;
+          }
+        }
+      }
+    }
+
+    // 3. Section 4: "if pointer does not intersect globe: ignore interaction"
+    if (finalLat === null || finalLng === null) {
+      return;
+    }
+
+    // Mark stop already triggered so double click is ignored
+    stopAlreadyTriggeredRef.current = true;
+
+    // Immediately freeze the globe rotation at exact current orientation
+    freezeRotation();
+
+    // Immediately notify with exact coordinates
+    if (onStopTheEarthCoordCaptured) {
+      onStopTheEarthCoordCaptured({
+        lat: finalLat,
+        lng: finalLng,
+        timestamp: Date.now(),
+      });
+    }
+  }, [freezeRotation, globeRef, onStopTheEarthCoordCaptured]);
+
+  // Attach immediate pointerdown listener to canvas for zero-delay stop
+  useEffect(() => {
+    if (!globeRef.current) return;
+    const renderer = globeRef.current.renderer?.();
+    const domElement = renderer?.domElement;
+    if (!domElement) return;
+
+    const onCanvasPointerDown = (e: PointerEvent) => {
+      if (!isStopTheEarthSpinningRef.current) return;
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      handleStopTheEarthPointer(e.clientX, e.clientY);
+    };
+
+    domElement.addEventListener('pointerdown', onCanvasPointerDown, { capture: true, passive: true });
+    return () => {
+      domElement.removeEventListener('pointerdown', onCanvasPointerDown, { capture: true } as any);
+    };
+  }, [globeRef, handleStopTheEarthPointer]);
+
+  const handlePolygonClick = useCallback((feat: any, event?: any, coords?: { lat: number; lng: number; altitude: number }) => {
+    if (isStopTheEarthSpinningRef.current) {
+      const clientX = typeof event?.clientX === 'number' ? event.clientX : (window.innerWidth / 2);
+      const clientY = typeof event?.clientY === 'number' ? event.clientY : (window.innerHeight / 2);
+      handleStopTheEarthPointer(clientX, clientY, coords);
+      return;
+    }
+    if (isStopTheEarthActiveRef.current) {
       return;
     }
 
@@ -1763,7 +1878,7 @@ const GlobeScene = React.memo(function GlobeScene({
     if (event && typeof event.clientX === 'number') {
       setTooltipPosition({ x: event.clientX, y: event.clientY });
     }
-  }, [onSelectCountry, onSelectEvent, pauseRotation, recordInteraction, freezeRotation, globeRef, onStopTheEarthCoordCaptured]);
+  }, [onSelectCountry, onSelectEvent, pauseRotation, recordInteraction, handleStopTheEarthPointer]);
 
   const handlePolygonHover = useCallback((feat: any) => {
     setHoveredPolygon(feat);
@@ -1777,15 +1892,14 @@ const GlobeScene = React.memo(function GlobeScene({
     }
   }, []);
 
-  const handleGlobeClick = useCallback((coords?: { lat: number; lng: number }) => {
-    if (isStopTheEarthSpinningRef.current || isStopTheEarthActiveRef.current) {
-      freezeRotation();
-      const pov = globeRef.current?.pointOfView();
-      const finalLat = (coords && typeof coords.lat === 'number') ? coords.lat : (pov?.lat ?? 0);
-      const finalLng = (coords && typeof coords.lng === 'number') ? coords.lng : (pov?.lng ?? 0);
-      if (onStopTheEarthCoordCaptured) {
-        onStopTheEarthCoordCaptured({ lat: finalLat, lng: finalLng, timestamp: Date.now() });
-      }
+  const handleGlobeClick = useCallback((coords?: { lat: number; lng: number }, event?: any) => {
+    if (isStopTheEarthSpinningRef.current) {
+      const clientX = typeof event?.clientX === 'number' ? event.clientX : (window.innerWidth / 2);
+      const clientY = typeof event?.clientY === 'number' ? event.clientY : (window.innerHeight / 2);
+      handleStopTheEarthPointer(clientX, clientY, coords);
+      return;
+    }
+    if (isStopTheEarthActiveRef.current) {
       return;
     }
 
@@ -1793,7 +1907,7 @@ const GlobeScene = React.memo(function GlobeScene({
     if (onSelectCountry) onSelectCountry(null);
     resumeRotation();
     recordInteraction();
-  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction, freezeRotation, globeRef, onStopTheEarthCoordCaptured]);
+  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction, handleStopTheEarthPointer]);
 
   // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
   const constrainedTooltipPos = useMemo(() => {
@@ -1834,8 +1948,17 @@ const GlobeScene = React.memo(function GlobeScene({
       ref={containerRef}
       className="relative w-full h-full"
       id="globe-container"
-      style={{ opacity: 0, animation: 'fadeIn 2s ease-out 0.5s forwards' }}
-      onPointerDown={recordInteraction}
+      style={{
+        opacity: 0,
+        animation: 'fadeIn 2s ease-out 0.5s forwards',
+        touchAction: isStopTheEarthSpinning ? 'none' : 'auto',
+      }}
+      onPointerDown={(e) => {
+        recordInteraction();
+        if (isStopTheEarthSpinningRef.current) {
+          handleStopTheEarthPointer(e.clientX, e.clientY);
+        }
+      }}
       onWheel={recordInteraction}
       onMouseLeave={() => setHoveredPolygon(null)}
     >

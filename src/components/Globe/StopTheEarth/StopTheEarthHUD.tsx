@@ -1,10 +1,11 @@
 // ============================================================
 // MooEarth Live — Stop The Earth Gameplay HUD
+// Completely transparent during spin: The Globe IS the Button!
 // ============================================================
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayEarthPhase } from '@/types';
 import { StopTheEarthCandidate } from '@/engines/game/types';
@@ -38,7 +39,7 @@ interface StopTheEarthHUDProps {
 export default function StopTheEarthHUD({
   phase,
   onStart,
-  onStop,
+  onStop: _onStop, // No separate stop button: the 3D globe itself is the primary click target
   onSelectCandidate,
   onNextRound,
   onRestart,
@@ -47,7 +48,7 @@ export default function StopTheEarthHUD({
   round,
   maxRounds,
   timerSeconds,
-  isSpinning,
+  isSpinning: _isSpinning,
   candidates,
   selectedCandidate,
   stoppedCoordinate,
@@ -78,40 +79,73 @@ export default function StopTheEarthHUD({
     return { label: '🌐 GLOBAL ATTEMPT', color: 'from-gray-600 to-gray-700 text-white' };
   };
 
+  const isSpinningPhase = phase === 'stop-the-earth-spin';
+
   return (
-    <div className="fixed inset-0 pointer-events-none z-[50] flex flex-col justify-between p-3 sm:p-6 select-none font-sans">
-      {/* Top Header Status Bar */}
-      <div className="w-full max-w-xl mx-auto flex items-center justify-between gap-2 pointer-events-auto">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onExit}
-            className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white text-xs font-bold transition-colors cursor-pointer shadow-lg"
-          >
-            ← Exit
-          </button>
-          <div className="px-3 py-1.5 rounded-xl bg-cyan-950/70 backdrop-blur-md border border-cyan-500/30 text-cyan-300 text-xs font-black tracking-wide flex items-center gap-1.5 shadow-lg">
-            <span>⏱️</span>
-            <span>STOP THE EARTH</span>
+    <div className="fixed inset-0 pointer-events-none z-[50] flex flex-col justify-between p-3 sm:p-6 select-none font-sans overflow-hidden">
+      {/* ───────────────── TOP HEADER & TIMER (ABOVE GLOBE) ───────────────── */}
+      <div className="w-full max-w-xl mx-auto flex flex-col items-center gap-2 pointer-events-none">
+        {/* Top Status Bar with Exit & Score */}
+        <div className="w-full flex items-center justify-between gap-2 pointer-events-none">
+          <div className="flex items-center gap-2 pointer-events-auto">
+            <button
+              onClick={onExit}
+              className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white/70 hover:text-white text-xs font-bold transition-colors cursor-pointer shadow-lg"
+            >
+              ← Exit
+            </button>
+            <div className="px-3 py-1.5 rounded-xl bg-cyan-950/70 backdrop-blur-md border border-cyan-500/30 text-cyan-300 text-xs font-black tracking-wide flex items-center gap-1.5 shadow-lg">
+              <span>⏱️</span>
+              <span>STOP THE EARTH</span>
+            </div>
+          </div>
+
+          {/* Round & Score Pill */}
+          <div className="flex items-center gap-2 pointer-events-none">
+            {streak > 1 && (
+              <div className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black flex items-center gap-1 shadow-lg">
+                <span>🔥</span>
+                <span>{streak}x</span>
+              </div>
+            )}
+            <div className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-lg">
+              <span className="text-white/40">Score: </span>
+              <span className="text-cyan-400 font-black">{totalScore.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
-        {/* Round & Score Pill */}
-        <div className="flex items-center gap-2">
-          {streak > 1 && (
-            <div className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black flex items-center gap-1">
-              <span>🔥</span>
-              <span>{streak}x</span>
+        {/* Big Prominent Countdown Timer (Visually Above Globe, 100% Display-Only, NEVER intercepts clicks) */}
+        {isSpinningPhase && (
+          <motion.div
+            key="spinning-timer-header"
+            initial={{ opacity: 0, scale: 0.9, y: -15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col items-center mt-2 pointer-events-none select-none"
+          >
+            <span className="text-6xl sm:text-7xl md:text-8xl font-black font-mono tracking-tight text-cyan-300 drop-shadow-[0_0_35px_rgba(0,229,255,0.85)]">
+              {timerSeconds.toFixed(1)}s
+            </span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-400/40 mt-1 shadow-[0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-md">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+                STOP THE EARTH
+              </span>
+              <span className="text-[10px] text-white/30">|</span>
+              <span className="text-[10px] font-bold text-white/70">Round {round} of {maxRounds}</span>
             </div>
-          )}
-          <div className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-lg">
-            <span className="text-white/40">Score: </span>
-            <span className="text-cyan-400 font-black">{totalScore.toLocaleString()}</span>
-          </div>
-        </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* Main Center State Displays */}
-      <div className="w-full max-w-md mx-auto my-auto pointer-events-auto">
+      {/* ───────────────── CENTER VIEWPORT ─────────────────
+          CRITICAL: During spinning phase, this center area is 100% EMPTY.
+          NO overlay, NO card, NO button blocks the 3D rotating Globe.
+          Only start, stopped/select, result, and summary cards render here.
+      */}
+      <div className="w-full max-w-md mx-auto my-auto pointer-events-none">
         <AnimatePresence mode="wait">
           {/* Phase 1: Start Screen */}
           {phase === 'stop-the-earth-start' && (
@@ -120,7 +154,7 @@ export default function StopTheEarthHUD({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="glass rounded-3xl border border-cyan-500/30 p-5 sm:p-6 text-center space-y-4 shadow-[0_0_60px_rgba(0,229,255,0.2)] backdrop-blur-2xl"
+              className="glass rounded-3xl border border-cyan-500/30 p-5 sm:p-6 text-center space-y-4 shadow-[0_0_60px_rgba(0,229,255,0.2)] backdrop-blur-2xl pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(8,18,35,0.94) 0%, rgba(5,10,22,0.96) 100%)' }}
             >
               <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(0,229,255,0.25)]">
@@ -131,18 +165,18 @@ export default function StopTheEarthHUD({
                   STOP THE EARTH
                 </h3>
                 <p className="text-xs text-white/60 mt-2 leading-relaxed">
-                  The Earth rotates rapidly for 5 seconds. Freeze the planet with <strong className="text-cyan-300">ONE TAP</strong>, then identify your exact global landing coordinates.
+                  The Earth rotates rapidly. Stop the planet by <strong className="text-cyan-300">CLICKING/TAPPING DIRECTLY ON THE GLOBE</strong>, then identify your landing coordinates!
                 </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 py-1 text-left">
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
                   <span className="text-lg block">🌀</span>
-                  <span className="text-[10px] font-bold text-white/80 block mt-1">5s Rapid Spin</span>
+                  <span className="text-[10px] font-bold text-white/80 block mt-1">Rapid Spin</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                  <span className="text-lg block">🎯</span>
-                  <span className="text-[10px] font-bold text-white/80 block mt-1">One-Click Stop</span>
+                  <span className="text-lg block">🌎</span>
+                  <span className="text-[10px] font-bold text-white/80 block mt-1">Tap Globe</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
                   <span className="text-lg block">📍</span>
@@ -172,67 +206,39 @@ export default function StopTheEarthHUD({
             <motion.div
               key="countdown"
               initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: [1, 1.2, 1], opacity: 1 }}
+              animate={{ scale: [1, 1.25, 1], opacity: 1 }}
               exit={{ scale: 1.5, opacity: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-center"
+              className="text-center pointer-events-none select-none"
             >
-              <span className="text-7xl sm:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-400 drop-shadow-[0_0_30px_rgba(0,229,255,0.6)]">
+              <span className="text-7xl sm:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-400 drop-shadow-[0_0_40px_rgba(0,229,255,0.7)]">
                 READY!
               </span>
             </motion.div>
           )}
 
-          {/* Phase 3: Spinning Active HUD */}
-          {phase === 'stop-the-earth-spin' && (
-            <motion.div
-              key="spinning-active"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="glass rounded-3xl border border-cyan-400/40 p-5 text-center space-y-4 shadow-[0_0_80px_rgba(0,229,255,0.3)] backdrop-blur-2xl"
-              style={{ background: 'linear-gradient(135deg, rgba(5,15,30,0.92) 0%, rgba(2,6,15,0.95) 100%)' }}
-            >
-              <div className="flex items-center justify-between text-xs font-bold text-white/50 border-b border-white/10 pb-2">
-                <span>Round {round} of {maxRounds}</span>
-                <span className="text-cyan-400 animate-pulse uppercase tracking-wider font-extrabold">● ROTATING</span>
-              </div>
-
-              {/* Big High-Visibility Timer */}
-              <div className="py-2">
-                <span className="text-5xl sm:text-6xl font-black font-mono text-cyan-300 drop-shadow-[0_0_20px_rgba(0,229,255,0.7)]">
-                  {timerSeconds.toFixed(1)}s
-                </span>
-                <p className="text-xs text-white/60 mt-1 uppercase tracking-widest font-bold">
-                  Tap the Earth or press Stop below
-                </p>
-              </div>
-
-              {/* Massive Stop Button */}
-              <button
-                onClick={onStop}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-red-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-white font-black text-base tracking-widest uppercase transition-all shadow-[0_0_40px_rgba(239,68,68,0.5)] cursor-pointer active:scale-95 animate-pulse"
-              >
-                🛑 STOP THE EARTH!
-              </button>
-            </motion.div>
-          )}
-
-          {/* Phase 4: Location Selection */}
+          {/* Phase 4: Location Selection (Shown after globe is stopped) */}
           {(phase === 'stop-the-earth-stopped' || phase === 'stop-the-earth-select') && (
             <motion.div
               key="location-select"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="glass rounded-3xl border border-white/10 p-5 space-y-4 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+              className="glass rounded-3xl border border-white/10 p-5 space-y-4 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(8,15,30,0.96) 0%, rgba(4,8,18,0.98) 100%)' }}
             >
               <div className="text-center">
-                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  EARTH STOPPED
-                </span>
-                <h4 className="text-lg font-black text-white mt-1.5">Where did you stop?</h4>
+                <div className="flex items-center justify-center gap-2 mb-1.5">
+                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    EARTH STOPPED
+                  </span>
+                  {timerSeconds > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold text-white/60 bg-white/5 border border-white/10">
+                      ⏱ {timerSeconds.toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-lg font-black text-white mt-1">Where did you stop?</h4>
                 <p className="text-xs text-white/50 font-mono mt-0.5">
                   Coordinates: {formatCoord(stoppedCoordinate)}
                 </p>
@@ -281,7 +287,7 @@ export default function StopTheEarthHUD({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass rounded-3xl border border-cyan-500/30 p-5 sm:p-6 text-center space-y-4 shadow-[0_0_60px_rgba(0,229,255,0.25)] backdrop-blur-2xl"
+              className="glass rounded-3xl border border-cyan-500/30 p-5 sm:p-6 text-center space-y-4 shadow-[0_0_60px_rgba(0,229,255,0.25)] backdrop-blur-2xl pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(8,18,35,0.96) 0%, rgba(5,10,22,0.98) 100%)' }}
             >
               {/* Badge */}
@@ -322,7 +328,7 @@ export default function StopTheEarthHUD({
               <div className="pt-2 flex gap-2">
                 <button
                   onClick={onNextRound}
-                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-300 hover:to-cyan-400 text-black font-black text-xs tracking-wider uppercase transition-all shadow-lg cursor-pointer"
+                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-500 hover:from-emerald-300 hover:to-cyan-400 text-black font-black text-xs tracking-wider uppercase transition-all shadow-lg cursor-pointer active:scale-95"
                 >
                   {round < maxRounds ? 'NEXT ROUND →' : 'VIEW FINAL SCORE →'}
                 </button>
@@ -337,7 +343,7 @@ export default function StopTheEarthHUD({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass rounded-3xl border border-cyan-500/40 p-6 text-center space-y-4 shadow-[0_0_80px_rgba(0,229,255,0.3)] backdrop-blur-2xl"
+              className="glass rounded-3xl border border-cyan-500/40 p-6 text-center space-y-4 shadow-[0_0_80px_rgba(0,229,255,0.3)] backdrop-blur-2xl pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(8,18,35,0.98) 0%, rgba(3,8,18,0.99) 100%)' }}
             >
               <span className="text-5xl block">🏆</span>
@@ -360,7 +366,7 @@ export default function StopTheEarthHUD({
               <div className="flex gap-2">
                 <button
                   onClick={onShare}
-                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black font-black text-xs tracking-wider uppercase transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black font-black text-xs tracking-wider uppercase transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   <span>📤</span>
                   <span>SHARE SCORECARD</span>
@@ -377,11 +383,27 @@ export default function StopTheEarthHUD({
         </AnimatePresence>
       </div>
 
-      {/* Bottom Hint / Helper */}
-      <div className="w-full text-center pointer-events-auto">
-        <span className="text-[11px] text-white/40 font-medium">
-          MooEarth Live Play Earth Engine 2.0 · 100% Planetary Coordinates
-        </span>
+      {/* ───────────────── BOTTOM FLOATING GUIDANCE (BELOW GLOBE) ───────────────── */}
+      <div className="w-full text-center pointer-events-none pb-2 sm:pb-4 select-none">
+        {isSpinningPhase ? (
+          <motion.div
+            key="spinning-instruction"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 15 }}
+            transition={{ duration: 0.2 }}
+            className="inline-flex items-center gap-2.5 px-6 py-2.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 backdrop-blur-md shadow-[0_0_35px_rgba(0,229,255,0.45)] animate-pulse"
+          >
+            <span className="text-xl">👇</span>
+            <span className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">
+              TAP THE EARTH TO STOP
+            </span>
+          </motion.div>
+        ) : (
+          <span className="text-[11px] text-white/40 font-medium">
+            MooEarth Live Play Earth Engine 2.0 · 100% Planetary Coordinates
+          </span>
+        )}
       </div>
     </div>
   );
