@@ -54,11 +54,14 @@ export async function GET(request: NextRequest) {
 
     const { events, status } = result;
     
-    // Process summaries concurrently
+    // Process summaries concurrently: only summarize if missing or short (< 20 chars)
     const processedEvents = await Promise.all(
       events.map(async (event) => {
+        if (event.summary && event.summary.trim().length > 20) {
+          return event;
+        }
         const aiSummary = await generateEventSummary(event);
-        return { ...event, summary: aiSummary };
+        return { ...event, summary: aiSummary || event.title };
       })
     );
 
@@ -84,7 +87,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(responsePayload, {
       headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'Cache-Control': refresh
+          ? 'no-store, max-age=0, must-revalidate'
+          : 'public, s-maxage=60, stale-while-revalidate=120',
       }
     });
   } catch (error) {

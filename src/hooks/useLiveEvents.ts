@@ -68,12 +68,11 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
             setApiStatus(data.status);
             
             if (data.status.freshness && !forceRefresh && !hasForceRefreshedRef.current) {
-              const values = Object.values(data.status.freshness) as any[];
-              const hasStale = values.some((val: any) => val.status === 'Stale');
-              if (hasStale) {
-                console.log('useLiveEvents: Stale category detected, forcing refresh...');
+              const currentCat = activeCategory || 'breaking';
+              const catFreshness = data.status.freshness[currentCat];
+              if (catFreshness && catFreshness.status === 'Stale') {
+                console.log(`useLiveEvents: Stale category (${currentCat}) detected, forcing refresh...`);
                 hasForceRefreshedRef.current = true;
-                // Re-fetch immediately with refresh=true
                 fetchEvents(true);
               }
             }

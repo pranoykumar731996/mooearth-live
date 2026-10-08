@@ -10,6 +10,11 @@ let lastOpenAIFailure = 0;
 const OPENAI_COOLDOWN_MS = 60 * 1000; // 60 seconds cooldown
 
 export async function generateEventSummary(event: WorldEvent): Promise<string> {
+  // If event already has a valid summary, return it immediately without remote latency
+  if (event.summary && event.summary.trim().length > 20) {
+    return event.summary;
+  }
+
   // If we already summarized this event, return the cached summary
   if (summaryCache.has(event.id)) {
     return summaryCache.get(event.id)!;

@@ -122,7 +122,7 @@ export async function fetchAllEvents(category?: string | null, refresh = false, 
     events,
     status: {
       newsActive: newsResult.active,
-      footballActive: false,
+      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
     }
   };
 }
@@ -147,7 +147,7 @@ export async function searchAllEvents(query: string, category?: string | null, r
     events: newsEvents,
     status: {
       newsActive: newsResult.active,
-      footballActive: false
+      footballActive: newsEvents.some(e => e.category === 'football' || e.category === 'sports'),
     }
   };
 }
