@@ -212,7 +212,7 @@ async function runNewsEngineTests() {
     publisher: 'Reuters',
   });
   assert(synthesisResolution.accessLevel === 'synthesis', 'Substantial summary resolved to synthesis tier');
-  assert(synthesisResolution.extractedKeyFacts?.length! >= 3, 'Key facts synthesized for synthesis tier');
+  assert((synthesisResolution.extractedKeyFacts?.length ?? 0) >= 3, 'Key facts synthesized for synthesis tier');
 
   // Tier 3: Publisher Dispatch (Paywalled / Minimal)
   const dispatchResolution = resolveArticleAccess({

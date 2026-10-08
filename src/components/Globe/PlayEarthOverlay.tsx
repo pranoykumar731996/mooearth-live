@@ -43,6 +43,13 @@ import {
   generateNextChallenge,
   getNeighbours,
 } from '@/engines/game';
+import StopTheEarthHUD from './StopTheEarth/StopTheEarthHUD';
+import {
+  resolveLocationFromCoordinates,
+  generateCandidateOptions,
+} from '@/engines/game/providers/StopTheEarthProvider';
+import { StopTheEarthCandidate } from '@/engines/game/types';
+import { haversineDistance } from '@/engines/game/ValidationEngine';
 
 const TIMER_SECONDS = 15;
 const STREAK_BONUS_MULTIPLIER = 1.5;
@@ -59,7 +66,7 @@ interface PlayEarthOverlayProps {
   username: string;
   isInline?: boolean;
   initialMode?: PlayEarthMode | null;
-  lastGlobeTap?: { country: string; timestamp: number } | null;
+  lastGlobeTap?: { country: string; timestamp: number; coordinates?: { lat: number; lng: number } } | null;
 }
 
 
@@ -496,6 +503,21 @@ export default function PlayEarthOverlay({
   const [engineSelectedChoice, setEngineSelectedChoice] = useState<number | null>(null);
   const [engineNeighbors, setEngineNeighbors] = useState<string[]>([]);
 
+  // Stop The Earth States
+  const [steRound, setSteRound] = useState(1);
+  const [steMaxRounds] = useState(5);
+  const [steTimer, setSteTimer] = useState(5.0);
+  const [steIsSpinning, setSteIsSpinning] = useState(false);
+  const [steCandidates, setSteCandidates] = useState<StopTheEarthCandidate[]>([]);
+  const [steSelectedCandidate, setSteSelectedCandidate] = useState<StopTheEarthCandidate | null>(null);
+  const [steStoppedCoord, setSteStoppedCoord] = useState<{ lat: number; lng: number } | null>(null);
+  const [steResolvedLocation, setSteResolvedLocation] = useState<StopTheEarthCandidate | null>(null);
+  const [steDistanceKm, setSteDistanceKm] = useState<number | null>(null);
+  const [steAccuracy, setSteAccuracy] = useState<number | null>(null);
+  const [steRoundScore, setSteRoundScore] = useState(0);
+  const [steTotalScore, setSteTotalScore] = useState(0);
+  const [steStreak, setSteStreak] = useState(0);
+
   // Automatically expand HUD whenever a new question, challenge, or phase is initiated
   useEffect(() => {
     setIsHudMinimized(false);
@@ -676,6 +698,9 @@ export default function PlayEarthOverlay({
     } else if (mode === 'daily') {
       setActiveMode('daily');
       setPhase('daily-earth-start');
+    } else if (mode === 'stop-the-earth') {
+      setActiveMode('stop-the-earth');
+      setPhase('stop-the-earth-start');
     } else {
       setActiveMode(mode);
       setPhase('engine-loading');
@@ -700,6 +725,9 @@ export default function PlayEarthOverlay({
     } else if (mode === 'daily') {
       setActiveMode('daily');
       setPhase('daily-earth-start');
+    } else if (mode === 'stop-the-earth') {
+      setActiveMode('stop-the-earth');
+      setPhase('stop-the-earth-start');
     } else {
       setActiveMode(mode);
       setPhase('engine-loading');
@@ -803,6 +831,8 @@ export default function PlayEarthOverlay({
           setPhase('capital-challenge-start');
         } else if (initialMode === 'daily') {
           setPhase('daily-earth-start');
+        } else if (initialMode === 'stop-the-earth') {
+          setPhase('stop-the-earth-start');
         } else if (
           initialMode === 'infinite' ||
           initialMode === 'globe-hunt' ||
@@ -1131,8 +1161,153 @@ export default function PlayEarthOverlay({
     return () => clearInterval(interval);
   }, [phase, engineChallenge, engineSelectedCountry, lastGlobeTap, selectedCountry, handleEngineAnswer]);
 
-  // Globe click listener for engine challenge & demo
+  // ── Stop The Earth Handlers ──
+
+  const handleStopTheEarthStart = useCallback(() => {
+    onPlaySound();
+    setPhase('stop-the-earth-countdown');
+    setTimeout(() => {
+      setPhase('stop-the-earth-spin');
+      setSteIsSpinning(true);
+      const timeForRound = Math.max(2.0, 5.5 - (steRound - 1) * 0.5);
+      setSteTimer(timeForRound);
+      setSteSelectedCandidate(null);
+    }, 700);
+  }, [onPlaySound, steRound]);
+
+  const handleStopTheEarthStop = useCallback((overrideCoord?: { lat: number; lng: number }) => {
+    setSteIsSpinning(false);
+    onPlaySound();
+
+    let coord = overrideCoord;
+    if (!coord && lastGlobeTap?.coordinates) {
+      coord = lastGlobeTap.coordinates;
+    }
+    if (!coord) {
+      const fallbackList = [
+        { lat: 35.6762, lng: 139.6503 }, // Tokyo, Japan
+        { lat: 48.8566, lng: 2.3522 },   // Paris, France
+        { lat: -22.9068, lng: -43.1729 }, // Rio de Janeiro, Brazil
+        { lat: 28.6139, lng: 77.2090 },  // New Delhi, India
+        { lat: -33.8688, lng: 151.2093 } // Sydney, Australia
+      ];
+      coord = fallbackList[(steRound - 1) % fallbackList.length];
+    }
+
+    const loc = resolveLocationFromCoordinates(coord);
+    const difficultyLevel = steRound > 3 ? 'hard' : steRound > 1 ? 'medium' : 'easy';
+    const cands = generateCandidateOptions(loc, difficultyLevel);
+
+    setSteStoppedCoord(coord);
+    setSteResolvedLocation(loc);
+    setSteCandidates(cands);
+    setPhase('stop-the-earth-select');
+  }, [lastGlobeTap, onPlaySound, steRound]);
+
+  const handleStopTheEarthSelectCandidate = useCallback((candidate: StopTheEarthCandidate) => {
+    if (!steResolvedLocation) return;
+    setSteSelectedCandidate(candidate);
+
+    const dist = Math.round(haversineDistance(candidate.coordinates, steResolvedLocation.coordinates));
+    setSteDistanceKm(dist);
+
+    const acc = Math.max(0, Math.min(100, 100 - (dist / 20)));
+    setSteAccuracy(acc);
+
+    const isMatch = candidate.name.toLowerCase() === steResolvedLocation.name.toLowerCase() ||
+      (candidate.country && steResolvedLocation.country && candidate.country.toLowerCase() === steResolvedLocation.country.toLowerCase());
+
+    let pts = 0;
+    if (dist < 15) pts = 1500;
+    else if (dist < 50) pts = 1000;
+    else if (dist < 150) pts = 800;
+    else if (dist < 350) pts = 600;
+    else if (dist < 800) pts = 400;
+    else pts = 200;
+
+    if (isMatch) pts += 250;
+
+    setSteRoundScore(pts);
+    setSteTotalScore(prev => prev + pts);
+
+    if (dist < 350 || isMatch) {
+      onCorrectSound();
+      setSteStreak(prev => prev + 1);
+      setXpGained(pts);
+      setShowXpFloat(true);
+      setTimeout(() => setShowXpFloat(false), 2000);
+    } else {
+      onWrongSound();
+      setSteStreak(0);
+    }
+
+    setPhase('stop-the-earth-result');
+  }, [steResolvedLocation, onCorrectSound, onWrongSound]);
+
+  const handleStopTheEarthNextRound = useCallback(() => {
+    onPlaySound();
+    if (steRound < steMaxRounds) {
+      const nextR = steRound + 1;
+      setSteRound(nextR);
+      setPhase('stop-the-earth-countdown');
+      setTimeout(() => {
+        setPhase('stop-the-earth-spin');
+        setSteIsSpinning(true);
+        const timeForRound = Math.max(2.0, 5.5 - (nextR - 1) * 0.5);
+        setSteTimer(timeForRound);
+        setSteSelectedCandidate(null);
+      }, 700);
+    } else {
+      setPhase('stop-the-earth-summary');
+    }
+  }, [steRound, steMaxRounds, onPlaySound]);
+
+  const handleStopTheEarthRestart = useCallback(() => {
+    onPlaySound();
+    setSteRound(1);
+    setSteTotalScore(0);
+    setSteStreak(0);
+    setSteSelectedCandidate(null);
+    setSteStoppedCoord(null);
+    setSteResolvedLocation(null);
+    setPhase('stop-the-earth-start');
+  }, [onPlaySound]);
+
+  const handleStopTheEarthShare = useCallback(async () => {
+    onPlaySound();
+    const shareText = `⏱️ STOP THE EARTH\nScore: ${steTotalScore.toLocaleString()} pts\nStreak: ${steStreak}x\nRounds: ${steMaxRounds}\nCan you beat my stop?`;
+    await shareContent({
+      title: 'Stop The Earth — MooEarth Live',
+      text: shareText,
+      url: 'https://www.mooearth.live/games/stop-the-earth',
+    });
+  }, [steTotalScore, steStreak, steMaxRounds, onPlaySound]);
+
+  // Stop The Earth timer effect
   useEffect(() => {
+    if (phase !== 'stop-the-earth-spin' || !steIsSpinning) return;
+
+    const interval = setInterval(() => {
+      setSteTimer(prev => {
+        if (prev <= 0.1) {
+          clearInterval(interval);
+          handleStopTheEarthStop();
+          return 0;
+        }
+        return Math.max(0, parseFloat((prev - 0.1).toFixed(1)));
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [phase, steIsSpinning, handleStopTheEarthStop]);
+
+  // Globe click listener for engine challenge, stop the earth & demo
+  useEffect(() => {
+    if (phase === 'stop-the-earth-spin') {
+      handleStopTheEarthStop(lastGlobeTap?.coordinates);
+      return;
+    }
+
     const tapped = lastGlobeTap?.country || selectedCountry;
     if (!tapped) return;
 
@@ -1914,6 +2089,7 @@ export default function PlayEarthOverlay({
     onPlaySound();
     setActiveMode(null);
     setDemoState(null);
+    setSteIsSpinning(false);
     setPhase('intro');
   }, [onPlaySound]);
 
@@ -4061,6 +4237,31 @@ export default function PlayEarthOverlay({
                   </button>
                 </div>
 
+                {/* Stop The Earth (New Game) */}
+                <div
+                  onClick={() => handleModeClick('stop-the-earth')}
+                  className="p-4 rounded-2xl bg-gradient-to-br from-cyan-950/60 via-blue-950/50 to-indigo-950/60 border border-cyan-400/50 hover:border-cyan-300 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer col-span-1 sm:col-span-2 group relative overflow-hidden shadow-[0_0_30px_rgba(0,229,255,0.15)]"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl group-hover:scale-110 transition-transform block">⏱️</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-cyan-400 text-black shadow-sm animate-pulse">
+                      NEW GAME
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-200 to-indigo-200 block mt-1">
+                      Stop the Earth
+                    </span>
+                    <span className="text-xs text-white/60 leading-snug">
+                      5-second rapid Earth spin. Stop the rotating globe with one tap and identify your landing coordinates!
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-cyan-400/80 font-bold">5s Reflex · 100% Planetary Surface · Geodesic Distance</span>
+                    <span className="text-xs text-cyan-300 font-extrabold group-hover:translate-x-1 transition-transform">PLAY NOW ➔</span>
+                  </div>
+                </div>
+
                 {/* Infinite Earth Game Engine Modes */}
                 <div
                   onClick={() => handleModeClick('infinite')}
@@ -4947,6 +5148,34 @@ export default function PlayEarthOverlay({
         {phase === 'engine-result' && renderEngineResult(false)}
         {phase === 'engine-summary' && renderEngineSummary(false)}
         {phase === 'demo' && renderPlayableDemo(false)}
+
+        {/* Phase: Stop The Earth Game Views */}
+        {phase.startsWith('stop-the-earth-') && (
+          <StopTheEarthHUD
+            phase={phase}
+            onStart={handleStopTheEarthStart}
+            onStop={() => handleStopTheEarthStop()}
+            onSelectCandidate={handleStopTheEarthSelectCandidate}
+            onNextRound={handleStopTheEarthNextRound}
+            onRestart={handleStopTheEarthRestart}
+            onExit={handleBackToModes}
+            onShare={handleStopTheEarthShare}
+            round={steRound}
+            maxRounds={steMaxRounds}
+            timerSeconds={steTimer}
+            isSpinning={steIsSpinning}
+            candidates={steCandidates}
+            selectedCandidate={steSelectedCandidate}
+            stoppedCoordinate={steStoppedCoord}
+            resolvedLocation={steResolvedLocation}
+            distanceKm={steDistanceKm}
+            accuracyPercent={steAccuracy}
+            roundScore={steRoundScore}
+            totalScore={steTotalScore}
+            streak={steStreak}
+            onPlaySound={onPlaySound}
+          />
+        )}
       </AnimatePresence>
 
       {/* Badge Unlock Celebration Modal */}

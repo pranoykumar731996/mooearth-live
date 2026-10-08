@@ -153,7 +153,9 @@ export type PlayEarthMode =
   | 'weather-challenge'
   | 'news-detective'
   | 'border-escape'
-  | 'earthquake-hunt';
+  | 'earthquake-hunt'
+  // Stop the Earth
+  | 'stop-the-earth';
 
 /** Phase of the Play Earth game flow */
 export type PlayEarthPhase =
@@ -173,7 +175,15 @@ export type PlayEarthPhase =
   | 'engine-challenge'      // Active engine challenge (globe_tap, slider, etc.)
   | 'engine-result'         // Engine challenge result with scoring breakdown
   | 'engine-summary'        // Engine session summary
-  | 'demo';                 // Interactive playable onboarding demo ("Learn by Doing")
+  | 'demo'                  // Interactive playable onboarding demo ("Learn by Doing")
+  // Stop the Earth Game Phases
+  | 'stop-the-earth-start'
+  | 'stop-the-earth-countdown'
+  | 'stop-the-earth-spin'
+  | 'stop-the-earth-stopped'
+  | 'stop-the-earth-select'
+  | 'stop-the-earth-result'
+  | 'stop-the-earth-summary';
 
 export interface ModeStats {
   gamesPlayed: number;

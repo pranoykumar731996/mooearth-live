@@ -35,6 +35,8 @@ export type ChallengeType =
   | 'DAY_NIGHT_CHALLENGE'
   // AI Mission Engine
   | 'AI_COMBINED_MISSION'
+  // Stop the Earth Engine
+  | 'STOP_THE_EARTH'
   // Legacy compatibility
   | 'CLASSIC_TRIVIA';
 
@@ -178,10 +180,37 @@ export type GameSessionMode =
   | 'news_detective'
   | 'article_quiz'
   | 'border_escape'
+  | 'stop_the_earth'
   // Legacy modes (existing Play Earth)
   | 'explorer'
   | 'flag'
   | 'capital';
+
+// ---- Stop the Earth Specific Contracts ----
+
+export interface StopTheEarthCandidate {
+  id: string;
+  name: string;
+  country?: string;
+  countryCode?: string;
+  flag?: string;
+  type: 'country' | 'city' | 'island' | 'ocean' | 'sea' | 'territory' | 'continent';
+  coordinates: GeoCoordinate;
+  distanceKm?: number;
+  description?: string;
+}
+
+export interface StopTheEarthPayload {
+  roundNumber: number;
+  maxRounds: number;
+  spinSpeed: number;
+  timeLimitSeconds: number;
+  target?: StopTheEarthCandidate;
+  candidates?: StopTheEarthCandidate[];
+  stoppedCoordinates?: GeoCoordinate;
+  resolvedLocation?: StopTheEarthCandidate;
+  isEarthshot?: boolean;
+}
 
 export interface GameSessionState {
   sessionId: string;

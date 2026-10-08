@@ -318,6 +318,22 @@ register({
   minimumDifficulty: 'easy',
 });
 
+// ── Stop the Earth Engine ──
+
+register({
+  type: 'STOP_THE_EARTH',
+  engine: 'geography',
+  label: 'Stop the Earth',
+  emoji: '⏱️',
+  description: 'Stop the rapidly spinning Earth with one click and pinpoint your landing coordinates.',
+  responseType: 'globe_point',
+  defaultTimeLimit: 5,
+  basePoints: { easy: 200, medium: 400, hard: 800, expert: 1500 },
+  enabled: true,
+  requiresLiveData: false,
+  minimumDifficulty: 'easy',
+});
+
 // ---- Public API ----
 
 /** Get a registry entry by challenge type */
