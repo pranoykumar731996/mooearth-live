@@ -112,7 +112,30 @@ for (const coord of testCandidateCoords) {
 
     const uniqueIds = new Set(candidates.map(c => c.id));
     assert(uniqueIds.size === 4, `All 4 candidate options are distinct (no duplicates) for ${resolved.name}`);
+
+    // Critical Requirement: Zero bare country options!
+    const countryOnlyCandidates = candidates.filter(c => c.type === 'country');
+    assert(countryOnlyCandidates.length === 0, `ZERO bare country options for ${resolved.name} (${diff}), found ${countryOnlyCandidates.length}`);
   }
+}
+
+// 5b. Auto-Spot Mystery Place Selection
+console.log('\n🎯 Testing Auto-Spot Mystery Place Selection...');
+import { getRandomMysteryPlace } from '../src/engines/game/providers/StopTheEarthProvider';
+
+const usedNames = new Set<string>();
+for (let r = 1; r <= 5; r++) {
+  const mystery = getRandomMysteryPlace(r, usedNames);
+  assert(Boolean(mystery && mystery.name), `Round ${r} mystery place exists: ${mystery.name}`);
+  assert(mystery.type !== 'country', `Round ${r} mystery place type is NOT country (${mystery.type})`);
+  assert(Boolean(mystery.coordinates?.lat && mystery.coordinates?.lng), `Round ${r} mystery place has coordinates`);
+  assert(!usedNames.has(mystery.name), `Round ${r} mystery place is not duplicated`);
+  usedNames.add(mystery.name);
+
+  const mysteryCands = generateCandidateOptions(mystery, 'medium');
+  assert(mysteryCands.length === 4, `Mystery candidate options count is 4 for ${mystery.name}`);
+  assert(mysteryCands.some(c => c.name === mystery.name), `Mystery place is in candidate options`);
+  assert(mysteryCands.every(c => c.type !== 'country'), `All mystery candidate options are places, not bare countries`);
 }
 
 // 6. Game State Machine & Interaction Simulation Tests

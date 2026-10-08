@@ -13,6 +13,7 @@ import { GeoCoordinate, StopTheEarthCandidate, StopTheEarthPayload } from '../ty
 import { haversineDistance } from '../ValidationEngine';
 import { CANONICAL_COUNTRIES, CountryRecord } from '@/data/countries';
 import { locations, LocationRecord } from '@/data/locations';
+import { ALL_WORLD_PLACES, findNearestWorldPlace, getCuratedMysteryPlaces, WorldPlace } from '@/data/worldPlaces';
 
 // ---- Verified Major Ocean & Sea Basins ----
 
@@ -366,51 +367,67 @@ export function resolveLocationFromCoordinates(coord: GeoCoordinate): StopTheEar
   // 1. Check verified territories, polar zones, and island chains
   const territory = findNearestTerritory(safeCoord);
   if (territory) {
+    const territoryDist = Math.round(haversineDistance(safeCoord, { lat: territory.lat, lng: territory.lng }));
     return {
       id: territory.id,
       name: territory.name,
       country: territory.sovereignty || territory.name,
       countryCode: territory.id.slice(5).toUpperCase(),
+      flag: territory.flag,
       type: territory.type,
       coordinates: safeCoord,
-      distanceKm: Math.round(haversineDistance(safeCoord, { lat: territory.lat, lng: territory.lng })),
+      distanceKm: territoryDist,
       description: territory.sovereignty 
         ? `${territory.type === 'continent' ? 'Continental zone' : 'Territory'} under jurisdiction of ${territory.sovereignty}`
         : `${territory.name}`,
     };
   }
 
-  // 2. Proximity to major cities (< 200 km)
-  const cityResult = findNearestCity(safeCoord);
-  if (cityResult && cityResult.distanceKm <= 200) {
+  // 2. Check enclosed regional seas / gulfs
+  const regionalWater = VERIFIED_WATER_BODIES.find(
+    wb =>
+      safeCoord.lat >= wb.minLat &&
+      safeCoord.lat <= wb.maxLat &&
+      safeCoord.lng >= wb.minLng &&
+      safeCoord.lng <= wb.maxLng &&
+      wb.type === 'sea'
+  );
+
+  // 3. Find nearest specific world place (Capitals, Metropolises, Wonders, Landmarks)
+  const placeResult = findNearestWorldPlace(safeCoord);
+
+  // If in a regional sea and more than 150km away from any land anchor, resolve to the sea
+  if (regionalWater && placeResult.distanceKm > 150) {
+    const waterDist = Math.round(haversineDistance(safeCoord, { lat: regionalWater.centerLat, lng: regionalWater.centerLng }));
     return {
-      id: cityResult.location.id,
-      name: `${cityResult.location.name}, ${cityResult.location.country}`,
-      country: cityResult.location.country,
-      countryCode: cityResult.location.countryCode,
-      type: 'city',
+      id: regionalWater.id,
+      name: regionalWater.name,
+      country: undefined,
+      countryCode: undefined,
+      type: regionalWater.type,
       coordinates: safeCoord,
-      distanceKm: cityResult.distanceKm,
-      description: `Approx. ${cityResult.distanceKm} km from ${cityResult.location.name}`,
+      distanceKm: waterDist,
+      description: `Maritime waters of the ${regionalWater.name}`,
     };
   }
 
-  // 3. Proximity to sovereign nations (< 650 km from nearest anchor or centroid)
-  const countryResult = findNearestCountry(safeCoord);
-  if (countryResult.distanceKm <= 650) {
+  // If near any landmass or populated place (< 1200 km):
+  // GUARANTEE a specific place name (City / Landmark / Capital) - NEVER a bare country name!
+  if (placeResult.distanceKm <= 1200) {
     return {
-      id: countryResult.country.id,
-      name: countryResult.country.name,
-      country: countryResult.country.name,
-      countryCode: countryResult.country.id.toUpperCase(),
-      type: 'country',
+      id: placeResult.place.id,
+      name: placeResult.place.name,
+      country: placeResult.place.country,
+      countryCode: placeResult.place.countryCode,
+      flag: placeResult.place.flag,
+      type: placeResult.place.type,
       coordinates: safeCoord,
-      distanceKm: countryResult.distanceKm,
-      description: `Territory of ${countryResult.country.name} (Capital: ${countryResult.country.capital})`,
+      distanceKm: placeResult.distanceKm,
+      description: placeResult.place.description,
     };
   }
 
-  // 4. Deep ocean or regional sea location (> 650 km from land anchors)
+  // 4. Deep ocean or remote maritime basin (> 1200 km from land anchors)
   const waterResult = findNearestWaterBody(safeCoord);
   return {
     id: waterResult.waterBody.id,
@@ -420,7 +437,7 @@ export function resolveLocationFromCoordinates(coord: GeoCoordinate): StopTheEar
     type: waterResult.waterBody.type,
     coordinates: safeCoord,
     distanceKm: waterResult.distanceKm,
-    description: `Maritime waters of the ${waterResult.waterBody.name}`,
+    description: `Maritime basin of the ${waterResult.waterBody.name}`,
   };
 }
 
@@ -428,6 +445,7 @@ export function resolveLocationFromCoordinates(coord: GeoCoordinate): StopTheEar
  * Generates 4 candidate options for the player.
  * THE TRUE STOPPED LOCATION IS 100% MATHEMATICALLY GUARANTEED TO BE ONE OF THE OPTIONS.
  * 3 distractors are selected based on geographic plausibility.
+ * ZERO BARE COUNTRY OPTIONS: Distractors are always matching places (cities, landmarks, islands).
  * Uses a robust Fisher-Yates shuffle to randomize placement.
  */
 export function generateCandidateOptions(
@@ -436,50 +454,65 @@ export function generateCandidateOptions(
 ): StopTheEarthCandidate[] {
   const distractors: StopTheEarthCandidate[] = [];
 
-  if (trueLocation.type === 'country' || trueLocation.type === 'city') {
-    // Choose other verified countries from CANONICAL_COUNTRIES
-    const candidatePool = CANONICAL_COUNTRIES.filter(
-      c => c.name.toLowerCase() !== (trueLocation.country || trueLocation.name).toLowerCase()
+  const isSpecificPlace = 
+    trueLocation.type === 'city' || 
+    trueLocation.type === 'capital' || 
+    trueLocation.type === 'landmark' || 
+    trueLocation.type === 'wonder' || 
+    trueLocation.type === 'natural' ||
+    trueLocation.type === 'country'; // Failsafe guard
+
+  if (isSpecificPlace) {
+    // Pick other specific places from ALL_WORLD_PLACES
+    // Exclude the true location
+    const candidatePool = ALL_WORLD_PLACES.filter(
+      p => p.name.toLowerCase() !== trueLocation.name.toLowerCase() &&
+           p.id !== trueLocation.id
     );
 
-    // Sort by distance to find nearby distractors
+    // Sort by distance to find geographically plausible distractors
     const sortedByDistance = candidatePool
-      .map(c => ({
-        country: c,
-        distance: haversineDistance(trueLocation.coordinates, { lat: c.coordinates.lat, lng: c.coordinates.lng }),
+      .map(p => ({
+        place: p,
+        distance: haversineDistance(trueLocation.coordinates, p.coordinates),
       }))
       .sort((a, b) => a.distance - b.distance);
 
-    let picked: CountryRecord[];
+    let picked: WorldPlace[];
     if (roundDifficulty === 'hard') {
-      picked = sortedByDistance.slice(0, 3).map(x => x.country);
+      picked = [
+        sortedByDistance[0]?.place || candidatePool[0],
+        sortedByDistance[1]?.place || candidatePool[1],
+        sortedByDistance[2]?.place || candidatePool[2],
+      ];
     } else if (roundDifficulty === 'medium') {
       picked = [
-        sortedByDistance[1]?.country || sortedByDistance[0].country,
-        sortedByDistance[3]?.country || sortedByDistance[2].country,
-        sortedByDistance[6]?.country || sortedByDistance[4].country,
+        sortedByDistance[1]?.place || candidatePool[0],
+        sortedByDistance[3]?.place || candidatePool[1],
+        sortedByDistance[6]?.place || candidatePool[2],
       ];
     } else {
       picked = [
-        sortedByDistance[3]?.country || sortedByDistance[0].country,
-        sortedByDistance[8]?.country || sortedByDistance[2].country,
-        sortedByDistance[15]?.country || sortedByDistance[5].country,
+        sortedByDistance[2]?.place || candidatePool[0],
+        sortedByDistance[7]?.place || candidatePool[1],
+        sortedByDistance[14]?.place || candidatePool[2],
       ];
     }
 
-    for (const c of picked) {
+    for (const p of picked) {
       distractors.push({
-        id: c.id,
-        name: c.name,
-        country: c.name,
-        countryCode: c.id.toUpperCase(),
-        type: 'country',
-        coordinates: { lat: c.coordinates.lat, lng: c.coordinates.lng },
-        description: `Sovereign nation (Capital: ${c.capital})`,
+        id: p.id,
+        name: p.name,
+        country: p.country,
+        countryCode: p.countryCode,
+        flag: p.flag,
+        type: p.type,
+        coordinates: p.coordinates,
+        description: p.description,
       });
     }
   } else if (trueLocation.type === 'island' || trueLocation.type === 'territory' || trueLocation.type === 'continent') {
-    // Territory or island: distractors can include other territories/islands and nearby countries
+    // Other territories or islands
     const otherTerritories = VERIFIED_TERRITORIES.filter(t => t.name !== trueLocation.name);
     const sortedTerr = otherTerritories
       .map(t => ({
@@ -488,29 +521,18 @@ export function generateCandidateOptions(
       }))
       .sort((a, b) => a.dist - b.dist);
 
-    const pickedTerr = sortedTerr.slice(0, 2).map(x => x.t);
+    const pickedTerr = sortedTerr.slice(0, 3).map(x => x.t);
     for (const pt of pickedTerr) {
       distractors.push({
         id: pt.id,
         name: pt.name,
         country: pt.sovereignty,
         type: pt.type,
+        flag: pt.flag,
         coordinates: { lat: pt.lat, lng: pt.lng },
         description: pt.sovereignty ? `Territory of ${pt.sovereignty}` : pt.name,
       });
     }
-
-    // Add nearest sovereign country
-    const nearestC = findNearestCountry(trueLocation.coordinates);
-    distractors.push({
-      id: nearestC.country.id,
-      name: nearestC.country.name,
-      country: nearestC.country.name,
-      countryCode: nearestC.country.id.toUpperCase(),
-      type: 'country',
-      coordinates: { lat: nearestC.country.coordinates.lat, lng: nearestC.country.coordinates.lng },
-      description: `Nation approx. ${nearestC.distanceKm} km away`,
-    });
   } else {
     // Ocean / Sea true location: pick other oceans or regional seas
     const otherWaters = VERIFIED_WATER_BODIES.filter(w => w.name !== trueLocation.name);
@@ -521,28 +543,16 @@ export function generateCandidateOptions(
       }))
       .sort((a, b) => a.dist - b.dist);
 
-    const pickedWaters = sortedWaters.slice(0, 2).map(x => x.water);
+    const pickedWaters = sortedWaters.slice(0, 3).map(x => x.water);
     for (const pw of pickedWaters) {
       distractors.push({
         id: pw.id,
         name: pw.name,
         type: pw.type,
         coordinates: { lat: pw.centerLat, lng: pw.centerLng },
-        description: `Maritime region of the ${pw.name}`,
+        description: `Maritime basin of the ${pw.name}`,
       });
     }
-
-    // Plus nearest coastal country
-    const nearestC = findNearestCountry(trueLocation.coordinates);
-    distractors.push({
-      id: nearestC.country.id,
-      name: nearestC.country.name,
-      country: nearestC.country.name,
-      countryCode: nearestC.country.id.toUpperCase(),
-      type: 'country',
-      coordinates: { lat: nearestC.country.coordinates.lat, lng: nearestC.country.coordinates.lng },
-      description: `Coastal nation approx. ${nearestC.distanceKm} km away`,
-    });
   }
 
   // Combine true location + 3 distractors (ensuring exactly 4)
@@ -571,4 +581,32 @@ export function generateCandidateOptions(
   }
 
   return allFour;
+}
+
+/**
+ * Retrieves a curated mystery place for the Auto-Spot mode.
+ */
+export function getRandomMysteryPlace(
+  roundNumber: number,
+  previousNames: Set<string> = new Set()
+): StopTheEarthCandidate {
+  const curated = getCuratedMysteryPlaces().filter(p => !previousNames.has(p.name));
+  const pool = curated.length > 0 ? curated : ALL_WORLD_PLACES.filter(p => !previousNames.has(p.name));
+  const finalPool = pool.length > 0 ? pool : ALL_WORLD_PLACES;
+  
+  // Pick a random place from the pool
+  const randomIndex = Math.floor(Math.random() * finalPool.length);
+  const selectedPlace = finalPool[randomIndex];
+
+  return {
+    id: selectedPlace.id,
+    name: selectedPlace.name,
+    country: selectedPlace.country,
+    countryCode: selectedPlace.countryCode,
+    flag: selectedPlace.flag,
+    type: selectedPlace.type,
+    coordinates: selectedPlace.coordinates,
+    distanceKm: 0,
+    description: selectedPlace.description,
+  };
 }

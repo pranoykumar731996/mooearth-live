@@ -49,6 +49,7 @@ interface GlobeSceneProps {
   isStopTheEarthSpinning?: boolean;
   isStopTheEarthActive?: boolean;
   onStopTheEarthCoordCaptured?: (coord: { lat: number; lng: number; timestamp?: number }) => void;
+  stopTheEarthTargetCoord?: { lat: number; lng: number } | null;
   onInitGlobeApi?: (api: GlobeApi) => void;
 }
 // Generate a blue blueprint holographic grid texture dynamically at runtime via HTML Canvas
@@ -188,6 +189,7 @@ const GlobeScene = React.memo(function GlobeScene({
   isStopTheEarthSpinning = false,
   isStopTheEarthActive = false,
   onStopTheEarthCoordCaptured,
+  stopTheEarthTargetCoord = null,
   onInitGlobeApi,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
@@ -1231,8 +1233,16 @@ const GlobeScene = React.memo(function GlobeScene({
         });
       }
     }
+    if (isStopTheEarthActive && stopTheEarthTargetCoord) {
+      data.push({
+        id: `stop-the-earth-beacon-${stopTheEarthTargetCoord.lat.toFixed(2)}-${stopTheEarthTargetCoord.lng.toFixed(2)}`,
+        lat: stopTheEarthTargetCoord.lat,
+        lng: stopTheEarthTargetCoord.lng,
+        isStopTheEarthBeacon: true,
+      });
+    }
     return data;
-  }, [events, celebrations, selectedLocation]);
+  }, [events, celebrations, selectedLocation, isStopTheEarthActive, stopTheEarthTargetCoord]);
 
   // Connection arcs — pair adjacent events
   const arcsData = useMemo<EventArc[]>(() => {
@@ -1348,8 +1358,28 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
+    // Stop The Earth Target Radar Pulse Rings
+    if (isStopTheEarthActive && stopTheEarthTargetCoord) {
+      rings.push({
+        lat: stopTheEarthTargetCoord.lat,
+        lng: stopTheEarthTargetCoord.lng,
+        maxR: 16,
+        propagationSpeed: 2.6,
+        repeatPeriod: 1400,
+        color: 'rgba(6, 182, 212, 0.95)',
+      });
+      rings.push({
+        lat: stopTheEarthTargetCoord.lat,
+        lng: stopTheEarthTargetCoord.lng,
+        maxR: 8,
+        propagationSpeed: 1.6,
+        repeatPeriod: 1400,
+        color: 'rgba(250, 204, 21, 0.9)',
+      });
+    }
+
     return rings;
-  }, [events, celebration, isMobile, globeView, failsafeActive]);
+  }, [events, celebration, isMobile, globeView, failsafeActive, isStopTheEarthActive, stopTheEarthTargetCoord]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -1361,6 +1391,46 @@ const GlobeScene = React.memo(function GlobeScene({
       // Return cached element if available to prevent DOM reflow/allocation jank
       if (htmlMarkersCacheRef.current.has(markerId)) {
         return htmlMarkersCacheRef.current.get(markerId)!;
+      }
+
+      if (d.isStopTheEarthBeacon) {
+        const el = document.createElement('div');
+        el.className = 'stop-the-earth-target-beacon';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        `;
+        el.innerHTML = `
+          <div style="
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(6,182,212,0.95) 0%, rgba(14,165,233,0.4) 60%, transparent 100%);
+            border: 2px solid #00f0ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 30px rgba(0,240,255,0.95), inset 0 0 12px rgba(0,240,255,0.7);
+            font-size: 22px;
+            animation: bounce 1.2s infinite;
+          ">
+            🎯
+          </div>
+          <div style="
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 60px; height: 60px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 2px dashed rgba(250,204,21,0.9);
+            animation: spin 3s linear infinite;
+          "></div>
+        `;
+        htmlMarkersCacheRef.current.set(markerId, el);
+        return el;
       }
 
       if (isCelebration) {

@@ -47,6 +47,7 @@ import StopTheEarthHUD from './StopTheEarth/StopTheEarthHUD';
 import {
   resolveLocationFromCoordinates,
   generateCandidateOptions,
+  getRandomMysteryPlace,
 } from '@/engines/game/providers/StopTheEarthProvider';
 import { StopTheEarthCandidate } from '@/engines/game/types';
 import { haversineDistance } from '@/engines/game/ValidationEngine';
@@ -71,6 +72,8 @@ interface PlayEarthOverlayProps {
   onStopTheEarthActiveChange?: (isActive: boolean) => void;
   getCurrentGlobePov?: () => { lat: number; lng: number } | null;
   stopTheEarthCapturedCoord?: { lat: number; lng: number; timestamp?: number } | null;
+  onStopTheEarthTargetCoordChange?: (coord: { lat: number; lng: number } | null) => void;
+  onFlyToGlobe?: (pov: { lat: number; lng: number; altitude?: number }, duration?: number) => void;
 }
 
 
@@ -479,6 +482,8 @@ export default function PlayEarthOverlay({
   onStopTheEarthActiveChange,
   getCurrentGlobePov,
   stopTheEarthCapturedCoord = null,
+  onStopTheEarthTargetCoordChange,
+  onFlyToGlobe,
 }: PlayEarthOverlayProps) {
   const { t, locale } = useTranslation();
   // Game Mode States
@@ -542,6 +547,8 @@ export default function PlayEarthOverlay({
   const [steRoundScore, setSteRoundScore] = useState(0);
   const [steTotalScore, setSteTotalScore] = useState(0);
   const [steStreak, setSteStreak] = useState(0);
+  const [steSubMode, setSteSubMode] = useState<'manual' | 'auto-spot'>('manual');
+  const usedMysteryPlaceNamesRef = useRef<Set<string>>(new Set());
 
   // Automatically expand HUD whenever a new question, challenge, or phase is initiated
   useEffect(() => {
@@ -1202,11 +1209,29 @@ export default function PlayEarthOverlay({
       setPhase('stop-the-earth-spin');
       setSteIsSpinning(true);
       onStopTheEarthSpinChange?.(true);
-      const timeForRound = Math.max(2.0, 5.5 - (steRound - 1) * 0.5);
-      setSteTimer(timeForRound);
-      setSteSelectedCandidate(null);
+
+      if (steSubMode === 'auto-spot') {
+        const mystery = getRandomMysteryPlace(steRound, usedMysteryPlaceNamesRef.current);
+        usedMysteryPlaceNamesRef.current.add(mystery.name);
+        onFlyToGlobe?.({ lat: mystery.coordinates.lat, lng: mystery.coordinates.lng, altitude: 1.8 }, 1200);
+        setTimeout(() => {
+          setSteIsSpinning(false);
+          onStopTheEarthSpinChange?.(false);
+          const difficultyLevel = steRound > 3 ? 'hard' : steRound > 1 ? 'medium' : 'easy';
+          const cands = generateCandidateOptions(mystery, difficultyLevel);
+          setSteStoppedCoord(mystery.coordinates);
+          onStopTheEarthTargetCoordChange?.(mystery.coordinates);
+          setSteResolvedLocation(mystery);
+          setSteCandidates(cands);
+          setPhase('stop-the-earth-select');
+        }, 1250);
+      } else {
+        const timeForRound = Math.max(2.0, 5.5 - (steRound - 1) * 0.5);
+        setSteTimer(timeForRound);
+        setSteSelectedCandidate(null);
+      }
     }, 700);
-  }, [onPlaySound, steRound, onStopTheEarthActiveChange, onStopTheEarthSpinChange]);
+  }, [onPlaySound, steRound, steSubMode, onStopTheEarthActiveChange, onStopTheEarthSpinChange, onFlyToGlobe, onStopTheEarthTargetCoordChange]);
 
   const handleStopTheEarthStop = useCallback((overrideCoord?: { lat: number; lng: number }) => {
     setSteIsSpinning(false);
@@ -1239,10 +1264,11 @@ export default function PlayEarthOverlay({
     const cands = generateCandidateOptions(loc, difficultyLevel);
 
     setSteStoppedCoord(coord);
+    onStopTheEarthTargetCoordChange?.(coord);
     setSteResolvedLocation(loc);
     setSteCandidates(cands);
     setPhase('stop-the-earth-select');
-  }, [onStopTheEarthSpinChange, onPlaySound, stopTheEarthCapturedCoord, getCurrentGlobePov, lastGlobeTap, steRound]);
+  }, [onStopTheEarthSpinChange, onPlaySound, stopTheEarthCapturedCoord, getCurrentGlobePov, lastGlobeTap, steRound, onStopTheEarthTargetCoordChange]);
 
   const handleStopTheEarthSelectCandidate = useCallback((candidate: StopTheEarthCandidate) => {
     if (!steResolvedLocation) return;
@@ -1295,14 +1321,32 @@ export default function PlayEarthOverlay({
         setPhase('stop-the-earth-spin');
         setSteIsSpinning(true);
         onStopTheEarthSpinChange?.(true);
-        const timeForRound = Math.max(2.0, 5.5 - (nextR - 1) * 0.5);
-        setSteTimer(timeForRound);
-        setSteSelectedCandidate(null);
+
+        if (steSubMode === 'auto-spot') {
+          const mystery = getRandomMysteryPlace(nextR, usedMysteryPlaceNamesRef.current);
+          usedMysteryPlaceNamesRef.current.add(mystery.name);
+          onFlyToGlobe?.({ lat: mystery.coordinates.lat, lng: mystery.coordinates.lng, altitude: 1.8 }, 1200);
+          setTimeout(() => {
+            setSteIsSpinning(false);
+            onStopTheEarthSpinChange?.(false);
+            const difficultyLevel = nextR > 3 ? 'hard' : nextR > 1 ? 'medium' : 'easy';
+            const cands = generateCandidateOptions(mystery, difficultyLevel);
+            setSteStoppedCoord(mystery.coordinates);
+            onStopTheEarthTargetCoordChange?.(mystery.coordinates);
+            setSteResolvedLocation(mystery);
+            setSteCandidates(cands);
+            setPhase('stop-the-earth-select');
+          }, 1250);
+        } else {
+          const timeForRound = Math.max(2.0, 5.5 - (nextR - 1) * 0.5);
+          setSteTimer(timeForRound);
+          setSteSelectedCandidate(null);
+        }
       }, 700);
     } else {
       setPhase('stop-the-earth-summary');
     }
-  }, [steRound, steMaxRounds, onPlaySound, onStopTheEarthSpinChange]);
+  }, [steRound, steMaxRounds, steSubMode, onPlaySound, onStopTheEarthSpinChange, onFlyToGlobe, onStopTheEarthTargetCoordChange]);
 
   const handleStopTheEarthRestart = useCallback(() => {
     onPlaySound();
@@ -1312,9 +1356,11 @@ export default function PlayEarthOverlay({
     setSteSelectedCandidate(null);
     setSteStoppedCoord(null);
     setSteResolvedLocation(null);
+    usedMysteryPlaceNamesRef.current.clear();
+    onStopTheEarthTargetCoordChange?.(null);
     onStopTheEarthSpinChange?.(false);
     setPhase('stop-the-earth-start');
-  }, [onPlaySound, onStopTheEarthSpinChange]);
+  }, [onPlaySound, onStopTheEarthSpinChange, onStopTheEarthTargetCoordChange]);
 
   const handleStopTheEarthShare = useCallback(async () => {
     onPlaySound();
@@ -2142,8 +2188,9 @@ export default function PlayEarthOverlay({
     setSteIsSpinning(false);
     onStopTheEarthSpinChange?.(false);
     onStopTheEarthActiveChange?.(false);
+    onStopTheEarthTargetCoordChange?.(null);
     setPhase('intro');
-  }, [onPlaySound, onStopTheEarthSpinChange, onStopTheEarthActiveChange]);
+  }, [onPlaySound, onStopTheEarthSpinChange, onStopTheEarthActiveChange, onStopTheEarthTargetCoordChange]);
 
   const handleShareChallenge = async () => {
     let shareText = `🌍 I am playing MooEarth Quiz and reached Level ${gameState.level}! Can you beat me?`;
@@ -5292,6 +5339,8 @@ export default function PlayEarthOverlay({
             totalScore={steTotalScore}
             streak={steStreak}
             onPlaySound={onPlaySound}
+            subMode={steSubMode}
+            onSelectSubMode={setSteSubMode}
           />
         )}
       </AnimatePresence>

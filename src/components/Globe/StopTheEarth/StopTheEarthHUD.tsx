@@ -34,6 +34,8 @@ interface StopTheEarthHUDProps {
   totalScore: number;
   streak: number;
   onPlaySound: () => void;
+  subMode?: 'manual' | 'auto-spot';
+  onSelectSubMode?: (mode: 'manual' | 'auto-spot') => void;
 }
 
 export default function StopTheEarthHUD({
@@ -59,6 +61,8 @@ export default function StopTheEarthHUD({
   totalScore,
   streak,
   onPlaySound,
+  subMode = 'manual',
+  onSelectSubMode,
 }: StopTheEarthHUDProps) {
   // Format coordinate display cleanly
   const formatCoord = (coord: { lat: number; lng: number } | null) => {
@@ -131,7 +135,7 @@ export default function StopTheEarthHUD({
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-400/40 mt-1 shadow-[0_0_20px_rgba(0,229,255,0.35)] backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
               <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
-                STOP THE EARTH
+                {subMode === 'auto-spot' ? 'TARGETING MYSTERY PLACE' : 'STOP THE EARTH'}
               </span>
               <span className="text-[10px] text-white/30">|</span>
               <span className="text-[10px] font-bold text-white/70">Round {round} of {maxRounds}</span>
@@ -157,30 +161,60 @@ export default function StopTheEarthHUD({
               className="glass rounded-3xl border border-cyan-500/30 p-5 sm:p-6 text-center space-y-4 shadow-[0_0_60px_rgba(0,229,255,0.2)] backdrop-blur-2xl pointer-events-auto"
               style={{ background: 'linear-gradient(135deg, rgba(8,18,35,0.94) 0%, rgba(5,10,22,0.96) 100%)' }}
             >
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(0,229,255,0.25)]">
-                ⏱️
+              {/* Mode Selector Tab */}
+              <div className="flex p-1 rounded-2xl bg-white/5 border border-white/10 gap-1">
+                <button
+                  type="button"
+                  onClick={() => onSelectSubMode?.('manual')}
+                  className={`flex-1 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                    subMode === 'manual'
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black shadow-lg shadow-cyan-500/25'
+                      : 'text-white/60 hover:text-white font-bold'
+                  }`}
+                >
+                  🕹️ Spin & Tap
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectSubMode?.('auto-spot')}
+                  className={`flex-1 py-2 rounded-xl text-xs transition-all cursor-pointer ${
+                    subMode === 'auto-spot'
+                      ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black shadow-lg shadow-cyan-500/25'
+                      : 'text-white/60 hover:text-white font-bold'
+                  }`}
+                >
+                  🎯 Mystery Spot
+                </button>
+              </div>
+
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(0,229,255,0.25)]">
+                {subMode === 'auto-spot' ? '🎯' : '⏱️'}
               </div>
               <div>
                 <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-100 to-indigo-300">
-                  STOP THE EARTH
+                  {subMode === 'auto-spot' ? 'SPOT THE EARTH' : 'STOP THE EARTH'}
                 </h3>
-                <p className="text-xs text-white/60 mt-2 leading-relaxed">
-                  The Earth rotates rapidly. Stop the planet by <strong className="text-cyan-300">CLICKING/TAPPING DIRECTLY ON THE GLOBE</strong>, then identify your landing coordinates!
+                <p className="text-xs text-white/60 mt-1.5 leading-relaxed">
+                  {subMode === 'auto-spot' ? (
+                    <>The Earth rotates and <strong className="text-cyan-300">locks onto a mystery point</strong>. Identify which city, landmark, or wonder is highlighted!</>
+                  ) : (
+                    <>The Earth rotates rapidly. Stop the planet by <strong className="text-cyan-300">CLICKING/TAPPING DIRECTLY ON THE GLOBE</strong>, then identify your landing place!</>
+                  )}
                 </p>
               </div>
 
               <div className="grid grid-cols-3 gap-2 py-1 text-left">
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                  <span className="text-lg block">🌀</span>
-                  <span className="text-[10px] font-bold text-white/80 block mt-1">Rapid Spin</span>
+                  <span className="text-lg block">{subMode === 'auto-spot' ? '🎯' : '🌀'}</span>
+                  <span className="text-[10px] font-bold text-white/80 block mt-1">{subMode === 'auto-spot' ? 'Auto-Lock' : 'Rapid Spin'}</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                  <span className="text-lg block">🌎</span>
-                  <span className="text-[10px] font-bold text-white/80 block mt-1">Tap Globe</span>
+                  <span className="text-lg block">{subMode === 'auto-spot' ? '📍' : '🌎'}</span>
+                  <span className="text-[10px] font-bold text-white/80 block mt-1">{subMode === 'auto-spot' ? 'Beacon Pin' : 'Tap Globe'}</span>
                 </div>
                 <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                  <span className="text-lg block">📍</span>
-                  <span className="text-[10px] font-bold text-white/80 block mt-1">Distance & XP</span>
+                  <span className="text-lg block">🏆</span>
+                  <span className="text-[10px] font-bold text-white/80 block mt-1">Guess Place</span>
                 </div>
               </div>
 
@@ -189,7 +223,7 @@ export default function StopTheEarthHUD({
                   onClick={onStart}
                   className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-black text-sm tracking-wider uppercase transition-all shadow-[0_0_30px_rgba(0,229,255,0.35)] cursor-pointer active:scale-95"
                 >
-                  START 5S ROTATION
+                  {subMode === 'auto-spot' ? 'START MYSTERY SPOT' : 'START 5S ROTATION'}
                 </button>
                 <button
                   onClick={onExit}
@@ -230,7 +264,7 @@ export default function StopTheEarthHUD({
               <div className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-1.5">
                   <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                    EARTH STOPPED
+                    {subMode === 'auto-spot' ? 'MYSTERY SPOT LOCKED' : 'EARTH STOPPED'}
                   </span>
                   {timerSeconds > 0 && (
                     <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold text-white/60 bg-white/5 border border-white/10">
@@ -238,13 +272,15 @@ export default function StopTheEarthHUD({
                     </span>
                   )}
                 </div>
-                <h4 className="text-lg font-black text-white mt-1">Where did you stop?</h4>
+                <h4 className="text-lg font-black text-white mt-1">
+                  {subMode === 'auto-spot' ? 'Which place is highlighted on the globe?' : 'Where did you stop?'}
+                </h4>
                 <p className="text-xs text-white/50 font-mono mt-0.5">
                   Coordinates: {formatCoord(stoppedCoordinate)}
                 </p>
               </div>
 
-              {/* 4 Geographic Candidate Cards */}
+              {/* 4 Geographic Candidate Cards (Specific Places & Cities - Zero Bare Countries) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                 {candidates.map((cand) => (
                   <button
@@ -253,27 +289,35 @@ export default function StopTheEarthHUD({
                       onPlaySound();
                       onSelectCandidate(cand);
                     }}
-                    className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer group flex flex-col justify-between gap-1 ${
+                    className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer group flex flex-col justify-between gap-1.5 ${
                       selectedCandidate?.id === cand.id
                         ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.25)]'
                         : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-extrabold text-white text-xs group-hover:text-cyan-300 transition-colors">
+                      <span className="font-extrabold text-white text-sm group-hover:text-cyan-300 transition-colors">
                         {cand.name}
                       </span>
                       {cand.countryCode ? (
                         <CountryFlag flag={cand.countryCode} className="w-5 h-3.5 object-cover rounded shadow-sm shrink-0" />
                       ) : (
                         <span className="text-sm shrink-0">
-                          {cand.type === 'ocean' ? '🌊' : cand.type === 'sea' ? '⚓' : cand.type === 'island' ? '🏝️' : cand.type === 'continent' ? '❄️' : '🌐'}
+                          {cand.type === 'ocean' ? '🌊' : cand.type === 'sea' ? '⚓' : cand.type === 'island' ? '🏝️' : cand.type === 'wonder' ? '🏛️' : cand.type === 'landmark' ? '🗼' : '📍'}
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-white/40 truncate">
-                      {cand.type === 'ocean' || cand.type === 'sea' ? 'Maritime Basin' : cand.description || 'Global Location'}
-                    </span>
+                    <div className="text-[10px] text-white/50 truncate flex items-center gap-1.5">
+                      {cand.country ? (
+                        <>
+                          <span className="font-semibold text-white/70">{cand.country}</span>
+                          <span>•</span>
+                          <span className="capitalize">{cand.type === 'capital' ? 'Capital City' : cand.type === 'wonder' ? 'World Wonder' : cand.type === 'landmark' ? 'Landmark' : cand.type === 'natural' ? 'Natural Wonder' : cand.type === 'city' ? 'Metropolis' : cand.type}</span>
+                        </>
+                      ) : (
+                        <span>{cand.type === 'ocean' || cand.type === 'sea' ? 'Maritime Basin' : cand.description || 'Global Location'}</span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>

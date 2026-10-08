@@ -194,7 +194,7 @@ export interface StopTheEarthCandidate {
   country?: string;
   countryCode?: string;
   flag?: string;
-  type: 'country' | 'city' | 'island' | 'ocean' | 'sea' | 'territory' | 'continent';
+  type: 'country' | 'city' | 'capital' | 'landmark' | 'wonder' | 'natural' | 'island' | 'ocean' | 'sea' | 'territory' | 'continent';
   coordinates: GeoCoordinate;
   distanceKm?: number;
   description?: string;

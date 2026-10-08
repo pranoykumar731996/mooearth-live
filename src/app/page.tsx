@@ -145,6 +145,7 @@ export default function HomePage({
   const [isStopTheEarthSpinning, setIsStopTheEarthSpinning] = useState(false);
   const [isStopTheEarthActive, setIsStopTheEarthActive] = useState(false);
   const [stopTheEarthCapturedCoord, setStopTheEarthCapturedCoord] = useState<{ lat: number; lng: number; timestamp?: number } | null>(null);
+  const [stopTheEarthTargetCoord, setStopTheEarthTargetCoord] = useState<{ lat: number; lng: number } | null>(null);
   const [playEarthInitialMode, setPlayEarthInitialMode] = useState<PlayEarthMode | null>(null);
   const globeApiRef = useRef<GlobeApi | null>(null);
 
@@ -1362,6 +1363,7 @@ export default function HomePage({
             isFocusMode={isFocusMode}
             isStopTheEarthSpinning={isStopTheEarthSpinning}
             isStopTheEarthActive={isStopTheEarthActive}
+            stopTheEarthTargetCoord={stopTheEarthTargetCoord}
             onStopTheEarthCoordCaptured={(coord) => setStopTheEarthCapturedCoord(coord)}
             onInitGlobeApi={(api) => { globeApiRef.current = api; }}
           />
@@ -1496,6 +1498,7 @@ export default function HomePage({
           setIsStopTheEarthActive(false);
           setIsStopTheEarthSpinning(false);
           setStopTheEarthCapturedCoord(null);
+          setStopTheEarthTargetCoord(null);
           setPlayEarthInitialMode(null);
           handleSelectCountry(null);
           playHoverBlip();
@@ -1515,6 +1518,8 @@ export default function HomePage({
         onStopTheEarthActiveChange={(active) => setIsStopTheEarthActive(active)}
         getCurrentGlobePov={() => globeApiRef.current?.getPointOfView() || null}
         stopTheEarthCapturedCoord={stopTheEarthCapturedCoord}
+        onStopTheEarthTargetCoordChange={(coord) => setStopTheEarthTargetCoord(coord)}
+        onFlyToGlobe={(pov, duration) => globeApiRef.current?.flyTo(pov, duration)}
       />
       {/* EARTHCAST NARRATION OVERLAY REMOVED */}
 
