@@ -110,7 +110,7 @@ function generateEventContext(title: string, summary: string, country: string): 
 function transformToMajorEvent(e: WorldEvent, index: number): WorldMajorEvent {
   const canonicalSlug = resolveCanonicalSlug(e.country) || e.country.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const countryObj = getCountryByName(e.country);
-  const originalUrl = (e as any).originalUrl || (e.source && e.source.startsWith('http') ? e.source : 'https://news.google.com');
+  const originalUrl = (e as any).originalUrl || (e.source && e.source.startsWith('http') ? e.source : `/countries/${encodeURIComponent(canonicalSlug)}`);
   const publisher = extractPublisher(e.source || e.title, originalUrl);
   const related = extractRelatedCountries(e.title, e.summary, e.country);
   const context = generateEventContext(e.title, e.summary, e.country);

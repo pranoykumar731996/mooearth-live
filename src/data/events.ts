@@ -134,7 +134,7 @@ function createFallbackEvents(): WorldEvent[] {
 
   return rawEvents.map(e => ({
     ...e,
-    source: `https://news.google.com/search?q=${encodeURIComponent(e.title)}`,
+    source: `/countries/${encodeURIComponent(e.country.toLowerCase())}`,
   }));
 }
 
