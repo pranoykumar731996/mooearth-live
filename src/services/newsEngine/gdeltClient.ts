@@ -103,7 +103,7 @@ export async function queryGdeltArticles(params: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MooEarthLive/2.0',
         'Accept': 'application/json',
       },
-      signal: AbortSignal.timeout(5000), // Strict 5-second timeout
+      signal: AbortSignal.timeout(12000), // 12-second timeout to accommodate GDELT latency
     });
 
     if (!res.ok) {
