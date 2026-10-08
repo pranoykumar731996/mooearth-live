@@ -10,7 +10,7 @@ import { WorldEvent, EventArc, EventCategory } from '@/types';
 import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES, getCountryGlowColors } from '@/lib/constants';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { LocationRecord } from '@/data/locations';
-import { useGlobeControls } from '@/hooks/useGlobeControls';
+import { useGlobeControls, GlobeApi } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
 import * as THREE from 'three';
@@ -46,6 +46,10 @@ interface GlobeSceneProps {
   globeView?: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
   isDashboardOpen?: boolean;
   isFocusMode?: boolean;
+  isStopTheEarthSpinning?: boolean;
+  isStopTheEarthActive?: boolean;
+  onStopTheEarthCoordCaptured?: (coord: { lat: number; lng: number; timestamp?: number }) => void;
+  onInitGlobeApi?: (api: GlobeApi) => void;
 }
 // Generate a blue blueprint holographic grid texture dynamically at runtime via HTML Canvas
 const createBlueprintGridTexture = () => {
@@ -181,8 +185,12 @@ const GlobeScene = React.memo(function GlobeScene({
   globeView = 'standard',
   isDashboardOpen = false,
   isFocusMode = false,
+  isStopTheEarthSpinning = false,
+  isStopTheEarthActive = false,
+  onStopTheEarthCoordCaptured,
+  onInitGlobeApi,
 }: GlobeSceneProps) {
-  const { globeRef, initControls, flyTo, pauseRotation, resumeRotation } = useGlobeControls();
+  const { globeRef, initControls, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
   const [failsafeActive, setFailsafeActive] = useState(false);
   const lowFpsSecondsRef = useRef(0);
   const highFpsSecondsRef = useRef(0);
@@ -191,6 +199,41 @@ const GlobeScene = React.memo(function GlobeScene({
   const [introDone, setIntroDone] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
   const [globalMood, setGlobalMood] = useState<Record<string, number>>({});
+
+  // Stop The Earth active/spinning refs for instant 60fps frame loop reading
+  const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
+  const isStopTheEarthActiveRef = useRef(isStopTheEarthActive);
+
+  useEffect(() => {
+    isStopTheEarthSpinningRef.current = isStopTheEarthSpinning;
+    isStopTheEarthActiveRef.current = isStopTheEarthActive;
+
+    if (!globeRef.current) return;
+    const controls = globeRef.current.controls();
+    if (!controls) return;
+
+    if (isStopTheEarthSpinning) {
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 16.0;
+    } else if (isStopTheEarthActive) {
+      controls.autoRotate = false;
+      controls.autoRotateSpeed = 0;
+    }
+  }, [isStopTheEarthSpinning, isStopTheEarthActive, globeRef]);
+
+  // Expose GlobeApi to parent component once ready
+  useEffect(() => {
+    if (introDone && globeRef.current && onInitGlobeApi) {
+      onInitGlobeApi({
+        getPointOfView,
+        flyTo,
+        pauseRotation,
+        resumeRotation,
+        spinRapidly,
+        freezeRotation,
+      });
+    }
+  }, [introDone, onInitGlobeApi, getPointOfView, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, globeRef]);
 
   // Precompute live match countries map for O(1) rendering lookup
   const liveMatchCountriesMap = useMemo(() => {
@@ -630,15 +673,23 @@ const GlobeScene = React.memo(function GlobeScene({
         }
       }
 
-      // 3. Modulate Auto-Rotate Speed (Phase 8 Rotation & Phase 10 Energy)
+      // 3. Modulate Auto-Rotate Speed (Phase 8 Rotation & Phase 10 Energy + Stop The Earth Rapid Spin)
       const controls = globe.controls();
       if (controls) {
-        const baseSpeed = isCinematicModeActive ? 0.75 : GLOBE_CONFIG.autoRotateSpeed;
-        // Global excitement accelerates rotation
-        const energyMultiplier = 1.0 + (globalEnergyScore / 80);
-        // Subtle breathing factor (15s period)
-        const breathingFactor = 1.0 + Math.sin(time * 0.0004) * 0.12;
-        controls.autoRotateSpeed = baseSpeed * energyMultiplier * breathingFactor;
+        if (isStopTheEarthSpinningRef.current) {
+          controls.autoRotate = true;
+          controls.autoRotateSpeed = 16.0; // Rapid cinematic 5-second whirl
+        } else if (isStopTheEarthActiveRef.current) {
+          controls.autoRotate = false;
+          controls.autoRotateSpeed = 0; // Frozen completely on stop
+        } else {
+          const baseSpeed = isCinematicModeActive ? 0.75 : GLOBE_CONFIG.autoRotateSpeed;
+          // Global excitement accelerates rotation
+          const energyMultiplier = 1.0 + (globalEnergyScore / 80);
+          // Subtle breathing factor (15s period)
+          const breathingFactor = 1.0 + Math.sin(time * 0.0004) * 0.12;
+          controls.autoRotateSpeed = baseSpeed * energyMultiplier * breathingFactor;
+        }
       }
 
       // 4. Penalty Shootout unstable atmosphere flicker (Phase 1 Penalty Shootout)
@@ -1687,8 +1738,19 @@ const GlobeScene = React.memo(function GlobeScene({
     return 'rgba(255, 255, 255, 0.2)'; // Brighter normal borders
   }, [selectedCountry, hoveredPolygon, adjustOpacity, globeView, failsafeActive]);
 
-  const handlePolygonClick = useCallback((feat: any, event?: any) => {
-    const name = feat.properties.NAME;
+  const handlePolygonClick = useCallback((feat: any, event?: any, coords?: { lat: number; lng: number; altitude: number }) => {
+    if (isStopTheEarthSpinningRef.current || isStopTheEarthActiveRef.current) {
+      freezeRotation();
+      const pov = globeRef.current?.pointOfView();
+      const finalLat = (coords && typeof coords.lat === 'number') ? coords.lat : (pov?.lat ?? 0);
+      const finalLng = (coords && typeof coords.lng === 'number') ? coords.lng : (pov?.lng ?? 0);
+      if (onStopTheEarthCoordCaptured) {
+        onStopTheEarthCoordCaptured({ lat: finalLat, lng: finalLng, timestamp: Date.now() });
+      }
+      return;
+    }
+
+    const name = feat?.properties?.NAME;
     if (onSelectCountry) onSelectCountry(name);
     onSelectEvent(null);
     pauseRotation();
@@ -1701,7 +1763,7 @@ const GlobeScene = React.memo(function GlobeScene({
     if (event && typeof event.clientX === 'number') {
       setTooltipPosition({ x: event.clientX, y: event.clientY });
     }
-  }, [onSelectCountry, onSelectEvent, pauseRotation, recordInteraction]);
+  }, [onSelectCountry, onSelectEvent, pauseRotation, recordInteraction, freezeRotation, globeRef, onStopTheEarthCoordCaptured]);
 
   const handlePolygonHover = useCallback((feat: any) => {
     setHoveredPolygon(feat);
@@ -1715,12 +1777,23 @@ const GlobeScene = React.memo(function GlobeScene({
     }
   }, []);
 
-  const handleGlobeClick = useCallback(() => {
+  const handleGlobeClick = useCallback((coords?: { lat: number; lng: number }) => {
+    if (isStopTheEarthSpinningRef.current || isStopTheEarthActiveRef.current) {
+      freezeRotation();
+      const pov = globeRef.current?.pointOfView();
+      const finalLat = (coords && typeof coords.lat === 'number') ? coords.lat : (pov?.lat ?? 0);
+      const finalLng = (coords && typeof coords.lng === 'number') ? coords.lng : (pov?.lng ?? 0);
+      if (onStopTheEarthCoordCaptured) {
+        onStopTheEarthCoordCaptured({ lat: finalLat, lng: finalLng, timestamp: Date.now() });
+      }
+      return;
+    }
+
     onSelectEvent(null);
     if (onSelectCountry) onSelectCountry(null);
     resumeRotation();
     recordInteraction();
-  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction]);
+  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction, freezeRotation, globeRef, onStopTheEarthCoordCaptured]);
 
   // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
   const constrainedTooltipPos = useMemo(() => {

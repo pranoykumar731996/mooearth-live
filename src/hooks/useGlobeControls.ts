@@ -8,7 +8,15 @@ import { useCallback, useRef } from 'react';
 import { GLOBE_CONFIG } from '@/lib/constants';
 import { GlobePointOfView } from '@/types';
 
- 
+export interface GlobeApi {
+  getPointOfView: () => { lat: number; lng: number; altitude: number } | null;
+  flyTo: (pov: Partial<GlobePointOfView>, duration?: number) => void;
+  pauseRotation: () => void;
+  resumeRotation: () => void;
+  spinRapidly: (speedMultiplier?: number) => void;
+  freezeRotation: () => void;
+}
+
 type GlobeInstance = any;
 
 export function useGlobeControls() {
@@ -63,11 +71,40 @@ export function useGlobeControls() {
     }
   }, []);
 
+  /** Spin the globe rapidly for games like Stop The Earth */
+  const spinRapidly = useCallback((speedMultiplier = 16.0) => {
+    if (!globeRef.current) return;
+    const controls = globeRef.current.controls();
+    if (controls) {
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = speedMultiplier;
+    }
+  }, []);
+
+  /** Instantly freeze globe rotation */
+  const freezeRotation = useCallback(() => {
+    if (!globeRef.current) return;
+    const controls = globeRef.current.controls();
+    if (controls) {
+      controls.autoRotate = false;
+      controls.autoRotateSpeed = 0;
+    }
+  }, []);
+
+  /** Get exact camera point of view coordinates (lat, lng, altitude) */
+  const getPointOfView = useCallback(() => {
+    if (!globeRef.current) return null;
+    return globeRef.current.pointOfView() as { lat: number; lng: number; altitude: number } | null;
+  }, []);
+
   return {
     globeRef,
     initControls,
     flyTo,
     pauseRotation,
     resumeRotation,
+    spinRapidly,
+    freezeRotation,
+    getPointOfView,
   };
 }

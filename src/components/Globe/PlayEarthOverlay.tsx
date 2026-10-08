@@ -67,6 +67,10 @@ interface PlayEarthOverlayProps {
   isInline?: boolean;
   initialMode?: PlayEarthMode | null;
   lastGlobeTap?: { country: string; timestamp: number; coordinates?: { lat: number; lng: number } } | null;
+  onStopTheEarthSpinChange?: (isSpinning: boolean) => void;
+  onStopTheEarthActiveChange?: (isActive: boolean) => void;
+  getCurrentGlobePov?: () => { lat: number; lng: number } | null;
+  stopTheEarthCapturedCoord?: { lat: number; lng: number; timestamp?: number } | null;
 }
 
 
@@ -304,6 +308,23 @@ export function createDemoForMode(mode: PlayEarthMode): PlayableDemoState {
         feedback: null,
       };
 
+    case 'stop-the-earth':
+      return {
+        mode: 'stop-the-earth',
+        title: 'Stop The Earth — Rapid Spin Training',
+        badge: 'Spin & Freeze Training',
+        step: 1,
+        totalSteps: 1,
+        completed: false,
+        question: 'In Stop The Earth, the 3D globe rotates rapidly for 5 seconds. You stop it with ONE tap and deduce your coordinates. Where is the equator located?',
+        options: ['0° Latitude', '90° North', '45° South', '180° Longitude'],
+        correctIndex: 0,
+        selectedIndex: null,
+        instruction: 'Answer the training question or jump right into the 5-second rapid spin!',
+        hint: 'The equator divides the Northern and Southern Hemispheres at 0° latitude.',
+        feedback: null,
+      };
+
     default: // 'infinite'
       return {
         mode: 'infinite',
@@ -454,6 +475,10 @@ export default function PlayEarthOverlay({
   onCorrectSound, onWrongSound, onTimerTick, onLevelUp, username,
   isInline = false, initialMode = null,
   lastGlobeTap = null,
+  onStopTheEarthSpinChange,
+  onStopTheEarthActiveChange,
+  getCurrentGlobePov,
+  stopTheEarthCapturedCoord = null,
 }: PlayEarthOverlayProps) {
   const { t, locale } = useTranslation();
   // Game Mode States
@@ -700,12 +725,13 @@ export default function PlayEarthOverlay({
       setPhase('daily-earth-start');
     } else if (mode === 'stop-the-earth') {
       setActiveMode('stop-the-earth');
+      onStopTheEarthActiveChange?.(true);
       setPhase('stop-the-earth-start');
     } else {
       setActiveMode(mode);
       setPhase('engine-loading');
     }
-  }, [demoState, onPlaySound]);
+  }, [demoState, onPlaySound, onStopTheEarthActiveChange]);
 
   const handleModeClick = useCallback((mode: PlayEarthMode) => {
     onPlaySound();
@@ -727,12 +753,13 @@ export default function PlayEarthOverlay({
       setPhase('daily-earth-start');
     } else if (mode === 'stop-the-earth') {
       setActiveMode('stop-the-earth');
+      onStopTheEarthActiveChange?.(true);
       setPhase('stop-the-earth-start');
     } else {
       setActiveMode(mode);
       setPhase('engine-loading');
     }
-  }, [onPlaySound]);
+  }, [onPlaySound, onStopTheEarthActiveChange]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -832,6 +859,7 @@ export default function PlayEarthOverlay({
         } else if (initialMode === 'daily') {
           setPhase('daily-earth-start');
         } else if (initialMode === 'stop-the-earth') {
+          onStopTheEarthActiveChange?.(true);
           setPhase('stop-the-earth-start');
         } else if (
           initialMode === 'infinite' ||
@@ -1163,23 +1191,35 @@ export default function PlayEarthOverlay({
 
   // ── Stop The Earth Handlers ──
 
+  const spinStartedAtRef = useRef<number>(0);
+
   const handleStopTheEarthStart = useCallback(() => {
     onPlaySound();
     setPhase('stop-the-earth-countdown');
+    onStopTheEarthActiveChange?.(true);
     setTimeout(() => {
+      spinStartedAtRef.current = Date.now();
       setPhase('stop-the-earth-spin');
       setSteIsSpinning(true);
+      onStopTheEarthSpinChange?.(true);
       const timeForRound = Math.max(2.0, 5.5 - (steRound - 1) * 0.5);
       setSteTimer(timeForRound);
       setSteSelectedCandidate(null);
     }, 700);
-  }, [onPlaySound, steRound]);
+  }, [onPlaySound, steRound, onStopTheEarthActiveChange, onStopTheEarthSpinChange]);
 
   const handleStopTheEarthStop = useCallback((overrideCoord?: { lat: number; lng: number }) => {
     setSteIsSpinning(false);
+    onStopTheEarthSpinChange?.(false);
     onPlaySound();
 
-    let coord = overrideCoord;
+    let coord = overrideCoord || stopTheEarthCapturedCoord;
+    if (!coord && getCurrentGlobePov) {
+      const pov = getCurrentGlobePov();
+      if (pov && typeof pov.lat === 'number' && typeof pov.lng === 'number') {
+        coord = { lat: pov.lat, lng: pov.lng };
+      }
+    }
     if (!coord && lastGlobeTap?.coordinates) {
       coord = lastGlobeTap.coordinates;
     }
@@ -1202,7 +1242,7 @@ export default function PlayEarthOverlay({
     setSteResolvedLocation(loc);
     setSteCandidates(cands);
     setPhase('stop-the-earth-select');
-  }, [lastGlobeTap, onPlaySound, steRound]);
+  }, [onStopTheEarthSpinChange, onPlaySound, stopTheEarthCapturedCoord, getCurrentGlobePov, lastGlobeTap, steRound]);
 
   const handleStopTheEarthSelectCandidate = useCallback((candidate: StopTheEarthCandidate) => {
     if (!steResolvedLocation) return;
@@ -1251,8 +1291,10 @@ export default function PlayEarthOverlay({
       setSteRound(nextR);
       setPhase('stop-the-earth-countdown');
       setTimeout(() => {
+        spinStartedAtRef.current = Date.now();
         setPhase('stop-the-earth-spin');
         setSteIsSpinning(true);
+        onStopTheEarthSpinChange?.(true);
         const timeForRound = Math.max(2.0, 5.5 - (nextR - 1) * 0.5);
         setSteTimer(timeForRound);
         setSteSelectedCandidate(null);
@@ -1260,7 +1302,7 @@ export default function PlayEarthOverlay({
     } else {
       setPhase('stop-the-earth-summary');
     }
-  }, [steRound, steMaxRounds, onPlaySound]);
+  }, [steRound, steMaxRounds, onPlaySound, onStopTheEarthSpinChange]);
 
   const handleStopTheEarthRestart = useCallback(() => {
     onPlaySound();
@@ -1270,8 +1312,9 @@ export default function PlayEarthOverlay({
     setSteSelectedCandidate(null);
     setSteStoppedCoord(null);
     setSteResolvedLocation(null);
+    onStopTheEarthSpinChange?.(false);
     setPhase('stop-the-earth-start');
-  }, [onPlaySound]);
+  }, [onPlaySound, onStopTheEarthSpinChange]);
 
   const handleStopTheEarthShare = useCallback(async () => {
     onPlaySound();
@@ -1304,7 +1347,14 @@ export default function PlayEarthOverlay({
   // Globe click listener for engine challenge, stop the earth & demo
   useEffect(() => {
     if (phase === 'stop-the-earth-spin') {
-      handleStopTheEarthStop(lastGlobeTap?.coordinates);
+      if (stopTheEarthCapturedCoord && (stopTheEarthCapturedCoord.timestamp ?? 0) >= spinStartedAtRef.current) {
+        handleStopTheEarthStop(stopTheEarthCapturedCoord);
+        return;
+      }
+      if (lastGlobeTap?.coordinates && lastGlobeTap.timestamp >= spinStartedAtRef.current) {
+        handleStopTheEarthStop(lastGlobeTap.coordinates);
+        return;
+      }
       return;
     }
 
@@ -2090,8 +2140,10 @@ export default function PlayEarthOverlay({
     setActiveMode(null);
     setDemoState(null);
     setSteIsSpinning(false);
+    onStopTheEarthSpinChange?.(false);
+    onStopTheEarthActiveChange?.(false);
     setPhase('intro');
-  }, [onPlaySound]);
+  }, [onPlaySound, onStopTheEarthSpinChange, onStopTheEarthActiveChange]);
 
   const handleShareChallenge = async () => {
     let shareText = `🌍 I am playing MooEarth Quiz and reached Level ${gameState.level}! Can you beat me?`;
@@ -3473,6 +3525,30 @@ export default function PlayEarthOverlay({
                 </div>
               </div>
 
+              {/* STOP THE EARTH (Mobile Featured Mode) */}
+              <div
+                onClick={() => handleModeClick('stop-the-earth')}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-sky-500/20 to-blue-500/20 border border-cyan-400/40 text-cyan-300 font-bold text-xs tracking-wider flex items-center justify-between cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span>⏱️</span>
+                  <div>
+                    <span className="font-black text-white">STOP THE EARTH</span>
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-cyan-400/20 text-[8px] font-bold text-cyan-300">NEW</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startDemo('stop-the-earth');
+                  }}
+                  className="text-[9px] font-bold text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-500/40 cursor-pointer"
+                >
+                  🎮 Demo
+                </button>
+              </div>
+
               <div
                 onClick={() => handleModeClick('daily')}
                 className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs tracking-wider flex items-center justify-between cursor-pointer"
@@ -4392,6 +4468,44 @@ export default function PlayEarthOverlay({
                   >
                     🎮 Practice Demo
                   </button>
+                </div>
+              </div>
+
+              {/* STOP THE EARTH (Desktop Featured Mode) */}
+              <div
+                onClick={() => handleModeClick('stop-the-earth')}
+                className="w-full py-4 px-4 sm:px-6 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-sky-500/20 to-blue-500/20 border border-cyan-400/40 hover:from-cyan-500/30 hover:to-blue-500/30 text-white font-extrabold text-sm tracking-wide shadow-[0_0_30px_rgba(0,229,255,0.2)] hover:shadow-[0_0_40px_rgba(0,229,255,0.35)] transition-all flex items-center justify-between cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl group-hover:scale-110 transition-transform">⏱️</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-sky-100">
+                        STOP THE EARTH
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 border border-cyan-400/40 text-[9px] font-black text-cyan-300 uppercase tracking-widest animate-pulse">
+                        NEW
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/50 font-normal mt-0.5">
+                      5-second rapid Earth spin. Freeze the planet with 1 click & locate your exact coordinates!
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startDemo('stop-the-earth');
+                    }}
+                    className="text-[10px] font-bold text-cyan-300 bg-cyan-500/20 hover:bg-cyan-500/30 px-3 py-1.5 rounded-full border border-cyan-500/40 cursor-pointer hidden sm:block"
+                  >
+                    🎮 Demo Drill
+                  </button>
+                  <span className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-black text-xs uppercase tracking-wider group-hover:brightness-110 transition-all shadow-md">
+                    PLAY ➔
+                  </span>
                 </div>
               </div>
 

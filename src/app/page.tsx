@@ -40,6 +40,8 @@ const UploadModal = dynamic(() => import('@/components/Celebrations/UploadModal'
 const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'));
 const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
 const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
+import type { GlobeApi } from '@/hooks/useGlobeControls';
+import type { PlayEarthMode } from '@/types';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
@@ -138,6 +140,25 @@ export default function HomePage({
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [lastGlobeTap, setLastGlobeTap] = useState<{ country: string; timestamp: number } | null>(null);
+
+  // Stop The Earth Game Mode Bridge States
+  const [isStopTheEarthSpinning, setIsStopTheEarthSpinning] = useState(false);
+  const [isStopTheEarthActive, setIsStopTheEarthActive] = useState(false);
+  const [stopTheEarthCapturedCoord, setStopTheEarthCapturedCoord] = useState<{ lat: number; lng: number; timestamp?: number } | null>(null);
+  const [playEarthInitialMode, setPlayEarthInitialMode] = useState<PlayEarthMode | null>(null);
+  const globeApiRef = useRef<GlobeApi | null>(null);
+
+  // Auto-launch Stop The Earth if URL parameter is present (?game=stop-the-earth)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const gameParam = params.get('game') || params.get('mode');
+      if (gameParam === 'stop-the-earth') {
+        setPlayEarthInitialMode('stop-the-earth');
+        setIsPlayEarthActive(true);
+      }
+    }
+  }, []);
 
   // Check if mobile Play Earth hero banner was dismissed in this session
   useEffect(() => {
@@ -1339,6 +1360,10 @@ export default function HomePage({
             globeView={globeView}
             isDashboardOpen={isDashboardOpen}
             isFocusMode={isFocusMode}
+            isStopTheEarthSpinning={isStopTheEarthSpinning}
+            isStopTheEarthActive={isStopTheEarthActive}
+            onStopTheEarthCoordCaptured={(coord) => setStopTheEarthCapturedCoord(coord)}
+            onInitGlobeApi={(api) => { globeApiRef.current = api; }}
           />
         </div>
       </div>
@@ -1465,8 +1490,13 @@ export default function HomePage({
         isActive={isPlayEarthActive}
         selectedCountry={selectedCountry}
         lastGlobeTap={lastGlobeTap}
+        initialMode={playEarthInitialMode}
         onClose={() => {
           setIsPlayEarthActive(false);
+          setIsStopTheEarthActive(false);
+          setIsStopTheEarthSpinning(false);
+          setStopTheEarthCapturedCoord(null);
+          setPlayEarthInitialMode(null);
           handleSelectCountry(null);
           playHoverBlip();
         }}
@@ -1476,6 +1506,15 @@ export default function HomePage({
         onTimerTick={playTimerTick}
         onLevelUp={playLevelUp}
         username={currentUser?.username || 'Guest'}
+        onStopTheEarthSpinChange={(spinning) => {
+          setIsStopTheEarthSpinning(spinning);
+          if (spinning) {
+            setStopTheEarthCapturedCoord(null);
+          }
+        }}
+        onStopTheEarthActiveChange={(active) => setIsStopTheEarthActive(active)}
+        getCurrentGlobePov={() => globeApiRef.current?.getPointOfView() || null}
+        stopTheEarthCapturedCoord={stopTheEarthCapturedCoord}
       />
       {/* EARTHCAST NARRATION OVERLAY REMOVED */}
 
