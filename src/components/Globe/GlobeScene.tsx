@@ -377,11 +377,16 @@ const GlobeScene = React.memo(function GlobeScene({
     return rgbaStr;
   }, []);
 
-  // Mobile state detection
-  const [isMobile, setIsMobile] = useState(false);
+  // Mobile state detection (Immediate client detection + resize listener)
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    }
+    return false;
+  });
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -506,11 +511,11 @@ const GlobeScene = React.memo(function GlobeScene({
           setTimeout(() => setIntroDone(true), 4000);
         }, 200);
 
-        // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions
+        // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions (1.0 on mobile for 60fps)
         try {
           const renderer = globeRef.current.renderer();
           if (renderer) {
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.25 : 2.0));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 2.0));
           }
         } catch (e) {
           console.warn('Could not set pixel ratio', e);
@@ -602,8 +607,8 @@ const GlobeScene = React.memo(function GlobeScene({
       ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 1.6 : 0.5;
     }
 
-    // Show clouds ONLY on standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)
-    const showClouds = (globeView === 'standard' || globeView === 'weather') && !failsafeActive;
+    // Show clouds ONLY on desktop standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)
+    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather') && !failsafeActive;
 
     if (!showClouds) {
       const existingClouds = scene.children.find((c: any) => c.name === 'clouds');
@@ -669,7 +674,7 @@ const GlobeScene = React.memo(function GlobeScene({
         clouds.rotation.y += (baseCloudSpeed + cloudEnergyFactor);
       }
 
-      // 2. Earth Atmosphere Breathing (Phase 8: subtle size & glow modulation)
+      // 2. Earth Atmosphere Breathing (Desktop only to avoid matrix recomputation every frame on mobile)
       let atmosphereMesh = cachedAtmosphereMeshRef.current;
       if (!atmosphereMesh) {
         atmosphereMesh = scene.children.find(
@@ -680,7 +685,7 @@ const GlobeScene = React.memo(function GlobeScene({
         }
       }
 
-      if (atmosphereMesh && atmosphereMesh.material) {
+      if (!isMobile && atmosphereMesh && atmosphereMesh.material) {
         // Slow oscillation of size (breathing scale)
         const breatheScale = 1.0 + Math.sin(time * 0.0007) * 0.012;
         atmosphereMesh.scale.set(breatheScale, breatheScale, breatheScale);
@@ -1076,9 +1081,9 @@ const GlobeScene = React.memo(function GlobeScene({
     if (failsafeActive) {
       maxLabels = 8;
     } else if (isPlayEarthActive) {
-      maxLabels = isMobile ? 24 : 60; // More visible labels during gameplay to easily find nations
+      maxLabels = isMobile ? 14 : 60; // More visible labels during gameplay to easily find nations
     } else if (isMobile) {
-      maxLabels = 12;
+      maxLabels = 10;
     } else if (alt > 2.0) {
       maxLabels = 12; // Far Zoom (10-15 target)
     } else if (alt >= 1.0) {
@@ -1206,9 +1211,26 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // Combine normal events and celebration uploads
   const combinedHtmlData = useMemo(() => {
-    const data: any[] = [...events.map(e => ({ ...e, isEvent: true }))];
+    // In gameplay mode, omit news event HTML markers from the 3D globe for maximum performance & clear view
+    if (isPlayEarthActive || isStopTheEarthActive) {
+      const gameMarkers: any[] = [];
+      if (isStopTheEarthActive && stopTheEarthTargetCoord) {
+        gameMarkers.push({
+          id: `stop-the-earth-beacon-${stopTheEarthTargetCoord.lat.toFixed(2)}-${stopTheEarthTargetCoord.lng.toFixed(2)}`,
+          lat: stopTheEarthTargetCoord.lat,
+          lng: stopTheEarthTargetCoord.lng,
+          isStopTheEarthBeacon: true,
+        });
+      }
+      return gameMarkers;
+    }
+
+    // On mobile, limit to top 8 events so we don't overwhelm the 3D-to-2D CSS DOM projection engine
+    const eventSlice = isMobile ? events.slice(0, 8) : events;
+    const data: any[] = [...eventSlice.map(e => ({ ...e, isEvent: true }))];
     if (celebrations) {
-      celebrations.forEach(c => {
+      const celebSlice = isMobile ? celebrations.slice(0, 2) : celebrations;
+      celebSlice.forEach(c => {
         data.push({
           ...c,
           isCelebration: true,
@@ -1218,7 +1240,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
     const selLoc = selectedLocation as any;
     if (selLoc && selLoc.type === 'city') {
-      const alreadyHasEvent = events.some(e => e.city === selLoc.name);
+      const alreadyHasEvent = eventSlice.some(e => e.city === selLoc.name);
       if (!alreadyHasEvent) {
         data.push({
           id: `city-marker-${selLoc.id}`,
@@ -1233,21 +1255,13 @@ const GlobeScene = React.memo(function GlobeScene({
         });
       }
     }
-    if (isStopTheEarthActive && stopTheEarthTargetCoord) {
-      data.push({
-        id: `stop-the-earth-beacon-${stopTheEarthTargetCoord.lat.toFixed(2)}-${stopTheEarthTargetCoord.lng.toFixed(2)}`,
-        lat: stopTheEarthTargetCoord.lat,
-        lng: stopTheEarthTargetCoord.lng,
-        isStopTheEarthBeacon: true,
-      });
-    }
     return data;
-  }, [events, celebrations, selectedLocation, isStopTheEarthActive, stopTheEarthTargetCoord]);
+  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile]);
 
   // Connection arcs — pair adjacent events
   const arcsData = useMemo<EventArc[]>(() => {
     const arcs: EventArc[] = [];
-    const maxArcs = isMobile ? 4 : events.length; // Limit arcs on mobile to save performance
+    const maxArcs = isMobile ? 2 : events.length; // Limit arcs on mobile to save performance
     for (let i = 0; i < events.length && arcs.length < maxArcs; i += 2) {
       if (i + 1 < events.length) {
         arcs.push({
@@ -1267,6 +1281,39 @@ const GlobeScene = React.memo(function GlobeScene({
     // Failsafe Mode (Rule 11) - disable expensive ring overlays
     if (failsafeActive) {
       return [];
+    }
+
+    if (isMobile) {
+      // On mobile, keep rings strictly minimal to prevent high geometry & draw call overhead
+      if (isStopTheEarthActive && stopTheEarthTargetCoord) {
+        return [{
+          lat: stopTheEarthTargetCoord.lat,
+          lng: stopTheEarthTargetCoord.lng,
+          maxR: 12,
+          propagationSpeed: 2.0,
+          repeatPeriod: 1400,
+          color: 'rgba(6, 182, 212, 0.95)',
+        }];
+      }
+      if (celebration?.active) {
+        return [{
+          lat: celebration.lat,
+          lng: celebration.lng,
+          maxR: 18,
+          propagationSpeed: 3.0,
+          repeatPeriod: 2400,
+          color: celebration.colors.glow,
+        }];
+      }
+      return events.slice(0, 2).map(e => ({
+        lat: e.lat,
+        lng: e.lng,
+        maxR: GLOBE_CONFIG.ringMaxRadius,
+        propagationSpeed: GLOBE_CONFIG.ringPropagationSpeed,
+        repeatPeriod: GLOBE_CONFIG.ringRepeatPeriod,
+        color: CATEGORY_MAP[e.category].glowColor,
+        event: e,
+      }));
     }
 
     const rings: any[] = [];
@@ -1538,26 +1585,26 @@ const GlobeScene = React.memo(function GlobeScene({
         animation: marker-fade-in 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       `;
 
-      // Inner glowing core with emoji
+      // Inner glowing core with emoji (omit continuous ripple div on mobile for 60fps)
       el.innerHTML = `
         <div style="
-          width: 28px;
-          height: 28px;
+          width: ${isMobile ? '24px' : '28px'};
+          height: ${isMobile ? '24px' : '28px'};
           border-radius: 50%;
           background: rgba(10,10,15,0.85);
           border: 1.5px solid ${config.color};
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 15px ${config.glowColor};
-          font-size: 13px;
+          box-shadow: 0 0 10px ${config.glowColor};
+          font-size: ${isMobile ? '11px' : '13px'};
           position: relative;
           z-index: 2;
-          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           pointer-events: auto;
         ">
           ${config.emoji}
         </div>
+        ${!isMobile ? `
         <div style="
           position: absolute;
           top: 50%; left: 50%;
@@ -1569,7 +1616,7 @@ const GlobeScene = React.memo(function GlobeScene({
           animation: marker-ripple 2.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
           z-index: 1;
           pointer-events: none;
-        "></div>
+        "></div>` : ''}
       `;
 
       el.addEventListener('mouseenter', () => {
@@ -1704,8 +1751,10 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // Polygon Altitude (3D Emotional Heatmap + Celebration + Live Match)
   const getPolygonAltitude = useCallback((feat: any) => {
-    // Failsafe Mode (Rule 11) - force flat 3D mesh altitude
-    if (failsafeActive) {
+    // Failsafe Mode (Rule 11) or Mobile: force flat 3D mesh altitude to eliminate thousands of side-wall polygons
+    if (failsafeActive || isMobile) {
+      const name = feat.properties.NAME;
+      if (selectedCountry === name) return 0.04;
       return 0.002;
     }
 
@@ -1756,8 +1805,8 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // Polygon Side Glow (Matching Cap Color)
   const getPolygonSideColor = useCallback((feat: any) => {
-    // Failsafe Mode (Rule 11) - disable expensive side-wall color calculations
-    if (failsafeActive) {
+    // Failsafe Mode (Rule 11) or Mobile: disable expensive side-wall color calculations
+    if (failsafeActive || isMobile) {
       return 'rgba(0,0,0,0)';
     }
 
@@ -2010,7 +2059,8 @@ const GlobeScene = React.memo(function GlobeScene({
   const rendererConfig = useMemo(() => ({
     antialias: !isMobile, // Disable antialiasing on mobile to increase FPS
     alpha: true,
-    powerPreference: 'high-performance' as const
+    powerPreference: 'high-performance' as const,
+    precision: isMobile ? ('mediump' as const) : ('highp' as const)
   }), [isMobile]);
 
   return (
@@ -2040,7 +2090,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
           // Textures & Atmosphere (Rule 1 & Rule 2 & Rule 11)
           globeImageUrl={globeTextureUrl}
-          bumpImageUrl={failsafeActive ? "" : GLOBE_CONFIG.bumpImageUrl}
+          bumpImageUrl={failsafeActive || isMobile ? "" : GLOBE_CONFIG.bumpImageUrl}
           backgroundImageUrl=""
           backgroundColor="rgba(0,0,0,0)"
           showAtmosphere={true}
@@ -2096,7 +2146,7 @@ const GlobeScene = React.memo(function GlobeScene({
           polygonSideColor={getPolygonSideColor}
           polygonStrokeColor={getPolygonStrokeColor}
           polygonAltitude={getPolygonAltitude}
-          polygonsTransitionDuration={failsafeActive ? 0 : (isMobile ? 300 : 600)} // Disable transitions in failsafe
+          polygonsTransitionDuration={failsafeActive || isMobile ? 0 : 600} // Disable transitions on mobile for 60fps
           onPolygonClick={handlePolygonClick}
           onPolygonHover={isMobile ? undefined : handlePolygonHover} // Disable raycasting hover queries on touch screens
 
