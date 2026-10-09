@@ -228,7 +228,7 @@ const GlobeScene = React.memo(function GlobeScene({
     } else if (isStopTheEarthActive) {
       controls.autoRotate = false;
       controls.autoRotateSpeed = 0;
-      controls.enableRotate = false; // Keep exact orientation frozen
+      controls.enableRotate = true;  // Allow user to rotate globe to inspect the stopped point
       controls.enableZoom = false;
       controls.enablePan = false;
     } else {
