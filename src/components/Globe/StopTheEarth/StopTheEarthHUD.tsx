@@ -37,6 +37,8 @@ interface StopTheEarthHUDProps {
   onPlaySound: () => void;
   subMode?: 'manual' | 'auto-spot';
   onSelectSubMode?: (mode: 'manual' | 'auto-spot') => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
 }
 
 export default function StopTheEarthHUD({
@@ -64,6 +66,8 @@ export default function StopTheEarthHUD({
   onPlaySound,
   subMode = 'manual',
   onSelectSubMode,
+  onZoomIn,
+  onZoomOut,
 }: StopTheEarthHUDProps) {
   // Format coordinate display cleanly
   const formatCoord = (coord: { lat: number; lng: number } | null) => {
@@ -151,16 +155,16 @@ export default function StopTheEarthHUD({
             </motion.div>
           )}
 
-          {/* Rotate hint when question is showing */}
+          {/* Rotate & Zoom hint when question is showing */}
           {useSidePanel && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-400/20 backdrop-blur-md mt-1"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-950/70 border border-cyan-400/30 backdrop-blur-md mt-1 shadow-lg"
             >
-              <span className="text-sm">🔄</span>
-              <span className="text-[10px] sm:text-xs font-bold text-cyan-200/80 tracking-wide">
-                ROTATE THE GLOBE TO INSPECT THE POINT
+              <span className="text-sm">🔍</span>
+              <span className="text-[10px] sm:text-xs font-bold text-cyan-200 tracking-wide">
+                ROTATE & PINCH / ZOOM TO INSPECT POINT
               </span>
             </motion.div>
           )}
@@ -473,6 +477,36 @@ export default function StopTheEarthHUD({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ───────────────── FLOATING ZOOM IN / OUT CONTROLS ───────────────── */}
+      {useSidePanel && (
+        <motion.div
+          key="floating-zoom-controls"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.85 }}
+          className="fixed bottom-[56vh] right-3 sm:bottom-10 sm:left-6 sm:right-auto z-[55] flex flex-col gap-2 pointer-events-auto"
+        >
+          <button
+            type="button"
+            onClick={onZoomIn}
+            title="Zoom In (+)"
+            aria-label="Zoom In"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-black/75 hover:bg-cyan-950/90 border border-cyan-400/40 text-cyan-300 hover:text-white flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,229,255,0.3)] backdrop-blur-xl transition-all cursor-pointer active:scale-90"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={onZoomOut}
+            title="Zoom Out (−)"
+            aria-label="Zoom Out"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-black/75 hover:bg-cyan-950/90 border border-cyan-400/40 text-cyan-300 hover:text-white flex items-center justify-center text-xl font-black shadow-[0_0_20px_rgba(0,229,255,0.3)] backdrop-blur-xl transition-all cursor-pointer active:scale-90"
+          >
+            −
+          </button>
+        </motion.div>
+      )}
 
       {/* ───────────────── BOTTOM FLOATING GUIDANCE (BELOW GLOBE) ───────────────── */}
       <div className="absolute bottom-0 left-0 right-0 text-center pointer-events-none pb-2 sm:pb-4 select-none">

@@ -1372,6 +1372,28 @@ export default function PlayEarthOverlay({
     });
   }, [steTotalScore, steStreak, steMaxRounds, onPlaySound]);
 
+  const handleStopTheEarthZoomIn = useCallback(() => {
+    onPlaySound();
+    const pov = getCurrentGlobePov?.() as any;
+    if (pov && typeof pov.altitude === 'number') {
+      const nextAlt = Math.max(0.2, pov.altitude * 0.65);
+      onFlyToGlobe?.({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 350);
+    } else {
+      onFlyToGlobe?.({ lat: steStoppedCoord?.lat || 0, lng: steStoppedCoord?.lng || 0, altitude: 0.8 }, 350);
+    }
+  }, [getCurrentGlobePov, onFlyToGlobe, onPlaySound, steStoppedCoord]);
+
+  const handleStopTheEarthZoomOut = useCallback(() => {
+    onPlaySound();
+    const pov = getCurrentGlobePov?.() as any;
+    if (pov && typeof pov.altitude === 'number') {
+      const nextAlt = Math.min(3.5, pov.altitude * 1.5);
+      onFlyToGlobe?.({ lat: pov.lat, lng: pov.lng, altitude: nextAlt }, 350);
+    } else {
+      onFlyToGlobe?.({ lat: steStoppedCoord?.lat || 0, lng: steStoppedCoord?.lng || 0, altitude: 2.5 }, 350);
+    }
+  }, [getCurrentGlobePov, onFlyToGlobe, onPlaySound, steStoppedCoord]);
+
   // Stop The Earth timer effect
   useEffect(() => {
     if (phase !== 'stop-the-earth-spin' || !steIsSpinning) return;
@@ -5341,6 +5363,8 @@ export default function PlayEarthOverlay({
             onPlaySound={onPlaySound}
             subMode={steSubMode}
             onSelectSubMode={setSteSubMode}
+            onZoomIn={handleStopTheEarthZoomIn}
+            onZoomOut={handleStopTheEarthZoomOut}
           />
         )}
       </AnimatePresence>

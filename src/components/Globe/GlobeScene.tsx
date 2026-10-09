@@ -229,7 +229,7 @@ const GlobeScene = React.memo(function GlobeScene({
       controls.autoRotate = false;
       controls.autoRotateSpeed = 0;
       controls.enableRotate = true;  // Allow user to rotate globe to inspect the stopped point
-      controls.enableZoom = false;
+      controls.enableZoom = true;    // Allow user to zoom in/out to inspect the stopped location
       controls.enablePan = false;
     } else {
       // Restore normal controls outside game
