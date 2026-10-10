@@ -396,7 +396,12 @@ const GlobeScene = React.memo(function GlobeScene({
   }, []);
 
   // Progressive Texture URLs & Lazy Loader (Rule 1 & Rule-2)
-  const [globeTextureUrl, setGlobeTextureUrl] = useState(GLOBE_CONFIG.globePlaceholderUrl);
+  const [globeTextureUrl, setGlobeTextureUrl] = useState(() => {
+    if (globeView === 'weather' || globeView === 'satellite' || globeView === 'discovery' || isPlayEarthActive) {
+      return '/textures/globe-day.jpg';
+    }
+    return GLOBE_CONFIG.globePlaceholderUrl;
+  });
   const [cloudsTextureUrl, setCloudsTextureUrl] = useState(GLOBE_CONFIG.cloudsPlaceholderUrl);
   const [isTextureLoading, setIsTextureLoading] = useState(false);
 
@@ -469,16 +474,58 @@ const GlobeScene = React.memo(function GlobeScene({
     lastInteractionTime.current = Date.now();
   }, []);
 
-  // Resize observer
+  // Resize observer & robust viewport dimension measurement
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
+    const measureAndSetDimensions = (w?: number, h?: number) => {
+      const parent = el.parentElement;
+      const rect = el.getBoundingClientRect();
+      const parentRect = parent ? parent.getBoundingClientRect() : null;
+
+      let finalWidth = w ?? rect.width ?? el.clientWidth;
+      let finalHeight = h ?? rect.height ?? el.clientHeight;
+
+      if (!finalWidth || finalWidth <= 0) {
+        finalWidth = (parentRect && parentRect.width > 0) ? parentRect.width : (parent?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800));
+      }
+      if (!finalHeight || finalHeight <= 0) {
+        finalHeight = (parentRect && parentRect.height > 0) ? parentRect.height : (parent?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600));
+      }
+
+      finalWidth = Math.max(Math.floor(finalWidth), 300);
+      finalHeight = Math.max(Math.floor(finalHeight), 300);
+
+      setDimensions(prev => {
+        if (Math.abs(prev.width - finalWidth) < 2 && Math.abs(prev.height - finalHeight) < 2) {
+          return prev;
+        }
+        return { width: finalWidth, height: finalHeight };
+      });
+    };
+
+    // Initial immediate measurement
+    measureAndSetDimensions();
+
     const observer = new ResizeObserver((entries) => {
+      if (!entries || !entries.length) return;
       const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
+      measureAndSetDimensions(width, height);
     });
+
     observer.observe(el);
-    return () => observer.disconnect();
+    if (el.parentElement) {
+      observer.observe(el.parentElement);
+    }
+
+    const handleResize = () => measureAndSetDimensions();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // Fetch GeoJSON and Global Mood
@@ -515,6 +562,30 @@ const GlobeScene = React.memo(function GlobeScene({
           (window as any).__globeRef = globeRef.current;
         }
         initControls();
+        try {
+          const globe = globeRef.current;
+          const scene = globe.scene();
+          const camera = globe.camera();
+          const pov = globe.pointOfView ? globe.pointOfView() : null;
+          console.log('[GLOBE_DIAGNOSTICS] ' + JSON.stringify({
+            globeView,
+            globeTextureUrl,
+            dimensions,
+            pov,
+            cameraPos: camera ? { x: camera.position.x, y: camera.position.y, z: camera.position.z } : null,
+            sceneChildrenCount: scene ? scene.children.length : 0,
+            sceneChildren: scene ? scene.children.map((c: any) => ({
+              type: c.type,
+              name: c.name || '(unnamed)',
+              visible: c.visible,
+              isMesh: !!c.isMesh,
+              matType: c.material ? c.material.type : null,
+              hasMap: c.material ? !!c.material.map : null,
+            })) : [],
+          }));
+        } catch (diagErr) {
+          console.error('[GLOBE_DIAGNOSTICS_ERR]', diagErr);
+        }
         try {
           // Start far away
           globeRef.current.pointOfView(GLOBE_CONFIG.introPov, 0);
@@ -631,7 +702,7 @@ const GlobeScene = React.memo(function GlobeScene({
     // Enhance lighting for crystal-clear globe visibility
     let directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
     if (directionalLight) {
-      directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 4.0 : 3.5;
+      directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather') ? 4.0 : 3.5;
       directionalLight.position.set(1, 1, 1);
     } else {
       directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
@@ -641,7 +712,7 @@ const GlobeScene = React.memo(function GlobeScene({
     
     let ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
     if (ambientLight) {
-      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 1.6 : 0.8;
+      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather') ? 1.6 : 0.8;
     } else {
       ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       scene.add(ambientLight);
@@ -2122,7 +2193,7 @@ const GlobeScene = React.memo(function GlobeScene({
       onWheel={recordInteraction}
       onMouseLeave={() => setHoveredPolygon(null)}
     >
-      {dimensions.width > 0 && (
+      {dimensions.width > 0 && dimensions.height > 0 && (
         <Globe
           ref={globeRef}
           width={dimensions.width}

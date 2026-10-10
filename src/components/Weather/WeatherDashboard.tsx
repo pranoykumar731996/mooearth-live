@@ -4,11 +4,11 @@
 // The central weather experience: 3D Interactive Earth Globe +
 // Location Search + 8 Layer Selector + Animated Wind Particle System +
 // Forecast Timeline Scrubber + Color Scales + Telemetry Panel.
-// Desktop: side-by-side layout. Mobile: full-screen globe with bottom sheet.
+// Desktop: side-by-side layout. Mobile: full-screen interactive globe with bottom sheet.
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import WeatherSearch from './WeatherSearch';
@@ -19,11 +19,22 @@ import WeatherTimeline from './WeatherTimeline';
 import WeatherLegend from './WeatherLegend';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import type { GeocodingResult } from '@/services/weather/types';
+import type { GlobeApi } from '@/hooks/useGlobeControls';
+import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
 
-const WebGLGlobeViewer = dynamic(
-  () => import('@/components/Globe/WebGLGlobeViewer'),
-  { ssr: false, loading: () => null }
+// Dynamically import the primary 3D Globe Scene component with SSR disabled
+const GlobeScene = dynamic(
+  () => import('@/components/Globe/GlobeScene'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[400px] bg-[#020208] flex flex-col items-center justify-center text-cyan-400 font-mono text-xs tracking-wider animate-pulse">
+        <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mb-3" />
+        <span>INITIALIZING 3D EARTH GLOBE...</span>
+      </div>
+    ),
+  }
 );
 
 export default function WeatherDashboard() {
@@ -32,6 +43,20 @@ export default function WeatherDashboard() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
+  const [events, setEvents] = useState<WorldEvent[]>([]);
+  const globeApiRef = useRef<GlobeApi | null>(null);
+
+  // Fetch live global events for radar/atmosphere integration
+  useEffect(() => {
+    fetch('/api/events')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.events && Array.isArray(data.events)) {
+          setEvents(data.events);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-load default location on mount so live weather is immediately displayed
   useEffect(() => {
@@ -44,9 +69,20 @@ export default function WeatherDashboard() {
         timezone: 'Asia/Tokyo',
         source: 'search',
       });
-      setIsPanelOpen(true);
     }
   }, [weather]);
+
+  // Handle globe initialization callback
+  const handleInitGlobeApi = useCallback((api: GlobeApi) => {
+    globeApiRef.current = api;
+    if (weather.selectedLocation) {
+      api.flyTo({
+        lat: weather.selectedLocation.latitude,
+        lng: weather.selectedLocation.longitude,
+        altitude: 1.8,
+      });
+    }
+  }, [weather.selectedLocation]);
 
   // Search selection handler
   const handleSelectLocation = useCallback(
@@ -59,7 +95,11 @@ export default function WeatherDashboard() {
         timezone: result.timezone,
         source: 'search',
       });
-      setIsPanelOpen(true);
+      globeApiRef.current?.flyTo({
+        lat: result.latitude,
+        lng: result.longitude,
+        altitude: 1.6,
+      });
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
@@ -80,6 +120,11 @@ export default function WeatherDashboard() {
           timezone: 'auto',
           source: 'globe-click',
         });
+        globeApiRef.current?.flyTo({
+          lat: coords.lat,
+          lng: coords.lng,
+          altitude: 1.6,
+        });
       } else {
         weather.searchLocations(countryName).then((resp) => {
           if (resp?.results && resp.results.length > 0) {
@@ -92,10 +137,14 @@ export default function WeatherDashboard() {
               timezone: first.timezone || 'auto',
               source: 'globe-click',
             });
+            globeApiRef.current?.flyTo({
+              lat: first.latitude,
+              lng: first.longitude,
+              altitude: 1.6,
+            });
           }
         });
       }
-      setIsPanelOpen(true);
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
@@ -114,7 +163,11 @@ export default function WeatherDashboard() {
         timezone: 'auto',
         source: 'globe-click',
       });
-      setIsPanelOpen(true);
+      globeApiRef.current?.flyTo({
+        lat: coords.lat,
+        lng: coords.lng,
+        altitude: 1.6,
+      });
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
@@ -128,9 +181,9 @@ export default function WeatherDashboard() {
   const windGusts = currentForecast?.current?.windGusts;
 
   return (
-    <div className="min-h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
+    <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col select-none">
       {/* ── Top Header Bar ────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/85 backdrop-blur-xl border-b border-white/5">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-screen-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
@@ -161,7 +214,7 @@ export default function WeatherDashboard() {
       </header>
 
       {/* ── Layer Mode Selector ────────────────────── */}
-      <div className="fixed top-[52px] left-0 right-0 z-30 bg-[#020208]/75 backdrop-blur-lg border-b border-white/5">
+      <div className="fixed top-[52px] left-0 right-0 z-30 bg-[#020208]/85 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-screen-2xl mx-auto px-4 py-1.5">
           <WeatherLayerSelector
             activeLayer={weather.activeLayer}
@@ -171,31 +224,60 @@ export default function WeatherDashboard() {
       </div>
 
       {/* ── Main Viewport Area ──────────────────────── */}
-      <main className="pt-[98px] flex-1 h-[calc(100vh-98px)] flex flex-col lg:flex-row relative overflow-hidden">
+      <main className="fixed top-[98px] bottom-0 left-0 right-0 flex flex-col lg:flex-row overflow-hidden bg-[#010106]">
         {/* Globe Viewport */}
-        <div className="flex-1 relative w-full h-full min-h-[50vh] lg:min-h-0 bg-[#010106]">
-          <WebGLGlobeViewer
-            initialView="night"
-            selectedCountry={weather.selectedLocation?.country}
-            onCountrySelect={handleCountrySelect}
-            onGlobeClick={handleGlobeClick}
-            height="100%"
-            showControls={false}
-          />
+        <div className="flex-1 relative w-full h-full min-h-0 bg-[#010106] overflow-hidden">
+          {/* Direct 3D Interactive Earth Globe */}
+          <div className="absolute inset-0 w-full h-full">
+            <GlobeScene
+              events={events}
+              selectedEvent={null}
+              onSelectEvent={() => {}}
+              selectedCountry={weather.selectedLocation?.country}
+              onSelectCountry={handleCountrySelect}
+              selectedLocation={
+                weather.selectedLocation
+                  ? {
+                      id: `weather-${weather.selectedLocation.name}`,
+                      name: weather.selectedLocation.name,
+                      type: 'city',
+                      country: weather.selectedLocation.country || '',
+                      countryCode: '',
+                      lat: weather.selectedLocation.latitude,
+                      lng: weather.selectedLocation.longitude,
+                      population: 0,
+                      timezone: weather.selectedLocation.timezone || 'UTC',
+                      adminLevel: 2,
+                    }
+                  : null
+              }
+              activeCategory="weather"
+              globeView="weather"
+              onGlobeClick={handleGlobeClick}
+              onInitGlobeApi={handleInitGlobeApi}
+            />
+          </div>
 
-          {/* Animated Wind Particles (active in wind mode or when wind layer is selected) */}
-          <WindParticleOverlay
-            windSpeed={windSpeed}
-            windDirection={windDirection}
-            windGusts={windGusts}
-            isActive={weather.activeLayer === 'wind' || (hasData && weather.activeLayer === 'overview')}
-          />
+          {/* Animated Wind Particles Overlay */}
+          <div className="absolute inset-0 pointer-events-none z-10">
+            <WindParticleOverlay
+              windSpeed={windSpeed}
+              windDirection={windDirection}
+              windGusts={windGusts}
+              isActive={weather.activeLayer === 'wind' || (hasData && weather.activeLayer === 'overview')}
+            />
+          </div>
 
-          {/* Selected Location HUD Badge */}
+          {/* Selected Location HUD Badge (Clickable to inspect telemetry details) */}
           {weather.selectedLocation && (
             <div className="absolute top-4 left-4 z-20 pointer-events-auto">
-              <div className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+              <button
+                type="button"
+                onClick={() => setIsPanelOpen(!isPanelOpen)}
+                className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl hover:border-cyan-400/60 transition-colors text-left cursor-pointer"
+                title="Click to view detailed meteorological panel"
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
                 <div>
                   <div className="font-bold text-white text-xs">
                     {weather.selectedLocation.name}
@@ -204,16 +286,16 @@ export default function WeatherDashboard() {
                     {weather.selectedLocation.country || 'Target Coordinates'}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           )}
 
-          {/* Active Layer Legend (floating) */}
+          {/* Active Layer Legend (floating top-right) */}
           <div className="absolute top-4 right-4 z-20 pointer-events-auto max-w-[280px]">
             <WeatherLegend activeLayer={weather.activeLayer} units={weather.units} />
           </div>
 
-          {/* Forecast Timeline (floating along bottom of globe on desktop and tablet) */}
+          {/* Forecast Timeline (floating along bottom of globe) */}
           {currentForecast?.hourly && (
             <div className="absolute bottom-4 left-4 right-4 lg:right-[396px] z-20 pointer-events-auto max-w-2xl mx-auto">
               <WeatherTimeline
@@ -232,10 +314,11 @@ export default function WeatherDashboard() {
           {hasData && !isPanelOpen && (
             <button
               type="button"
+              data-testid="open-mobile-sheet"
               onClick={() => setIsPanelOpen(true)}
-              className="lg:hidden absolute bottom-20 right-4 z-20 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform"
+              className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform"
             >
-              📊 Telemetry Details →
+              📊 Telemetry →
             </button>
           )}
         </div>
@@ -265,13 +348,13 @@ export default function WeatherDashboard() {
               <div className="lg:hidden fixed inset-x-0 bottom-0 z-50">
                 {/* Backdrop overlay */}
                 <div
-                  className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                  className="fixed inset-0 bg-black/40 backdrop-blur-xs"
                   onClick={() => setIsPanelOpen(false)}
                 />
                 {/* Sheet Drawer */}
                 <div
                   className={`relative bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl overflow-hidden transition-all duration-300 ${
-                    isPanelMinimized ? 'max-h-[85px]' : 'max-h-[75vh]'
+                    isPanelMinimized ? 'max-h-[85px]' : 'max-h-[72vh]'
                   }`}
                 >
                   <div className="flex justify-center pt-2.5 pb-1">
@@ -279,6 +362,7 @@ export default function WeatherDashboard() {
                   </div>
                   <button
                     type="button"
+                    data-testid="close-mobile-sheet"
                     onClick={() => setIsPanelOpen(false)}
                     className="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/5 text-white/50 hover:text-white flex items-center justify-center text-xs z-20"
                   >
