@@ -175,7 +175,7 @@ export default function WeatherDashboard() {
         {/* Globe Viewport */}
         <div className="flex-1 relative w-full h-full min-h-[50vh] lg:min-h-0 bg-[#010106]">
           <WebGLGlobeViewer
-            initialView="weather"
+            initialView="night"
             selectedCountry={weather.selectedLocation?.country}
             onCountrySelect={handleCountrySelect}
             onGlobeClick={handleGlobeClick}

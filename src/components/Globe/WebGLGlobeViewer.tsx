@@ -93,7 +93,7 @@ export default function WebGLGlobeViewer({
   return (
     <div 
       data-testid="webgl-globe-viewer"
-      className={`relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#020208] shadow-[0_8px_32px_rgba(0,0,0,0.6)] ${className}`}
+      className={`relative w-full ${height === '100%' ? 'h-full' : ''} rounded-2xl overflow-hidden border border-white/10 bg-[#020208] shadow-[0_8px_32px_rgba(0,0,0,0.6)] ${className}`}
       style={{ height }}
     >
       {/* Viewport Control Bar */}

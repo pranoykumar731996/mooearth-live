@@ -2107,8 +2107,7 @@ const GlobeScene = React.memo(function GlobeScene({
       className="relative w-full h-full"
       id="globe-container"
       style={{
-        opacity: 0,
-        animation: 'fadeIn 2s ease-out 0.5s forwards',
+        opacity: 1,
         touchAction: isStopTheEarthSpinning ? 'none' : 'auto',
       }}
       onPointerDown={(e) => {
