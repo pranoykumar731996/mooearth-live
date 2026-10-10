@@ -61,6 +61,16 @@ const nextConfig: NextConfig = {
         destination: '/challenges',
         permanent: true,
       },
+      {
+        source: '/world-weather',
+        destination: '/weather',
+        permanent: true,
+      },
+      {
+        source: '/weather-map',
+        destination: '/weather',
+        permanent: true,
+      },
     ];
   },
   async headers() {
