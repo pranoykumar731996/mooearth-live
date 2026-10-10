@@ -8,7 +8,7 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import WeatherSearch from './WeatherSearch';
@@ -32,6 +32,21 @@ export default function WeatherDashboard() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
+
+  // Auto-load default location on mount so live weather is immediately displayed
+  useEffect(() => {
+    if (!weather.selectedLocation) {
+      weather.fetchWeatherForLocation({
+        latitude: 35.6762,
+        longitude: 139.6503,
+        name: 'Tokyo',
+        country: 'Japan',
+        timezone: 'Asia/Tokyo',
+        source: 'search',
+      });
+      setIsPanelOpen(true);
+    }
+  }, [weather]);
 
   // Search selection handler
   const handleSelectLocation = useCallback(
@@ -165,6 +180,7 @@ export default function WeatherDashboard() {
             onCountrySelect={handleCountrySelect}
             onGlobeClick={handleGlobeClick}
             height="100%"
+            showControls={false}
           />
 
           {/* Animated Wind Particles (active in wind mode or when wind layer is selected) */}

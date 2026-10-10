@@ -50,8 +50,9 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
             key={item.id}
             href={href}
             onClick={(e) => {
-              if (item.id === 'info') {
-                return; // Allow standard Link navigation
+              if (item.id === 'info' || item.id === 'weather' || item.category === 'weather') {
+                trackEvent('category', 'click', 'weather');
+                return; // Allow standard Link navigation to /weather
               }
               e.preventDefault();
               if (item.id === 'settings') {

@@ -500,32 +500,60 @@ const GlobeScene = React.memo(function GlobeScene({
       .catch((err) => console.error('Failed to load global mood', err));
   }, []);
 
-  // Intro animation & init
+  // Intro animation & init with retry until globeRef is ready
   useEffect(() => {
-    const timer = setTimeout(() => {
-      initControls();
-      if (globeRef.current) {
-        // Start far away
-        globeRef.current.pointOfView(GLOBE_CONFIG.introPov, 0);
-        // Animate in smoothly
-        setTimeout(() => {
-          globeRef.current?.pointOfView(GLOBE_CONFIG.defaultPov, 4000);
-          setTimeout(() => setIntroDone(true), 4000);
-        }, 200);
+    let isMounted = true;
+    let animTimer: NodeJS.Timeout | null = null;
+    let attempts = 0;
 
-        // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions (1.0 on mobile for 60fps)
+    const tryInit = () => {
+      if (!isMounted) return;
+      attempts++;
+
+      if (globeRef.current) {
+        initControls();
         try {
+          // Start far away
+          globeRef.current.pointOfView(GLOBE_CONFIG.introPov, 0);
+          // Animate in smoothly
+          animTimer = setTimeout(() => {
+            if (!isMounted) return;
+            globeRef.current?.pointOfView(GLOBE_CONFIG.defaultPov, 3000);
+            setTimeout(() => {
+              if (isMounted) setIntroDone(true);
+            }, 3000);
+          }, 150);
+
+          // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions (1.0 on mobile for 60fps)
           const renderer = globeRef.current.renderer();
           if (renderer) {
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 2.0));
           }
         } catch (e) {
-          console.warn('Could not set pixel ratio', e);
+          console.warn('[Globe] Init error', e);
+          if (isMounted) setIntroDone(true);
         }
+        return true;
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [initControls, globeRef, isMobile]);
+
+      // Retry up to 30 times (every 100ms for up to 3 seconds)
+      if (attempts < 30) {
+        animTimer = setTimeout(tryInit, 100);
+      } else {
+        // Fallback: mark intro done so child effects are not permanently blocked
+        if (isMounted) setIntroDone(true);
+      }
+      return false;
+    };
+
+    // First attempt
+    animTimer = setTimeout(tryInit, 150);
+
+    return () => {
+      isMounted = false;
+      if (animTimer) clearTimeout(animTimer);
+    };
+  }, [initControls, globeRef, isMobile, dimensions.width]);
 
   // Listen to OrbitControls zoom/rotation changes and update zoomAltitude state (throttled)
   useEffect(() => {
@@ -598,15 +626,22 @@ const GlobeScene = React.memo(function GlobeScene({
     if (!scene) return;
 
     // Enhance lighting for crystal-clear globe visibility
-    const directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
+    let directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
     if (directionalLight) {
       directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 4.0 : 3.5;
       directionalLight.position.set(1, 1, 1);
+    } else {
+      directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
+      directionalLight.position.set(1, 1, 1);
+      scene.add(directionalLight);
     }
     
-    const ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
+    let ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
     if (ambientLight) {
-      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 1.6 : 0.5;
+      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive) ? 1.6 : 0.8;
+    } else {
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
     }
 
     // Show clouds ONLY on desktop standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)

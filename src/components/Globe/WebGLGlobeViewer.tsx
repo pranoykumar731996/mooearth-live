@@ -68,6 +68,18 @@ export default function WebGLGlobeViewer({
       });
   }, []);
 
+  useEffect(() => {
+    if (selectedCountry !== undefined) {
+      setCurrentCountry(selectedCountry);
+    }
+  }, [selectedCountry]);
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveView(initialView);
+    }
+  }, [initialView]);
+
   const handleCountryClick = (country: string | null) => {
     setCurrentCountry(country);
     if (onCountrySelect) {

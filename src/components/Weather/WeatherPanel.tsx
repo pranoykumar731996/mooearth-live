@@ -77,10 +77,7 @@ export default function WeatherPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header with minimize toggle */}
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b border-white/10 cursor-pointer"
-        onClick={onToggleMinimize}
-      >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-cyan-400">📍</span>
           <div className="min-w-0">
@@ -99,24 +96,51 @@ export default function WeatherPanel({
           <div className="flex rounded-lg bg-black/40 border border-white/10 p-0.5">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setUnit('C'); }}
+              onClick={() => setUnit('C')}
               className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all
                 ${unit === 'C' ? 'bg-cyan-500 text-black' : 'text-white/50'}`}
             >°C</button>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setUnit('F'); }}
+              onClick={() => setUnit('F')}
               className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all
                 ${unit === 'F' ? 'bg-cyan-500 text-black' : 'text-white/50'}`}
             >°F</button>
           </div>
-          <span className={`text-white/40 transition-transform ${isMinimized ? 'rotate-180' : ''}`}>
-            ▼
-          </span>
+          {/* Dedicated minimize toggle button */}
+          <button
+            type="button"
+            onClick={onToggleMinimize}
+            className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+            title={isMinimized ? "Expand telemetry panel" : "Collapse telemetry panel"}
+          >
+            <span className={`text-[10px] transition-transform duration-200 ${isMinimized ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
         </div>
       </div>
 
-      {isMinimized ? null : (
+      {isMinimized ? (
+        <div
+          onClick={onToggleMinimize}
+          className="p-4 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between border-b border-white/5 text-xs text-white/60"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{forecast?.current?.weatherEmoji || '🌤️'}</span>
+            <div>
+              <div className="text-sm font-bold text-white">{formatTemp(forecast?.current?.temperature)}</div>
+              <div className="text-[11px] text-white/50">{forecast?.current?.weatherDescription || 'Current conditions'}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-[10px] text-cyan-300 font-semibold"
+          >
+            Expand ▲
+          </button>
+        </div>
+      ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4">
           {/* ── Current Conditions ────────────────── */}
           {(activeLayer === 'overview' || activeLayer === 'temperature' || activeLayer === 'wind' || activeLayer === 'precipitation') && (
@@ -288,6 +312,24 @@ export default function WeatherPanel({
           {/* ── Elevation ──────────────────────── */}
           {activeLayer === 'elevation' && (
             <>
+              {/* Context Weather Summary */}
+              {forecast?.current && (
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-mono text-white/40">Current Weather</span>
+                    <div className="text-base font-bold text-white flex items-center gap-1.5 mt-0.5">
+                      <span>{forecast.current.weatherEmoji}</span>
+                      <span>{formatTemp(forecast.current.temperature)}</span>
+                      <span className="text-xs text-white/60 font-normal">({forecast.current.weatherDescription})</span>
+                    </div>
+                  </div>
+                  <div className="text-right text-[11px] text-white/50 font-mono">
+                    <div>Humidity: {forecast.current.relativeHumidity}%</div>
+                    <div>Wind: {Math.round(forecast.current.windSpeed)} km/h</div>
+                  </div>
+                </div>
+              )}
+
               {loading.elevation ? (
                 <LoadingSkeleton />
               ) : errors.elevation ? (
@@ -295,28 +337,60 @@ export default function WeatherPanel({
               ) : elevation ? (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-white/70 uppercase tracking-wider">
-                    Terrain Elevation
+                    Terrain Elevation & Altitude
                   </h4>
-                  <div className="flex items-end gap-4">
-                    <div>
-                      <div className="text-4xl font-black text-white">
-                        {Math.round(elevation.elevation)} m
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-cyan-500/10 to-transparent border border-cyan-500/20">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <div className="text-4xl font-black text-white tracking-tight">
+                          {Math.round(elevation.elevation).toLocaleString()} <span className="text-2xl text-cyan-400 font-bold">m</span>
+                        </div>
+                        <p className="text-sm text-white/60 mt-1 font-mono">
+                          {elevation.elevationFeet.toLocaleString()} ft above sea level
+                        </p>
                       </div>
-                      <p className="text-sm text-white/50 mt-1">
-                        {elevation.elevationFeet.toLocaleString()} ft above sea level
-                      </p>
+                      <span className="text-4xl">⛰️</span>
                     </div>
-                    <span className="text-4xl">⛰️</span>
+                    {/* Classification Badge */}
+                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-[11px] text-white/50">Terrain Classification:</span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                        {elevation.elevation < 100
+                          ? '🌊 Sea Level / Coastal Lowland'
+                          : elevation.elevation < 500
+                          ? '🌾 Lowland Valley / Plains'
+                          : elevation.elevation < 1500
+                          ? '⛰️ Highlands & Plateau'
+                          : elevation.elevation < 3000
+                          ? '🏔️ Mountainous Alpine'
+                          : '❄️ High Altitude Summit'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <MetricCard label="Latitude" value={`${elevation.latitude.toFixed(4)}°`} />
                     <MetricCard label="Longitude" value={`${elevation.longitude.toFixed(4)}°`} />
+                    <MetricCard
+                      label="Est. Pressure"
+                      value={`${Math.round(1013.25 * Math.pow(Math.max(0, 1 - 2.25577e-5 * elevation.elevation), 5.25588))} hPa`}
+                      sub="Barometric standard"
+                    />
+                    <MetricCard
+                      label="Boiling Point"
+                      value={`${Math.max(70, +(100 - (elevation.elevation / 300)).toFixed(1))} °C`}
+                      sub="Water boiling temp"
+                    />
                   </div>
                   <p className="text-[10px] text-white/30 pt-2">
-                    Elevation data from digital terrain models. Source: Open-Meteo.com
+                    Digital Elevation Model (DEM) data provided by Copernicus & NASA SRTM via Open-Meteo.com.
                   </p>
                 </div>
-              ) : null}
+              ) : (
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-center text-xs text-white/60">
+                  <p>Querying digital terrain model for coordinates {location.latitude.toFixed(2)}°, {location.longitude.toFixed(2)}°...</p>
+                </div>
+              )}
             </>
           )}
 
