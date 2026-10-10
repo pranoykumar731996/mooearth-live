@@ -51,6 +51,7 @@ interface GlobeSceneProps {
   onStopTheEarthCoordCaptured?: (coord: { lat: number; lng: number; timestamp?: number }) => void;
   stopTheEarthTargetCoord?: { lat: number; lng: number } | null;
   onInitGlobeApi?: (api: GlobeApi) => void;
+  onGlobeClick?: (coords: { lat: number; lng: number }) => void;
 }
 // Generate a blue blueprint holographic grid texture dynamically at runtime via HTML Canvas
 const createBlueprintGridTexture = () => {
@@ -191,6 +192,7 @@ const GlobeScene = React.memo(function GlobeScene({
   onStopTheEarthCoordCaptured,
   stopTheEarthTargetCoord = null,
   onInitGlobeApi,
+  onGlobeClick,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
   const [failsafeActive, setFailsafeActive] = useState(false);
@@ -2024,9 +2026,10 @@ const GlobeScene = React.memo(function GlobeScene({
 
     onSelectEvent(null);
     if (onSelectCountry) onSelectCountry(null);
+    if (onGlobeClick && coords) onGlobeClick(coords);
     resumeRotation();
     recordInteraction();
-  }, [onSelectEvent, onSelectCountry, resumeRotation, recordInteraction, handleStopTheEarthPointer]);
+  }, [onSelectEvent, onSelectCountry, onGlobeClick, resumeRotation, recordInteraction, handleStopTheEarthPointer]);
 
   // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
   const constrainedTooltipPos = useMemo(() => {

@@ -106,6 +106,8 @@ export function getCacheMetrics(): CacheMetrics {
   };
 }
 
+export { getCached, setCache, getCacheKey, checkRateLimit };
+
 // ── Rate Limiting ─────────────────────────────────────────────
 
 let requestCount = 0;

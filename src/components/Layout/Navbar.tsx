@@ -283,6 +283,15 @@ export default function Navbar({
           {/* Language Selector (Mobile) */}
           <LanguageSelector compact={true} />
 
+          {/* Weather Mode (Mobile) */}
+          <Link
+            href="/weather"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-cyan-300 active:scale-95 transition-all bg-white/5 border border-white/10"
+            title="MooEarth Weather Intelligence"
+          >
+            <span className="text-sm">🌤️</span>
+          </Link>
+
           {/* Play Earth Game Mode (Eye-Stopper Pill for Mobile) */}
           <button
             onClick={onTogglePlayEarth}
@@ -364,6 +373,16 @@ export default function Navbar({
               {t('navbar.modesBadge', '11+ MODES')}
             </span>
           </button>
+
+          {/* Weather Intelligence Platform Link (Desktop) */}
+          <Link
+            href="/weather"
+            title="MooEarth Weather Intelligence Platform"
+            className="relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold tracking-wider border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-blue-500/20 to-cyan-500/15 text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all pointer-events-auto cursor-pointer group"
+          >
+            <span className="text-base group-hover:scale-110 transition-transform">🌤️</span>
+            <span className="font-bold text-cyan-200">WEATHER</span>
+          </Link>
 
           {/* Phase 3: Cinematic Mode Toggle */}
           <button

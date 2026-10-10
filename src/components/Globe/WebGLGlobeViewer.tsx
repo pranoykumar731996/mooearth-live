@@ -26,6 +26,7 @@ interface WebGLGlobeViewerProps {
   showControls?: boolean;
   selectedCountry?: string | null;
   onCountrySelect?: (country: string | null) => void;
+  onGlobeClick?: (coords: { lat: number; lng: number }) => void;
   className?: string;
 }
 
@@ -35,6 +36,7 @@ export default function WebGLGlobeViewer({
   showControls = true,
   selectedCountry = null,
   onCountrySelect,
+  onGlobeClick,
   className = '',
 }: WebGLGlobeViewerProps) {
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
@@ -147,6 +149,7 @@ export default function WebGLGlobeViewer({
           onSelectEvent={setSelectedEvent}
           selectedCountry={currentCountry}
           onSelectCountry={handleCountryClick}
+          onGlobeClick={onGlobeClick}
           globeView={activeView}
         />
       ) : (

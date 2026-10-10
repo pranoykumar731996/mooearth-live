@@ -111,6 +111,27 @@ export function useWeatherData() {
     activeLayer: 'overview',
   });
 
+  const [units, setUnits] = useState<'celsius' | 'fahrenheit'>('celsius');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mooearth_weather_units');
+      if (saved === 'celsius' || saved === 'fahrenheit') {
+        setUnits(saved);
+      }
+    }
+  }, []);
+
+  const toggleUnits = useCallback(() => {
+    setUnits((prev) => {
+      const next = prev === 'celsius' ? 'fahrenheit' : 'celsius';
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('mooearth_weather_units', next);
+      }
+      return next;
+    });
+  }, []);
+
   const setActiveLayer = useCallback((layer: WeatherLayerMode) => {
     setState(prev => ({ ...prev, activeLayer: layer }));
   }, []);
@@ -279,6 +300,9 @@ export function useWeatherData() {
 
   return {
     ...state,
+    units,
+    setUnits,
+    toggleUnits,
     setActiveLayer,
     fetchWeatherForLocation,
     searchLocations: searchLocationsRaw,

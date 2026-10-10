@@ -52,6 +52,11 @@ export function getWmoWeatherInfo(code: number): { desc: string; emoji: string }
   return WMO_CODE_MAP[code] || { desc: `Weather code ${code}`, emoji: '🌡️' };
 }
 
+export function getWeatherDescription(code: number): { description: string; icon: string } {
+  const info = getWmoWeatherInfo(code);
+  return { description: info.desc, icon: info.emoji };
+}
+
 // ── Raw API Response Types ────────────────────────────────────
 
 interface RawCurrentWeather {

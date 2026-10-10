@@ -21,6 +21,7 @@ import { categorizeEuropeanAqi, categorizeUsAqi, getAqiColor } from '@/services/
 import { describeDischarge } from '@/services/weather/floodService';
 import { describeWaveConditions, waveDirectionToCompass } from '@/services/weather/marineService';
 import { getWmoWeatherInfo } from '@/services/weather/forecastService';
+import WeatherNewsSection from './WeatherNewsSection';
 
 interface WeatherPanelProps {
   forecast: ForecastResponse | null;
@@ -432,6 +433,9 @@ export default function WeatherPanel({
               ) : null}
             </>
           )}
+
+          {/* ── Regional News & Events ─────────── */}
+          <WeatherNewsSection country={location?.country} locationName={location?.name} />
 
           {/* ── Attribution ────────────────────── */}
           <div className="pt-4 pb-2 border-t border-white/5">

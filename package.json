@@ -24,7 +24,8 @@
     "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts",
     "test:seo": "playwright test tests/seo-technical.spec.ts",
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",
-    "test:news-engine": "npx tsx scripts/test-news-engine.ts"
+    "test:news-engine": "npx tsx scripts/test-news-engine.ts",
+    "test:weather": "npx tsx scripts/test-weather-suite.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",
