@@ -511,6 +511,9 @@ const GlobeScene = React.memo(function GlobeScene({
       attempts++;
 
       if (globeRef.current) {
+        if (typeof window !== 'undefined') {
+          (window as any).__globeRef = globeRef.current;
+        }
         initControls();
         try {
           // Start far away
