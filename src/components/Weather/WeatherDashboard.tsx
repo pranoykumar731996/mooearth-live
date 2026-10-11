@@ -11,6 +11,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import WeatherSearch from './WeatherSearch';
 import WeatherLayerSelector from './WeatherLayerSelector';
 import WeatherPanel from './WeatherPanel';
@@ -22,6 +23,11 @@ import type { GeocodingResult } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
+
+// Check reduced-motion preference
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
 // Dynamically import the primary 3D Globe Scene component with SSR disabled
 const GlobeScene = dynamic(
@@ -39,12 +45,32 @@ const GlobeScene = dynamic(
 
 export default function WeatherDashboard() {
   const weather = useWeatherData();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [isPanelMinimized, setIsPanelMinimized] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const globeApiRef = useRef<GlobeApi | null>(null);
+  const initialUrlRestoredRef = useRef(false);
+
+  // Helper: push location into URL query params for shareable links
+  const updateUrlParams = useCallback((lat: number, lng: number, city?: string, country?: string) => {
+    try {
+      const params = new URLSearchParams();
+      params.set('lat', lat.toFixed(4));
+      params.set('lng', lng.toFixed(4));
+      if (city) params.set('city', city);
+      if (country) params.set('country', country);
+      router.replace(`/weather?${params.toString()}`, { scroll: false });
+    } catch {
+      // Silently ignore URL update errors
+    }
+  }, [router]);
+
+  // Helper: get flyTo duration respecting reduced-motion
+  const getFlyDuration = useCallback((ms: number) => prefersReducedMotion() ? 0 : ms, []);
 
   // Fetch live global events for radar/atmosphere integration
   useEffect(() => {
@@ -58,8 +84,30 @@ export default function WeatherDashboard() {
       .catch(() => {});
   }, []);
 
-  // Auto-load default location on mount so live weather is immediately displayed
+  // Restore location from URL query params on mount (shareable links)
   useEffect(() => {
+    if (initialUrlRestoredRef.current) return;
+    initialUrlRestoredRef.current = true;
+
+    const lat = parseFloat(searchParams.get('lat') || '');
+    const lng = parseFloat(searchParams.get('lng') || '');
+    const city = searchParams.get('city') || '';
+    const country = searchParams.get('country') || '';
+
+    if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      weather.fetchWeatherForLocation({
+        latitude: lat,
+        longitude: lng,
+        name: city || `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`,
+        country: country || undefined,
+        timezone: 'auto',
+        source: 'url',
+      });
+      // Globe flyTo will happen in handleInitGlobeApi when the globe is ready
+      return;
+    }
+
+    // Default: load Tokyo
     if (!weather.selectedLocation) {
       weather.fetchWeatherForLocation({
         latitude: 35.6762,
@@ -70,7 +118,8 @@ export default function WeatherDashboard() {
         source: 'search',
       });
     }
-  }, [weather]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle globe initialization callback
   const handleInitGlobeApi = useCallback((api: GlobeApi) => {
@@ -99,11 +148,12 @@ export default function WeatherDashboard() {
         lat: result.latitude,
         lng: result.longitude,
         altitude: 1.6,
-      });
+      }, getFlyDuration(1500));
+      updateUrlParams(result.latitude, result.longitude, result.name, result.country);
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
-    [weather]
+    [weather, updateUrlParams, getFlyDuration]
   );
 
   // Globe country tap handler
@@ -124,7 +174,8 @@ export default function WeatherDashboard() {
           lat: coords.lat,
           lng: coords.lng,
           altitude: 1.6,
-        });
+        }, getFlyDuration(1500));
+        updateUrlParams(coords.lat, coords.lng, coords.city, coords.country);
       } else {
         weather.searchLocations(countryName).then((resp) => {
           if (resp?.results && resp.results.length > 0) {
@@ -141,14 +192,15 @@ export default function WeatherDashboard() {
               lat: first.latitude,
               lng: first.longitude,
               altitude: 1.6,
-            });
+            }, getFlyDuration(1500));
+            updateUrlParams(first.latitude, first.longitude, first.name, first.country);
           }
         });
       }
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
-    [weather]
+    [weather, updateUrlParams, getFlyDuration]
   );
 
   // Globe coordinate click handler (any point, ocean, island)
@@ -156,10 +208,11 @@ export default function WeatherDashboard() {
     (coords: { lat: number; lng: number }) => {
       const latStr = coords.lat >= 0 ? `${coords.lat.toFixed(2)}°N` : `${Math.abs(coords.lat).toFixed(2)}°S`;
       const lngStr = coords.lng >= 0 ? `${coords.lng.toFixed(2)}°E` : `${Math.abs(coords.lng).toFixed(2)}°W`;
+      const name = `${latStr}, ${lngStr}`;
       weather.fetchWeatherForLocation({
         latitude: coords.lat,
         longitude: coords.lng,
-        name: `${latStr}, ${lngStr}`,
+        name,
         timezone: 'auto',
         source: 'globe-click',
       });
@@ -167,11 +220,12 @@ export default function WeatherDashboard() {
         lat: coords.lat,
         lng: coords.lng,
         altitude: 1.6,
-      });
+      }, getFlyDuration(1200));
+      updateUrlParams(coords.lat, coords.lng, name);
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
-    [weather]
+    [weather, updateUrlParams, getFlyDuration]
   );
 
   const handleZoomIn = useCallback(() => {

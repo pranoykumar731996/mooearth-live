@@ -1358,20 +1358,18 @@ const GlobeScene = React.memo(function GlobeScene({
     }
     const selLoc = selectedLocation as any;
     if (selLoc && selLoc.type === 'city') {
-      const alreadyHasEvent = eventSlice.some(e => e.city === selLoc.name);
-      if (!alreadyHasEvent) {
-        data.push({
-          id: `city-marker-${selLoc.id}`,
-          title: selLoc.name,
-          summary: `${selLoc.name}, ${selLoc.state ? selLoc.state + ', ' : ''}${selLoc.country}`,
-          category: 'breaking',
-          country: selLoc.country,
-          city: selLoc.name,
-          lat: selLoc.lat,
-          lng: selLoc.lng,
-          isCityLocation: true,
-        });
-      }
+      // Always add the weather city pin marker — with a unique key per city to avoid duplicates
+      data.push({
+        id: `weather-city-pin-${selLoc.lat.toFixed(4)}-${selLoc.lng.toFixed(4)}`,
+        title: selLoc.name,
+        summary: `${selLoc.name}, ${selLoc.state ? selLoc.state + ', ' : ''}${selLoc.country}`,
+        category: 'weather',
+        country: selLoc.country,
+        city: selLoc.name,
+        lat: selLoc.lat,
+        lng: selLoc.lng,
+        isWeatherCityPin: true,
+      });
     }
     return data;
   }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile]);
@@ -1460,6 +1458,28 @@ const GlobeScene = React.memo(function GlobeScene({
           event: e,
         });
       });
+
+      // Selected weather city location — pulsing cyan radar ring
+      const selLoc = selectedLocation as any;
+      if (selLoc && selLoc.type === 'city') {
+        rings.push({
+          lat: selLoc.lat,
+          lng: selLoc.lng,
+          maxR: 7,
+          propagationSpeed: 1.8,
+          repeatPeriod: 2200,
+          color: 'rgba(0, 229, 255, 0.7)',
+        });
+        rings.push({
+          lat: selLoc.lat,
+          lng: selLoc.lng,
+          maxR: 4,
+          propagationSpeed: 1.0,
+          repeatPeriod: 2200,
+          color: 'rgba(6, 182, 212, 0.4)',
+        });
+      }
+
       return rings;
     }
 
@@ -1544,7 +1564,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return rings;
-  }, [events, celebration, isMobile, globeView, failsafeActive, isStopTheEarthActive, stopTheEarthTargetCoord]);
+  }, [events, celebration, isMobile, globeView, failsafeActive, isStopTheEarthActive, stopTheEarthTargetCoord, selectedLocation]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -1554,8 +1574,115 @@ const GlobeScene = React.memo(function GlobeScene({
       const markerId = d.id || `${d.lat}-${d.lng}-${isCelebration ? 'celeb' : 'event'}`;
       
       // Return cached element if available to prevent DOM reflow/allocation jank
-      if (htmlMarkersCacheRef.current.has(markerId)) {
+      // Weather city pin markers get a unique ID per location, so skip cache for stale pins
+      if (!d.isWeatherCityPin && htmlMarkersCacheRef.current.has(markerId)) {
         return htmlMarkersCacheRef.current.get(markerId)!;
+      }
+
+      // ── Dedicated Weather City Pin Marker ────────────────────────
+      if (d.isWeatherCityPin) {
+        // Clear any previously cached weather pin to avoid stale markers
+        htmlMarkersCacheRef.current.forEach((_, key) => {
+          if (key.startsWith('weather-city-pin-') && key !== markerId) {
+            htmlMarkersCacheRef.current.delete(key);
+          }
+        });
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          return htmlMarkersCacheRef.current.get(markerId)!;
+        }
+
+        const cityName = d.title || d.city || 'Location';
+        const countryName = d.country || '';
+        const label = countryName ? `${cityName}, ${countryName}` : cityName;
+
+        const el = document.createElement('div');
+        el.className = 'weather-city-pin-marker';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          pointer-events: none;
+          transform: translateY(-16px);
+        `;
+        el.innerHTML = `
+          <div style="
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <!-- Outer pulsing glow ring -->
+            <div style="
+              position: absolute;
+              width: 36px; height: 36px;
+              border-radius: 50%;
+              border: 2px solid rgba(0, 229, 255, 0.6);
+              animation: weather-pin-pulse 2s ease-in-out infinite;
+            "></div>
+            <!-- Second pulsing ring (offset) -->
+            <div style="
+              position: absolute;
+              width: 36px; height: 36px;
+              border-radius: 50%;
+              border: 1.5px solid rgba(6, 182, 212, 0.4);
+              animation: weather-pin-pulse 2s ease-in-out infinite;
+              animation-delay: 0.7s;
+            "></div>
+            <!-- Inner glowing pin core -->
+            <div style="
+              width: 18px; height: 18px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(0, 229, 255, 0.95) 0%, rgba(6, 182, 212, 0.6) 50%, transparent 100%);
+              border: 2px solid #00e5ff;
+              box-shadow: 0 0 16px rgba(0, 229, 255, 0.8), 0 0 6px rgba(0, 229, 255, 0.5), inset 0 0 4px rgba(255,255,255,0.3);
+              z-index: 2;
+            "></div>
+          </div>
+          <!-- Vertical pin tail line -->
+          <div style="
+            width: 2px; height: 12px;
+            background: linear-gradient(to bottom, rgba(0,229,255,0.8), transparent);
+            margin-top: -1px;
+          "></div>
+          <!-- City label -->
+          <div style="
+            margin-top: 2px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: rgba(5, 5, 18, 0.88);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          ">
+            <span style="
+              font-size: 10px;
+              font-weight: 700;
+              color: #00e5ff;
+              letter-spacing: 0.3px;
+              font-family: system-ui, -apple-system, sans-serif;
+            ">${label}</span>
+          </div>
+        `;
+
+        // Inject keyframe animation if not already present
+        if (typeof document !== 'undefined' && !document.getElementById('weather-pin-keyframes')) {
+          const style = document.createElement('style');
+          style.id = 'weather-pin-keyframes';
+          style.textContent = `
+            @keyframes weather-pin-pulse {
+              0%, 100% { transform: scale(1); opacity: 0.7; }
+              50% { transform: scale(1.6); opacity: 0; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        return el;
       }
 
       if (d.isStopTheEarthBeacon) {

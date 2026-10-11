@@ -27,7 +27,10 @@ export default function WeatherSearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced search
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+
+  // Debounced search with race-condition protection
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim() || searchQuery.trim().length < 2) {
       setResults([]);
@@ -35,22 +38,33 @@ export default function WeatherSearch({
       return;
     }
 
+    // Abort any previous in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const thisRequestId = ++requestIdRef.current;
+
     setIsLoading(true);
     try {
       const res = await fetch(
         `/api/weather/geocoding?q=${encodeURIComponent(searchQuery)}`,
-        { signal: AbortSignal.timeout(5000) }
+        { signal: controller.signal }
       );
+      // Discard if a newer request was made while this one was in flight
+      if (thisRequestId !== requestIdRef.current) return;
       if (res.ok) {
         const data: GeocodingResponse = await res.json();
         setResults(data.results);
         setIsOpen(data.results.length > 0);
         setActiveIndex(-1);
       }
-    } catch {
-      // Silently fail on search errors
+    } catch (err: unknown) {
+      // Silently ignore abort errors and stale responses
+      if (err instanceof DOMException && err.name === 'AbortError') return;
     } finally {
-      setIsLoading(false);
+      if (thisRequestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -108,10 +122,11 @@ export default function WeatherSearch({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Cleanup debounce
+  // Cleanup debounce and abort controller
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
     };
   }, []);
 
