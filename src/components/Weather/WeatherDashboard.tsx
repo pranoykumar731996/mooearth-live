@@ -174,6 +174,40 @@ export default function WeatherDashboard() {
     [weather]
   );
 
+  const handleZoomIn = useCallback(() => {
+    if (globeApiRef.current?.zoomIn) {
+      globeApiRef.current.zoomIn(0.5);
+    } else if (typeof window !== 'undefined' && (window as any).__globeRef) {
+      const pov = (window as any).__globeRef.pointOfView();
+      if (pov && typeof pov.altitude === 'number') {
+        (window as any).__globeRef.pointOfView({ ...pov, altitude: Math.max(0.12, Number((pov.altitude - 0.5).toFixed(2))) }, 300);
+      }
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (globeApiRef.current?.zoomOut) {
+      globeApiRef.current.zoomOut(0.7);
+    } else if (typeof window !== 'undefined' && (window as any).__globeRef) {
+      const pov = (window as any).__globeRef.pointOfView();
+      if (pov && typeof pov.altitude === 'number') {
+        (window as any).__globeRef.pointOfView({ ...pov, altitude: Math.min(14.0, Number((pov.altitude + 0.7).toFixed(2))) }, 300);
+      }
+    }
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    if (weather.selectedLocation) {
+      globeApiRef.current?.flyTo({
+        lat: weather.selectedLocation.latitude,
+        lng: weather.selectedLocation.longitude,
+        altitude: 2.2,
+      }, 700);
+    } else {
+      globeApiRef.current?.flyTo({ lat: 20, lng: 0, altitude: 2.5 }, 700);
+    }
+  }, [weather.selectedLocation]);
+
   const hasData = weather.selectedLocation !== null;
   const currentForecast = weather.data.forecast;
   const windSpeed = currentForecast?.current?.windSpeed ?? 15;
@@ -181,9 +215,9 @@ export default function WeatherDashboard() {
   const windGusts = currentForecast?.current?.windGusts;
 
   return (
-    <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col select-none">
+    <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none">
         <div className="max-w-screen-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
@@ -268,6 +302,41 @@ export default function WeatherDashboard() {
             />
           </div>
 
+          {/* Floating Globe Zoom & Reset Controls */}
+          <div className="absolute top-20 left-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
+            <div className="flex flex-col rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 p-1 shadow-2xl">
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-base font-bold cursor-pointer"
+                title="Zoom into Earth (+)"
+                aria-label="Zoom in"
+              >
+                +
+              </button>
+              <div className="h-[1px] bg-white/10 mx-1" />
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-lg font-bold cursor-pointer"
+                title="Zoom out of Earth (−)"
+                aria-label="Zoom out"
+              >
+                −
+              </button>
+              <div className="h-[1px] bg-white/10 mx-1" />
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-cyan-300 hover:bg-white/10 active:scale-95 transition-all text-xs font-mono cursor-pointer"
+                title="Reset Earth view"
+                aria-label="Reset view"
+              >
+                ⟲
+              </button>
+            </div>
+          </div>
+
           {/* Selected Location HUD Badge (Clickable to inspect telemetry details) */}
           {weather.selectedLocation && (
             <div className="absolute top-4 left-4 z-20 pointer-events-auto">
@@ -316,7 +385,7 @@ export default function WeatherDashboard() {
               type="button"
               data-testid="open-mobile-sheet"
               onClick={() => setIsPanelOpen(true)}
-              className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform"
+              className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
             >
               📊 Telemetry →
             </button>
@@ -327,7 +396,7 @@ export default function WeatherDashboard() {
         {hasData && (
           <>
             {/* Desktop Side Panel */}
-            <div className="hidden lg:block w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl">
+            <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0">
               <WeatherPanel
                 forecast={weather.data.forecast}
                 airQuality={weather.data.airQuality}
@@ -345,7 +414,7 @@ export default function WeatherDashboard() {
 
             {/* Mobile Bottom Sheet Modal */}
             {isPanelOpen && (
-              <div className="lg:hidden fixed inset-x-0 bottom-0 z-50">
+              <div className="lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col justify-end">
                 {/* Backdrop overlay */}
                 <div
                   className="fixed inset-0 bg-black/40 backdrop-blur-xs"
@@ -353,34 +422,36 @@ export default function WeatherDashboard() {
                 />
                 {/* Sheet Drawer */}
                 <div
-                  className={`relative bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl overflow-hidden transition-all duration-300 ${
-                    isPanelMinimized ? 'max-h-[85px]' : 'max-h-[72vh]'
+                  className={`relative flex flex-col bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl transition-all duration-300 z-10 ${
+                    isPanelMinimized ? 'h-[85px]' : 'h-[75vh] max-h-[85vh]'
                   }`}
                 >
-                  <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="flex justify-center pt-2.5 pb-1 shrink-0">
                     <div className="w-12 h-1.5 rounded-full bg-white/20" />
                   </div>
                   <button
                     type="button"
                     data-testid="close-mobile-sheet"
                     onClick={() => setIsPanelOpen(false)}
-                    className="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/5 text-white/50 hover:text-white flex items-center justify-center text-xs z-20"
+                    className="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/5 text-white/50 hover:text-white flex items-center justify-center text-xs z-20 cursor-pointer"
                   >
                     ✕
                   </button>
-                  <WeatherPanel
-                    forecast={weather.data.forecast}
-                    airQuality={weather.data.airQuality}
-                    elevation={weather.data.elevation}
-                    flood={weather.data.flood}
-                    marine={weather.data.marine}
-                    location={weather.selectedLocation}
-                    activeLayer={weather.activeLayer}
-                    loading={weather.loading}
-                    errors={weather.errors}
-                    isMinimized={isPanelMinimized}
-                    onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
-                  />
+                  <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                    <WeatherPanel
+                      forecast={weather.data.forecast}
+                      airQuality={weather.data.airQuality}
+                      elevation={weather.data.elevation}
+                      flood={weather.data.flood}
+                      marine={weather.data.marine}
+                      location={weather.selectedLocation}
+                      activeLayer={weather.activeLayer}
+                      loading={weather.loading}
+                      errors={weather.errors}
+                      isMinimized={isPanelMinimized}
+                      onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+                    />
+                  </div>
                 </div>
               </div>
             )}

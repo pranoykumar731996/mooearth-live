@@ -194,7 +194,7 @@ const GlobeScene = React.memo(function GlobeScene({
   onInitGlobeApi,
   onGlobeClick,
 }: GlobeSceneProps) {
-  const { globeRef, initControls, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
+  const { globeRef, initControls, flyTo, zoomIn, zoomOut, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
   const [failsafeActive, setFailsafeActive] = useState(false);
   const lowFpsSecondsRef = useRef(0);
   const highFpsSecondsRef = useRef(0);
@@ -243,17 +243,19 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // Expose GlobeApi to parent component once ready
   useEffect(() => {
-    if (introDone && globeRef.current && onInitGlobeApi) {
+    if (globeRef.current && onInitGlobeApi) {
       onInitGlobeApi({
         getPointOfView,
         flyTo,
+        zoomIn,
+        zoomOut,
         pauseRotation,
         resumeRotation,
         spinRapidly,
         freezeRotation,
       });
     }
-  }, [introDone, onInitGlobeApi, getPointOfView, flyTo, pauseRotation, resumeRotation, spinRapidly, freezeRotation, globeRef]);
+  }, [onInitGlobeApi, getPointOfView, flyTo, zoomIn, zoomOut, pauseRotation, resumeRotation, spinRapidly, freezeRotation, globeRef]);
 
   // Precompute live match countries map for O(1) rendering lookup
   const liveMatchCountriesMap = useMemo(() => {
@@ -587,16 +589,21 @@ const GlobeScene = React.memo(function GlobeScene({
           console.error('[GLOBE_DIAGNOSTICS_ERR]', diagErr);
         }
         try {
-          // Start far away
-          globeRef.current.pointOfView(GLOBE_CONFIG.introPov, 0);
-          // Animate in smoothly
-          animTimer = setTimeout(() => {
-            if (!isMounted) return;
-            globeRef.current?.pointOfView(GLOBE_CONFIG.defaultPov, 3000);
-            setTimeout(() => {
-              if (isMounted) setIntroDone(true);
-            }, 3000);
-          }, 150);
+          if (globeView === 'weather') {
+            globeRef.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 0);
+            setIntroDone(true);
+          } else {
+            // Start far away
+            globeRef.current.pointOfView(GLOBE_CONFIG.introPov, 0);
+            // Animate in smoothly
+            animTimer = setTimeout(() => {
+              if (!isMounted) return;
+              globeRef.current?.pointOfView(GLOBE_CONFIG.defaultPov, 3000);
+              setTimeout(() => {
+                if (isMounted) setIntroDone(true);
+              }, 3000);
+            }, 150);
+          }
 
           // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions (1.0 on mobile for 60fps)
           const renderer = globeRef.current.renderer();
@@ -610,8 +617,8 @@ const GlobeScene = React.memo(function GlobeScene({
         return true;
       }
 
-      // Retry up to 30 times (every 100ms for up to 3 seconds)
-      if (attempts < 30) {
+      // Retry up to 150 times (every 100ms for up to 15 seconds)
+      if (attempts < 150) {
         animTimer = setTimeout(tryInit, 100);
       } else {
         // Fallback: mark intro done so child effects are not permanently blocked
@@ -2182,7 +2189,7 @@ const GlobeScene = React.memo(function GlobeScene({
       id="globe-container"
       style={{
         opacity: 1,
-        touchAction: isStopTheEarthSpinning ? 'none' : 'auto',
+        touchAction: 'none',
       }}
       onPointerDown={(e) => {
         recordInteraction();

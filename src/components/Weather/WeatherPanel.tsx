@@ -75,9 +75,9 @@ export default function WeatherPanel({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 select-text">
       {/* Header with minimize toggle */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-cyan-400">📍</span>
           <div className="min-w-0">
@@ -97,13 +97,13 @@ export default function WeatherPanel({
             <button
               type="button"
               onClick={() => setUnit('C')}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all
+              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer
                 ${unit === 'C' ? 'bg-cyan-500 text-black' : 'text-white/50'}`}
             >°C</button>
             <button
               type="button"
               onClick={() => setUnit('F')}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all
+              className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer
                 ${unit === 'F' ? 'bg-cyan-500 text-black' : 'text-white/50'}`}
             >°F</button>
           </div>
@@ -111,7 +111,7 @@ export default function WeatherPanel({
           <button
             type="button"
             onClick={onToggleMinimize}
-            className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+            className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer"
             title={isMinimized ? "Expand telemetry panel" : "Collapse telemetry panel"}
           >
             <span className={`text-[10px] transition-transform duration-200 ${isMinimized ? 'rotate-180' : ''}`}>
@@ -124,7 +124,7 @@ export default function WeatherPanel({
       {isMinimized ? (
         <div
           onClick={onToggleMinimize}
-          className="p-4 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between border-b border-white/5 text-xs text-white/60"
+          className="p-4 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between border-b border-white/5 text-xs text-white/60 shrink-0"
         >
           <div className="flex items-center gap-2">
             <span className="text-2xl">{forecast?.current?.weatherEmoji || '🌤️'}</span>
@@ -141,7 +141,7 @@ export default function WeatherPanel({
           </button>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-4 touch-pan-y scrollbar-thin scrollbar-thumb-white/20">
           {/* ── Current Conditions ────────────────── */}
           {(activeLayer === 'overview' || activeLayer === 'temperature' || activeLayer === 'wind' || activeLayer === 'precipitation') && (
             <>

@@ -15,6 +15,8 @@ export interface GlobeApi {
   resumeRotation: () => void;
   spinRapidly: (speedMultiplier?: number) => void;
   freezeRotation: () => void;
+  zoomIn: (step?: number) => void;
+  zoomOut: (step?: number) => void;
 }
 
 type GlobeInstance = any;
@@ -31,10 +33,10 @@ export function useGlobeControls() {
       controls.autoRotateSpeed = GLOBE_CONFIG.autoRotateSpeed;
       controls.enableDamping = true;
       controls.dampingFactor = 0.04; // Google Earth style inertia damping (smoother momentum glide)
-      controls.rotateSpeed = 0.65;    // Smoother drag rotation
-      controls.zoomSpeed = 0.85;      // Smooth zoom speed
-      controls.minDistance = 120;
-      controls.maxDistance = 600;
+      controls.rotateSpeed = 0.75;    // Smoother drag rotation
+      controls.zoomSpeed = 1.2;       // Responsive, smooth zoom speed
+      controls.minDistance = 105;     // Allows deep zoom into landmasses
+      controls.maxDistance = 1800;    // Allows full zoom out into deep space (altitude up to ~17.0)
     }
   }, []);
 
@@ -53,6 +55,26 @@ export function useGlobeControls() {
     },
     []
   );
+
+  /** Zoom into the globe by a step */
+  const zoomIn = useCallback((step = 0.4) => {
+    if (!globeRef.current) return;
+    const pov = globeRef.current.pointOfView();
+    if (pov && typeof pov.altitude === 'number') {
+      const newAlt = Math.max(0.12, Number((pov.altitude - step).toFixed(2)));
+      globeRef.current.pointOfView({ ...pov, altitude: newAlt }, 400);
+    }
+  }, []);
+
+  /** Zoom out of the globe by a step */
+  const zoomOut = useCallback((step = 0.6) => {
+    if (!globeRef.current) return;
+    const pov = globeRef.current.pointOfView();
+    if (pov && typeof pov.altitude === 'number') {
+      const newAlt = Math.min(14.0, Number((pov.altitude + step).toFixed(2)));
+      globeRef.current.pointOfView({ ...pov, altitude: newAlt }, 400);
+    }
+  }, []);
 
   /** Pause auto-rotation (e.g., during user interaction) */
   const pauseRotation = useCallback(() => {
@@ -101,6 +123,8 @@ export function useGlobeControls() {
     globeRef,
     initControls,
     flyTo,
+    zoomIn,
+    zoomOut,
     pauseRotation,
     resumeRotation,
     spinRapidly,

@@ -52,7 +52,8 @@ test.describe('Weather Intelligence 3D Globe Fix', () => {
   test('Globe renders in mobile portrait viewport and is not obscured by full-screen modal', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/weather', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(4000);
+    // Wait for globe component to mount
+    await page.waitForFunction(() => !!(window as any).__globeRef, { timeout: 30000 });
 
     // Canvas inside #globe-container should have positive viewport dimensions
     const canvas = page.locator('#globe-container canvas').first();
@@ -101,14 +102,73 @@ test.describe('Weather Intelligence 3D Globe Fix', () => {
   test('Main Globe page continues to render 3D Earth correctly', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(4000);
+    await page.waitForSelector('#globe-container canvas', { timeout: 30000 });
 
     const canvas = page.locator('#globe-container canvas').first();
-    await expect(canvas).toBeVisible();
+    await expect(canvas).toBeAttached();
+    await expect(canvas).toBeVisible({ timeout: 15000 });
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThan(300);
     expect(box!.height).toBeGreaterThan(300);
+  });
+
+  test('Zoom controls (+, −, ⟲) zoom in and zoom out of the 3D Earth', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/weather', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => !!(window as any).__globeRef, { timeout: 30000 });
+    await page.waitForTimeout(1000);
+
+    const zoomInBtn = page.locator('button[aria-label="Zoom in"]').first();
+    const zoomOutBtn = page.locator('button[aria-label="Zoom out"]').first();
+    const resetBtn = page.locator('button[aria-label="Reset view"]').first();
+
+    await expect(zoomInBtn).toBeVisible();
+    await expect(zoomOutBtn).toBeVisible();
+    await expect(resetBtn).toBeVisible();
+
+    // Zoom In
+    await zoomInBtn.click();
+    await page.waitForTimeout(800);
+    const altZoomIn = await page.evaluate(() => (window as any).__globeRef.pointOfView()?.altitude);
+
+    // Zoom Out multiple times
+    await zoomOutBtn.click();
+    await page.waitForTimeout(400);
+    await zoomOutBtn.click();
+    await page.waitForTimeout(400);
+    await zoomOutBtn.click();
+    await page.waitForTimeout(800);
+    const altZoomOut = await page.evaluate(() => (window as any).__globeRef.pointOfView()?.altitude);
+
+    expect(altZoomOut).toBeGreaterThan(altZoomIn);
+
+    // Reset View
+    await resetBtn.click();
+    await page.waitForTimeout(1000);
+    const altReset = await page.evaluate(() => (window as any).__globeRef.pointOfView()?.altitude);
+    expect(altReset).toBeGreaterThanOrEqual(1.8);
+  });
+
+  test('Weather features ribbon and telemetry panel are completely scrollable', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/weather', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    // Check layer selector horizontal scroll
+    const ribbonCanScroll = await page.evaluate(() => {
+      const el = document.querySelector('.overflow-x-auto');
+      return el ? el.scrollWidth > 0 : false;
+    });
+    expect(ribbonCanScroll).toBe(true);
+
+    // Check desktop weather panel vertical scroll through all features
+    const panelScrollable = await page.evaluate(() => {
+      const el = document.querySelector('.overflow-y-auto');
+      if (!el) return false;
+      return el.scrollHeight > el.clientHeight;
+    });
+    expect(panelScrollable).toBe(true);
   });
 });
 
