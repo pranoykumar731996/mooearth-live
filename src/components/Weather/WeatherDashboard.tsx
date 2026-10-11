@@ -272,28 +272,41 @@ export default function WeatherDashboard() {
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none">
-        <div className="max-w-screen-2xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2 shrink-0 group">
             <span className="text-xl">🌍</span>
-            <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors hidden sm:inline">
+            <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors hidden md:inline">
               MooEarth
             </span>
-            <span className="text-xs font-semibold text-cyan-400 px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20">
-              Weather Intelligence
+            <span className="text-xs font-semibold text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20">
+              <span className="sm:hidden">Weather</span>
+              <span className="hidden sm:inline">Weather Intelligence</span>
             </span>
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-2 sm:mx-4">
-            <WeatherSearch onSelectLocation={handleSelectLocation} />
+          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-0">
+            <WeatherSearch
+              onSelectLocation={handleSelectLocation}
+              placeholder="Search any city or place..."
+              initialQuery={
+                weather.selectedLocation
+                  ? weather.selectedLocation.country &&
+                    weather.selectedLocation.name.toLowerCase() !== weather.selectedLocation.country.toLowerCase() &&
+                    !weather.selectedLocation.name.toLowerCase().includes(weather.selectedLocation.country.toLowerCase())
+                    ? `${weather.selectedLocation.name}, ${weather.selectedLocation.country}`
+                    : weather.selectedLocation.name
+                  : ''
+              }
+            />
           </div>
 
           {/* Quick Links */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Link
               href="/"
-              className="text-xs px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              className="text-xs px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
             >
               ← Globe
             </Link>
