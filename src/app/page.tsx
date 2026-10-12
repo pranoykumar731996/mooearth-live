@@ -17,7 +17,7 @@ import { useStreaks } from '@/hooks/useStreaks';
 import { useMobileSheet } from '@/hooks/useMobileSheet';
 import { requestNotificationPermission, sendLocalNotification } from '@/utils/notifications';
 import { EventCategory, WorldEvent } from '@/types';
-import { LocationRecord } from '@/data/locations';
+import { locations, LocationRecord } from '@/data/locations';
 import Navbar from '@/components/Layout/Navbar';
 import Sidebar from '@/components/Layout/Sidebar';
 import LiveFeed from '@/components/Layout/LiveFeed';
@@ -44,6 +44,7 @@ const CityExplorerPanel = dynamic(() => import('@/components/UI/CityExplorerPane
 const ContinentExplorerPanel = dynamic(() => import('@/components/UI/ContinentExplorerPanel'));
 const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
+const WindParticleOverlay = dynamic(() => import('@/components/Weather/WindParticleOverlay'), { ssr: false });
 import { ContinentRecord, CONTINENT_CENTROIDS } from '@/data/continents';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { PlayEarthMode } from '@/types';
@@ -1306,7 +1307,7 @@ export default function HomePage({
         }
       >
         <div 
-          className="w-full h-full transition-opacity duration-1000"
+          className="w-full h-full transition-opacity duration-1000 relative"
           style={{ 
             opacity: isLoading ? 0 : 1,
             pointerEvents: isLoading ? 'none' : 'auto'
@@ -1340,6 +1341,17 @@ export default function HomePage({
             onStopTheEarthCoordCaptured={(coord) => setStopTheEarthCapturedCoord(coord)}
             onInitGlobeApi={(api) => { globeApiRef.current = api; }}
           />
+
+          {/* Real-time Atmospheric Jet Streams & Wind Particle Overlay (pointer-events-none) */}
+          {globeView === 'weather' && !isFullScreenGlobe && (
+            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
+              <WindParticleOverlay
+                windSpeed={24}
+                windDirection={65}
+                isActive={true}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1359,8 +1371,60 @@ export default function HomePage({
             ? { lat: COUNTRY_COORDINATES[selectedCountry].lat, lng: COUNTRY_COORDINATES[selectedCountry].lng }
             : { lat: 20.0, lng: 0.0 }
         }
+        onSelectCoordinates={({ lat, lng, name, country }) => {
+          if (globeApiRef.current) {
+            globeApiRef.current.flyTo({ lat, lng, altitude: 1.25 });
+          }
+          if (name) {
+            const matchLoc: LocationRecord = locations.find(l => l.name.toLowerCase() === name.toLowerCase()) || {
+              id: `station-${name.toLowerCase().replace(/\s+/g, '-')}`,
+              name,
+              country: country || 'Global',
+              countryCode: '',
+              type: 'city',
+              lat,
+              lng,
+              population: 0,
+              timezone: 'UTC',
+              adminLevel: 2,
+            };
+            setSelectedLocation(matchLoc);
+            setSelectedCountry(country || null);
+          }
+          playHoverBlip();
+        }}
         isMobile={isMobile}
       />
+
+      {/* Viewport Floating "Turn on Weather" Quick Toggle Button (Desktop & Tablet) */}
+      {!isMobile && !isFullScreenGlobe && !isPlayEarthActive && (
+        <div className="fixed bottom-6 left-28 z-30 pointer-events-auto">
+          <button
+            onClick={() => {
+              const next = globeView !== 'weather';
+              setGlobeView(next ? 'weather' : 'standard');
+              playHoverBlip();
+            }}
+            className={`h-10 px-4 rounded-full flex items-center gap-2.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-lg transition-all duration-300 cursor-pointer ${
+              globeView === 'weather'
+                ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 border-cyan-300 shadow-[0_0_25px_rgba(0,229,255,0.7)] scale-105'
+                : 'bg-[#060a16]/90 text-cyan-300 border-cyan-500/40 hover:border-cyan-400 hover:shadow-[0_0_22px_rgba(0,229,255,0.4)] hover:scale-102'
+            }`}
+            title={globeView === 'weather' ? "Turn Off Weather Layer" : "Turn On Atmospheric Radar & Live Weather Layer"}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
+              }`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
+              }`} />
+            </span>
+            <span className="text-base">{globeView === 'weather' ? '🌦️' : '🌤️'}</span>
+            <span>{globeView === 'weather' ? 'WEATHER: ON (RADAR ACTIVE)' : 'TURN ON WEATHER'}</span>
+          </button>
+        </div>
+      )}
 
       {/* GOAL CELEBRATION OVERLAY */}
       {!isFocusMode && <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />}
