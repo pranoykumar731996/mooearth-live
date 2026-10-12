@@ -564,29 +564,32 @@ const GlobeScene = React.memo(function GlobeScene({
           (window as any).__globeRef = globeRef.current;
         }
         initControls();
-        try {
-          const globe = globeRef.current;
-          const scene = globe.scene();
-          const camera = globe.camera();
-          const pov = globe.pointOfView ? globe.pointOfView() : null;
-          console.log('[GLOBE_DIAGNOSTICS] ' + JSON.stringify({
-            globeView,
-            globeTextureUrl,
-            dimensions,
-            pov,
-            cameraPos: camera ? { x: camera.position.x, y: camera.position.y, z: camera.position.z } : null,
-            sceneChildrenCount: scene ? scene.children.length : 0,
-            sceneChildren: scene ? scene.children.map((c: any) => ({
-              type: c.type,
-              name: c.name || '(unnamed)',
-              visible: c.visible,
-              isMesh: !!c.isMesh,
-              matType: c.material ? c.material.type : null,
-              hasMap: c.material ? !!c.material.map : null,
-            })) : [],
-          }));
-        } catch (diagErr) {
-          console.error('[GLOBE_DIAGNOSTICS_ERR]', diagErr);
+        // Globe diagnostics logging — dev-only to avoid leaking internal state in production
+        if (process.env.NODE_ENV !== 'production') {
+          try {
+            const globe = globeRef.current;
+            const scene = globe.scene();
+            const camera = globe.camera();
+            const pov = globe.pointOfView ? globe.pointOfView() : null;
+            console.log('[GLOBE_DIAGNOSTICS] ' + JSON.stringify({
+              globeView,
+              globeTextureUrl,
+              dimensions,
+              pov,
+              cameraPos: camera ? { x: camera.position.x, y: camera.position.y, z: camera.position.z } : null,
+              sceneChildrenCount: scene ? scene.children.length : 0,
+              sceneChildren: scene ? scene.children.map((c: any) => ({
+                type: c.type,
+                name: c.name || '(unnamed)',
+                visible: c.visible,
+                isMesh: !!c.isMesh,
+                matType: c.material ? c.material.type : null,
+                hasMap: c.material ? !!c.material.map : null,
+              })) : [],
+            }));
+          } catch (diagErr) {
+            console.error('[GLOBE_DIAGNOSTICS_ERR]', diagErr);
+          }
         }
         try {
           if (globeView === 'weather') {
@@ -2450,19 +2453,22 @@ const GlobeScene = React.memo(function GlobeScene({
       )}
 
       {/* Modern Premium Floating FPS Performance Monitor Badge & Collapsible HUD (Rule 8 & Rule 11) */}
-      <FpsPerformancePanel 
-        failsafeActive={failsafeActive}
-        isMobile={isMobile}
-        visibleLabelsCount={filteredLabels.length}
-        visibleCountriesCount={countries.length}
-        activeTextureUrl={globeTextureUrl}
-        globeView={globeView}
-        onResetFailsafe={() => {
-          lowFpsSecondsRef.current = 0;
-          highFpsSecondsRef.current = 0;
-          setFailsafeActive(false);
-        }}
-      />
+      {/* Hidden in production — only shown in development for debugging */}
+      {process.env.NODE_ENV !== 'production' && (
+        <FpsPerformancePanel 
+          failsafeActive={failsafeActive}
+          isMobile={isMobile}
+          visibleLabelsCount={filteredLabels.length}
+          visibleCountriesCount={countries.length}
+          activeTextureUrl={globeTextureUrl}
+          globeView={globeView}
+          onResetFailsafe={() => {
+            lowFpsSecondsRef.current = 0;
+            highFpsSecondsRef.current = 0;
+            setFailsafeActive(false);
+          }}
+        />
+      )}
 
       {/* Floating details card (Feature 2 & Feature 8) */}
       <AnimatePresence>
