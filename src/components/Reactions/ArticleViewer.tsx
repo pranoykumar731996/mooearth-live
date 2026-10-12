@@ -103,27 +103,55 @@ function getFlagEmoji(country: string): React.ReactNode {
 }
 
 function parsePublisher(title: string, sourceUrl: string): { title: string; publisher: string } {
-  const parts = title.split(' - ');
+  const cleanTitle = (title || '').replace(/<[^>]*>/g, '').trim();
+  const parts = cleanTitle.split(' - ');
   if (parts.length > 1) {
-    const publisher = parts.pop()?.trim() || '';
+    const pubCandidate = parts.pop()?.trim() || '';
     const mainTitle = parts.join(' - ').trim();
-    return { title: mainTitle, publisher };
+    if (!/<[^>]*>/i.test(pubCandidate) && !/width=device/i.test(pubCandidate) && pubCandidate.length < 60) {
+      return { title: mainTitle, publisher: pubCandidate };
+    }
   }
 
   try {
     const url = new URL(sourceUrl);
-    let host = url.hostname.replace('www.', '');
+    const host = url.hostname.replace(/^www\./, '');
+    const knownHosts: Record<string, string> = {
+      'dw.com': 'DW',
+      'bbc.com': 'BBC News',
+      'bbc.co.uk': 'BBC News',
+      'reuters.com': 'Reuters',
+      'apnews.com': 'AP News',
+      'aljazeera.com': 'Al Jazeera',
+      'cnn.com': 'CNN',
+      'france24.com': 'France 24',
+    };
+    if (knownHosts[host]) {
+      return { title: cleanTitle, publisher: knownHosts[host] };
+    }
     if (host.includes('google.com')) {
-      return { title, publisher: 'Google News' };
+      return { title: cleanTitle, publisher: 'Google News' };
     }
     const dotIdx = host.indexOf('.');
     if (dotIdx !== -1) {
-      host = host.substring(0, dotIdx);
+      const brand = host.substring(0, dotIdx);
+      return { title: cleanTitle, publisher: brand.charAt(0).toUpperCase() + brand.slice(1) };
     }
-    return { title, publisher: host.toUpperCase() };
+    return { title: cleanTitle, publisher: host.toUpperCase() };
   } catch (e) {
-    return { title, publisher: 'Associated Press' };
+    return { title: cleanTitle, publisher: 'Associated Press' };
   }
+}
+
+function getCleanAuthor(author?: string, publisherName?: string): string | null {
+  if (!author) return null;
+  const trimmed = author.trim();
+  if (/<[^>]*>/i.test(trimmed)) return null;
+  if (/meta\s+name|width=device|link\s+rel|favicon|theme-color|apple-touch|canonical/i.test(trimmed)) return null;
+  if (trimmed.length > 70) return null;
+  if (publisherName && trimmed.toLowerCase() === publisherName.toLowerCase()) return null;
+  if (trimmed.toLowerCase() === 'unknown') return null;
+  return trimmed;
 }
 
 function getCountryInfo(country: string, allEvents: WorldEvent[]) {
@@ -639,6 +667,10 @@ export default function ArticleViewer({
 
   const renderDebugPanel = () => {
     if (!articleDebugInfo) return null;
+    // Hide diagnostic HUD unless debug=true is explicitly provided in the URL query string
+    if (typeof window === 'undefined' || !window.location.search.includes('debug=true')) {
+      return null;
+    }
 
     const {
       articleId,
@@ -649,6 +681,8 @@ export default function ArticleViewer({
       cacheHit,
       validationPassed
     } = articleDebugInfo;
+
+    const safeDebugPub = getCleanAuthor(debugPub, '') || publisher || 'DW';
 
     return (
       <div 
@@ -686,7 +720,7 @@ export default function ArticleViewer({
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-white/30 font-bold shrink-0">PUBLISHER:</span>
-              <span className="text-white/90 font-semibold">{debugPub || 'Unknown'}</span>
+              <span className="text-white/90 font-semibold">{safeDebugPub}</span>
             </div>
             <div className="flex items-baseline gap-1 truncate">
               <span className="text-white/30 font-bold shrink-0">SOURCE:</span>
@@ -791,10 +825,15 @@ export default function ArticleViewer({
 
             {/* Byline metadata */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/40 pb-2 border-b border-white/[0.06]">
-              {articleDetails?.author && (
-                <span className="text-white/70">By {articleDetails.author}</span>
-              )}
-              <span>•</span>
+              {(() => {
+                const cleanAuthor = getCleanAuthor(articleDetails?.author, publisher);
+                return cleanAuthor ? (
+                  <>
+                    <span className="text-white/70">By {cleanAuthor}</span>
+                    <span>•</span>
+                  </>
+                ) : null;
+              })()}
               <span suppressHydrationWarning>{formatRelativeTime(activeEvent.publishedAt)}</span>
               <span>•</span>
               <span className="italic">{publisher}</span>
@@ -1190,13 +1229,18 @@ export default function ArticleViewer({
 
                   {/* Byline metadata */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/50 border-b border-white/[0.06] pb-4 font-sans font-medium">
-                    {articleDetails?.author && (
-                      <span className="flex items-center gap-1.5 text-white/80">
-                        <span className="text-cyan-400/80">🖋️</span>
-                        <span>By {articleDetails.author}</span>
-                      </span>
-                    )}
-                    <span className="text-white/20">•</span>
+                    {(() => {
+                      const cleanAuthor = getCleanAuthor(articleDetails?.author, publisher);
+                      return cleanAuthor ? (
+                        <>
+                          <span className="flex items-center gap-1.5 text-white/80">
+                            <span className="text-cyan-400/80">🖋️</span>
+                            <span>By {cleanAuthor}</span>
+                          </span>
+                          <span className="text-white/20">•</span>
+                        </>
+                      ) : null;
+                    })()}
                     <span suppressHydrationWarning>Published {formatRelativeTime(activeEvent.publishedAt)}</span>
                     <span className="text-white/20">•</span>
                     <span className="italic">{publisher}</span>

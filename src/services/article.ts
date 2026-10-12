@@ -134,6 +134,77 @@ interface RetrievedContent {
   excerpt: string;
   publisher?: string;
   title?: string;
+  author?: string;
+}
+
+/**
+ * Safely extracts the content of a <meta> tag by name or property without
+ * crossing tag boundary '>' or capturing surrounding HTML tags.
+ */
+function extractMetaTagContent(html: string, attrKey: string): string | null {
+  const metaTagRegex = /<meta\b([^>]*?)>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = metaTagRegex.exec(html)) !== null) {
+    const tagAttrs = match[1];
+    const attrRegex = new RegExp(`(?:name|property)\\s*=\\s*["']${attrKey}["']`, 'i');
+    if (attrRegex.test(tagAttrs)) {
+      const contentMatch = tagAttrs.match(/content\s*=\s*["']([^"']*)["']/i);
+      if (contentMatch && contentMatch[1]) {
+        const val = decodeHtmlEntities(contentMatch[1].trim());
+        if (!/<[^>]+>/.test(val) && !/width=device-width|viewport|theme-color|link\s+rel|favicon/i.test(val)) {
+          return val;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Validates that an author or publisher name is clean, concise human text
+ * and does not contain raw HTML tags or template fragments.
+ */
+export function isValidPublisherOrAuthor(text?: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (trimmed.length < 2 || trimmed.length > 80) return false;
+  if (/<[^>]*>/i.test(trimmed)) return false;
+  if (/meta\s+name|width=device|link\s+rel|favicon|theme-color|apple-touch|canonical|stylesheet/i.test(trimmed)) return false;
+  return true;
+}
+
+export function extractPublisherFromUrl(urlStr: string): string {
+  try {
+    const parsed = new URL(urlStr);
+    const host = parsed.hostname.replace(/^www\./, '');
+    const knownHosts: Record<string, string> = {
+      'dw.com': 'DW',
+      'bbc.com': 'BBC News',
+      'bbc.co.uk': 'BBC News',
+      'reuters.com': 'Reuters',
+      'apnews.com': 'AP News',
+      'aljazeera.com': 'Al Jazeera',
+      'cnn.com': 'CNN',
+      'theguardian.com': 'The Guardian',
+      'bloomberg.com': 'Bloomberg',
+      'nytimes.com': 'The New York Times',
+      'washingtonpost.com': 'The Washington Post',
+      'france24.com': 'France 24',
+      'ft.com': 'Financial Times',
+      'economist.com': 'The Economist',
+      'cnbc.com': 'CNBC',
+      'forbes.com': 'Forbes',
+    };
+    if (knownHosts[host]) return knownHosts[host];
+    const dotIdx = host.indexOf('.');
+    if (dotIdx !== -1) {
+      const brand = host.substring(0, dotIdx);
+      return brand.charAt(0).toUpperCase() + brand.slice(1);
+    }
+    return host.toUpperCase();
+  } catch {
+    return 'Global Wire';
+  }
 }
 
 /**
@@ -338,45 +409,54 @@ async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
 
     // 1. Extract metadata: excerpt/description
     let excerpt = '';
-    const descRegexes = [
-      /<meta[^>]*?name=["']description["'][^>]*?content=["']([\s\S]*?)["']/i,
-      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?name=["']description["']/i,
-      /<meta[^>]*?property=["']og:description["'][^>]*?content=["']([\s\S]*?)["']/i,
-      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?property=["']og:description["']/i,
-      /<meta[^>]*?name=["']twitter:description["'][^>]*?content=["']([\s\S]*?)["']/i,
+    const descCandidates = [
+      extractMetaTagContent(html, 'description'),
+      extractMetaTagContent(html, 'og:description'),
+      extractMetaTagContent(html, 'twitter:description'),
     ];
-
-    for (const regex of descRegexes) {
-      const match = html.match(regex);
-      if (match && match[1]) {
-        excerpt = decodeHtmlEntities(match[1].trim());
+    for (const cand of descCandidates) {
+      if (cand && cand.length > 20 && cand.length < 1000) {
+        excerpt = cand;
         break;
       }
     }
 
     // 2. Extract metadata: title
     let title = '';
-    const titleRegex = /<title>([\s\S]*?)<\/title>/i;
-    const titleMatch = html.match(titleRegex);
-    if (titleMatch && titleMatch[1]) {
-      title = decodeHtmlEntities(titleMatch[1].trim());
+    const ogTitle = extractMetaTagContent(html, 'og:title');
+    if (ogTitle && ogTitle.length > 5 && !/<[^>]+>/.test(ogTitle)) {
+      title = ogTitle;
+    } else {
+      const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+      if (titleMatch && titleMatch[1]) {
+        title = decodeHtmlEntities(titleMatch[1].trim());
+      }
     }
 
     // 3. Extract metadata: publisher
     let publisher = '';
-    const siteNameRegexes = [
-      /<meta[^>]*?property=["']og:site_name["'][^>]*?content=["']([\s\S]*?)["']/i,
-      /<meta[^>]*?content=["']([\s\S]*?)["'][^>]*?property=["']og:site_name["']/i,
+    const ogSiteName = extractMetaTagContent(html, 'og:site_name');
+    if (ogSiteName && isValidPublisherOrAuthor(ogSiteName)) {
+      publisher = ogSiteName;
+    } else {
+      publisher = extractPublisherFromUrl(resolvedUrl);
+    }
+
+    // 4. Extract metadata: author
+    let author = '';
+    const authorCandidates = [
+      extractMetaTagContent(html, 'author'),
+      extractMetaTagContent(html, 'article:author'),
+      extractMetaTagContent(html, 'twitter:creator'),
     ];
-    for (const regex of siteNameRegexes) {
-      const match = html.match(regex);
-      if (match && match[1]) {
-        publisher = decodeHtmlEntities(match[1].trim());
+    for (const cand of authorCandidates) {
+      if (cand && isValidPublisherOrAuthor(cand)) {
+        author = cand;
         break;
       }
     }
 
-    // 4. Extract article body (P tags)
+    // 5. Extract article body (P tags)
     const cleanHtml = html
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -391,7 +471,7 @@ async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
     while ((pMatch = pRegex.exec(cleanHtml)) !== null) {
       const pText = pMatch[1].replace(/<[^>]*>/g, '').trim();
       const decodedP = decodeHtmlEntities(pText);
-      if (decodedP.length > 40 && !decodedP.toLowerCase().includes('subscribe') && !decodedP.toLowerCase().includes('cookie')) {
+      if (decodedP.length > 40 && !decodedP.toLowerCase().includes('subscribe') && !decodedP.toLowerCase().includes('cookie') && !/<[^>]+>/.test(decodedP)) {
         paragraphs.push(decodedP);
       }
     }
@@ -403,7 +483,8 @@ async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
       content,
       excerpt,
       publisher,
-      title
+      title,
+      author,
     };
   } catch (err) {
     console.error(`[ArticleService] Failed to retrieve article content: ${url}`, err);
@@ -698,7 +779,16 @@ export async function fetchOrGenerateArticleDetails(
   // Retrieve article HTML content
   console.log(`[ArticleService] Retrieving content for: ${url}`);
   const retrieved = await retrieveArticleContent(url);
-  const publisherName = retrieved.publisher || getDeterministicAuthor(id || title);
+
+  // Derive clean publisher name without ever exposing raw HTML tags
+  const titleParts = cleanTitle.split(' - ');
+  const titlePublisher = titleParts.length > 1 ? titleParts[titleParts.length - 1].trim() : '';
+
+  const publisherName = (isValidPublisherOrAuthor(retrieved.publisher) ? retrieved.publisher! : '') ||
+    (isValidPublisherOrAuthor(titlePublisher) ? titlePublisher : '') ||
+    extractPublisherFromUrl(url);
+
+  const authorName = isValidPublisherOrAuthor(retrieved.author) ? retrieved.author! : undefined;
 
   // Data Integrity Validation Check
   let validationPassed = true;
@@ -743,7 +833,7 @@ export async function fetchOrGenerateArticleDetails(
           `Why It Matters: Scraped page title or content did not align with feed.`,
           `Country Impact: Relevant developments are monitored in ${country}.`
         ],
-        author: publisherName,
+        author: authorName,
         image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
         description: cleanSummary,
         accessLevel: 'synthesis',
@@ -811,7 +901,7 @@ export async function fetchOrGenerateArticleDetails(
         `Why It Matters: Direct source details have been verified for accuracy.`,
         `Country Impact: Relevant developments are monitored in ${country}.`
       ],
-      author: publisherName,
+      author: authorName,
       image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
       description: cleanSummary,
       accessLevel: 'synthesis',
@@ -850,7 +940,7 @@ export async function fetchOrGenerateArticleDetails(
           `Why It Matters: Scraped page content was blocked or paywalled.`,
           `Country Impact: Relevant developments are monitored in ${country}.`
         ],
-        author: publisherName,
+        author: authorName,
         image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
         description: cleanSummary,
         accessLevel: 'synthesis',
@@ -964,7 +1054,7 @@ Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
       aiSummary: aiSummaryText,
       fullContent: cleanText(parsed.fullContent),
       keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
-      author: parsed.author ? cleanText(parsed.author) : publisherName,
+      author: (parsed.author && isValidPublisherOrAuthor(parsed.author)) ? cleanText(parsed.author) : authorName,
       image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
       description: cleanSummary,
       accessLevel: 'full',
