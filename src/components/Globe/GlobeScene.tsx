@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { WorldEvent, EventArc, EventCategory } from '@/types';
 import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES, getCountryGlowColors } from '@/lib/constants';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
-import { LocationRecord } from '@/data/locations';
+import { LocationRecord, locations } from '@/data/locations';
 import { useGlobeControls, GlobeApi } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
@@ -363,10 +363,10 @@ const GlobeScene = React.memo(function GlobeScene({
     return () => cancelAnimationFrame(animId);
   }, [failsafeActive]);
 
-  // Clear html marker cache when event data changes
+  // Clear html marker cache when event data or view mode changes
   useEffect(() => {
     htmlMarkersCacheRef.current.clear();
-  }, [events, celebrations]);
+  }, [events, celebrations, selectedLocation, globeView]);
 
   const adjustOpacity = useCallback((rgbaStr: string, multiplier: number) => {
     const match = rgbaStr.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/);
@@ -1372,10 +1372,34 @@ const GlobeScene = React.memo(function GlobeScene({
         lat: selLoc.lat,
         lng: selLoc.lng,
         isWeatherCityPin: true,
+        locationRecord: selLoc,
       });
     }
+
+    // In Weather Mode, populate global city pins across all continents for planetary weather exploration
+    if (globeView === 'weather') {
+      const cityList = locations.filter(l => l.type === 'city');
+      const maxWeatherCities = isMobile ? 8 : 18;
+      cityList.slice(0, maxWeatherCities).forEach(city => {
+        if (!selLoc || selLoc.id !== city.id) {
+          data.push({
+            id: `weather-city-pin-${city.lat.toFixed(4)}-${city.lng.toFixed(4)}`,
+            title: city.name,
+            summary: `${city.name}, ${city.country}`,
+            category: 'weather',
+            country: city.country,
+            city: city.name,
+            lat: city.lat,
+            lng: city.lng,
+            isWeatherCityPin: true,
+            locationRecord: city,
+          });
+        }
+      });
+    }
+
     return data;
-  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile]);
+  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView]);
 
   // Connection arcs — pair adjacent events
   const arcsData = useMemo<EventArc[]>(() => {
@@ -1584,12 +1608,6 @@ const GlobeScene = React.memo(function GlobeScene({
 
       // ── Dedicated Weather City Pin Marker ────────────────────────
       if (d.isWeatherCityPin) {
-        // Clear any previously cached weather pin to avoid stale markers
-        htmlMarkersCacheRef.current.forEach((_, key) => {
-          if (key.startsWith('weather-city-pin-') && key !== markerId) {
-            htmlMarkersCacheRef.current.delete(key);
-          }
-        });
         if (htmlMarkersCacheRef.current.has(markerId)) {
           return htmlMarkersCacheRef.current.get(markerId)!;
         }
@@ -1597,6 +1615,10 @@ const GlobeScene = React.memo(function GlobeScene({
         const cityName = d.title || d.city || 'Location';
         const countryName = d.country || '';
         const label = countryName ? `${cityName}, ${countryName}` : cityName;
+        const isSelected = selectedLocation && (
+          selectedLocation.id === d.locationRecord?.id ||
+          (selectedLocation.lat === d.lat && selectedLocation.lng === d.lng)
+        );
 
         const el = document.createElement('div');
         el.className = 'weather-city-pin-marker';
@@ -1605,8 +1627,11 @@ const GlobeScene = React.memo(function GlobeScene({
           display: flex;
           flex-direction: column;
           align-items: center;
-          pointer-events: none;
+          cursor: pointer;
+          pointer-events: auto;
           transform: translateY(-16px);
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          user-select: none;
         `;
         el.innerHTML = `
           <div style="
@@ -1618,34 +1643,40 @@ const GlobeScene = React.memo(function GlobeScene({
             <!-- Outer pulsing glow ring -->
             <div style="
               position: absolute;
-              width: 36px; height: 36px;
+              width: ${isSelected ? '44px' : '36px'}; height: ${isSelected ? '44px' : '36px'};
               border-radius: 50%;
-              border: 2px solid rgba(0, 229, 255, 0.6);
+              border: 2px solid ${isSelected ? 'rgba(0, 255, 196, 0.9)' : 'rgba(0, 229, 255, 0.6)'};
               animation: weather-pin-pulse 2s ease-in-out infinite;
             "></div>
             <!-- Second pulsing ring (offset) -->
             <div style="
               position: absolute;
-              width: 36px; height: 36px;
+              width: ${isSelected ? '44px' : '36px'}; height: ${isSelected ? '44px' : '36px'};
               border-radius: 50%;
-              border: 1.5px solid rgba(6, 182, 212, 0.4);
+              border: 1.5px solid ${isSelected ? 'rgba(16, 185, 129, 0.5)' : 'rgba(6, 182, 212, 0.4)'};
               animation: weather-pin-pulse 2s ease-in-out infinite;
               animation-delay: 0.7s;
             "></div>
             <!-- Inner glowing pin core -->
             <div style="
-              width: 18px; height: 18px;
+              width: ${isSelected ? '22px' : '18px'}; height: ${isSelected ? '22px' : '18px'};
               border-radius: 50%;
-              background: radial-gradient(circle, rgba(0, 229, 255, 0.95) 0%, rgba(6, 182, 212, 0.6) 50%, transparent 100%);
-              border: 2px solid #00e5ff;
-              box-shadow: 0 0 16px rgba(0, 229, 255, 0.8), 0 0 6px rgba(0, 229, 255, 0.5), inset 0 0 4px rgba(255,255,255,0.3);
+              background: radial-gradient(circle, ${isSelected ? 'rgba(0, 255, 196, 0.95)' : 'rgba(0, 229, 255, 0.95)'} 0%, rgba(6, 182, 212, 0.6) 50%, transparent 100%);
+              border: 2px solid ${isSelected ? '#00ffc4' : '#00e5ff'};
+              box-shadow: 0 0 ${isSelected ? '20px rgba(0, 255, 196, 0.9)' : '16px rgba(0, 229, 255, 0.8)'}, inset 0 0 4px rgba(255,255,255,0.4);
               z-index: 2;
-            "></div>
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 10px;
+            ">
+              ${isSelected ? '🏙️' : ''}
+            </div>
           </div>
           <!-- Vertical pin tail line -->
           <div style="
             width: 2px; height: 12px;
-            background: linear-gradient(to bottom, rgba(0,229,255,0.8), transparent);
+            background: linear-gradient(to bottom, ${isSelected ? 'rgba(0,255,196,0.9)' : 'rgba(0,229,255,0.8)'}, transparent);
             margin-top: -1px;
           "></div>
           <!-- City label -->
@@ -1653,23 +1684,60 @@ const GlobeScene = React.memo(function GlobeScene({
             margin-top: 2px;
             padding: 2px 8px;
             border-radius: 8px;
-            background: rgba(5, 5, 18, 0.88);
-            border: 1px solid rgba(0, 229, 255, 0.35);
+            background: ${isSelected ? 'rgba(0, 30, 25, 0.94)' : 'rgba(5, 5, 18, 0.88)'};
+            border: 1px solid ${isSelected ? 'rgba(0, 255, 196, 0.6)' : 'rgba(0, 229, 255, 0.35)'};
             backdrop-filter: blur(8px);
             white-space: nowrap;
             max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
           ">
             <span style="
               font-size: 10px;
               font-weight: 700;
-              color: #00e5ff;
+              color: ${isSelected ? '#00ffc4' : '#00e5ff'};
               letter-spacing: 0.3px;
               font-family: system-ui, -apple-system, sans-serif;
             ">${label}</span>
           </div>
         `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-18px) scale(1.12)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-16px) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          if (onSelectLocation && d.locationRecord) {
+            onSelectLocation(d.locationRecord);
+          } else if (onSelectLocation) {
+            onSelectLocation({
+              id: d.id,
+              name: d.city || d.title,
+              type: 'city',
+              country: d.country,
+              countryCode: '',
+              lat: d.lat,
+              lng: d.lng,
+              population: 0,
+              timezone: 'UTC',
+              adminLevel: 2,
+            });
+          }
+        });
 
         // Inject keyframe animation if not already present
         if (typeof document !== 'undefined' && !document.getElementById('weather-pin-keyframes')) {
@@ -1885,13 +1953,33 @@ const GlobeScene = React.memo(function GlobeScene({
         e.stopPropagation();
         pauseRotation();
         recordInteraction();
+        if ((d.isWeatherCityPin || d.isCityPin) && onSelectLocation) {
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          if (d.locationRecord) {
+            onSelectLocation(d.locationRecord);
+          } else {
+            onSelectLocation({
+              id: d.id,
+              name: d.city || d.title,
+              type: 'city',
+              country: d.country,
+              countryCode: '',
+              lat: d.lat,
+              lng: d.lng,
+              population: 0,
+              timezone: 'UTC',
+              adminLevel: 2,
+            });
+          }
+          return;
+        }
         onSelectEvent(event);
       });
 
       htmlMarkersCacheRef.current.set(markerId, el);
       return el;
     },
-    [onSelectEvent, pauseRotation, recordInteraction, onSelectCelebration, flyTo]
+    [onSelectEvent, pauseRotation, recordInteraction, onSelectCelebration, flyTo, onSelectLocation, selectedLocation]
   );
 
 

@@ -316,6 +316,10 @@ export default function ExploreEarthDirectory({
                       onClick={() => {
                         onSelectCountry(c);
                         onSelectLocation(null);
+                        const coords = COUNTRY_COORDINATES[c.toLowerCase()] || COUNTRY_COORDINATES[c];
+                        if (coords && onFlyToCoordinates) {
+                          onFlyToCoordinates({ lat: coords.lat, lng: coords.lng, altitude: 1.6 });
+                        }
                         playHoverBlip();
                       }}
                       className={`p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/[0.03] hover:border-white/10 cursor-pointer flex items-center justify-between transition-all ${
@@ -368,6 +372,9 @@ export default function ExploreEarthDirectory({
                   onClick={() => {
                     onSelectLocation(city);
                     onSelectCountry(city.country);
+                    if (onFlyToCoordinates) {
+                      onFlyToCoordinates({ lat: city.lat, lng: city.lng, altitude: 1.15 });
+                    }
                     playHoverBlip();
                   }}
                   className={`p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border cursor-pointer flex items-center justify-between transition-all ${

@@ -628,6 +628,15 @@ export default function HomePage({
       return;
     }
 
+    // Auto fly-to camera for seamless 3D navigation
+    if (globeApiRef.current && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+      globeApiRef.current.flyTo({
+        lat: loc.lat,
+        lng: loc.lng,
+        altitude: loc.type === 'city' ? 1.15 : 1.6,
+      }, 1200);
+    }
+
     // Set selectedCountry for backwards compatibility
     setSelectedCountry(loc.country);
     setIsDashboardOpen(true);
@@ -1687,9 +1696,44 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
+      {/* Mobile City Explorer Panel */}
+      <AnimatePresence>
+        {isMobile && !isPlayEarthActive && selectedLocation && selectedLocation.type === 'city' && (
+          <CityExplorerPanel
+            key={`mobile-city-${selectedLocation.id}`}
+            location={selectedLocation}
+            events={locationEvents}
+            isLoadingEvents={isLocationLoading}
+            isMobile={true}
+            onClose={() => {
+              setSelectedLocation(null);
+              setSelectedCountry(null);
+            }}
+            onSelectCountry={(country) => {
+              setSelectedLocation(null);
+              handleSelectCountry(country);
+            }}
+            onSelectEvent={(evt) => {
+              handleEventNavigate(evt);
+              playHoverBlip();
+            }}
+            onOpenWeather={() => {
+              setGlobeView('weather');
+              playHoverBlip();
+            }}
+            onFocusCity={(loc) => {
+              if (globeApiRef.current) {
+                globeApiRef.current.flyTo({ lat: loc.lat, lng: loc.lng, altitude: 1.15 }, 1200);
+              }
+              playHoverBlip();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Mobile Country Bottom Sheet */}
       <AnimatePresence>
-        {isMobile && !isPlayEarthActive && (selectedCountry || selectedLocation) && (
+        {isMobile && !isPlayEarthActive && !(selectedLocation && selectedLocation.type === 'city') && (selectedCountry || selectedLocation) && (
           <MobileCountrySheet
             country={selectedCountry || selectedLocation?.name || ''}
             selectedLocation={selectedLocation}

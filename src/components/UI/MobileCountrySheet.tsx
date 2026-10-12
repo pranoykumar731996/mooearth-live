@@ -767,32 +767,43 @@ export default function MobileCountrySheet({
                 {/* Metrics specific to selected category */}
                 <CategoryMetricsWidget country={country} category={activeCategory} />
 
-                {/* Nearby Locations Navigation */}
-                {selectedLocation && onSelectLocation && (
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-3">
-                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block">
-                      Explore Nearby in {selectedLocation.country}
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {locations
-                        .filter(l => l.country === selectedLocation.country && l.id !== selectedLocation.id)
-                        .slice(0, 4)
-                        .map(loc => (
+                {/* Metropolises & Cities in this Country */}
+                {onSelectLocation && (() => {
+                  const targetCountry = selectedLocation ? selectedLocation.country : country;
+                  const countryCities = locations.filter(l => 
+                    l.country.toLowerCase() === targetCountry.toLowerCase() && 
+                    (!selectedLocation || l.id !== selectedLocation.id) &&
+                    l.type === 'city'
+                  );
+                  if (countryCities.length === 0) return null;
+                  return (
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block">
+                          Explore Cities in {targetCountry}
+                        </span>
+                        <span className="text-[9px] font-mono text-white/40">
+                          {countryCities.length} AVAILABLE
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {countryCities.slice(0, 6).map(loc => (
                           <button
                             key={loc.id}
                             onClick={() => {
                               onPlaySound();
                               onSelectLocation(loc);
                             }}
-                            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-white/80 hover:text-cyan-300 font-semibold text-[10px] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-white/80 hover:text-cyan-300 font-semibold text-[10px] active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
-                            <span>{loc.type === 'city' ? '📍' : '🏛️'}</span>
+                            <span>🏙️</span>
                             <span>{loc.name}</span>
                           </button>
                         ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Perspective Lens Promo Card */}
                 {isCountryWhitelisted(country) && (
