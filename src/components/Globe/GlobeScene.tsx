@@ -18,7 +18,13 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer } from './WeatherLayers';
+import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
+import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
 // Dynamic import — react-globe.gl requires window/WebGL
 const Globe = dynamic(() => import('react-globe.gl'), {
@@ -46,6 +52,10 @@ interface GlobeSceneProps {
   activeCategory?: EventCategory | null;
   isPlayEarthActive?: boolean;
   globeView?: 'standard' | 'night' | 'weather' | 'satellite' | 'discovery';
+  weatherLayerMode?: WeatherLayerMode;
+  weatherTimelineIndex?: number;
+  weatherGridData?: GlobalWeatherGridResponse | null;
+  weatherUnits?: UnitPreferences;
   isDashboardOpen?: boolean;
   isFocusMode?: boolean;
   isStopTheEarthSpinning?: boolean;
@@ -188,6 +198,10 @@ const GlobeScene = React.memo(function GlobeScene({
   activeCategory = null,
   isPlayEarthActive = false,
   globeView = 'standard',
+  weatherLayerMode = 'overview',
+  weatherTimelineIndex = 0,
+  weatherGridData = null,
+  weatherUnits,
   isDashboardOpen = false,
   isFocusMode = false,
   isStopTheEarthSpinning = false,
@@ -206,6 +220,11 @@ const GlobeScene = React.memo(function GlobeScene({
   const [introDone, setIntroDone] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
   const [globalMood, setGlobalMood] = useState<Record<string, number>>({});
+
+  // ── 3D Weather Layers Refs (Phase 2 Real Weather Visualizations) ──
+  const windParticleSystemRef = useRef<WindParticleSystem | null>(null);
+  const temperatureLayerRef = useRef<TemperatureHeatmapLayer | null>(null);
+  const precipitationLayerRef = useRef<PrecipitationLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -874,6 +893,11 @@ const GlobeScene = React.memo(function GlobeScene({
         }
       }
 
+      // 6. Real Animated Wind Particles Update (Phase 2 Weather Intelligence)
+      if (windParticleSystemRef.current) {
+        windParticleSystemRef.current.update();
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -881,6 +905,122 @@ const GlobeScene = React.memo(function GlobeScene({
 
     return () => cancelAnimationFrame(animFrameId);
   }, [globeRef, introDone, globalEnergyScore, isCinematicModeActive, hasPenaltyShootout, celebration, earthCastActive, earthCastAudioLevel]);
+
+  // ── Weather Layers Three.js Management (Wind, Temperature, Precipitation) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const isWeather = globeView === 'weather';
+    const stations = weatherGridData?.stations || [];
+    const radius = globe.getGlobeRadius();
+
+    // 1. Wind Particles Layer: active in 'wind' and 'overview' when viewing weather
+    const shouldShowWind = isWeather && (weatherLayerMode === 'wind' || weatherLayerMode === 'overview');
+    if (shouldShowWind) {
+      if (!windParticleSystemRef.current) {
+        windParticleSystemRef.current = new WindParticleSystem({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = windParticleSystemRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+      if (stations.length > 0) {
+        windParticleSystemRef.current.setStations(stations);
+        windParticleSystemRef.current.setHourlyIndex(weatherTimelineIndex);
+      }
+    } else if (windParticleSystemRef.current) {
+      const mesh = windParticleSystemRef.current.getMesh();
+      if (mesh) scene.remove(mesh);
+      windParticleSystemRef.current.dispose();
+      windParticleSystemRef.current = null;
+    }
+
+    // 2. Temperature Heatmap Layer: active in 'temperature'
+    const shouldShowTemp = isWeather && weatherLayerMode === 'temperature';
+    if (shouldShowTemp) {
+      if (!temperatureLayerRef.current) {
+        temperatureLayerRef.current = new TemperatureHeatmapLayer({
+          radius,
+          isMobile,
+        });
+        const mesh = temperatureLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+      if (stations.length > 0) {
+        temperatureLayerRef.current.setStations(stations);
+        temperatureLayerRef.current.setHourlyIndex(weatherTimelineIndex);
+      }
+    } else if (temperatureLayerRef.current) {
+      const mesh = temperatureLayerRef.current.getMesh();
+      if (mesh) scene.remove(mesh);
+      temperatureLayerRef.current.dispose();
+      temperatureLayerRef.current = null;
+    }
+
+    // 3. Precipitation Layer: active in 'precipitation'
+    const shouldShowPrecip = isWeather && weatherLayerMode === 'precipitation';
+    if (shouldShowPrecip) {
+      if (!precipitationLayerRef.current) {
+        precipitationLayerRef.current = new PrecipitationLayer({
+          radius,
+          isMobile,
+        });
+        const mesh = precipitationLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+      if (stations.length > 0) {
+        precipitationLayerRef.current.setStations(stations);
+        precipitationLayerRef.current.setHourlyIndex(weatherTimelineIndex);
+      }
+    } else if (precipitationLayerRef.current) {
+      const mesh = precipitationLayerRef.current.getMesh();
+      if (mesh) scene.remove(mesh);
+      precipitationLayerRef.current.dispose();
+      precipitationLayerRef.current = null;
+    }
+
+    return () => {
+      // Discard weather meshes on unmount or when transitioning away from weather view
+      if (globeView !== 'weather') {
+        if (windParticleSystemRef.current) {
+          const m = windParticleSystemRef.current.getMesh();
+          if (m) scene.remove(m);
+          windParticleSystemRef.current.dispose();
+          windParticleSystemRef.current = null;
+        }
+        if (temperatureLayerRef.current) {
+          const m = temperatureLayerRef.current.getMesh();
+          if (m) scene.remove(m);
+          temperatureLayerRef.current.dispose();
+          temperatureLayerRef.current = null;
+        }
+        if (precipitationLayerRef.current) {
+          const m = precipitationLayerRef.current.getMesh();
+          if (m) scene.remove(m);
+          precipitationLayerRef.current.dispose();
+          precipitationLayerRef.current = null;
+        }
+      }
+    };
+  }, [globeRef, introDone, globeView, weatherLayerMode, weatherTimelineIndex, weatherGridData, isMobile]);
+
+  // Page visibility listener — reduce simulation overhead when hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        windParticleSystemRef.current?.setReducedMotion(true);
+      } else {
+        windParticleSystemRef.current?.setReducedMotion(prefersReducedMotion());
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // ============================================================
   // GOAL CELEBRATION — Atmosphere Color Transformation

@@ -13,12 +13,16 @@ import { WEATHER_LAYERS } from '@/services/weather/types';
 interface WeatherLegendProps {
   activeLayer: WeatherLayerMode;
   units?: 'celsius' | 'fahrenheit';
+  timestamp?: string;
+  isLoading?: boolean;
   className?: string;
 }
 
 export default function WeatherLegend({
   activeLayer,
   units = 'celsius',
+  timestamp,
+  isLoading = false,
   className = '',
 }: WeatherLegendProps) {
   const layerMeta = WEATHER_LAYERS.find(l => l.id === activeLayer);
@@ -37,16 +41,34 @@ export default function WeatherLegend({
     activeLayer === 'flood' ? 'm³/s GloFAS' :
     activeLayer === 'elevation' ? 'Metres' : 'WMO Code';
 
+  // Format forecast timestamp
+  const formattedTime = timestamp ? (() => {
+    try {
+      const d = new Date(timestamp);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return '';
+    }
+  })() : null;
+
   return (
-    <div className={`bg-[#050512]/85 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2.5 shadow-xl text-white ${className}`}>
+    <div className={`bg-[#050512]/85 backdrop-blur-xl border border-white/10 rounded-2xl px-3 py-2.5 shadow-xl text-white select-none ${className}`}>
       <div className="flex items-center justify-between gap-3 text-xs mb-1.5">
         <div className="flex items-center gap-1.5 font-bold">
           <span>{layerMeta.icon}</span>
           <span className="text-white/90">{layerMeta.name} Scale</span>
+          {isLoading && (
+            <span className="w-2 h-2 rounded-full border border-cyan-400 border-t-transparent animate-spin ml-1" />
+          )}
         </div>
-        <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
-          {unitLabel}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {formattedTime && (
+            <span className="text-[10px] font-mono text-white/50">{formattedTime}</span>
+          )}
+          <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">
+            {unitLabel}
+          </span>
+        </div>
       </div>
 
       {/* Mode-specific Color Bar */}
@@ -136,6 +158,14 @@ export default function WeatherLegend({
           <span className="flex items-center gap-1">⚡ Storm</span>
         </div>
       )}
+
+      {/* Provider Attribution & Model Distinction */}
+      <div className="mt-1.5 pt-1.5 border-t border-white/5 flex items-center justify-between text-[8px] font-mono text-white/40">
+        <span>
+          {activeLayer === 'precipitation' ? 'Numerical Model Forecast • Not Radar' : 'Open-Meteo Global Telemetry'}
+        </span>
+        <span>48h Forecast</span>
+      </div>
     </div>
   );
 }

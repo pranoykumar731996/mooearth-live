@@ -85,3 +85,15 @@ export {
   describeWaveConditions,
   waveDirectionToCompass,
 } from './marineService';
+
+// Global Grid Weather Layer
+export {
+  GLOBAL_GRID_STATIONS,
+  fetchGlobalWeatherGrid,
+  interpolateGridWeatherAt,
+} from './globalGridService';
+export type {
+  GlobalGridStation,
+  GlobalGridPointData,
+  GlobalWeatherGridResponse,
+} from './globalGridService';

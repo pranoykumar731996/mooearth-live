@@ -19,15 +19,52 @@ import WindParticleOverlay from './WindParticleOverlay';
 import WeatherTimeline from './WeatherTimeline';
 import WeatherLegend from './WeatherLegend';
 import { useWeatherData } from '@/hooks/useWeatherData';
-import type { GeocodingResult } from '@/services/weather/types';
+import type { GeocodingResult, UnitPreferences, ForecastResponse } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
+import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
+import { getWmoWeatherInfo } from '@/services/weather/forecastService';
 
 // Check reduced-motion preference
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+
+// Synchronize displayed forecast and telemetry with the forecast timeline scrubber
+function computeDisplayedForecast(
+  forecast: ForecastResponse | null,
+  timelineIndex: number
+): ForecastResponse | null {
+  if (!forecast) return null;
+  if (timelineIndex === 0 || !forecast.hourly?.time?.[timelineIndex]) {
+    return forecast;
+  }
+  const h = forecast.hourly;
+  const time = h.time[timelineIndex];
+  const wmo = getWmoWeatherInfo(h.weatherCode?.[timelineIndex] ?? 0);
+  const curr = forecast.current;
+  return {
+    ...forecast,
+    current: {
+      ...curr,
+      time,
+      temperature: h.temperature2m?.[timelineIndex] ?? curr.temperature,
+      apparentTemperature: h.apparentTemperature?.[timelineIndex] ?? curr.apparentTemperature,
+      precipitation: h.precipitation?.[timelineIndex] ?? curr.precipitation,
+      weatherCode: h.weatherCode?.[timelineIndex] ?? curr.weatherCode,
+      weatherDescription: wmo.desc,
+      weatherEmoji: wmo.emoji,
+      surfacePressure: h.surfacePressure?.[timelineIndex] ?? curr.surfacePressure,
+      windSpeed: h.windSpeed10m?.[timelineIndex] ?? curr.windSpeed,
+      windDirection: h.windDirection10m?.[timelineIndex] ?? curr.windDirection,
+      windGusts: h.windGusts10m?.[timelineIndex] ?? curr.windGusts,
+      relativeHumidity: h.relativeHumidity2m?.[timelineIndex] ?? curr.relativeHumidity,
+      cloudCover: h.cloudCover?.[timelineIndex] ?? curr.cloudCover,
+      isDay: Boolean(h.isDay?.[timelineIndex] ?? curr.isDay),
+    },
+  };
+}
 
 // Dynamically import the primary 3D Globe Scene component with SSR disabled
 const GlobeScene = dynamic(
@@ -52,6 +89,8 @@ export default function WeatherDashboard() {
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [events, setEvents] = useState<WorldEvent[]>([]);
+  const [gridData, setGridData] = useState<GlobalWeatherGridResponse | null>(null);
+  const [isGridLoading, setIsGridLoading] = useState(true);
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
 
@@ -83,6 +122,34 @@ export default function WeatherDashboard() {
       })
       .catch(() => {});
   }, []);
+
+  // Fetch global meteorological grid telemetry (48h wind vectors, temperature, precipitation)
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({
+      temperature_unit: weather.units,
+      wind_speed_unit: 'kmh',
+      precipitation_unit: 'mm',
+    });
+    fetch(`/api/weather/grid?${params.toString()}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load global grid');
+        return res.json();
+      })
+      .then((data: GlobalWeatherGridResponse) => {
+        if (!cancelled) {
+          setGridData(data);
+          setIsGridLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Weather grid fetch error:', err);
+        if (!cancelled) setIsGridLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [weather.units]);
 
   // Restore location from URL query params on mount (shareable links)
   useEffect(() => {
@@ -264,9 +331,19 @@ export default function WeatherDashboard() {
 
   const hasData = weather.selectedLocation !== null;
   const currentForecast = weather.data.forecast;
-  const windSpeed = currentForecast?.current?.windSpeed ?? 15;
-  const windDirection = currentForecast?.current?.windDirection ?? 45;
-  const windGusts = currentForecast?.current?.windGusts;
+
+  // Synchronize displayed forecast and telemetry with the forecast timeline scrubber
+  const displayedForecast = computeDisplayedForecast(currentForecast, timelineIndex);
+
+  const weatherUnitsObj: UnitPreferences = {
+    temperature: weather.units,
+    windSpeed: 'kmh',
+    precipitation: 'mm',
+  };
+
+  const windSpeed = displayedForecast?.current?.windSpeed ?? 15;
+  const windDirection = displayedForecast?.current?.windDirection ?? 45;
+  const windGusts = displayedForecast?.current?.windGusts;
 
   return (
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
@@ -354,18 +431,22 @@ export default function WeatherDashboard() {
               }
               activeCategory="weather"
               globeView="weather"
+              weatherLayerMode={weather.activeLayer}
+              weatherTimelineIndex={timelineIndex}
+              weatherGridData={gridData}
+              weatherUnits={weatherUnitsObj}
               onGlobeClick={handleGlobeClick}
               onInitGlobeApi={handleInitGlobeApi}
             />
           </div>
 
-          {/* Animated Wind Particles Overlay */}
+          {/* Animated Wind Particles Overlay (2D disabled in favor of genuine 3D WebGL particle streamlines) */}
           <div className="absolute inset-0 pointer-events-none z-10">
             <WindParticleOverlay
               windSpeed={windSpeed}
               windDirection={windDirection}
               windGusts={windGusts}
-              isActive={weather.activeLayer === 'wind' || (hasData && weather.activeLayer === 'overview')}
+              isActive={false}
             />
           </div>
 
@@ -428,7 +509,12 @@ export default function WeatherDashboard() {
 
           {/* Active Layer Legend (floating top-right) */}
           <div className="absolute top-4 right-4 z-20 pointer-events-auto max-w-[280px]">
-            <WeatherLegend activeLayer={weather.activeLayer} units={weather.units} />
+            <WeatherLegend
+              activeLayer={weather.activeLayer}
+              units={weather.units}
+              timestamp={gridData?.timestamps?.[timelineIndex] || currentForecast?.hourly?.time?.[timelineIndex]}
+              isLoading={isGridLoading}
+            />
           </div>
 
           {/* Forecast Timeline (floating along bottom of globe) */}
@@ -465,7 +551,7 @@ export default function WeatherDashboard() {
             {/* Desktop Side Panel */}
             <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0">
               <WeatherPanel
-                forecast={weather.data.forecast}
+                forecast={displayedForecast}
                 airQuality={weather.data.airQuality}
                 elevation={weather.data.elevation}
                 flood={weather.data.flood}
@@ -506,7 +592,7 @@ export default function WeatherDashboard() {
                   </button>
                   <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                     <WeatherPanel
-                      forecast={weather.data.forecast}
+                      forecast={displayedForecast}
                       airQuality={weather.data.airQuality}
                       elevation={weather.data.elevation}
                       flood={weather.data.flood}

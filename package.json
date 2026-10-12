@@ -25,7 +25,8 @@
     "test:seo": "playwright test tests/seo-technical.spec.ts",
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",
     "test:news-engine": "npx tsx scripts/test-news-engine.ts",
-    "test:weather": "npx tsx scripts/test-weather-suite.ts"
+    "test:weather": "npx tsx scripts/test-weather-suite.ts && npx tsx scripts/test-weather-layers-suite.ts",
+    "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",
