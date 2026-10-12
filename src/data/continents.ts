@@ -183,3 +183,14 @@ export function getCountriesForContinent(continentSlug: string): CountryRecord[]
     return countryContinent.slug === continent.slug;
   });
 }
+
+/** Canonical 3D camera centroids for macroscopic planetary exploration */
+export const CONTINENT_CENTROIDS: Record<string, { lat: number; lng: number; altitude: number }> = {
+  asia: { lat: 34.0, lng: 100.0, altitude: 2.1 },
+  africa: { lat: 2.0, lng: 20.0, altitude: 2.0 },
+  europe: { lat: 50.0, lng: 15.0, altitude: 1.8 },
+  'north-america': { lat: 40.0, lng: -100.0, altitude: 2.1 },
+  'south-america': { lat: -15.0, lng: -60.0, altitude: 2.0 },
+  oceania: { lat: -25.0, lng: 135.0, altitude: 2.0 },
+  antarctica: { lat: -80.0, lng: 0.0, altitude: 2.3 },
+};

@@ -41,8 +41,10 @@ const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'
 const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
 const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
 const CityExplorerPanel = dynamic(() => import('@/components/UI/CityExplorerPanel'));
+const ContinentExplorerPanel = dynamic(() => import('@/components/UI/ContinentExplorerPanel'));
 const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
+import { ContinentRecord, CONTINENT_CENTROIDS } from '@/data/continents';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { PlayEarthMode } from '@/types';
 import { CountryFlag } from '@/components/UI/CountryFlag';
@@ -107,6 +109,7 @@ export default function HomePage({
   const [activeCategory, setActiveCategory] = useState<EventCategory | null>(initialCategory || null);
   const [selectedEvent, setSelectedEvent] = useState<WorldEvent | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<string | null>(initialCountry || null);
+  const [selectedContinent, setSelectedContinent] = useState<ContinentRecord | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LocationRecord | null>(null);
   const [locationEvents, setLocationEvents] = useState<WorldEvent[]>([]);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
@@ -611,6 +614,7 @@ export default function HomePage({
       setIsDashboardOpen(false);
       setActiveReaction(null);
     } else {
+      setSelectedContinent(null);
       setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
       trackEvent('country', 'click', country, 1, { category: activeCategory || 'home' });
     }
@@ -628,6 +632,8 @@ export default function HomePage({
       return;
     }
 
+    setSelectedContinent(null);
+
     // Auto fly-to camera for seamless 3D navigation
     if (globeApiRef.current && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
       globeApiRef.current.flyTo({
@@ -642,6 +648,17 @@ export default function HomePage({
     setIsDashboardOpen(true);
     trackEvent('location', 'select', loc.name, 1, { type: loc.type, country: loc.country });
   }, [isMobile]);
+
+  const handleSelectContinent = useCallback((cont: ContinentRecord | null) => {
+    setSelectedContinent(cont);
+    if (cont) {
+      setSelectedCountry(null);
+      setSelectedLocation(null);
+      setSelectedEvent(null);
+      setIsDashboardOpen(false);
+      trackEvent('continent', 'select', cont.name, 1, { slug: cont.slug });
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedLocation) {
@@ -1220,6 +1237,8 @@ export default function HomePage({
                 onSelectCountry={handleSelectCountry}
                 selectedLocation={selectedLocation}
                 onSelectLocation={handleSelectLocation}
+                selectedContinent={selectedContinent}
+                onSelectContinent={handleSelectContinent}
                 onFlyToCoordinates={({ lat, lng, altitude }) => {
                   if (globeApiRef.current) {
                     globeApiRef.current.flyTo({ lat, lng, altitude });
@@ -1301,6 +1320,7 @@ export default function HomePage({
             onSelectCountry={handleGlobeSelectCountry}
             selectedLocation={selectedLocation}
             onSelectLocation={handleSelectLocation}
+            selectedContinent={selectedContinent?.slug || null}
             celebration={activeCelebration}
             celebrations={celebrations}
             onSelectCelebration={setSelectedCelebration}
@@ -1630,6 +1650,38 @@ export default function HomePage({
                   playHoverBlip();
                 }}
               />
+            ) : selectedContinent && !selectedCountry && !selectedLocation && !isMobile ? (
+              <ContinentExplorerPanel
+                key={`continent-${selectedContinent.slug}`}
+                continent={selectedContinent}
+                onClose={() => setSelectedContinent(null)}
+                onSelectCountry={(country) => {
+                  setSelectedContinent(null);
+                  handleSelectCountry(country);
+                  const coords = COUNTRY_COORDINATES[country.toLowerCase()] || COUNTRY_COORDINATES[country];
+                  if (coords && globeApiRef.current) {
+                    globeApiRef.current.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.6 });
+                  }
+                  playHoverBlip();
+                }}
+                onSelectWonder={(wonder) => {
+                  if (globeApiRef.current) {
+                    globeApiRef.current.flyTo({ lat: wonder.coordinates.lat, lng: wonder.coordinates.lng, altitude: 1.2 });
+                  }
+                  playHoverBlip();
+                }}
+                onOpenWeather={() => {
+                  setGlobeView('weather');
+                  playHoverBlip();
+                }}
+                onFocusContinent={(cont) => {
+                  const centroid = CONTINENT_CENTROIDS[cont.slug] || { lat: 20, lng: 0, altitude: 2.1 };
+                  if (globeApiRef.current) {
+                    globeApiRef.current.flyTo(centroid);
+                  }
+                  playHoverBlip();
+                }}
+              />
             ) : selectedCountry && !isMobile ? (
               <CountryReactionPanel
                 key="country-panel"
@@ -1642,7 +1694,7 @@ export default function HomePage({
                 isFocusMode={isFocusMode}
               />
             ) : (
-              (!isMobile || !selectedCountry) && (
+              (!isMobile || (!selectedCountry && !selectedContinent)) && (
                 <motion.div
                   key="live-feed"
                   initial={{ opacity: 0, x: 50 }}
@@ -1724,6 +1776,44 @@ export default function HomePage({
             onFocusCity={(loc) => {
               if (globeApiRef.current) {
                 globeApiRef.current.flyTo({ lat: loc.lat, lng: loc.lng, altitude: 1.15 }, 1200);
+              }
+              playHoverBlip();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Continent Explorer Panel */}
+      <AnimatePresence>
+        {isMobile && !isPlayEarthActive && selectedContinent && !selectedLocation && !selectedCountry && (
+          <ContinentExplorerPanel
+            key={`mobile-continent-${selectedContinent.slug}`}
+            continent={selectedContinent}
+            isMobile={true}
+            onClose={() => setSelectedContinent(null)}
+            onSelectCountry={(country) => {
+              setSelectedContinent(null);
+              handleSelectCountry(country);
+              const coords = COUNTRY_COORDINATES[country.toLowerCase()] || COUNTRY_COORDINATES[country];
+              if (coords && globeApiRef.current) {
+                globeApiRef.current.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.6 });
+              }
+              playHoverBlip();
+            }}
+            onSelectWonder={(wonder) => {
+              if (globeApiRef.current) {
+                globeApiRef.current.flyTo({ lat: wonder.coordinates.lat, lng: wonder.coordinates.lng, altitude: 1.2 });
+              }
+              playHoverBlip();
+            }}
+            onOpenWeather={() => {
+              setGlobeView('weather');
+              playHoverBlip();
+            }}
+            onFocusContinent={(cont) => {
+              const centroid = CONTINENT_CENTROIDS[cont.slug] || { lat: 20, lng: 0, altitude: 2.1 };
+              if (globeApiRef.current) {
+                globeApiRef.current.flyTo(centroid);
               }
               playHoverBlip();
             }}

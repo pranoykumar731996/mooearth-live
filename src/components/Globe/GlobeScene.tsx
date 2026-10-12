@@ -10,6 +10,7 @@ import { WorldEvent, EventArc, EventCategory } from '@/types';
 import { CATEGORY_MAP, GLOBE_CONFIG, COUNTRY_COORDINATES, getCountryGlowColors } from '@/lib/constants';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { LocationRecord, locations } from '@/data/locations';
+import { getCountriesForContinent } from '@/data/continents';
 import { useGlobeControls, GlobeApi } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
 import { GoalCelebration } from '@/hooks/useGoalCelebration';
@@ -33,6 +34,7 @@ interface GlobeSceneProps {
   onSelectCountry?: (country: string | null) => void;
   selectedLocation?: LocationRecord | null;
   onSelectLocation?: (location: LocationRecord | null) => void;
+  selectedContinent?: string | null;
   emotionMap?: Record<string, string>;
   celebration?: GoalCelebration | null;
   celebrations?: any[];
@@ -174,6 +176,7 @@ const GlobeScene = React.memo(function GlobeScene({
   onSelectCountry,
   selectedLocation,
   onSelectLocation,
+  selectedContinent = null,
   emotionMap = {},
   celebration,
   celebrations = [],
@@ -297,6 +300,17 @@ const GlobeScene = React.memo(function GlobeScene({
   const hasPenaltyShootout = useMemo(() => {
     return events.some(e => e.footballData?.status === 'PEN');
   }, [events]);
+
+  // Precompute continent-matching countries map for O(1) continental landmass rendering
+  const continentCountriesMap = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    if (!selectedContinent) return map;
+    const list = getCountriesForContinent(selectedContinent);
+    list.forEach(c => {
+      map[c.name.toLowerCase()] = true;
+    });
+    return map;
+  }, [selectedContinent]);
   const [hoveredPolygon, setHoveredPolygon] = useState<any>(null);
   const [zoomAltitude, setZoomAltitude] = useState(1.5);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -2046,6 +2060,11 @@ const GlobeScene = React.memo(function GlobeScene({
       return adjustOpacity(glow.primary, 0.75);
     }
 
+    // Continental Landmass Glow (Phase 2.2)
+    if (selectedContinent && continentCountriesMap[name.toLowerCase()]) {
+      return 'rgba(0, 229, 255, 0.22)'; // Soft cyber-cyan continental aura
+    }
+
     // 5. Category-Aware Globe Glow (Feature 2) (O(1) lookup)
     if (activeCategory) {
       const hasMatchingEvent = !!categoryMatchingCountriesMap[name];
@@ -2083,7 +2102,7 @@ const GlobeScene = React.memo(function GlobeScene({
     else if (intensity > 0) baseColor = `rgba(59, 130, 246, ${0.1 + intensity * 0.2})`;
     
     return baseColor;
-  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, liveMatchCountriesMap, adjustOpacity, categoryMatchingCountriesMap, isPlayEarthActive, activeCategory, globeView]);
+  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, liveMatchCountriesMap, adjustOpacity, categoryMatchingCountriesMap, isPlayEarthActive, activeCategory, globeView, selectedContinent, continentCountriesMap]);
 
   // Polygon Altitude (3D Emotional Heatmap + Celebration + Live Match)
   const getPolygonAltitude = useCallback((feat: any) => {
@@ -2124,6 +2143,10 @@ const GlobeScene = React.memo(function GlobeScene({
       return 0.12;
     }
 
+    if (selectedContinent && continentCountriesMap[name.toLowerCase()]) {
+      return 0.035; // Macroscopic elevation for active continent
+    }
+
     const emotionColor = getEmotionColorForCountry(name);
     if (emotionColor) {
       let baseAlt = 0.03;
@@ -2137,7 +2160,7 @@ const GlobeScene = React.memo(function GlobeScene({
     
     const intensity = globalMood[name] || 0;
     return (0.01 + (intensity * 0.03));
-  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, liveMatchCountriesMap, globeView, failsafeActive]);
+  }, [globalMood, selectedCountry, getEmotionColorForCountry, celebration, liveMatchCountriesMap, globeView, failsafeActive, selectedContinent, continentCountriesMap]);
 
   // Polygon Side Glow (Matching Cap Color)
   const getPolygonSideColor = useCallback((feat: any) => {
@@ -2186,6 +2209,10 @@ const GlobeScene = React.memo(function GlobeScene({
       const glow = getCountryGlowColors(name);
       return adjustOpacity(glow.stroke, 0.85);
     }
+
+    if (selectedContinent && continentCountriesMap[name.toLowerCase()]) {
+      return 'rgba(0, 255, 196, 0.85)'; // Radiant emerald-cyan boundary for continental unit
+    }
     
     if (hoveredPolygon && hoveredPolygon.properties.NAME === name) {
       return 'rgba(255, 255, 255, 0.7)'; // Bright white on hover
@@ -2207,7 +2234,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
     
     return 'rgba(255, 255, 255, 0.2)'; // Brighter normal borders
-  }, [selectedCountry, hoveredPolygon, adjustOpacity, globeView, failsafeActive]);
+  }, [selectedCountry, hoveredPolygon, adjustOpacity, globeView, failsafeActive, selectedContinent, continentCountriesMap]);
 
   // Unified pointer handler for STOP THE EARTH using Three.js Raycaster
   const handleStopTheEarthPointer = useCallback((clientX: number, clientY: number, fallbackCoords?: { lat: number; lng: number }) => {

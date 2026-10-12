@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CANONICAL_CONTINENTS, ContinentRecord } from '@/data/continents';
+import { CANONICAL_CONTINENTS, ContinentRecord, CONTINENT_CENTROIDS } from '@/data/continents';
 import { ICONIC_LANDMARKS, WorldPlace } from '@/data/worldPlaces';
 import { locations, LocationRecord } from '@/data/locations';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
@@ -19,22 +19,13 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { getLocalizedCountryName, getLocalizedContinentName, SupportedLocale } from '@/lib/i18n';
 import { useTranslation } from '@/contexts/LanguageContext';
 
-// Continent Centroids for 3D Camera Fly-To
-const CONTINENT_CENTROIDS: Record<string, { lat: number; lng: number; altitude: number }> = {
-  asia: { lat: 34.0, lng: 100.0, altitude: 2.1 },
-  africa: { lat: 2.0, lng: 20.0, altitude: 2.0 },
-  europe: { lat: 50.0, lng: 15.0, altitude: 1.8 },
-  'north-america': { lat: 40.0, lng: -100.0, altitude: 2.1 },
-  'south-america': { lat: -15.0, lng: -60.0, altitude: 2.0 },
-  oceania: { lat: -25.0, lng: 135.0, altitude: 2.0 },
-  antarctica: { lat: -80.0, lng: 0.0, altitude: 2.3 },
-};
-
 interface ExploreEarthDirectoryProps {
   selectedCountry: string | null;
   onSelectCountry: (country: string | null) => void;
   selectedLocation: LocationRecord | null;
   onSelectLocation: (location: LocationRecord | null) => void;
+  selectedContinent?: ContinentRecord | null;
+  onSelectContinent?: (continent: ContinentRecord | null) => void;
   onFlyToCoordinates?: (coords: { lat: number; lng: number; altitude: number }) => void;
   playHoverBlip: () => void;
   locale?: SupportedLocale;
@@ -45,6 +36,8 @@ export default function ExploreEarthDirectory({
   onSelectCountry,
   selectedLocation,
   onSelectLocation,
+  selectedContinent,
+  onSelectContinent,
   onFlyToCoordinates,
   playHoverBlip,
   locale = 'en',
@@ -104,6 +97,9 @@ export default function ExploreEarthDirectory({
   // Handle clicking a Continent
   const handleContinentClick = (cont: ContinentRecord) => {
     playHoverBlip();
+    if (onSelectContinent) {
+      onSelectContinent(cont);
+    }
     const centroid = CONTINENT_CENTROIDS[cont.slug] || { lat: 20, lng: 0, altitude: 2.1 };
     if (onFlyToCoordinates) {
       onFlyToCoordinates(centroid);
@@ -215,7 +211,11 @@ export default function ExploreEarthDirectory({
                 <div
                   key={cont.slug}
                   onClick={() => handleContinentClick(cont)}
-                  className="p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/[0.04] hover:border-cyan-500/30 transition-all cursor-pointer flex items-center justify-between group"
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
+                    selectedContinent?.slug === cont.slug
+                      ? 'border-cyan-500/50 bg-cyan-500/15 shadow-sm'
+                      : 'bg-white/[0.02] hover:bg-white/5 border-white/[0.04] hover:border-cyan-500/30'
+                  }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">
@@ -316,6 +316,7 @@ export default function ExploreEarthDirectory({
                       onClick={() => {
                         onSelectCountry(c);
                         onSelectLocation(null);
+                        if (onSelectContinent) onSelectContinent(null);
                         const coords = COUNTRY_COORDINATES[c.toLowerCase()] || COUNTRY_COORDINATES[c];
                         if (coords && onFlyToCoordinates) {
                           onFlyToCoordinates({ lat: coords.lat, lng: coords.lng, altitude: 1.6 });
@@ -372,6 +373,7 @@ export default function ExploreEarthDirectory({
                   onClick={() => {
                     onSelectLocation(city);
                     onSelectCountry(city.country);
+                    if (onSelectContinent) onSelectContinent(null);
                     if (onFlyToCoordinates) {
                       onFlyToCoordinates({ lat: city.lat, lng: city.lng, altitude: 1.15 });
                     }
