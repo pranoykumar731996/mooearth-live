@@ -36,9 +36,13 @@ export function synthesizeKeyFacts(params: {
 }): string[] {
   const { title, summary, country, publisher, relatedSources } = params;
 
+  const cleanPub = (publisher && !/<[^>]*>/i.test(publisher) && !/width=device/i.test(publisher) && publisher.length < 80)
+    ? publisher.trim()
+    : 'Verified News Wire';
+
   const facts: string[] = [
     `Primary Dispatch: ${title}`,
-    `Reporting Bureau: Verified reporting published by ${publisher}.`,
+    `Reporting Bureau: Verified reporting published by ${cleanPub}.`,
     `Geographic Focus: Ongoing developments centered in ${country}.`,
   ];
 
@@ -70,7 +74,10 @@ export function resolveArticleAccess(params: {
 }): ArticleAccessResolution {
   const { url, title, summary, rawContent, country, publisher, relatedSources } = params;
 
-  const resolvedPublisher = publisher || extractPublisher(title, url);
+  const cleanPubCandidate = (publisher && !/<[^>]*>/i.test(publisher) && !/width=device/i.test(publisher) && publisher.length < 80)
+    ? publisher.trim()
+    : extractPublisher(title, url);
+  const resolvedPublisher = cleanPubCandidate || 'Verified News Wire';
   const cleanSummary = (summary || '').trim();
   const cleanContent = (rawContent || '').trim();
 

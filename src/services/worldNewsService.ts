@@ -42,7 +42,7 @@ export function extractPublisher(sourceOrTitle: string, originalUrl?: string): s
   if (sourceOrTitle && sourceOrTitle.includes(' - ')) {
     const parts = sourceOrTitle.split(' - ');
     const candidate = parts[parts.length - 1].trim();
-    if (candidate.length > 1 && !candidate.startsWith('http')) {
+    if (candidate.length > 1 && !candidate.startsWith('http') && !/<[^>]*>/i.test(candidate) && !/width=device/i.test(candidate) && candidate.length < 60) {
       return candidate;
     }
   }

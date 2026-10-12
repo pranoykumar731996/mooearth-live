@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
       publishedAt
     );
 
-    return NextResponse.json({ article, debug: article.debug });
+    const showDebug = searchParams.get('debug') === 'true' || process.env.NODE_ENV !== 'production';
+    return NextResponse.json({ article, debug: showDebug ? article.debug : undefined });
   } catch (error: any) {
     console.error('Error in /api/article route:', error);
     return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });
