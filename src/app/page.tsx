@@ -40,6 +40,9 @@ const UploadModal = dynamic(() => import('@/components/Celebrations/UploadModal'
 const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'));
 const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
 const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
+const CityExplorerPanel = dynamic(() => import('@/components/UI/CityExplorerPanel'));
+const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
+const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { PlayEarthMode } from '@/types';
 import { CountryFlag } from '@/components/UI/CountryFlag';
@@ -49,7 +52,7 @@ import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/service
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { SIDEBAR_ITEMS } from '@/lib/constants';
+import { SIDEBAR_ITEMS, COUNTRY_COORDINATES } from '@/lib/constants';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -1010,6 +1013,15 @@ export default function HomePage({
             setShowDebugConsole(prev => !prev);
             playHoverBlip();
           }}
+          isWeatherActive={globeView === 'weather'}
+          onToggleWeather={() => {
+            const nextWeather = globeView !== 'weather';
+            setGlobeView(nextWeather ? 'weather' : 'standard');
+            if (nextWeather && isPlayEarthActive) {
+              setIsPlayEarthActive(false);
+            }
+            playHoverBlip();
+          }}
         />
       </div>
 
@@ -1194,87 +1206,19 @@ export default function HomePage({
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
             {leftPanelTab === 'explore' ? (
-              <>
-                <div className="px-1 pb-1">
-                  <h2 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{t('explorePanel.exploreCountries', 'Explore Countries')}</h2>
-                </div>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder={t('explorePanel.searchPlaceholder', 'Search countries...')}
-                    aria-label="Search countries"
-                    value={directorySearch}
-                    onChange={(e) => setDirectorySearch(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder-white/30 focus:outline-none focus:border-cyan-500/50"
-                  />
-                  
-                  {/* A-Z Jump Bar */}
-                  <div className="flex gap-1 overflow-x-auto py-1 px-0.5 scrollbar-none border-b border-white/[0.04]">
-                    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => {
-                      const hasCountries = Object.keys(grouped).includes(letter);
-                      return (
-                        <button
-                          key={letter}
-                          disabled={!hasCountries}
-                          onClick={() => {
-                            const elem = document.getElementById(`explore-letter-${letter}`);
-                            if (elem) {
-                              elem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            }
-                            playHoverBlip();
-                          }}
-                          className={`text-[9px] font-black w-4.5 h-4.5 rounded shrink-0 flex items-center justify-center transition-all ${
-                            hasCountries
-                              ? 'text-cyan-400 hover:bg-cyan-500/20 cursor-pointer'
-                              : 'text-white/10 cursor-not-allowed'
-                          }`}
-                        >
-                          {letter}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1 scrollbar-thin">
-                    {Object.keys(grouped).sort().map(letter => (
-                      <div key={letter} id={`explore-letter-${letter}`} className="space-y-1.5 scroll-mt-2">
-                        <div className="text-[9px] font-black text-cyan-400/50 uppercase tracking-widest px-1 py-0.5 border-b border-white/5">
-                          {letter} ({grouped[letter].length})
-                        </div>
-                        {grouped[letter].map(c => {
-                          const meta = findCountryMeta(c);
-                          return (
-                            <div
-                              key={c}
-                              onClick={() => {
-                                handleSelectCountry(c);
-                                playHoverBlip();
-                              }}
-                              className={`p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/[0.03] hover:border-white/10 cursor-pointer flex items-center justify-between transition-all ${
-                                selectedCountry === c ? 'border-cyan-500/40 bg-cyan-500/10' : ''
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <CountryFlag flag={meta?.flag} className="w-5 h-3.5 object-cover rounded-[2px] shadow-sm shrink-0" />
-                                <div className="min-w-0">
-                                  <div className="text-[11px] font-bold text-white truncate">{getLocalizedCountryName(c, locale)}</div>
-                                  <div className="text-[9px] text-white/40 truncate">{meta?.capital} • {getLocalizedContinentName(meta?.continent || '', locale)}</div>
-                                </div>
-                              </div>
-                              <span className="text-[8px] text-white/30 font-bold tracking-tight shrink-0">{t('explorePanel.focus', 'FOCUS ↗')}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                    {Object.keys(grouped).length === 0 && (
-                      <div className="text-center py-6 text-[10px] text-white/30">
-                        {t('explorePanel.noMatch', 'No countries match')} &quot;{directorySearch}&quot;
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
+              <ExploreEarthDirectory
+                selectedCountry={selectedCountry}
+                onSelectCountry={handleSelectCountry}
+                selectedLocation={selectedLocation}
+                onSelectLocation={handleSelectLocation}
+                onFlyToCoordinates={({ lat, lng, altitude }) => {
+                  if (globeApiRef.current) {
+                    globeApiRef.current.flyTo({ lat, lng, altitude });
+                  }
+                }}
+                playHoverBlip={playHoverBlip}
+                locale={locale}
+              />
             ) : (
               <>
                 <div className="px-1 pb-1">
@@ -1369,6 +1313,25 @@ export default function HomePage({
           />
         </div>
       </div>
+
+      {/* 3D Earth Weather Floating Telemetry HUD */}
+      <WeatherFloatingHUD
+        isActive={globeView === 'weather'}
+        onToggleWeather={() => {
+          setGlobeView('standard');
+          playHoverBlip();
+        }}
+        selectedCityName={selectedLocation?.name || (selectedCountry ? `${selectedCountry}` : 'Global Atmosphere')}
+        selectedCountryName={selectedLocation?.country || selectedCountry || 'Planet Earth'}
+        coordinates={
+          selectedLocation
+            ? { lat: selectedLocation.lat, lng: selectedLocation.lng }
+            : selectedCountry && COUNTRY_COORDINATES[selectedCountry]
+            ? { lat: COUNTRY_COORDINATES[selectedCountry].lat, lng: COUNTRY_COORDINATES[selectedCountry].lng }
+            : { lat: 20.0, lng: 0.0 }
+        }
+        isMobile={isMobile}
+      />
 
       {/* GOAL CELEBRATION OVERLAY */}
       {!isFocusMode && <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />}
@@ -1632,7 +1595,33 @@ export default function HomePage({
       {!isFullScreenGlobe && !isPlayEarthActive && (
         <div className="relative z-30">
           <AnimatePresence mode="wait">
-            {selectedCountry && !isMobile ? (
+            {selectedLocation && selectedLocation.type === 'city' && !isMobile ? (
+              <CityExplorerPanel
+                key={`city-${selectedLocation.id}`}
+                location={selectedLocation}
+                events={locationEvents}
+                isLoadingEvents={isLocationLoading}
+                onClose={() => {
+                  setSelectedLocation(null);
+                  setSelectedCountry(null);
+                }}
+                onSelectCountry={handleSelectCountry}
+                onSelectEvent={(evt) => {
+                  handleEventNavigate(evt);
+                  playHoverBlip();
+                }}
+                onOpenWeather={() => {
+                  setGlobeView('weather');
+                  playHoverBlip();
+                }}
+                onFocusCity={(loc) => {
+                  if (globeApiRef.current) {
+                    globeApiRef.current.flyTo({ lat: loc.lat, lng: loc.lng, altitude: 1.15 });
+                  }
+                  playHoverBlip();
+                }}
+              />
+            ) : selectedCountry && !isMobile ? (
               <CountryReactionPanel
                 key="country-panel"
                 country={selectedCountry}
@@ -1981,6 +1970,22 @@ export default function HomePage({
             title="Globe Layers"
           >
             <span className="text-xl">🗺️</span>
+          </button>
+
+          {/* Quick Weather Toggle (Mobile) */}
+          <button
+            onClick={() => {
+              setGlobeView(v => v === 'weather' ? 'standard' : 'weather');
+              playHoverBlip();
+            }}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+              globeView === 'weather'
+                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.7)] scale-105'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title="Toggle Weather Radar"
+          >
+            <span className="text-xl">🌦️</span>
           </button>
         </div>
       )}
