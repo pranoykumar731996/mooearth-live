@@ -193,7 +193,60 @@ export default function GameLandingTemplate({
         </header>
 
         {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-12 flex-1">
+        <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-8 flex-1">
+          {/* 🌟 FEATURED 3D GLOBE & DAILY CHALLENGE QUICK ACCESS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-cyan-950/30 to-blue-950/40 border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+            <Link
+              href="/play-earth"
+              className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-emerald-500/30 hover:border-emerald-400/60 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-3xl group-hover:scale-110 transition-transform">🌍</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-white text-base group-hover:text-emerald-300 transition-colors">
+                      3D Globe Arena
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-black uppercase">
+                      Stop The Earth + 11 Modes
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Spin & tap the rotating Earth, Explorer, Survival & Beat the Clock.
+                  </p>
+                </div>
+              </div>
+              <span className="text-emerald-400 font-black text-sm group-hover:translate-x-1 transition-transform">
+                PLAY ➔
+              </span>
+            </Link>
+
+            <Link
+              href="/daily"
+              className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-cyan-500/30 hover:border-cyan-400/60 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-3xl group-hover:scale-110 transition-transform">📅</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-white text-base group-hover:text-cyan-300 transition-colors">
+                      Daily Global Challenge
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-[9px] font-black uppercase">
+                      5 Official Questions
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Today&apos;s verified global quiz. Test flags, capitals, borders & landmarks.
+                  </p>
+                </div>
+              </div>
+              <span className="text-cyan-400 font-black text-sm group-hover:translate-x-1 transition-transform">
+                PLAY ➔
+              </span>
+            </Link>
+          </div>
+
           {/* Quick Intent Navigation Pill Bar */}
           <nav aria-label="Game Modes Navigation" className="flex flex-wrap items-center gap-2 text-xs border-b border-white/5 pb-4">
             <span className="text-white/40 uppercase font-mono text-[10px] mr-1">Game Hubs:</span>
