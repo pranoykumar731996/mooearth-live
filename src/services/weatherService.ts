@@ -89,7 +89,7 @@ export async function fetchCountryWeather(
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,weather_code,is_day,surface_pressure&timezone=auto`;
 
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(3500),
+      signal: AbortSignal.timeout(7000),
       next: { revalidate: 600 }, // 10 minutes cache
     });
 
