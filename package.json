@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/update-sw-timestamp.js && next build",
+    "postinstall": "node scripts/ensure-maplibre-worker.js",
+    "build": "node scripts/ensure-maplibre-worker.js && node scripts/update-sw-timestamp.js && next build",
     "start": "next start",
     "lint": "eslint",
     "generate-questions": "npx tsx scripts/generateQuestions.ts",

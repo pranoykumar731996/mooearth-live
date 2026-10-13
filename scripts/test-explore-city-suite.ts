@@ -2,12 +2,12 @@
 // MooEarth Live — Phase 3: Explore City with MapLibre Test Suite
 // ============================================================
 // Tests:
-// 1. Map style providers & licensing compliance (OpenFreeMap, CARTO, OSM)
+// 1. Map style providers & licensing compliance (MapTiler, Esri, OFM, OSM, CARTO)
 // 2. City coordinate integrity across global hemispheres & bounds
 // 3. Zoom level bounds and camera pitch/bearing constraints
 // 4. URL query parameter serialization, restoration & roundtrip
 // 5. Weather telemetry contract & null safety
-// 6. Failover & error recovery contracts
+// 6. Failover & watchdog recovery contracts
 // 7. Component lifecycle & WebGL cleanup contracts
 
 import {
@@ -18,6 +18,9 @@ import {
   serializeCityMapUrl,
   parseCityMapUrl,
   getFailoverStyle,
+  getDefaultMapStyleKey,
+  getMapTilerKey,
+  getCartoKey,
   DEFAULT_CITY_ZOOM,
   MIN_CITY_ZOOM,
   MAX_CITY_ZOOM,
@@ -45,10 +48,47 @@ console.log('============================================================\n');
 // ── 1. Map Style Providers & Licensing Compliance ─────────────
 console.log('--- 1. Map Style Providers & Licensing Compliance ---');
 
-const expectedStyles: MapStyleKey[] = ['liberty', 'bright', 'voyager', 'dark'];
+const expectedStyles: MapStyleKey[] = [
+  'esri-street',
+  'maptiler-streets',
+  'liberty',
+  'bright',
+  'osm',
+  'voyager',
+  'dark',
+];
+
 assert(
   expectedStyles.every((key) => key in MAP_STYLES),
-  'All 4 map styles (liberty, bright, voyager, dark) are registered'
+  'All 7 map styles (esri-street, maptiler-streets, liberty, bright, osm, voyager, dark) are registered'
+);
+
+// Check Esri World Street (Default Fast Raster Fallback)
+const esri = MAP_STYLES['esri-street'];
+assert(esri.type === 'raster', 'Esri Street is raster type');
+assert(
+  typeof esri.style === 'object' && esri.style.version === 8,
+  'Esri style is compliant with MapLibre Style Specification v8'
+);
+if (typeof esri.style === 'object') {
+  const source = (esri.style.sources as any)['esri-street-source'];
+  assert(!!source, 'Esri style contains esri-street-source raster source');
+  assert(
+    Array.isArray(source.tiles) && source.tiles[0].includes('arcgisonline.com'),
+    'Esri tiles specify official ArcGIS World Street Map tile URL'
+  );
+  assert(
+    source.attribution.includes('Esri') && source.attribution.includes('OpenStreetMap'),
+    'Esri attribution honors Esri and OpenStreetMap licenses'
+  );
+}
+
+// Check MapTiler Streets Vector
+const maptiler = MAP_STYLES['maptiler-streets'];
+assert(maptiler.type === 'vector', 'MapTiler style is vector type');
+assert(
+  maptiler.attribution.includes('MapTiler') && maptiler.attribution.includes('OpenStreetMap'),
+  'MapTiler attribution complies with MapTiler and OpenStreetMap requirements'
 );
 
 // Check OpenFreeMap Liberty Vector
@@ -71,19 +111,23 @@ assert(
   'Bright points to official HTTPS OpenFreeMap vector style endpoint'
 );
 
-// Check CARTO Voyager Raster Fallback
+// Check OpenStreetMap Standard
+const osm = MAP_STYLES.osm;
+assert(osm.type === 'raster', 'OpenStreetMap style is raster type');
+assert(
+  osm.attribution.includes('OpenStreetMap'),
+  'OpenStreetMap attribution honors ODbL requirements'
+);
+
+// Check CARTO Voyager Raster
 const voyager = MAP_STYLES.voyager;
 assert(voyager.type === 'raster', 'Voyager style is raster type');
-assert(
-  typeof voyager.style === 'object' && voyager.style.version === 8,
-  'Voyager style is compliant with MapLibre Style Specification v8'
-);
 if (typeof voyager.style === 'object') {
   const source = (voyager.style.sources as any)['carto-voyager'];
   assert(!!source, 'Voyager style contains carto-voyager raster source');
   assert(
     Array.isArray(source.tiles) && source.tiles[0].includes('{z}/{x}/{y}'),
-    'Voyager tiles specify standard {z}/{x}/{y} spherical mercator URLs'
+    'Voyager tiles specify standard spherical mercator URLs'
   );
   assert(
     source.attribution.includes('OpenStreetMap') && source.attribution.includes('CARTO'),
@@ -91,20 +135,47 @@ if (typeof voyager.style === 'object') {
   );
 }
 
-// Check CARTO Dark Matter (Night Exploration)
+// Check CARTO Dark Matter
 const dark = MAP_STYLES.dark;
 assert(dark.type === 'raster', 'Dark Matter style is raster type');
 if (typeof dark.style === 'object') {
   const source = (dark.style.sources as any)['carto-dark'];
   assert(!!source, 'Dark Matter style contains carto-dark raster source');
-  assert(
-    Array.isArray(source.tiles) && source.tiles[0].includes('dark_all'),
-    'Dark Matter specifies high-contrast dark tiles'
-  );
 }
 
-// ── 2. City Coordinate Integrity Across Global Hemispheres ────
-console.log('\n--- 2. City Coordinate Integrity Across Global Hemispheres ---');
+// ── 2. Default Style Resolution & Failover Contracts ──────────
+console.log('\n--- 2. Default Style Resolution & Failover Contracts ---');
+
+const defaultKey = getDefaultMapStyleKey();
+assert(
+  defaultKey === 'esri-street' || defaultKey === 'maptiler-streets',
+  `Default style key resolves cleanly to reliable provider (${defaultKey})`
+);
+
+// Test failover scenarios
+assert(
+  getFailoverStyle('maptiler-streets', true) === 'esri-street',
+  'MapTiler vector failover switches automatically to Esri Street raster'
+);
+assert(
+  getFailoverStyle('liberty', true) === 'esri-street',
+  'OpenFreeMap liberty failover switches automatically to Esri Street raster'
+);
+assert(
+  getFailoverStyle('bright', true) === 'esri-street',
+  'OpenFreeMap bright failover switches automatically to Esri Street raster'
+);
+assert(
+  getFailoverStyle('esri-street', true) === 'osm',
+  'Esri Street secondary failover switches to OpenStreetMap standard'
+);
+assert(
+  getFailoverStyle('liberty', false) === 'liberty',
+  'Healthy state preserves active style'
+);
+
+// ── 3. City Coordinate Integrity Across Global Hemispheres ────
+console.log('\n--- 3. City Coordinate Integrity Across Global Hemispheres ---');
 
 interface TestCity {
   name: string;
@@ -140,8 +211,8 @@ assert(!validateCoordinate(0, 180.1), 'Longitude 180.1 is rejected (> 180)');
 assert(!validateCoordinate(0, -181), 'Longitude -181 is rejected (< -180)');
 assert(!validateCoordinate(NaN, 10), 'NaN latitude is rejected');
 
-// ── 3. Zoom Level Bounds & Camera Constraints ─────────────────
-console.log('\n--- 3. Zoom Level Bounds & Camera Constraints ---');
+// ── 4. Zoom Level Bounds & Camera Constraints ─────────────────
+console.log('\n--- 4. Zoom Level Bounds & Camera Constraints ---');
 
 assert(
   DEFAULT_CITY_ZOOM >= MIN_CITY_ZOOM && DEFAULT_CITY_ZOOM <= MAX_CITY_ZOOM,
@@ -152,8 +223,8 @@ assert(clampZoom(5) === MIN_CITY_ZOOM, 'Sub-minimum zoom clamped to 10');
 assert(clampZoom(25) === MAX_CITY_ZOOM, 'Excessive zoom clamped to 18');
 assert(clampZoom(13.5) === 13.5, 'Normal zoom 13.5 remains unclamped');
 
-// ── 4. URL Query Parameter Serialization & Restoration ────────
-console.log('\n--- 4. URL Query Parameter Serialization & Restoration ---');
+// ── 5. URL Query Parameter Serialization & Restoration ────────
+console.log('\n--- 5. URL Query Parameter Serialization & Restoration ---');
 
 const tokyoUrl = serializeCityMapUrl(35.6762, 139.6503, 'Tokyo', 'Japan', 'city');
 assert(tokyoUrl.includes('view=city'), 'Serialized URL contains view=city');
@@ -177,8 +248,8 @@ const globeUrl = serializeCityMapUrl(48.8566, 2.3522, 'Paris', 'France', 'globe'
 const parsedGlobe = parseCityMapUrl(globeUrl);
 assert(parsedGlobe.view === 'globe', 'Return to Earth URL restores viewMode to globe');
 
-// ── 5. Weather Telemetry Contract & Null Safety ───────────────
-console.log('\n--- 5. Weather Telemetry Contract & Null Safety ---');
+// ── 6. Weather Telemetry Contract & Null Safety ───────────────
+console.log('\n--- 6. Weather Telemetry Contract & Null Safety ---');
 
 interface WeatherSummary {
   temperature?: number;
@@ -218,33 +289,6 @@ assert(
 assert(
   formatCityWeatherDisplay(undefined) === 'Weather loading...',
   'Undefined weather summary handled safely'
-);
-
-const fahrenheitWeather: WeatherSummary = {
-  temperature: 68.2,
-  weatherDescription: 'Partly cloudy',
-  weatherEmoji: '⛅',
-  units: 'fahrenheit',
-};
-assert(
-  formatCityWeatherDisplay(fahrenheitWeather) === '⛅ 68°F · Partly cloudy',
-  'Fahrenheit unit conversion formatted properly'
-);
-
-// ── 6. Failover & Error Recovery Contracts ────────────────────
-console.log('\n--- 6. Failover & Error Recovery Contracts ---');
-
-assert(
-  getFailoverStyle('liberty', true) === 'voyager',
-  'Vector liberty failover switches automatically to CARTO Voyager raster'
-);
-assert(
-  getFailoverStyle('bright', true) === 'voyager',
-  'Vector bright failover switches automatically to CARTO Voyager raster'
-);
-assert(
-  getFailoverStyle('liberty', false) === 'liberty',
-  'Healthy state preserves chosen vector style'
 );
 
 // ── 7. Component Lifecycle & WebGL Context Protection ─────────

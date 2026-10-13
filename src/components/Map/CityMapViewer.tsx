@@ -2,18 +2,25 @@
 // MooEarth Live — City Map Viewer (MapLibre GL JS)
 // ============================================================
 // High-performance 2D interactive vector & raster city explorer:
-// - Powered by MapLibre GL JS with OpenFreeMap vector & CARTO basemaps
+// - Powered by MapLibre GL JS with MapTiler, Esri World Street & OpenFreeMap
 // - Roads, labels, topography, and geographic features
 // - Pulsing target coordinate pin with city tooltip
 // - Floating Live Weather Telemetry Summary
 // - Return to 3D Earth action preserving orbital view & state
-// - Tile error handling & fallback raster tile failover
+// - Tile error handling, watchdog timeout & automated failover
 // - Full cleanup on unmount (zero WebGL context leaks)
 
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Map, NavigationControl, ScaleControl, Marker, Popup, type StyleSpecification } from 'maplibre-gl';
+import {
+  Map,
+  NavigationControl,
+  ScaleControl,
+  Marker,
+  Popup,
+  setWorkerUrl,
+} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
@@ -21,10 +28,21 @@ import {
   type MapStyleOption,
   MAP_STYLES,
   DEFAULT_CITY_ZOOM,
+  getDefaultMapStyleKey,
+  getFailoverStyle,
 } from '@/services/map/mapStyles';
 
 export type { MapStyleKey, MapStyleOption };
 export { MAP_STYLES, DEFAULT_CITY_ZOOM };
+
+// Configure standalone Web Worker asset in browser context
+if (typeof window !== 'undefined') {
+  try {
+    setWorkerUrl('/maplibre-gl-worker.mjs');
+  } catch {
+    // ignore if already set
+  }
+}
 
 export interface CityWeatherSummary {
   temperature?: number;
@@ -63,11 +81,13 @@ export default function CityMapViewer({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>('liberty');
+  const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>(() => getDefaultMapStyleKey());
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasMapError, setHasMapError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const [currentZoom, setCurrentZoom] = useState(initialZoom);
   const [currentPitch, setCurrentPitch] = useState(0);
   const [currentBearing, setCurrentBearing] = useState(0);
@@ -77,6 +97,12 @@ export default function CityMapViewer({
   const initMap = useCallback(
     (styleKey: MapStyleKey) => {
       if (!mapContainerRef.current) return;
+
+      // Clear any pending watchdog timer
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
 
       // Clean up previous instance if any
       if (mapRef.current) {
@@ -92,7 +118,7 @@ export default function CityMapViewer({
       setHasMapError(false);
       setErrorMessage(null);
 
-      const styleDef = MAP_STYLES[styleKey] || MAP_STYLES.liberty;
+      const styleDef = MAP_STYLES[styleKey] || MAP_STYLES['esri-street'];
 
       try {
         const map = new Map({
@@ -157,6 +183,10 @@ export default function CityMapViewer({
 
         // Map lifecycle listeners
         map.on('load', () => {
+          if (watchdogTimerRef.current) {
+            clearTimeout(watchdogTimerRef.current);
+            watchdogTimerRef.current = null;
+          }
           setIsMapLoaded(true);
           // Auto-display popup for instant clarity
           try {
@@ -172,16 +202,46 @@ export default function CityMapViewer({
           setCurrentBearing(Math.round(map.getBearing()));
         });
 
+        // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
+        watchdogTimerRef.current = setTimeout(() => {
+          if (!mapRef.current) return;
+          const isLoaded = mapRef.current.loaded();
+          if (!isLoaded) {
+            console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);
+            const failoverKey = getFailoverStyle(styleKey, true);
+            if (failoverKey !== styleKey) {
+              setFallbackNotice(
+                `Tile provider "${MAP_STYLES[styleKey]?.label || styleKey}" is responding slowly. Switched to high-availability ${MAP_STYLES[failoverKey]?.label}.`
+              );
+              setActiveStyleKey(failoverKey);
+            } else {
+              setIsMapLoaded(true);
+            }
+          }
+        }, 4500);
+
         map.on('error', (e) => {
-          // Check for critical style loading failures
-          if (e?.error && (e.error.message?.includes('Failed to fetch') || e.error.message?.includes('style'))) {
-            console.warn('MapLibre style load error, attempting fallback:', e.error);
-            if (styleKey === 'liberty') {
-              // Automatically switch to CARTO Voyager raster fallback if OpenFreeMap is blocked/slow
-              setActiveStyleKey('voyager');
+          // Check for critical style loading or authorization failures
+          const errStr = e?.error?.message || '';
+          const isCritical =
+            errStr.includes('Failed to fetch') ||
+            errStr.includes('style') ||
+            errStr.includes('Worker failed to load') ||
+            errStr.includes('401') ||
+            errStr.includes('403') ||
+            errStr.includes('404');
+
+          if (isCritical) {
+            console.warn(`[CityMapViewer] MapLibre error encountered on style "${styleKey}":`, e.error);
+            const failoverKey = getFailoverStyle(styleKey, true);
+            if (failoverKey !== styleKey) {
+              setFallbackNotice(
+                `Connection issue with "${MAP_STYLES[styleKey]?.label || styleKey}". Switched to fallback ${MAP_STYLES[failoverKey]?.label}.`
+              );
+              setActiveStyleKey(failoverKey);
             } else {
               setHasMapError(true);
-              setErrorMessage('Tile or network failure. You can retry or switch map styles.');
+              setErrorMessage('Tile or network failure. You can retry or choose an alternative map style.');
             }
           }
         });
@@ -201,6 +261,10 @@ export default function CityMapViewer({
     initMap(activeStyleKey);
 
     return () => {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
       if (markerRef.current) {
         markerRef.current.remove();
         markerRef.current = null;
@@ -254,6 +318,24 @@ export default function CityMapViewer({
         className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
       />
 
+      {/* ── Fallback Notification Toast ─────────────── */}
+      {fallbackNotice && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-auto max-w-[90%] sm:max-w-md bg-[#070718]/95 border border-cyan-500/40 px-3.5 py-2 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-mono text-cyan-300 flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-2 truncate">
+            <span>⚡</span>
+            <span className="truncate">{fallbackNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFallbackNotice(null)}
+            className="text-white/40 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors cursor-pointer"
+            title="Dismiss notice"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* ── Top Floating Navigation HUD ──────────────── */}
       <div className="absolute top-4 left-4 right-4 z-30 pointer-events-none flex items-start justify-between gap-3">
         {/* Left: "Return to Earth" Action */}
@@ -305,12 +387,12 @@ export default function CityMapViewer({
               title="Change Map Tiles & Styling"
             >
               <span className="text-cyan-400">🗺️</span>
-              <span className="font-semibold">{MAP_STYLES[activeStyleKey].label}</span>
+              <span className="font-semibold">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
               <span className="text-[9px] text-white/40">▼</span>
             </button>
 
             {isStyleMenuOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-48 rounded-2xl bg-[#070718]/98 backdrop-blur-2xl border border-white/10 shadow-2xl p-1.5 z-40 space-y-1">
+              <div className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-[#070718]/98 backdrop-blur-2xl border border-white/10 shadow-2xl p-1.5 z-40 space-y-1">
                 {(Object.keys(MAP_STYLES) as MapStyleKey[]).map((key) => {
                   const opt = MAP_STYLES[key];
                   const isActive = activeStyleKey === key;
@@ -328,9 +410,9 @@ export default function CityMapViewer({
                           : 'text-white/70 hover:text-white hover:bg-white/5'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 truncate">
                         <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-cyan-400' : 'bg-transparent'}`} />
-                        <span>{opt.label}</span>
+                        <span className="truncate">{opt.label}</span>
                       </div>
                       <span className="text-[9px] px-1 py-0.5 rounded bg-white/5 text-white/40">
                         {opt.badge}
@@ -403,8 +485,8 @@ export default function CityMapViewer({
         </div>
 
         {/* Tile Provider Attribution Notice */}
-        <div className="bg-[#050512]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 pointer-events-auto">
-          <span>{MAP_STYLES[activeStyleKey].attribution}</span>
+        <div className="bg-[#050512]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 pointer-events-auto max-w-[60%] truncate text-right">
+          <span>{MAP_STYLES[activeStyleKey]?.attribution}</span>
         </div>
       </div>
 
@@ -414,7 +496,7 @@ export default function CityMapViewer({
           <div className="w-10 h-10 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mb-3" />
           <span>RENDERING {cityName.toUpperCase()} CITY MAP...</span>
           <span className="text-[10px] text-white/40 mt-1">
-            Loading roads, labels, and vector tiles from {MAP_STYLES[activeStyleKey].label}
+            Loading roads, labels, and tiles from {MAP_STYLES[activeStyleKey]?.label}
           </span>
         </div>
       )}
@@ -428,7 +510,7 @@ export default function CityMapViewer({
               City Tile Connection Issue
             </h4>
             <p className="text-xs text-white/60 mb-4 leading-relaxed">
-              {errorMessage || 'Unable to retrieve vector map tiles at this moment.'}
+              {errorMessage || 'Unable to retrieve vector or raster map tiles at this moment.'}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               <button
@@ -438,15 +520,22 @@ export default function CityMapViewer({
               >
                 🔄 Retry Loading
               </button>
-              {activeStyleKey !== 'voyager' && (
+              {activeStyleKey !== 'esri-street' && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveStyleKey('voyager');
-                  }}
+                  onClick={() => setActiveStyleKey('esri-street')}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-bold transition-colors cursor-pointer"
+                >
+                  ⚡ Switch to Esri Street
+                </button>
+              )}
+              {activeStyleKey !== 'osm' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveStyleKey('osm')}
                   className="px-3.5 py-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-mono text-xs font-bold transition-colors cursor-pointer"
                 >
-                  🎨 Switch to CARTO Voyager
+                  🗺️ Switch to OpenStreetMap
                 </button>
               )}
               <button

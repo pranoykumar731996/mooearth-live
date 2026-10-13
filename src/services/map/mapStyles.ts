@@ -2,11 +2,21 @@
 // MooEarth Live — Map Styles & Tile Provider Registry
 // ============================================================
 // Appropriately licensed tile providers and style configurations:
-// - OpenFreeMap (Vector): 100% Free & Open Source under MIT/ODbL. Zero API keys.
-// - CARTO (Raster): Free tier for open web apps under CC BY 4.0 / Carto Free attribution.
+// - MapTiler (Vector): High-performance vector tiles via Anycast CDN. Configured via NEXT_PUBLIC_MAPTILER_API_KEY.
+// - Esri World Street (Raster): Reliable, zero-watermark, fast global street raster. High-availability default fallback.
+// - OpenFreeMap (Vector): Community open-source vector tiles under MIT/ODbL.
+// - OpenStreetMap (Raster): Standard community tile server under ODbL.
+// - CARTO Voyager / Dark (Raster): Basemaps under CC BY 4.0 / Carto Free (configurable via NEXT_PUBLIC_CARTO_API_KEY).
 // - Full attribution to OpenStreetMap contributors and respective data providers.
 
-export type MapStyleKey = 'liberty' | 'bright' | 'voyager' | 'dark';
+export type MapStyleKey =
+  | 'esri-street'
+  | 'maptiler-streets'
+  | 'liberty'
+  | 'bright'
+  | 'osm'
+  | 'voyager'
+  | 'dark';
 
 export interface MapStyleOption {
   key: MapStyleKey;
@@ -15,92 +25,203 @@ export interface MapStyleOption {
   style: any; // URL string or MapLibre StyleSpecification object
   type: 'vector' | 'raster';
   attribution: string;
+  requiresKey?: boolean;
 }
 
-export const MAP_STYLES: Record<MapStyleKey, MapStyleOption> = {
-  liberty: {
-    key: 'liberty',
-    label: 'Liberty Vector',
-    badge: 'Vector',
-    style: 'https://tiles.openfreemap.org/styles/liberty',
-    type: 'vector',
-    attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
-  },
-  bright: {
-    key: 'bright',
-    label: 'Bright Vector',
-    badge: 'Vector',
-    style: 'https://tiles.openfreemap.org/styles/bright',
-    type: 'vector',
-    attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
-  },
-  voyager: {
-    key: 'voyager',
-    label: 'Voyager Color',
-    badge: 'Raster',
-    style: {
-      version: 8,
-      sources: {
-        'carto-voyager': {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-          ],
-          tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+/**
+ * Retrieve public MapTiler API key from environment variables
+ */
+export function getMapTilerKey(): string {
+  return process.env.NEXT_PUBLIC_MAPTILER_API_KEY?.trim() || '';
+}
+
+/**
+ * Retrieve public CARTO API key from environment variables (optional)
+ */
+export function getCartoKey(): string {
+  return process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim() || '';
+}
+
+/**
+ * Build map styles registry with current credentials
+ */
+export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
+  const maptilerKey = getMapTilerKey();
+  const cartoKey = getCartoKey();
+  const cartoQuery = cartoKey ? `?api_key=${encodeURIComponent(cartoKey)}` : '';
+
+  return {
+    'esri-street': {
+      key: 'esri-street',
+      label: 'Esri Street',
+      badge: 'Fast',
+      style: {
+        version: 8,
+        sources: {
+          'esri-street-source': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution:
+              'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, TomTom, USGS, Intermap, iPC, NRCAN, METI, OpenStreetMap contributors',
+          },
         },
+        layers: [
+          {
+            id: 'esri-street-layer',
+            type: 'raster',
+            source: 'esri-street-source',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
       },
-      layers: [
-        {
-          id: 'carto-voyager-layer',
-          type: 'raster',
-          source: 'carto-voyager',
-          minzoom: 0,
-          maxzoom: 20,
-        },
-      ],
+      type: 'raster',
+      attribution: 'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, TomTom, OpenStreetMap contributors',
     },
-    type: 'raster',
-    attribution: '© OpenStreetMap contributors © CARTO',
-  },
-  dark: {
-    key: 'dark',
-    label: 'Dark Matter',
-    badge: 'Night',
-    style: {
-      version: 8,
-      sources: {
-        'carto-dark': {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
-            'https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png',
-          ],
-          tileSize: 256,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+    'maptiler-streets': {
+      key: 'maptiler-streets',
+      label: 'MapTiler Streets',
+      badge: 'Vector',
+      style: maptilerKey
+        ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${maptilerKey}`
+        : 'https://tiles.openfreemap.org/styles/liberty', // Fallback to liberty vector if no key
+      type: 'vector',
+      attribution: '© MapTiler © OpenStreetMap contributors',
+      requiresKey: true,
+    },
+    liberty: {
+      key: 'liberty',
+      label: 'Liberty Vector',
+      badge: 'Vector',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
+    },
+    bright: {
+      key: 'bright',
+      label: 'Bright Vector',
+      badge: 'Vector',
+      style: 'https://tiles.openfreemap.org/styles/bright',
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
+    },
+    osm: {
+      key: 'osm',
+      label: 'OpenStreetMap',
+      badge: 'OSM',
+      style: {
+        version: 8,
+        sources: {
+          'osm-source': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+          },
         },
+        layers: [
+          {
+            id: 'osm-layer',
+            type: 'raster',
+            source: 'osm-source',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
       },
-      layers: [
-        {
-          id: 'carto-dark-layer',
-          type: 'raster',
-          source: 'carto-dark',
-          minzoom: 0,
-          maxzoom: 20,
-        },
-      ],
+      type: 'raster',
+      attribution: '© OpenStreetMap contributors',
     },
-    type: 'raster',
-    attribution: '© OpenStreetMap contributors © CARTO',
-  },
-};
+    voyager: {
+      key: 'voyager',
+      label: 'Voyager Color',
+      badge: 'Raster',
+      style: {
+        version: 8,
+        sources: {
+          'carto-voyager': {
+            type: 'raster',
+            tiles: [
+              `https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
+              `https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
+              `https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
+            ],
+            tileSize: 256,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+          },
+        },
+        layers: [
+          {
+            id: 'carto-voyager-layer',
+            type: 'raster',
+            source: 'carto-voyager',
+            minzoom: 0,
+            maxzoom: 20,
+          },
+        ],
+      },
+      type: 'raster',
+      attribution: '© OpenStreetMap contributors © CARTO',
+      requiresKey: !cartoKey,
+    },
+    dark: {
+      key: 'dark',
+      label: 'Dark Matter',
+      badge: 'Night',
+      style: {
+        version: 8,
+        sources: {
+          'carto-dark': {
+            type: 'raster',
+            tiles: [
+              `https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
+              `https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
+              `https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
+            ],
+            tileSize: 256,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+          },
+        },
+        layers: [
+          {
+            id: 'carto-dark-layer',
+            type: 'raster',
+            source: 'carto-dark',
+            minzoom: 0,
+            maxzoom: 20,
+          },
+        ],
+      },
+      type: 'raster',
+      attribution: '© OpenStreetMap contributors © CARTO',
+      requiresKey: !cartoKey,
+    },
+  };
+}
+
+export const MAP_STYLES: Record<MapStyleKey, MapStyleOption> = buildMapStyles();
 
 export const DEFAULT_CITY_ZOOM = 12.8;
 export const MIN_CITY_ZOOM = 10;
 export const MAX_CITY_ZOOM = 18;
+
+/**
+ * Determine default style based on environment configuration
+ */
+export function getDefaultMapStyleKey(): MapStyleKey {
+  const maptilerKey = getMapTilerKey();
+  if (maptilerKey) {
+    return 'maptiler-streets';
+  }
+  // Fast, zero-watermark, highly available default
+  return 'esri-street';
+}
 
 /**
  * Validate that latitude and longitude coordinates are finite numbers within physical spherical bounds
@@ -153,12 +274,18 @@ export function parseCityMapUrl(urlOrQuery: string) {
 }
 
 /**
- * Select fallback map style when vector tile loading fails
+ * Select fallback map style when vector tile loading fails or times out
  */
 export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): MapStyleKey {
   if (!hasError) return currentKey;
-  if (currentKey === 'liberty' || currentKey === 'bright') {
-    return 'voyager';
+  if (currentKey === 'maptiler-streets' || currentKey === 'liberty' || currentKey === 'bright') {
+    return 'esri-street';
   }
-  return currentKey;
+  if (currentKey === 'esri-street') {
+    return 'osm';
+  }
+  if (currentKey === 'voyager' || currentKey === 'dark') {
+    return 'esri-street';
+  }
+  return 'esri-street';
 }
