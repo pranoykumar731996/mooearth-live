@@ -187,6 +187,17 @@ export default function CityExplorerPanel({
           </div>
         </div>
 
+        {/* Explore City Map Action Button (MapLibre GL JS) */}
+        <Link
+          href={`/weather?view=city&lat=${location.lat.toFixed(4)}&lng=${location.lng.toFixed(4)}&city=${encodeURIComponent(location.name)}&country=${encodeURIComponent(location.country)}`}
+          className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-cyan-500/25 via-blue-600/25 to-purple-600/25 hover:from-cyan-500/40 hover:to-purple-600/40 border border-cyan-400/40 text-cyan-200 hover:text-white font-mono text-xs font-bold tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer group"
+          data-testid="explore-city-maplibre-btn"
+        >
+          <span className="text-base group-hover:scale-110 transition-transform">🗺️</span>
+          <span>EXPLORE CITY MAP</span>
+          <span className="text-xs text-cyan-400 font-bold">→</span>
+        </Link>
+
         {/* Quick Actions Row */}
         <div className="flex gap-2">
           {onOpenWeather && (

@@ -80,10 +80,25 @@ const GlobeScene = dynamic(
   }
 );
 
+// Dynamically import the MapLibre GL JS City Map Viewer with SSR disabled
+const CityMapViewer = dynamic(
+  () => import('@/components/Map/CityMapViewer'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[400px] bg-[#020208] flex flex-col items-center justify-center text-cyan-400 font-mono text-xs tracking-wider animate-pulse">
+        <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mb-3" />
+        <span>INITIALIZING INTERACTIVE CITY MAP...</span>
+      </div>
+    ),
+  }
+);
+
 export default function WeatherDashboard() {
   const weather = useWeatherData();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<'globe' | 'city-map'>('globe');
   const [isPanelMinimized, setIsPanelMinimized] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
@@ -94,22 +109,64 @@ export default function WeatherDashboard() {
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
 
-  // Helper: push location into URL query params for shareable links
-  const updateUrlParams = useCallback((lat: number, lng: number, city?: string, country?: string) => {
-    try {
-      const params = new URLSearchParams();
-      params.set('lat', lat.toFixed(4));
-      params.set('lng', lng.toFixed(4));
-      if (city) params.set('city', city);
-      if (country) params.set('country', country);
-      router.replace(`/weather?${params.toString()}`, { scroll: false });
-    } catch {
-      // Silently ignore URL update errors
-    }
-  }, [router]);
+  // Helper: push location and view mode into URL query params for shareable links
+  const updateUrlParams = useCallback(
+    (lat: number, lng: number, city?: string, country?: string, mode?: 'globe' | 'city-map') => {
+      try {
+        const params = new URLSearchParams();
+        const currentMode = mode !== undefined ? mode : viewMode;
+        if (currentMode === 'city-map') {
+          params.set('view', 'city');
+        }
+        params.set('lat', lat.toFixed(4));
+        params.set('lng', lng.toFixed(4));
+        if (city) params.set('city', city);
+        if (country) params.set('country', country);
+        router.replace(`/weather?${params.toString()}`, { scroll: false });
+      } catch {
+        // Silently ignore URL update errors
+      }
+    },
+    [router, viewMode]
+  );
 
   // Helper: get flyTo duration respecting reduced-motion
-  const getFlyDuration = useCallback((ms: number) => prefersReducedMotion() ? 0 : ms, []);
+  const getFlyDuration = useCallback((ms: number) => (prefersReducedMotion() ? 0 : ms), []);
+
+  // Action: Explore City Map using MapLibre GL JS
+  const handleExploreCity = useCallback(() => {
+    if (!weather.selectedLocation) return;
+    setViewMode('city-map');
+    updateUrlParams(
+      weather.selectedLocation.latitude,
+      weather.selectedLocation.longitude,
+      weather.selectedLocation.name,
+      weather.selectedLocation.country,
+      'city-map'
+    );
+  }, [weather.selectedLocation, updateUrlParams]);
+
+  // Action: Return to 3D Earth Globe preserving coordinates, camera, and weather state
+  const handleReturnToEarth = useCallback(() => {
+    setViewMode('globe');
+    if (weather.selectedLocation) {
+      updateUrlParams(
+        weather.selectedLocation.latitude,
+        weather.selectedLocation.longitude,
+        weather.selectedLocation.name,
+        weather.selectedLocation.country,
+        'globe'
+      );
+      globeApiRef.current?.flyTo(
+        {
+          lat: weather.selectedLocation.latitude,
+          lng: weather.selectedLocation.longitude,
+          altitude: 1.6,
+        },
+        getFlyDuration(1200)
+      );
+    }
+  }, [weather.selectedLocation, updateUrlParams, getFlyDuration]);
 
   // Fetch live global events for radar/atmosphere integration
   useEffect(() => {
@@ -160,6 +217,11 @@ export default function WeatherDashboard() {
     const lng = parseFloat(searchParams.get('lng') || '');
     const city = searchParams.get('city') || '';
     const country = searchParams.get('country') || '';
+    const view = searchParams.get('view');
+
+    if (view === 'city') {
+      setViewMode('city-map');
+    }
 
     if (!isNaN(lat) && !isNaN(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
       weather.fetchWeatherForLocation({
@@ -379,8 +441,38 @@ export default function WeatherDashboard() {
             />
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links & View Mode Switch */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {weather.selectedLocation && (
+              <div className="flex rounded-xl bg-white/5 border border-white/10 p-0.5">
+                <button
+                  type="button"
+                  data-testid="header-earth-mode-btn"
+                  onClick={handleReturnToEarth}
+                  className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    viewMode === 'globe'
+                      ? 'bg-cyan-500 text-black shadow-md'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="View planetary 3D Earth globe"
+                >
+                  🌍 <span className="hidden sm:inline">Earth</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="header-city-map-btn"
+                  onClick={handleExploreCity}
+                  className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    viewMode === 'city-map'
+                      ? 'bg-cyan-500 text-black shadow-md'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Explore detailed 2D city map with MapLibre GL JS"
+                >
+                  🗺️ <span className="hidden sm:inline">City Map</span>
+                </button>
+              </div>
+            )}
             <Link
               href="/"
               className="text-xs px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
@@ -405,143 +497,188 @@ export default function WeatherDashboard() {
       <main className="fixed top-[98px] bottom-0 left-0 right-0 flex flex-col lg:flex-row overflow-hidden bg-[#010106]">
         {/* Globe Viewport */}
         <div className="flex-1 relative w-full h-full min-h-0 bg-[#010106] overflow-hidden">
-          {/* Direct 3D Interactive Earth Globe */}
-          <div className="absolute inset-0 w-full h-full">
-            <GlobeScene
-              events={events}
-              selectedEvent={null}
-              onSelectEvent={() => {}}
-              selectedCountry={weather.selectedLocation?.country}
-              onSelectCountry={handleCountrySelect}
-              selectedLocation={
-                weather.selectedLocation
-                  ? {
-                      id: `weather-${weather.selectedLocation.name}`,
-                      name: weather.selectedLocation.name,
-                      type: 'city',
-                      country: weather.selectedLocation.country || '',
-                      countryCode: '',
-                      lat: weather.selectedLocation.latitude,
-                      lng: weather.selectedLocation.longitude,
-                      population: 0,
-                      timezone: weather.selectedLocation.timezone || 'UTC',
-                      adminLevel: 2,
-                    }
-                  : null
-              }
-              activeCategory="weather"
-              globeView="weather"
-              weatherLayerMode={weather.activeLayer}
-              weatherTimelineIndex={timelineIndex}
-              weatherGridData={gridData}
-              weatherUnits={weatherUnitsObj}
-              onGlobeClick={handleGlobeClick}
-              onInitGlobeApi={handleInitGlobeApi}
-            />
-          </div>
-
-          {/* Animated Wind Particles Overlay (2D disabled in favor of genuine 3D WebGL particle streamlines) */}
-          <div className="absolute inset-0 pointer-events-none z-10">
-            <WindParticleOverlay
-              windSpeed={windSpeed}
-              windDirection={windDirection}
-              windGusts={windGusts}
-              isActive={false}
-            />
-          </div>
-
-          {/* Floating Globe Zoom & Reset Controls */}
-          <div className="absolute top-20 left-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
-            <div className="flex flex-col rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 p-1 shadow-2xl">
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-base font-bold cursor-pointer"
-                title="Zoom into Earth (+)"
-                aria-label="Zoom in"
-              >
-                +
-              </button>
-              <div className="h-[1px] bg-white/10 mx-1" />
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-lg font-bold cursor-pointer"
-                title="Zoom out of Earth (−)"
-                aria-label="Zoom out"
-              >
-                −
-              </button>
-              <div className="h-[1px] bg-white/10 mx-1" />
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-cyan-300 hover:bg-white/10 active:scale-95 transition-all text-xs font-mono cursor-pointer"
-                title="Reset Earth view"
-                aria-label="Reset view"
-              >
-                ⟲
-              </button>
-            </div>
-          </div>
-
-          {/* Selected Location HUD Badge (Clickable to inspect telemetry details) */}
-          {weather.selectedLocation && (
-            <div className="absolute top-4 left-4 z-20 pointer-events-auto">
-              <button
-                type="button"
-                onClick={() => setIsPanelOpen(!isPanelOpen)}
-                className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl hover:border-cyan-400/60 transition-colors text-left cursor-pointer"
-                title="Click to view detailed meteorological panel"
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-                <div>
-                  <div className="font-bold text-white text-xs">
-                    {weather.selectedLocation.name}
-                  </div>
-                  <div className="text-[10px] text-white/50">
-                    {weather.selectedLocation.country || 'Target Coordinates'}
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* Active Layer Legend (floating top-right) */}
-          <div className="absolute top-4 right-4 z-20 pointer-events-auto max-w-[280px]">
-            <WeatherLegend
-              activeLayer={weather.activeLayer}
-              units={weather.units}
-              timestamp={gridData?.timestamps?.[timelineIndex] || currentForecast?.hourly?.time?.[timelineIndex]}
-              isLoading={isGridLoading}
-            />
-          </div>
-
-          {/* Forecast Timeline (floating along bottom of globe) */}
-          {currentForecast?.hourly && (
-            <div className="absolute bottom-4 left-4 right-4 lg:right-[396px] z-20 pointer-events-auto max-w-2xl mx-auto">
-              <WeatherTimeline
-                hourly={currentForecast.hourly}
-                selectedIndex={timelineIndex}
-                onSelectIndex={setTimelineIndex}
-                timezone={currentForecast.timezone || 'UTC'}
-                isPlaying={isTimelinePlaying}
-                onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
-                units={weather.units}
+          {/* Direct 3D Interactive Earth Globe & Overlays (preserved in DOM during city exploration) */}
+          <div className={`absolute inset-0 w-full h-full ${viewMode === 'city-map' ? 'invisible pointer-events-none' : 'visible'}`}>
+            <div className="absolute inset-0 w-full h-full">
+              <GlobeScene
+                events={events}
+                selectedEvent={null}
+                onSelectEvent={() => {}}
+                selectedCountry={weather.selectedLocation?.country}
+                onSelectCountry={handleCountrySelect}
+                selectedLocation={
+                  weather.selectedLocation
+                    ? {
+                        id: `weather-${weather.selectedLocation.name}`,
+                        name: weather.selectedLocation.name,
+                        type: 'city',
+                        country: weather.selectedLocation.country || '',
+                        countryCode: '',
+                        lat: weather.selectedLocation.latitude,
+                        lng: weather.selectedLocation.longitude,
+                        population: 0,
+                        timezone: weather.selectedLocation.timezone || 'UTC',
+                        adminLevel: 2,
+                      }
+                    : null
+                }
+                activeCategory="weather"
+                globeView="weather"
+                weatherLayerMode={weather.activeLayer}
+                weatherTimelineIndex={timelineIndex}
+                weatherGridData={gridData}
+                weatherUnits={weatherUnitsObj}
+                onGlobeClick={handleGlobeClick}
+                onInitGlobeApi={handleInitGlobeApi}
               />
             </div>
-          )}
 
-          {/* Mobile "Open Weather Sheet" floating CTA */}
-          {hasData && !isPanelOpen && (
-            <button
-              type="button"
-              data-testid="open-mobile-sheet"
-              onClick={() => setIsPanelOpen(true)}
-              className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
-            >
-              📊 Telemetry →
-            </button>
+            {/* Animated Wind Particles Overlay (2D disabled in favor of genuine 3D WebGL particle streamlines) */}
+            <div className="absolute inset-0 pointer-events-none z-10">
+              <WindParticleOverlay
+                windSpeed={windSpeed}
+                windDirection={windDirection}
+                windGusts={windGusts}
+                isActive={false}
+              />
+            </div>
+
+            {/* Floating Globe Zoom & Reset Controls */}
+            <div className="absolute top-20 left-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
+              <div className="flex flex-col rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 p-1 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-base font-bold cursor-pointer"
+                  title="Zoom into Earth (+)"
+                  aria-label="Zoom in"
+                >
+                  +
+                </button>
+                <div className="h-[1px] bg-white/10 mx-1" />
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition-all text-lg font-bold cursor-pointer"
+                  title="Zoom out of Earth (−)"
+                  aria-label="Zoom out"
+                >
+                  −
+                </button>
+                <div className="h-[1px] bg-white/10 mx-1" />
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-cyan-300 hover:bg-white/10 active:scale-95 transition-all text-xs font-mono cursor-pointer"
+                  title="Reset Earth view"
+                  aria-label="Reset view"
+                >
+                  ⟲
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Location HUD Badge (Clickable to inspect telemetry details + Explore City button) */}
+            {weather.selectedLocation && (
+              <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPanelOpen(!isPanelOpen)}
+                  className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl hover:border-cyan-400/60 transition-colors text-left cursor-pointer"
+                  title="Click to view detailed meteorological panel"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  <div>
+                    <div className="font-bold text-white text-xs">
+                      {weather.selectedLocation.name}
+                    </div>
+                    <div className="text-[10px] text-white/50">
+                      {weather.selectedLocation.country || 'Target Coordinates'}
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="hud-explore-city-btn"
+                  onClick={handleExploreCity}
+                  className="px-3 py-2 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 backdrop-blur-xl border border-cyan-400/40 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer active:scale-95"
+                  title="Explore detailed 2D city map with MapLibre GL JS"
+                >
+                  <span>🗺️</span>
+                  <span className="hidden sm:inline">Explore City</span>
+                </button>
+              </div>
+            )}
+
+            {/* Active Layer Legend (floating top-right) */}
+            <div className="absolute top-4 right-4 z-20 pointer-events-auto max-w-[280px]">
+              <WeatherLegend
+                activeLayer={weather.activeLayer}
+                units={weather.units}
+                timestamp={gridData?.timestamps?.[timelineIndex] || currentForecast?.hourly?.time?.[timelineIndex]}
+                isLoading={isGridLoading}
+              />
+            </div>
+
+            {/* Forecast Timeline (floating along bottom of globe) */}
+            {currentForecast?.hourly && (
+              <div className="absolute bottom-4 left-4 right-4 lg:right-[396px] z-20 pointer-events-auto max-w-2xl mx-auto">
+                <WeatherTimeline
+                  hourly={currentForecast.hourly}
+                  selectedIndex={timelineIndex}
+                  onSelectIndex={setTimelineIndex}
+                  timezone={currentForecast.timezone || 'UTC'}
+                  isPlaying={isTimelinePlaying}
+                  onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
+                  units={weather.units}
+                />
+              </div>
+            )}
+
+            {/* Mobile "Open Weather Sheet" floating CTA */}
+            {hasData && !isPanelOpen && (
+              <button
+                type="button"
+                data-testid="open-mobile-sheet"
+                onClick={() => setIsPanelOpen(true)}
+                className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
+              >
+                📊 Telemetry →
+              </button>
+            )}
+          </div>
+
+          {/* Dedicated Interactive 2D City Map (MapLibre GL JS) */}
+          {viewMode === 'city-map' && weather.selectedLocation && (
+            <div className="absolute inset-0 w-full h-full z-20">
+              <CityMapViewer
+                latitude={weather.selectedLocation.latitude}
+                longitude={weather.selectedLocation.longitude}
+                cityName={weather.selectedLocation.name}
+                countryName={weather.selectedLocation.country}
+                initialZoom={13}
+                weatherSummary={
+                  displayedForecast?.current
+                    ? {
+                        temperature: displayedForecast.current.temperature,
+                        apparentTemperature: displayedForecast.current.apparentTemperature,
+                        weatherDescription: displayedForecast.current.weatherDescription,
+                        weatherEmoji: displayedForecast.current.weatherEmoji,
+                        windSpeed: displayedForecast.current.windSpeed,
+                        relativeHumidity: displayedForecast.current.relativeHumidity,
+                        precipitation: displayedForecast.current.precipitation,
+                        units: weather.units,
+                      }
+                    : null
+                }
+                onReturnToEarth={handleReturnToEarth}
+                onOpenWeather={() => {
+                  setIsPanelOpen(true);
+                  setIsPanelMinimized(false);
+                }}
+              />
+            </div>
           )}
         </div>
 
@@ -562,6 +699,7 @@ export default function WeatherDashboard() {
                 errors={weather.errors}
                 isMinimized={isPanelMinimized}
                 onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+                onExploreCity={handleExploreCity}
               />
             </div>
 
@@ -603,6 +741,7 @@ export default function WeatherDashboard() {
                       errors={weather.errors}
                       isMinimized={isPanelMinimized}
                       onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+                      onExploreCity={handleExploreCity}
                     />
                   </div>
                 </div>

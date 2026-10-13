@@ -26,11 +26,13 @@
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",
     "test:news-engine": "npx tsx scripts/test-news-engine.ts",
     "test:weather": "npx tsx scripts/test-weather-suite.ts && npx tsx scripts/test-weather-layers-suite.ts",
-    "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts"
+    "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts",
+    "test:city-map": "npx tsx scripts/test-explore-city-suite.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",
     "framer-motion": "^12.40.0",
+    "maplibre-gl": "^6.14.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",

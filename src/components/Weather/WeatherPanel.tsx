@@ -35,6 +35,7 @@ interface WeatherPanelProps {
   errors: Record<string, string | null>;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+  onExploreCity?: () => void;
 }
 
 export default function WeatherPanel({
@@ -49,6 +50,7 @@ export default function WeatherPanel({
   errors,
   isMinimized,
   onToggleMinimize,
+  onExploreCity,
 }: WeatherPanelProps) {
   const [unit, setUnit] = useState<'C' | 'F'>('C');
 
@@ -142,6 +144,20 @@ export default function WeatherPanel({
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-4 touch-pan-y scrollbar-thin scrollbar-thumb-white/20">
+          {/* ── Explore City Action CTA ─────────────── */}
+          {onExploreCity && (
+            <button
+              type="button"
+              data-testid="panel-explore-city-btn"
+              onClick={onExploreCity}
+              className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-400/40 hover:border-cyan-400 text-cyan-300 hover:text-white font-mono text-xs font-bold tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98 cursor-pointer group"
+            >
+              <span className="text-base group-hover:scale-110 transition-transform">🗺️</span>
+              <span>EXPLORE CITY MAP (MAPLIBRE)</span>
+              <span className="text-[10px] text-cyan-400 font-bold">→</span>
+            </button>
+          )}
+
           {/* ── Current Conditions ────────────────── */}
           {(activeLayer === 'overview' || activeLayer === 'temperature' || activeLayer === 'wind' || activeLayer === 'precipitation') && (
             <>

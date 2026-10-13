@@ -204,6 +204,14 @@ export default async function CityPage({ params }: CityPageProps) {
           {/* Quick Country Links Bar */}
           <nav aria-label="Country Intent Hubs" className="flex flex-wrap items-center gap-2 text-xs border-b border-white/5 pb-4">
             <span className="text-white/40 uppercase font-mono text-[10px] mr-1">Parent Country:</span>
+            <Link
+              href={`/weather?view=city&lat=${city.coordinates.lat.toFixed(4)}&lng=${city.coordinates.lng.toFixed(4)}&city=${encodeURIComponent(city.name)}&country=${encodeURIComponent(city.country)}`}
+              className="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40 transition-colors flex items-center gap-1"
+            >
+              <span>🗺️</span>
+              <span>Explore City Map</span>
+              <span>&rarr;</span>
+            </Link>
             <Link href={`/countries/${city.countrySlug}`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-300 font-semibold border border-white/10 transition-colors">
               {country?.flag} {city.country} Atlas &rarr;
             </Link>
