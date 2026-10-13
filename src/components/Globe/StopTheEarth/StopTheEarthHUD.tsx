@@ -379,47 +379,76 @@ export default function StopTheEarthHUD({
                   </p>
                 </div>
 
-                {/* 4 Geographic Candidate Cards (Specific Places & Cities - Zero Bare Countries) */}
-                <div className="grid grid-cols-1 gap-2 pt-1">
-                  {candidates.map((cand) => (
+                {/* Empty Ocean Handling vs Geographic Candidate Cards */}
+                {resolvedLocation?.isOpenOcean ? (
+                  <div className="p-3 text-center space-y-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="w-12 h-12 mx-auto rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-2xl shadow-[0_0_25px_rgba(0,229,255,0.2)]">
+                      🌊
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-white">
+                        OPEN OCEAN DETECTED
+                      </h4>
+                      <p className="text-xs text-cyan-200/80 mt-1">
+                        You landed in international maritime waters ({resolvedLocation.name}).
+                      </p>
+                      <p className="text-[11px] text-white/50 mt-1">
+                        No sovereign nation or island lies nearby. Give the globe another spin to land on land!
+                      </p>
+                    </div>
                     <button
-                      key={cand.id}
                       onClick={() => {
                         onPlaySound();
-                        onSelectCandidate(cand);
+                        onStart();
                       }}
-                      className={`p-3 sm:p-3.5 rounded-2xl text-left border transition-all cursor-pointer group flex flex-col justify-between gap-1 ${
-                        selectedCandidate?.id === cand.id
-                          ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.25)]'
-                          : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                      }`}
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(0,229,255,0.3)] cursor-pointer active:scale-95"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-extrabold text-white text-sm group-hover:text-cyan-300 transition-colors">
-                          {cand.name}
-                        </span>
-                        {cand.countryCode ? (
-                          <CountryFlag flag={cand.countryCode} className="w-5 h-3.5 object-cover rounded shadow-sm shrink-0" />
-                        ) : (
-                          <span className="text-sm shrink-0">
-                            {cand.type === 'ocean' ? '🌊' : cand.type === 'sea' ? '⚓' : cand.type === 'island' ? '🏝️' : cand.type === 'wonder' ? '🏛️' : cand.type === 'landmark' ? '🗼' : '📍'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-white/50 truncate flex items-center gap-1.5">
-                        {cand.country ? (
-                          <>
-                            <span className="font-semibold text-white/70">{cand.country}</span>
-                            <span>•</span>
-                            <span className="capitalize">{cand.type === 'capital' ? 'Capital City' : cand.type === 'wonder' ? 'World Wonder' : cand.type === 'landmark' ? 'Landmark' : cand.type === 'natural' ? 'Natural Wonder' : cand.type === 'city' ? 'Metropolis' : cand.type}</span>
-                          </>
-                        ) : (
-                          <span>{cand.type === 'ocean' || cand.type === 'sea' ? 'Maritime Basin' : cand.description || 'Global Location'}</span>
-                        )}
-                      </div>
+                      SPIN AGAIN 🔄
                     </button>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  /* 4 Geographic Candidate Cards (Specific Places & Cities - Zero Bare Countries) */
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    {candidates.map((cand) => (
+                      <button
+                        key={cand.id}
+                        onClick={() => {
+                          onPlaySound();
+                          onSelectCandidate(cand);
+                        }}
+                        className={`p-3 sm:p-3.5 rounded-2xl text-left border transition-all cursor-pointer group flex flex-col justify-between gap-1 ${
+                          selectedCandidate?.id === cand.id
+                            ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.25)]'
+                            : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-white text-sm group-hover:text-cyan-300 transition-colors">
+                            {cand.name}
+                          </span>
+                          {cand.countryCode ? (
+                            <CountryFlag flag={cand.countryCode} className="w-5 h-3.5 object-cover rounded shadow-sm shrink-0" />
+                          ) : (
+                            <span className="text-sm shrink-0">
+                              {cand.type === 'ocean' ? '🌊' : cand.type === 'sea' ? '⚓' : cand.type === 'island' ? '🏝️' : cand.type === 'wonder' ? '🏛️' : cand.type === 'landmark' ? '🗼' : '📍'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-white/50 truncate flex items-center gap-1.5">
+                          {cand.country ? (
+                            <>
+                              <span className="font-semibold text-white/70">{cand.country}</span>
+                              <span>•</span>
+                              <span className="capitalize">{cand.type === 'capital' ? 'Capital City' : cand.type === 'wonder' ? 'World Wonder' : cand.type === 'landmark' ? 'Landmark' : cand.type === 'natural' ? 'Natural Wonder' : cand.type === 'city' ? 'Metropolis' : cand.type}</span>
+                            </>
+                          ) : (
+                            <span>{cand.type === 'ocean' || cand.type === 'sea' ? 'Maritime Basin' : cand.description || 'Global Location'}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

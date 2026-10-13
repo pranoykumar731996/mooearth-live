@@ -9,6 +9,17 @@ import { CURATED_QUESTIONS } from './curated';
 import { GENERATED_QUESTIONS } from './generatedPool';
 import { generateQuestions } from './generator';
 import { COUNTRY_METADATA, findCountryMeta } from './countryMetadata';
+import {
+  generateFlagDiscoveryQuestion,
+  generateCapitalDiscoveryQuestion,
+  generateBorderDiscoveryQuestion,
+  generateLandmarkDiscoveryQuestion,
+  generateFactDiscoveryQuestion,
+  generateContinentDiscoveryQuestion,
+  generateDiscoveryQuestion,
+  getOfficialDailyQuestions,
+  DiscoveryQuestionCategory,
+} from '@/engines/game/DiscoveryQuestionEngine';
 
 /** Shuffle helper (Fisher-Yates) */
 function shuffle<T>(arr: T[]): T[] {
@@ -625,38 +636,39 @@ export function generateCapitalQuestion(
 
 /** Generates a deterministic daily earth question based on calendar date, index, and optional round */
 export function getDailyEarthQuestion(dateStr: string, index: number, round: number = 0): EarthQuestion {
-  // Simple seed based on date string and round
   const charSum = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const seed = charSum + index * 101 + round * 1009;
   const rng = new SeededRandom(seed);
 
-  const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
-  const target = metadataArray[seed % metadataArray.length];
+  const categories: DiscoveryQuestionCategory[] = ['flag', 'capital', 'border', 'landmark', 'fact'];
+  const category = categories[(index + round * 2) % categories.length];
 
-  const otherCapitals = metadataArray.filter(m => m.name !== target.name).map(m => m.capital);
-  
-  // Deterministically select 3 distractors
-  const distractors: string[] = [];
-  const availableCapitals = [...otherCapitals];
-  for (let i = 0; i < 3; i++) {
-    const randIdx = rng.nextInt(0, availableCapitals.length);
-    distractors.push(availableCapitals[randIdx]);
-    availableCapitals.splice(randIdx, 1);
+  const metadataArray = Object.values(COUNTRY_METADATA).filter(m => m.capital && m.name);
+  const target = metadataArray[(charSum * 3 + index * 17 + round * 47) % metadataArray.length];
+
+  let q: EarthQuestion;
+  switch (category) {
+    case 'flag':
+      q = generateFlagDiscoveryQuestion(rng, target, 'medium');
+      break;
+    case 'border':
+      q = generateBorderDiscoveryQuestion(rng, target, 'medium');
+      break;
+    case 'landmark':
+      q = generateLandmarkDiscoveryQuestion(rng, target, 'medium');
+      break;
+    case 'fact':
+      q = generateFactDiscoveryQuestion(rng, target, 'medium');
+      break;
+    case 'capital':
+    default:
+      q = generateCapitalDiscoveryQuestion(rng, target, 'medium');
+      break;
   }
 
-  // Deterministically shuffle the choices
-  const choices = rng.shuffle([target.capital, ...distractors]);
-
-  return {
-    id: `daily-${dateStr.replace(/[^a-zA-Z0-9]/g, '')}-${round}-${index}`,
-    country: target.name,
-    category: 'mixed',
-    difficulty: 'medium',
-    question: `[Daily Challenge #${index + 1}${round > 0 ? ` Round ${round + 1}` : ''}] What is the capital city of ${target.name}?`,
-    choices,
-    correctIndex: choices.indexOf(target.capital),
-    funFact: `${target.name} has a population of approximately ${target.population}. ${target.funFact}`
-  };
+  q.id = `daily-${dateStr.replace(/[^a-zA-Z0-9]/g, '')}-${round}-${index}-${q.id}`;
+  q.question = `[Daily Challenge #${index + 1}${round > 0 ? ` Round ${round + 1}` : ''}] ${q.question}`;
+  return q;
 }
 
 /** All quiz categories with labels, emojis, and styling */
@@ -669,4 +681,15 @@ export const QUIZ_CATEGORIES: { id: QuizCategory; label: string; emoji: string; 
   { id: 'mixed', label: 'Mixed Challenge', emoji: '🌍', color: '#ec4899' },
 ];
 
-export { generateQuestions } from './generator';
+export {
+  generateQuestions,
+  generateDiscoveryQuestion,
+  getOfficialDailyQuestions,
+  generateFlagDiscoveryQuestion,
+  generateCapitalDiscoveryQuestion,
+  generateBorderDiscoveryQuestion,
+  generateLandmarkDiscoveryQuestion,
+  generateFactDiscoveryQuestion,
+  generateContinentDiscoveryQuestion,
+};
+

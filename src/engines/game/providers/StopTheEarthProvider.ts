@@ -438,6 +438,7 @@ export function resolveLocationFromCoordinates(coord: GeoCoordinate): StopTheEar
     coordinates: safeCoord,
     distanceKm: waterResult.distanceKm,
     description: `Maritime basin of the ${waterResult.waterBody.name}`,
+    isOpenOcean: waterResult.waterBody.type === 'ocean',
   };
 }
 

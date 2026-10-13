@@ -198,6 +198,7 @@ export interface StopTheEarthCandidate {
   coordinates: GeoCoordinate;
   distanceKm?: number;
   description?: string;
+  isOpenOcean?: boolean;
 }
 
 export interface StopTheEarthPayload {

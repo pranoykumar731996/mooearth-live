@@ -1265,10 +1265,11 @@ export default function PlayEarthOverlay({
 
     setSteStoppedCoord(coord);
     onStopTheEarthTargetCoordChange?.(coord);
+    onFlyToGlobe?.({ lat: coord.lat, lng: coord.lng, altitude: 1.9 }, 800);
     setSteResolvedLocation(loc);
     setSteCandidates(cands);
     setPhase('stop-the-earth-select');
-  }, [onStopTheEarthSpinChange, onPlaySound, stopTheEarthCapturedCoord, getCurrentGlobePov, lastGlobeTap, steRound, onStopTheEarthTargetCoordChange]);
+  }, [onStopTheEarthSpinChange, onPlaySound, stopTheEarthCapturedCoord, getCurrentGlobePov, lastGlobeTap, steRound, onStopTheEarthTargetCoordChange, onFlyToGlobe]);
 
   const handleStopTheEarthSelectCandidate = useCallback((candidate: StopTheEarthCandidate) => {
     if (!steResolvedLocation) return;

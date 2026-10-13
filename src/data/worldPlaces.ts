@@ -506,6 +506,17 @@ export const FAMOUS_METROPOLISES: WorldPlace[] = [
     flag: '🇦🇺',
   },
   {
+    id: 'place-tokyo',
+    name: 'Tokyo',
+    country: 'Japan',
+    countryCode: 'JP',
+    type: 'capital',
+    coordinates: { lat: 35.6762, lng: 139.6503 },
+    region: 'Asia',
+    description: 'Dynamic capital metropolis of Japan, blending ultramodern technology with historic shrines',
+    flag: '🇯🇵',
+  },
+  {
     id: 'place-kyoto',
     name: 'Kyoto',
     country: 'Japan',
