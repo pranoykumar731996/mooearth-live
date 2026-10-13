@@ -57,7 +57,10 @@ export default function robots(): MetadataRoute.Robots {
         '/embed/globe',
       ],
     },
-    sitemap: 'https://www.mooearth.live/sitemap.xml',
+    sitemap: [
+      'https://www.mooearth.live/sitemap.xml',
+      'https://mooearth.live/sitemap.xml',
+    ],
   };
 }
 

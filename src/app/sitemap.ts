@@ -8,13 +8,12 @@ import { SUPPORTED_LOCALES } from '@/lib/i18n';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.mooearth.live';
   
-  // 1. Core Pages — highest priority
+  // 1. Core Pages — highest priority (only canonical 200 OK routes)
   const corePages = [
     '',
     '/globe',
     '/world-map',
     '/continents',
-    '/countries',
     '/interactive-globe',
     '/interactive-world-map',
     '/geography',
@@ -39,8 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/world-news-map',
     '/live-world-news',
     '/weather',
-    '/world-weather',
-    '/weather-map',
     '/world-events',
     '/live-events',
     '/embed',

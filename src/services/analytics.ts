@@ -64,8 +64,8 @@ export interface SessionAnalytics {
 }
 
 let currentSession: SessionAnalytics | null = null;
-let lastSyncTime = 0;
 let syncIntervalId: any = null;
+let isSessionDirty = false;
 
 export function initAnalyticsSession(userId: string | null = null) {
   if (typeof window === 'undefined') return;
@@ -196,27 +196,42 @@ export function initAnalyticsSession(userId: string | null = null) {
   // Perform initial GA4 PageView
   trackPageView(window.location.pathname);
 
+  // Track funnel & retention: visitor / returning session
+  if (!isNew) {
+    trackGrowthFunnel('return');
+  } else {
+    trackGrowthFunnel('visitor');
+  }
+
   // Sync to database
+  isSessionDirty = true;
   flushSessionToFirestore();
 
-  // Setup periodic sync (every 10 seconds)
+  // Setup periodic sync (throttled to 30 seconds to minimize Firestore writes)
   if (!syncIntervalId) {
     syncIntervalId = setInterval(() => {
-      if (currentSession) {
+      if (currentSession && isSessionDirty) {
         currentSession.lastActiveAt = Date.now();
         flushSessionToFirestore();
       }
-    }, 10000);
+    }, 30000);
+
+    // Background tab / unload flush
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && currentSession && isSessionDirty) {
+        flushSessionToFirestore();
+      }
+    });
   }
 }
 
 export async function flushSessionToFirestore() {
-  if (!currentSession || typeof window === 'undefined') return;
+  if (!currentSession || typeof window === 'undefined' || !isSessionDirty) return;
 
   const sessionDocRef = doc(db, 'sessions', currentSession.sessionId);
   try {
+    isSessionDirty = false;
     await setDoc(sessionDocRef, { ...currentSession }, { merge: true });
-    lastSyncTime = Date.now();
   } catch (err) {
     console.warn('[Analytics] Failed to sync session to Firestore:', err);
   }
@@ -254,6 +269,7 @@ export function trackEvent(category: string, action: string, label?: string, val
   // 2. Update local session statistics
   if (!currentSession) return;
 
+  isSessionDirty = true;
   currentSession.lastActiveAt = Date.now();
 
   switch (category) {
@@ -431,3 +447,29 @@ export function trackDailyChallenge(action: 'started' | 'completed', score?: num
 export function trackGameEvent(action: 'opened' | 'started' | 'completed', mode: string, score?: number) {
   trackEvent('game', `game_${action}`, mode, score);
 }
+
+/** Track city map exploration opens (MapLibre 2D) */
+export function trackCityMapOpen(cityName: string, countryName?: string) {
+  trackEvent('city_map', 'open', cityName, undefined, { country: countryName });
+}
+
+/** Track weather intelligence mode and layer toggles */
+export function trackWeatherModeUsage(action: 'opened' | 'layer_toggle', layerName?: string) {
+  trackEvent('weather_mode', action, layerName);
+}
+
+/** Track interactive location selection on the 3D globe or atlas */
+export function trackLocationSelected(locationName: string, type: 'country' | 'city' | 'continent') {
+  trackEvent('location_select', 'selected', locationName, undefined, { type });
+}
+
+/** Track headline / article card open */
+export function trackHeadlineOpen(articleId: string, title?: string, category?: string) {
+  trackEvent('article', 'headline_open', articleId, undefined, { title, category });
+}
+
+/** Track client application errors (non-fatal error boundaries) */
+export function trackApplicationError(context: string, message: string) {
+  trackEvent('app_error', context, message.slice(0, 150));
+}
+

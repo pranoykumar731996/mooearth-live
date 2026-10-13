@@ -47,6 +47,7 @@ const ContinentExplorerPanel = dynamic(() => import('@/components/UI/ContinentEx
 const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
 const WindParticleOverlay = dynamic(() => import('@/components/Weather/WindParticleOverlay'), { ssr: false });
+const DailyChallengeRetentionCard = dynamic(() => import('@/components/Daily/DailyChallengeRetentionCard'), { ssr: false });
 import { ContinentRecord, CONTINENT_CENTROIDS } from '@/data/continents';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { PlayEarthMode } from '@/types';
@@ -2449,6 +2450,9 @@ export default function HomePage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* DAILY CHALLENGE RETENTION CARD */}
+      <DailyChallengeRetentionCard />
     </main>
   );
 }

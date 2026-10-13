@@ -66,6 +66,8 @@ export default function Navbar({
   const { t } = useTranslation();
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
+  const [dailyCompleted, setDailyCompleted] = useState(false);
+  const [dailyStreak, setDailyStreak] = useState(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -79,6 +81,17 @@ export default function Navbar({
         setIsDeveloper(true);
       } else if (isDevStorage || isLocal) {
         setIsDeveloper(true);
+      }
+
+      try {
+        const now = new Date();
+        const today = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+        const saved = localStorage.getItem(`mooearth_daily_${today}`);
+        if (saved) setDailyCompleted(true);
+        const streakVal = parseInt(localStorage.getItem('mooearth_daily_streak') || '0', 10);
+        setDailyStreak(streakVal);
+      } catch {
+        // Fallback
       }
     }
   }, []);
@@ -327,6 +340,20 @@ export default function Navbar({
             <span className="font-black text-[10px] text-emerald-200 tracking-tight">{t('navbar.play', 'PLAY')}</span>
           </button>
 
+          {/* Daily Challenge Pill (Mobile) */}
+          <Link
+            href="/daily"
+            title={dailyCompleted ? "Today's Daily Challenge Completed!" : "Play Today's Daily Challenge!"}
+            className={`h-8 px-2 rounded-full flex items-center gap-1 font-black text-[10px] tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer active:scale-95 shadow-sm ${
+              dailyCompleted
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+            }`}
+          >
+            <span className="text-xs">{dailyCompleted ? '✅' : '📅'}</span>
+            <span className="font-extrabold">{dailyCompleted ? 'DONE' : 'DAILY'}</span>
+          </Link>
+
           <button
             onClick={onLeaderboardClick}
             className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
@@ -391,6 +418,25 @@ export default function Navbar({
               {t('navbar.modesBadge', '11+ MODES')}
             </span>
           </button>
+
+          {/* Daily Challenge Button (Desktop) */}
+          <Link
+            href="/daily"
+            title={dailyCompleted ? "Today's Daily Challenge Completed! View Results" : "Play Today's Daily Earth Challenge!"}
+            className={`relative h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wider border transition-all pointer-events-auto cursor-pointer group ${
+              dailyCompleted
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400'
+                : 'border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 hover:border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+            }`}
+          >
+            <span className="text-sm">{dailyCompleted ? '✅' : '📅'}</span>
+            <span className="font-extrabold text-[11px]">{dailyCompleted ? 'DAILY DONE' : 'DAILY'}</span>
+            {dailyStreak > 0 && (
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                🔥{dailyStreak}
+              </span>
+            )}
+          </Link>
 
           {/* Weather Intelligence Platform Toggle & Radar Link (Desktop) */}
           {onToggleWeather ? (

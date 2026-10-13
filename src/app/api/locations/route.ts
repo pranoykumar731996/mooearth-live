@@ -87,7 +87,14 @@ export async function GET(request: NextRequest) {
       })
       .map(m => m.location);
 
-    return NextResponse.json({ locations: sorted.slice(0, 10) });
+    return NextResponse.json(
+      { locations: sorted.slice(0, 10) },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+        },
+      }
+    );
 
   } catch (error) {
     console.error('API /api/locations error:', error);
