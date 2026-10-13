@@ -6,6 +6,7 @@
 // into the client JavaScript bundle.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { validateAdminKey } from '@/lib/auth/adminAuth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,11 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ authenticated: false, error: 'Missing key' }, { status: 400 });
     }
 
-    // The admin key is read from a server-only env var (no NEXT_PUBLIC_ prefix)
-    // Falls back to a dev-only default that is NOT shipped in the client bundle.
-    const expectedKey = process.env.ADMIN_KEY || process.env.NEXT_PUBLIC_ADMIN_KEY || 'mooearth-admin-2026';
-
-    if (key.trim() === expectedKey) {
+    if (validateAdminKey(key)) {
       return NextResponse.json({ authenticated: true });
     }
 
@@ -29,3 +26,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ authenticated: false, error: 'Server error' }, { status: 500 });
   }
 }
+

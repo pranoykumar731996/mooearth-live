@@ -10,8 +10,14 @@ export default function AdminSeoDashboardPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'striking' | 'pages' | 'content' | 'countries' | 'languages'>('all');
   const [showConfigModal, setShowConfigModal] = useState(false);
 
+  const getAuthHeaders = (): Record<string, string> => {
+    if (typeof window === 'undefined') return {};
+    const token = localStorage.getItem('mooearth_admin_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
   useEffect(() => {
-    fetch('/api/admin/seo-report')
+    fetch('/api/admin/seo-report', { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => {
         setReport(data);
@@ -26,12 +32,19 @@ export default function AdminSeoDashboardPage() {
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/seo-report');
+      const res = await fetch('/api/admin/seo-report', { headers: getAuthHeaders() });
       const data = await res.json();
       setReport(data);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExport = (format: 'markdown' | 'json' = 'markdown') => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('mooearth_admin_token') : '';
+    const query = new URLSearchParams({ format });
+    if (token) query.set('key', token);
+    window.open(`/api/admin/seo-export?${query.toString()}`, '_blank');
   };
 
   if (loading || !report) {
@@ -75,14 +88,13 @@ export default function AdminSeoDashboardPage() {
             <span>🔄</span> Refresh Telemetry
           </button>
 
-          <a
-            href="/api/admin/seo-export?format=markdown"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
+          <button
+            type="button"
+            onClick={() => handleExport('markdown')}
+            className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <span>📥</span> Export Report (.md)
-          </a>
+          </button>
 
           <button
             type="button"

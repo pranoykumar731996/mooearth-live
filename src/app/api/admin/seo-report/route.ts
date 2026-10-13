@@ -7,10 +7,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMasterSeoReport, recordOrganicTelemetry } from '@/services/searchConsoleService';
 import { OrganicTelemetryRecord } from '@/lib/seo/searchConsoleGrowthEngine';
+import { isAuthorizedAdminRequest } from '@/lib/auth/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized: Valid admin credentials required' }, { status: 401 });
+  }
+
   try {
     const report = await getMasterSeoReport();
     return NextResponse.json(report, {

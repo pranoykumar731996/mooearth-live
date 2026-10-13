@@ -5,10 +5,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getMasterSeoReport } from '@/services/searchConsoleService';
+import { isAuthorizedAdminRequest } from '@/lib/auth/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  if (!isAuthorizedAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized: Valid admin credentials required' }, { status: 401 });
+  }
+
   try {
     const report = await getMasterSeoReport();
     const format = request.nextUrl.searchParams.get('format') || 'markdown';

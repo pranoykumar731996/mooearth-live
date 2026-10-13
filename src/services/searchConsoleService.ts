@@ -19,8 +19,7 @@ const TELEMETRY_CACHE: OrganicTelemetryRecord[] = [];
 export function isSearchConsoleConfigured(): boolean {
   return Boolean(
     (process.env.GSC_CLIENT_EMAIL && process.env.GSC_PRIVATE_KEY) ||
-    process.env.GOOGLE_SEARCH_CONSOLE_KEY ||
-    process.env.NEXT_PUBLIC_GSC_API_KEY
+    process.env.GOOGLE_SEARCH_CONSOLE_KEY
   );
 }
 

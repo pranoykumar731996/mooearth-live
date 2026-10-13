@@ -48,7 +48,7 @@ async function testEndpoint(
         'Accept': 'application/json, text/html, */*',
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(20000),
     };
 
     if (options.body) {
