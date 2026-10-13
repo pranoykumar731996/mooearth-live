@@ -1530,8 +1530,8 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
-    // In Weather Mode, populate global city pins across all continents for planetary weather exploration
-    if (globeView === 'weather') {
+    // Populate global city pins across all continents for planetary location exploration
+    if (globeView === 'weather' || globeView === 'standard' || globeView === 'discovery') {
       const cityList = locations.filter(l => l.type === 'city');
       const maxWeatherCities = isMobile ? 8 : 18;
       cityList.slice(0, maxWeatherCities).forEach(city => {

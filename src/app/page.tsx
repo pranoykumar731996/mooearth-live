@@ -41,6 +41,8 @@ const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'
 const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
 const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
 const CityExplorerPanel = dynamic(() => import('@/components/UI/CityExplorerPanel'));
+const LocationIntelligencePanel = dynamic(() => import('@/components/UI/LocationIntelligencePanel'));
+import { parseLocationFromUrl, resolveCanonicalLocation } from '@/services/locationIntelligence';
 const ContinentExplorerPanel = dynamic(() => import('@/components/UI/ContinentExplorerPanel'));
 const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
@@ -608,18 +610,68 @@ export default function HomePage({
   // Phase 7: Sound Design (Web Audio API Procedural Synth Engine)
   const { playHoverBlip, playDeepPulse, playUploadSuccess, playGoalCelebration, playNarrationIntro, playTensionDrone, playCorrectSound, playWrongSound, playTimerTick, playLevelUp } = useSoundDesign(isMuted, globalEnergyScore);
 
+  // Synchronize location into URL query parameters without full page reload
+  const syncUrlLocation = useCallback((countryName: string | null, loc: LocationRecord | null) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (loc && loc.type === 'city') {
+        params.set('city', loc.name);
+        params.set('country', loc.country);
+        params.set('lat', loc.lat.toFixed(4));
+        params.set('lng', loc.lng.toFixed(4));
+      } else if (countryName) {
+        params.set('country', countryName);
+        params.delete('city');
+        params.delete('lat');
+        params.delete('lng');
+      } else {
+        params.delete('country');
+        params.delete('city');
+        params.delete('lat');
+        params.delete('lng');
+      }
+      const queryString = params.toString();
+      const newUrl = queryString ? `/?${queryString}` : '/';
+      if (window.location.pathname + (window.location.search || '') !== newUrl) {
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+      }
+    } catch {}
+  }, []);
+
+  const handleCloseLocation = useCallback(() => {
+    setSelectedCountry(null);
+    setSelectedLocation(null);
+    setIsDashboardOpen(false);
+    setActiveReaction(null);
+    syncUrlLocation(null, null);
+    if (globeApiRef.current) {
+      globeApiRef.current.flyTo({ lat: 20, lng: 0, altitude: 2.1 }, 1200);
+    }
+    playHoverBlip();
+  }, [syncUrlLocation, playHoverBlip]);
+
   const handleSelectCountry = useCallback((country: string | null) => {
     setSelectedCountry(country);
+    setSelectedLocation(null);
     setSelectedEvent(null);
     if (!country) {
       setIsDashboardOpen(false);
       setActiveReaction(null);
+      syncUrlLocation(null, null);
     } else {
       setSelectedContinent(null);
-      setIsDashboardOpen(prev => isMobile ? (prev ? true : false) : true);
+      setIsDashboardOpen(true);
+      syncUrlLocation(country, null);
+
+      // Auto camera fly-to for country centroid
+      const canon = resolveCanonicalLocation({ country });
+      if (canon && globeApiRef.current) {
+        globeApiRef.current.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.6 }, 1200);
+      }
       trackEvent('country', 'click', country, 1, { category: activeCategory || 'home' });
     }
-  }, [isMobile, activeCategory]);
+  }, [activeCategory, syncUrlLocation]);
 
   const handleSelectLocation = useCallback(async (loc: LocationRecord | null) => {
     setSelectedLocation(loc);
@@ -630,6 +682,7 @@ export default function HomePage({
       setLocationEvents([]);
       setSelectedCountry(null);
       setIsDashboardOpen(false);
+      syncUrlLocation(null, null);
       return;
     }
 
@@ -647,8 +700,95 @@ export default function HomePage({
     // Set selectedCountry for backwards compatibility
     setSelectedCountry(loc.country);
     setIsDashboardOpen(true);
+    syncUrlLocation(null, loc);
     trackEvent('location', 'select', loc.name, 1, { type: loc.type, country: loc.country });
-  }, [isMobile]);
+  }, [syncUrlLocation]);
+
+  // Restore location from URL query parameters on initial page load (shareable links)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const { country: urlCountry, city: urlCity, lat: urlLat, lng: urlLng } = parseLocationFromUrl(window.location.search);
+
+    if (urlCountry && !selectedCountry && !selectedLocation) {
+      const canon = resolveCanonicalLocation({ country: urlCountry });
+      if (canon) {
+        setSelectedCountry(canon.name);
+        setSelectedLocation(null);
+        setIsDashboardOpen(true);
+        setTimeout(() => {
+          globeApiRef.current?.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.6 }, 1200);
+        }, 700);
+      }
+    } else if (urlCity && urlLat !== null && urlLng !== null && !selectedLocation && !selectedCountry) {
+      const canon = resolveCanonicalLocation({ city: urlCity, country: urlCountry, lat: urlLat, lng: urlLng });
+      if (canon) {
+        const locRecord: LocationRecord = locations.find(l => l.name.toLowerCase() === canon.name.toLowerCase()) || {
+          id: canon.id,
+          name: canon.name,
+          type: 'city',
+          country: canon.country,
+          countryCode: canon.countryCode,
+          state: canon.state,
+          lat: canon.lat,
+          lng: canon.lng,
+          population: 0,
+          timezone: canon.timezone || 'auto',
+          adminLevel: 2,
+        };
+        setSelectedLocation(locRecord);
+        setSelectedCountry(locRecord.country);
+        setIsDashboardOpen(true);
+        setTimeout(() => {
+          globeApiRef.current?.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.15 }, 1200);
+        }, 700);
+      }
+    }
+  }, []);
+
+  // Listen to browser Back/Forward (popstate) for URL continuity
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePopState = () => {
+      const { country: urlCountry, city: urlCity, lat: urlLat, lng: urlLng } = parseLocationFromUrl(window.location.search);
+      if (urlCountry) {
+        const canon = resolveCanonicalLocation({ country: urlCountry });
+        if (canon) {
+          setSelectedCountry(canon.name);
+          setSelectedLocation(null);
+          setIsDashboardOpen(true);
+          globeApiRef.current?.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.6 }, 1000);
+        }
+      } else if (urlCity && urlLat !== null && urlLng !== null) {
+        const canon = resolveCanonicalLocation({ city: urlCity, country: urlCountry, lat: urlLat, lng: urlLng });
+        if (canon) {
+          const locRecord: LocationRecord = locations.find(l => l.name.toLowerCase() === canon.name.toLowerCase()) || {
+            id: canon.id,
+            name: canon.name,
+            type: 'city',
+            country: canon.country,
+            countryCode: canon.countryCode,
+            state: canon.state,
+            lat: canon.lat,
+            lng: canon.lng,
+            population: 0,
+            timezone: canon.timezone || 'auto',
+            adminLevel: 2,
+          };
+          setSelectedLocation(locRecord);
+          setSelectedCountry(locRecord.country);
+          setIsDashboardOpen(true);
+          globeApiRef.current?.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.15 }, 1000);
+        }
+      } else {
+        setSelectedCountry(null);
+        setSelectedLocation(null);
+        setIsDashboardOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const handleSelectContinent = useCallback((cont: ContinentRecord | null) => {
     setSelectedContinent(cont);
@@ -657,9 +797,10 @@ export default function HomePage({
       setSelectedLocation(null);
       setSelectedEvent(null);
       setIsDashboardOpen(false);
+      syncUrlLocation(null, null);
       trackEvent('continent', 'select', cont.name, 1, { slug: cont.slug });
     }
-  }, []);
+  }, [syncUrlLocation]);
 
   useEffect(() => {
     if (!selectedLocation) {
@@ -714,16 +855,21 @@ export default function HomePage({
       playDeepPulse();
     } else {
       setSelectedCountry(country);
+      setSelectedLocation(null);
       setSelectedEvent(null);
       if (country) {
-        setIsDashboardOpen(!isMobile);
+        setIsDashboardOpen(true);
+        syncUrlLocation(country, null);
+        const canon = resolveCanonicalLocation({ country });
+        if (canon && globeApiRef.current) {
+          globeApiRef.current.flyTo({ lat: canon.lat, lng: canon.lng, altitude: 1.6 }, 1200);
+        }
         trackEvent('country', 'click', country, 1, { category: activeCategory || 'home', trigger: 'globe_tap' });
       } else {
-        setIsDashboardOpen(false);
-        setActiveReaction(null);
+        handleCloseLocation();
       }
     }
-  }, [isPlayEarthActive, selectedCountry, isMobile, playDeepPulse, playHoverBlip, activeCategory]);
+  }, [isPlayEarthActive, selectedCountry, playDeepPulse, playHoverBlip, activeCategory, syncUrlLocation, handleCloseLocation]);
 
   // EarthCast: Fly camera to a country by name
   const handleEarthCastFlyTo = useCallback((country: string) => {
@@ -1689,28 +1835,16 @@ export default function HomePage({
         <div className="relative z-30">
           <AnimatePresence mode="wait">
             {selectedLocation && selectedLocation.type === 'city' && !isMobile ? (
-              <CityExplorerPanel
+              <LocationIntelligencePanel
                 key={`city-${selectedLocation.id}`}
                 location={selectedLocation}
-                events={locationEvents}
-                isLoadingEvents={isLocationLoading}
-                onClose={() => {
-                  setSelectedLocation(null);
-                  setSelectedCountry(null);
-                }}
+                activeCategory={activeCategory}
+                onClose={handleCloseLocation}
                 onSelectCountry={handleSelectCountry}
-                onSelectEvent={(evt) => {
-                  handleEventNavigate(evt);
-                  playHoverBlip();
-                }}
-                onOpenWeather={() => {
-                  setGlobeView('weather');
-                  playHoverBlip();
-                }}
-                onFocusCity={(loc) => {
-                  if (globeApiRef.current) {
-                    globeApiRef.current.flyTo({ lat: loc.lat, lng: loc.lng, altitude: 1.15 });
-                  }
+                onSelectLocation={handleSelectLocation}
+                onSelectArticle={setActiveArticle}
+                onFocusCoordinates={(coords) => {
+                  globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.15 }, 1200);
                   playHoverBlip();
                 }}
               />
@@ -1747,15 +1881,18 @@ export default function HomePage({
                 }}
               />
             ) : selectedCountry && !isMobile ? (
-              <CountryReactionPanel
-                key="country-panel"
+              <LocationIntelligencePanel
+                key={`country-${selectedCountry}`}
                 country={selectedCountry}
                 activeCategory={activeCategory}
-                onClose={() => handleSelectCountry(null)}
-                onReactionLoaded={setActiveReaction}
-                onSelectArticle={setActiveArticle}
+                onClose={handleCloseLocation}
                 onSelectCountry={handleSelectCountry}
-                isFocusMode={isFocusMode}
+                onSelectLocation={handleSelectLocation}
+                onSelectArticle={setActiveArticle}
+                onFocusCoordinates={(coords) => {
+                  globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.6 }, 1200);
+                  playHoverBlip();
+                }}
               />
             ) : (
               (!isMobile || (!selectedCountry && !selectedContinent)) && (
@@ -1812,41 +1949,6 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
-      {/* Mobile City Explorer Panel */}
-      <AnimatePresence>
-        {isMobile && !isPlayEarthActive && selectedLocation && selectedLocation.type === 'city' && (
-          <CityExplorerPanel
-            key={`mobile-city-${selectedLocation.id}`}
-            location={selectedLocation}
-            events={locationEvents}
-            isLoadingEvents={isLocationLoading}
-            isMobile={true}
-            onClose={() => {
-              setSelectedLocation(null);
-              setSelectedCountry(null);
-            }}
-            onSelectCountry={(country) => {
-              setSelectedLocation(null);
-              handleSelectCountry(country);
-            }}
-            onSelectEvent={(evt) => {
-              handleEventNavigate(evt);
-              playHoverBlip();
-            }}
-            onOpenWeather={() => {
-              setGlobeView('weather');
-              playHoverBlip();
-            }}
-            onFocusCity={(loc) => {
-              if (globeApiRef.current) {
-                globeApiRef.current.flyTo({ lat: loc.lat, lng: loc.lng, altitude: 1.15 }, 1200);
-              }
-              playHoverBlip();
-            }}
-          />
-        )}
-      </AnimatePresence>
-
       {/* Mobile Continent Explorer Panel */}
       <AnimatePresence>
         {isMobile && !isPlayEarthActive && selectedContinent && !selectedLocation && !selectedCountry && (
@@ -1885,40 +1987,22 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
-      {/* Mobile Country Bottom Sheet */}
+      {/* Mobile Location Intelligence Sheet (Phase 4) */}
       <AnimatePresence>
-        {isMobile && !isPlayEarthActive && !(selectedLocation && selectedLocation.type === 'city') && (selectedCountry || selectedLocation) && (
-          <MobileCountrySheet
-            country={selectedCountry || selectedLocation?.name || ''}
-            selectedLocation={selectedLocation}
-            fallbackLevel={fallbackLevel}
-            onSelectLocation={handleSelectLocation}
-            onClose={() => {
-              handleSelectCountry(null);
-              handleSelectLocation(null);
-            }}
+        {isMobile && !isPlayEarthActive && (selectedLocation || selectedCountry) && !selectedContinent && (
+          <LocationIntelligencePanel
+            key={`mobile-loc-${selectedCountry || selectedLocation?.id}`}
+            location={selectedLocation}
+            country={selectedCountry}
+            isMobile={true}
             activeCategory={activeCategory}
-            onCategoryChange={handleMobileCategoryChange}
-            activeArticle={activeArticle}
+            onClose={handleCloseLocation}
+            onSelectCountry={handleSelectCountry}
+            onSelectLocation={handleSelectLocation}
             onSelectArticle={setActiveArticle}
-            isPlayEarthActive={isPlayEarthActive}
-            onTogglePlayEarth={setIsPlayEarthActive}
-            allEvents={filteredEvents}
-            username={currentUser?.username || 'Guest'}
-            onPlaySound={playHoverBlip}
-            onCorrectSound={playCorrectSound}
-            onWrongSound={playWrongSound}
-            onTimerTick={playTimerTick}
-            onLevelUp={playLevelUp}
-            onReactionLoaded={setActiveReaction}
-            isFocusMode={isFocusMode}
-            onUploadClick={() => {
+            onFocusCoordinates={(coords) => {
+              globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.25 }, 1200);
               playHoverBlip();
-              if (!currentUser) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsUploadModalOpen(true);
-              }
             }}
           />
         )}

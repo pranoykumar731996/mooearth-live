@@ -28,7 +28,8 @@
     "test:news-engine": "npx tsx scripts/test-news-engine.ts",
     "test:weather": "npx tsx scripts/test-weather-suite.ts && npx tsx scripts/test-weather-layers-suite.ts",
     "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts",
-    "test:city-map": "npx tsx scripts/test-explore-city-suite.ts"
+    "test:city-map": "npx tsx scripts/test-explore-city-suite.ts",
+    "test:location-intelligence": "npx tsx scripts/test-global-location-intelligence.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",
