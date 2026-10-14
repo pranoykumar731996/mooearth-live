@@ -3,6 +3,7 @@ import Link from 'next/link';
 import WebGLGlobeViewer from '@/components/Globe/WebGLGlobeViewer';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { WeatherTelemetry } from '@/services/weatherService';
+import { AdUnit } from '@/components/Monetization/AdUnit';
 
 export interface LocationWeatherViewData {
   slug: string;
@@ -263,6 +264,9 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
               </div>
             </div>
           </div>
+
+          {/* Sustaining Weather Dossier Advertisement (Off by default, CLS-safe) */}
+          <AdUnit placementId="weather_page_banner" className="my-8" />
 
           {/* Geographical & Climate Explanatory Content */}
           <section

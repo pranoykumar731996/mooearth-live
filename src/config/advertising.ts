@@ -15,7 +15,8 @@ export type AdProvider = 'none' | 'adsense' | 'custom_sponsor';
 export type AdPlacementId =
   | 'article_bottom'
   | 'article_sidebar'
-  | 'news_feed_banner';
+  | 'news_feed_banner'
+  | 'weather_page_banner';
 
 export interface AdPlacementConfig {
   id: AdPlacementId;
@@ -54,6 +55,15 @@ export const AD_PLACEMENTS: Record<AdPlacementId, AdPlacementConfig> = {
     description: 'Separated discovery feed banner outside ticker navigation',
     slotEnvVar: 'NEXT_PUBLIC_AD_SLOT_NEWS_FEED',
     slot: process.env.NEXT_PUBLIC_AD_SLOT_NEWS_FEED || '',
+  },
+  weather_page_banner: {
+    id: 'weather_page_banner',
+    label: 'Weather Dossier Banner',
+    minHeight: 90,
+    format: 'banner',
+    description: 'Non-intrusive horizontal banner placed below live weather telemetry',
+    slotEnvVar: 'NEXT_PUBLIC_AD_SLOT_WEATHER_BANNER',
+    slot: process.env.NEXT_PUBLIC_AD_SLOT_WEATHER_BANNER || '',
   },
 };
 

@@ -88,9 +88,11 @@ assert(adConfig.enabled === false, 'Advertising is disabled by default in produc
 assert(Boolean(AD_PLACEMENTS.article_bottom), 'Placement article_bottom is registered');
 assert(Boolean(AD_PLACEMENTS.article_sidebar), 'Placement article_sidebar is registered');
 assert(Boolean(AD_PLACEMENTS.news_feed_banner), 'Placement news_feed_banner is registered');
+assert(Boolean(AD_PLACEMENTS.weather_page_banner), 'Placement weather_page_banner is registered');
 
 assert(AD_PLACEMENTS.article_bottom.format === 'rectangle', 'article_bottom has fixed format to avoid CLS');
 assert(AD_PLACEMENTS.news_feed_banner.format === 'banner', 'news_feed_banner has banner format to avoid CLS');
+assert(AD_PLACEMENTS.weather_page_banner.format === 'banner', 'weather_page_banner has banner format to avoid CLS');
 
 // canRenderAd contract
 assert(!canRenderAd('article_bottom', false), 'canRenderAd returns false when advertising is globally disabled');

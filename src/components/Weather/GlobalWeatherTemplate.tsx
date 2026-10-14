@@ -3,6 +3,7 @@ import Link from 'next/link';
 import WeatherGlobeClient from './WeatherGlobeClient';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { WeatherStationHighlight } from '@/services/weatherService';
+import { AdUnit } from '@/components/Monetization/AdUnit';
 import {
   SupportedLocale,
   getLocalizedPath,
@@ -257,6 +258,9 @@ export default function GlobalWeatherTemplate({
               ))}
             </div>
           </section>
+
+          {/* Sustaining Weather Dossier Advertisement (Off by default, CLS-safe) */}
+          <AdUnit placementId="weather_page_banner" className="my-8" />
 
           {/* Section 3: Server-Rendered Editorial Explanatory Content (SEO Depth) */}
           <section
