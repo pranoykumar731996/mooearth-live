@@ -12,6 +12,7 @@ import { generateHreflangs } from '@/lib/i18n';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import SentryInitializer from '@/components/UI/SentryInitializer';
 import OrganicTelemetryTracker from '@/components/SEO/OrganicTelemetryTracker';
+import { ConsentBanner } from '@/components/Monetization/ConsentBanner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -102,6 +103,12 @@ export default function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              'analytics_storage': 'denied',
+              'ad_storage': 'denied',
+              'ad_user_data': 'denied',
+              'ad_personalization': 'denied'
+            });
             gtag('js', new Date());
             gtag('config', '${gaId}', {
               page_path: window.location.pathname,
@@ -152,6 +159,7 @@ export default function RootLayout({
         </Suspense>
         <LanguageProvider>
           {children}
+          <ConsentBanner />
         </LanguageProvider>
       </body>
     </html>

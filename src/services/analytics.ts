@@ -61,6 +61,15 @@ export interface SessionAnalytics {
     translatedArticleIds: string[];
     translatedCountries: Record<string, number>;
   };
+  monetization?: {
+    adImpressions: number;
+    adClicks: number;
+    plusModalOpens: number;
+    plusWaitlistSubmissions: number;
+    sponsorshipViews: number;
+    sponsorshipClicks: number;
+    consentGiven: boolean | null;
+  };
 }
 
 let currentSession: SessionAnalytics | null = null;
@@ -190,6 +199,15 @@ export function initAnalyticsSession(userId: string | null = null) {
       failCount: 0,
       translatedArticleIds: [],
       translatedCountries: {}
+    },
+    monetization: {
+      adImpressions: 0,
+      adClicks: 0,
+      plusModalOpens: 0,
+      plusWaitlistSubmissions: 0,
+      sponsorshipViews: 0,
+      sponsorshipClicks: 0,
+      consentGiven: null
     }
   };
 
@@ -406,6 +424,35 @@ export function trackEvent(category: string, action: string, label?: string, val
       }
       break;
 
+    case 'monetization':
+      if (!currentSession.monetization) {
+        currentSession.monetization = {
+          adImpressions: 0,
+          adClicks: 0,
+          plusModalOpens: 0,
+          plusWaitlistSubmissions: 0,
+          sponsorshipViews: 0,
+          sponsorshipClicks: 0,
+          consentGiven: null
+        };
+      }
+      if (action === 'ad_impression') {
+        currentSession.monetization.adImpressions++;
+      } else if (action === 'ad_click') {
+        currentSession.monetization.adClicks++;
+      } else if (action === 'plus_modal_open') {
+        currentSession.monetization.plusModalOpens++;
+      } else if (action === 'plus_waitlist_submit') {
+        currentSession.monetization.plusWaitlistSubmissions++;
+      } else if (action === 'sponsorship_view') {
+        currentSession.monetization.sponsorshipViews++;
+      } else if (action === 'sponsorship_click') {
+        currentSession.monetization.sponsorshipClicks++;
+      } else if (action === 'consent_update') {
+        currentSession.monetization.consentGiven = customParams?.advertising === true;
+      }
+      break;
+
     // Growth funnel events — these are GA4-only, no local session state needed
     case 'share':
     case 'daily_challenge':
@@ -471,5 +518,51 @@ export function trackHeadlineOpen(articleId: string, title?: string, category?: 
 /** Track client application errors (non-fatal error boundaries) */
 export function trackApplicationError(context: string, message: string) {
   trackEvent('app_error', context, message.slice(0, 150));
+}
+
+// ============================================================
+// Monetization & Revenue Experiment Trackers
+// ============================================================
+
+/** Track verified ad impressions (deduplicated per placement) */
+export function trackAdImpression(placementId: string, format?: string) {
+  trackEvent('monetization', 'ad_impression', placementId, undefined, { format });
+}
+
+/** Track ad clicks */
+export function trackAdClick(placementId: string) {
+  trackEvent('monetization', 'ad_click', placementId);
+}
+
+/** Track when the user views the MooEarth Plus demand validation modal */
+export function trackPlusModalOpen(source: string) {
+  trackEvent('monetization', 'plus_modal_open', source);
+}
+
+/** Track non-binding waitlist / demand signal submissions */
+export function trackPlusInterestSubmit(source: string, requestedFeatures: string[]) {
+  trackEvent('monetization', 'plus_interest_submit', source, undefined, {
+    features_count: requestedFeatures.length,
+    features: requestedFeatures.slice(0, 5).join(',')
+  });
+}
+
+/** Track impression of clearly labeled sponsored content */
+export function trackSponsorshipImpression(campaignId: string, sponsorName: string) {
+  trackEvent('monetization', 'sponsorship_view', campaignId, undefined, { sponsor: sponsorName });
+}
+
+/** Track user interaction with sponsored content */
+export function trackSponsorshipClick(campaignId: string, sponsorName: string) {
+  trackEvent('monetization', 'sponsorship_click', campaignId, undefined, { sponsor: sponsorName });
+}
+
+/** Track privacy and consent preference changes */
+export function trackConsentUpdate(consent: { analytics: boolean; advertising: boolean; personalizedAds: boolean }) {
+  trackEvent('monetization', 'consent_update', undefined, undefined, {
+    analytics: consent.analytics,
+    advertising: consent.advertising,
+    personalized: consent.personalizedAds
+  });
 }
 

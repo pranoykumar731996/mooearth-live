@@ -8,6 +8,7 @@ import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
 import { SupportedLocale, getTranslation, getLocalizedQuestion } from '@/lib/i18n';
 import StreakNotificationPrompt from '@/components/PWA/StreakNotificationPrompt';
 import LanguageSelector from '@/components/UI/LanguageSelector';
+import { SponsoredPlacement } from '@/components/Monetization/SponsoredPlacement';
 
 // Calculate day index from reference epoch (Jan 1, 2026)
 function getDailyNumber(date: Date = new Date()): number {
@@ -574,6 +575,9 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
                 ))}
               </div>
             </div>
+
+            {/* Clearly labeled educational sponsorship partner */}
+            <SponsoredPlacement placementId="challenge_partner" className="mt-6 text-left" />
           </div>
         )}
 

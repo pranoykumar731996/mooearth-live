@@ -30,7 +30,8 @@
     "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts",
     "test:city-map": "npx tsx scripts/test-explore-city-suite.ts",
     "test:location-intelligence": "npx tsx scripts/test-global-location-intelligence.ts",
-    "test:discovery-mode": "npx tsx scripts/test-earth-discovery-mode.ts"
+    "test:discovery-mode": "npx tsx scripts/test-earth-discovery-mode.ts",
+    "test:monetization": "npx tsx scripts/test-phase9-monetization.ts"
   },
   "dependencies": {
     "firebase": "^12.14.0",

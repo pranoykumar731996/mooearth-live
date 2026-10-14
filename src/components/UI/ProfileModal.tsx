@@ -34,6 +34,7 @@ import {
 } from '@/services/personalizationService';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LOCALES_META, SupportedLocale } from '@/lib/i18n';
+import { MooEarthPlusModal } from '@/components/Monetization/MooEarthPlusModal';
 
 export interface ProfileModalProps {
   isOpen: boolean;
@@ -104,6 +105,7 @@ export default function ProfileModal({
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [isConfirmingClearHistory, setIsConfirmingClearHistory] = useState(false);
   const [isConfirmingDeleteAccount, setIsConfirmingDeleteAccount] = useState(false);
+  const [isPlusModalOpen, setIsPlusModalOpen] = useState(false);
 
   // 1. Initial State Load
   const loadData = useCallback(async () => {
@@ -539,6 +541,27 @@ export default function ProfileModal({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* MooEarth Plus Early Access Card */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-blue-950/40 border border-cyan-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono uppercase bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-bold">
+                      Feature Validation
+                    </span>
+                    <span className="text-xs font-bold text-white">MooEarth Plus</span>
+                  </div>
+                  <p className="text-[11px] text-white/60 leading-relaxed">
+                    Shape our community roadmap: vote on ad-free exploration, unlimited pinned places, and advanced weather radar.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsPlusModalOpen(true)}
+                  className="shrink-0 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs transition-colors cursor-pointer self-start sm:self-auto"
+                >
+                  Explore Plus →
+                </button>
               </div>
             </div>
           )}
@@ -978,6 +1001,18 @@ export default function ProfileModal({
                   <li>Continuous GPS coordinates and camera movements are never logged.</li>
                   <li>Your discovery history and saved bookmarks are strictly private to you.</li>
                 </ul>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('mooearth_open_consent_preferences'));
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-cyan-300 font-semibold text-xs tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <span>🍪</span>
+                    <span>Manage Cookie & Consent Preferences</span>
+                  </button>
+                </div>
               </div>
 
               {/* Sign Out & Account Deletion */}
@@ -1055,6 +1090,13 @@ export default function ProfileModal({
           </button>
         </div>
       </motion.div>
+
+      {/* MooEarth Plus Demand Validation Modal */}
+      <MooEarthPlusModal
+        isOpen={isPlusModalOpen}
+        onClose={() => setIsPlusModalOpen(false)}
+        source="profile_dashboard"
+      />
     </div>
   );
 }

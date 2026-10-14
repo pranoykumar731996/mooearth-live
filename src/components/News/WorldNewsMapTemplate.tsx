@@ -4,6 +4,7 @@ import { WorldNewsMapData, WorldNewsStory } from '@/services/worldNewsService';
 import WorldNewsMapClient from './WorldNewsMapClient';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 import { FEATURED_COUNTRY_SELECTION } from '@/services/gameLandingService';
+import { AdUnit } from '@/components/Monetization/AdUnit';
 import {
   SupportedLocale,
   getLocalizedPath,
@@ -308,6 +309,9 @@ export default function WorldNewsMapTemplate({
               ))}
             </div>
           </section>
+
+          {/* Sustaining News Feed Advertisement (Off by default, CLS-safe) */}
+          <AdUnit placementId="news_feed_banner" className="my-8" />
 
           {/* SECTION 4: COUNTRY NEWS HUBS DIRECTORY */}
           <section aria-label="Country News Directory" className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-white/[0.02] space-y-4">

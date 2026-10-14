@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Advertising & Affiliate Disclosure | MooEarth.Live',
-  description: 'Information on advertising, sponsorships, and affiliate links on MooEarth.Live.',
+  title: 'Advertising & Ethical Sponsorship Policy | MooEarth.Live',
+  description: 'Ethical advertising, sponsored educational campaigns, and revenue transparency policy for MooEarth.Live.',
   alternates: {
     canonical: 'https://www.mooearth.live/advertising'
   }
@@ -11,52 +11,50 @@ export const metadata: Metadata = {
 export default function AdvertisingDisclosure() {
   return (
     <>
-      <h1 className="text-3xl md:text-4xl font-bold mb-4">Advertising & Affiliate Disclosure</h1>
-      <p className="text-sm text-gray-400 mb-8">Last Updated: June 29, 2026</p>
+      <h1 className="text-3xl md:text-4xl font-bold mb-4">Advertising & Ethical Sponsorship Policy</h1>
+      <p className="text-sm text-gray-400 mb-8">Last Updated: October 2026 (Phase 9 Monetization Foundation)</p>
 
-      <div className="space-y-6">
+      <div className="space-y-6 text-slate-300 leading-relaxed text-sm">
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">1. Funding MooEarth.Live</h2>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">1. Funding Planetary Intelligence Sustainably</h2>
           <p>
-            MooEarth.Live is a free-to-use platform dedicated to providing global football coverage, 3D interactive visualizations, and real-time scores. To maintain our servers, data API licenses, and ongoing development, we may rely on advertising and affiliate partnerships as sources of revenue.
+            MooEarth.Live is dedicated to providing free, sovereign-respecting access to living 3D planetary intelligence, verified real-time world news, meteorological maps, and geography education. To maintain cloud rendering infrastructure, AI translation clusters, and news ingestion pipelines without degrading exploration, we maintain an optional, privacy-respecting advertising and educational sponsorship framework.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">2. Advertisements</h2>
-          <p>
-            You may see display advertisements (such as banners or video ads) while using MooEarth.Live. These advertisements may be delivered by third-party advertising networks (e.g., Google AdSense). 
-          </p>
-          <ul className="list-disc pl-6 space-y-2 mt-4">
-            <li>These networks may use cookies to serve ads based on your prior visits to our website or other websites.</li>
-            <li>We do not have direct control over the specific ads that are displayed, but we strive to block categories of ads that are inappropriate or malicious.</li>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">2. Core Principles & User Experience Invariants</h2>
+          <ul className="list-disc pl-6 space-y-2 mt-2">
+            <li><strong>Zero Intrusive Ads:</strong> We strictly prohibit pop-ups, interstitial blockers, audio autoplay, and layout shifts (CLS). Advertisements will never obstruct 3D globe camera controls, map layers, or interactive game cards.</li>
+            <li><strong>Editorial Independence:</strong> Advertisements and sponsors never alter AI news syntheses, algorithmic ranking, country prominence, or climate feeds.</li>
+            <li><strong>Clear Labeling:</strong> Any advertising unit is distinctly bordered and labeled with an unambiguous "ADVERTISEMENT" badge. Sponsored partnerships are labeled "SPONSORED PARTNER".</li>
+            <li><strong>Publisher Protection:</strong> Ads are never injected into publisher story text in any manner that implies publisher endorsement. All external publisher attributions and original source links are strictly preserved.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">3. Affiliate Links</h2>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">3. Privacy, Consent & Tracking Boundaries</h2>
           <p>
-            Some links on MooEarth.Live, particularly those pointing to sports merchandise, ticketing platforms, or streaming services, may be "affiliate links."
+            In compliance with GDPR, ePrivacy, and CCPA/CPRA regulations:
           </p>
-          <p className="mt-2">
-            This means if you click on the link and purchase an item, MooEarth.Live may receive a small affiliate commission at <strong>no extra cost to you</strong>. This is a common practice that helps support the site.
+          <ul className="list-disc pl-6 space-y-2 mt-2">
+            <li>No non-essential advertising cookies or trackers are loaded before explicit user consent.</li>
+            <li>We <strong>never</strong> transmit personal profile details, authentication tokens, bookmarks, or precise location history to ad networks.</li>
+            <li>If you decline advertising consent, display advertising remains completely disabled or non-personalized with zero third-party profiling.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">4. MooEarth Plus & Ad-Free Exploration</h2>
+          <p>
+            We are actively researching a community-supported subscription tier (MooEarth Plus). Once implemented, Plus supporters receive 100% ad-free reading across all news reports, 3D atlas views, and geography challenges, alongside extended bookmark collections. Core globe navigation and free news access will remain freely accessible to everyone.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">4. Sponsored Content</h2>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">5. Managing Your Preferences</h2>
           <p>
-            From time to time, we may partner with brands to create sponsored content (such as a featured article about a football tournament). We are committed to transparency, and any content that is sponsored or paid for will be clearly identified as "Sponsored," "Promoted," or "Partner Content."
-          </p>
-          <p className="mt-2">
-            Our editorial integrity is paramount. We will never alter match statistics or skew news aggregation to favor a sponsor.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Your Choices</h2>
-          <p>
-            You can manage how ads are served to you by adjusting your cookie preferences or using browser-based ad-blocking tools. However, we ask that you consider whitelisting MooEarth.Live so we can continue providing free sports data to fans worldwide.
+            You can modify your consent settings at any time via your Profile Dashboard (Privacy tab) or our Cookie Preferences banner. We honor universal browser Global Privacy Control (GPC) signals.
           </p>
         </section>
       </div>

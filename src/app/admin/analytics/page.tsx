@@ -193,6 +193,15 @@ const generateSimulationData = (): SessionAnalytics[] => {
         failCount: tFail,
         translatedArticleIds: tArticleIds,
         translatedCountries: tCountries
+      },
+      monetization: {
+        adImpressions: Math.floor(Math.random() * 3),
+        adClicks: Math.random() > 0.85 ? 1 : 0,
+        plusModalOpens: Math.random() > 0.7 ? 1 : 0,
+        plusWaitlistSubmissions: Math.random() > 0.9 ? 1 : 0,
+        sponsorshipViews: Math.floor(Math.random() * 2),
+        sponsorshipClicks: Math.random() > 0.9 ? 1 : 0,
+        consentGiven: Math.random() > 0.35
       }
     });
   }
@@ -308,6 +317,16 @@ export default function AdminAnalyticsPage() {
     const translationArticleIds = new Set<string>();
     const translationCountries: Record<string, number> = {};
 
+    // Monetization & Revenue Experiment Telemetry
+    let totalAdImpressions = 0;
+    let totalAdClicks = 0;
+    let totalPlusModalOpens = 0;
+    let totalPlusWaitlistSubmissions = 0;
+    let totalSponsorshipViews = 0;
+    let totalSponsorshipClicks = 0;
+    let consentGrantedCount = 0;
+    let consentDeniedCount = 0;
+
     sessions.forEach(sess => {
       // Basic metrics
       uniqueUsers.add(sess.userId || sess.sessionId);
@@ -418,6 +437,18 @@ export default function AdminAnalyticsPage() {
             translationCountries[country] = (translationCountries[country] || 0) + count;
           });
         }
+      }
+
+      // Monetization telemetry aggregation
+      if (sess.monetization) {
+        totalAdImpressions += sess.monetization.adImpressions || 0;
+        totalAdClicks += sess.monetization.adClicks || 0;
+        totalPlusModalOpens += sess.monetization.plusModalOpens || 0;
+        totalPlusWaitlistSubmissions += sess.monetization.plusWaitlistSubmissions || 0;
+        totalSponsorshipViews += sess.monetization.sponsorshipViews || 0;
+        totalSponsorshipClicks += sess.monetization.sponsorshipClicks || 0;
+        if (sess.monetization.consentGiven === true) consentGrantedCount++;
+        else if (sess.monetization.consentGiven === false) consentDeniedCount++;
       }
     });
 
@@ -535,6 +566,21 @@ export default function AdminAnalyticsPage() {
         languages: translationLanguages,
         articleIdsCount: translationArticleIds.size,
         countries: translationCountries
+      },
+      monetization: {
+        adImpressions: totalAdImpressions,
+        adClicks: totalAdClicks,
+        adCtr: totalAdImpressions > 0 ? ((totalAdClicks / totalAdImpressions) * 100).toFixed(1) : '0.0',
+        plusModalOpens: totalPlusModalOpens,
+        plusWaitlistSubmissions: totalPlusWaitlistSubmissions,
+        plusConversionRate: totalPlusModalOpens > 0 ? ((totalPlusWaitlistSubmissions / totalPlusModalOpens) * 100).toFixed(1) : '0.0',
+        sponsorshipViews: totalSponsorshipViews,
+        sponsorshipClicks: totalSponsorshipClicks,
+        consentGrantedCount,
+        consentDeniedCount,
+        consentRate: (consentGrantedCount + consentDeniedCount) > 0 ? Math.round((consentGrantedCount / (consentGrantedCount + consentDeniedCount)) * 100) : 0,
+        estimatedInfrastructureCost: (sessions.length * 0.00035).toFixed(4),
+        actualRevenue: '$0.00'
       },
       funnelSteps
     };
@@ -1043,6 +1089,125 @@ export default function AdminAnalyticsPage() {
                       })
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Monetization Foundation & Demand Validation Section */}
+            <div className="glass rounded-3xl p-6 border border-white/5 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="font-extrabold text-base tracking-wide text-white flex items-center gap-2">
+                    <span>💳</span>
+                    <span>Monetization Experiments & Demand Signals</span>
+                  </h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mt-0.5">
+                    Privacy-conscious telemetry, feature validation & unit cost economics
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold">
+                    Actual Revenue: {aggregatedStats.monetization.actualRevenue} (Validation Mode)
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Ad Telemetry */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                  <div className="flex justify-between items-center text-xs text-white/50 font-medium">
+                    <span>Ad Placements</span>
+                    <span>📢</span>
+                  </div>
+                  <div>
+                    <strong className="text-xl font-black text-white">{aggregatedStats.monetization.adImpressions}</strong>
+                    <span className="text-xs text-white/40 ml-1.5">impressions</span>
+                  </div>
+                  <div className="text-[11px] text-white/60 space-y-0.5 pt-1 border-t border-white/5">
+                    <div className="flex justify-between">
+                      <span>Clicks Logged:</span>
+                      <strong className="text-white font-mono">{aggregatedStats.monetization.adClicks}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Click-Through Rate (CTR):</span>
+                      <strong className="text-cyan-400 font-mono">{aggregatedStats.monetization.adCtr}%</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. MooEarth Plus Waitlist Demand */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                  <div className="flex justify-between items-center text-xs text-white/50 font-medium">
+                    <span>MooEarth Plus Signals</span>
+                    <span>✨</span>
+                  </div>
+                  <div>
+                    <strong className="text-xl font-black text-cyan-300">{aggregatedStats.monetization.plusWaitlistSubmissions}</strong>
+                    <span className="text-xs text-white/40 ml-1.5">waitlist signals</span>
+                  </div>
+                  <div className="text-[11px] text-white/60 space-y-0.5 pt-1 border-t border-white/5">
+                    <div className="flex justify-between">
+                      <span>Modal Views:</span>
+                      <strong className="text-white font-mono">{aggregatedStats.monetization.plusModalOpens}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Intent Conversion Rate:</span>
+                      <strong className="text-emerald-400 font-mono">{aggregatedStats.monetization.plusConversionRate}%</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Sponsorship Partner Engagement */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                  <div className="flex justify-between items-center text-xs text-white/50 font-medium">
+                    <span>Sponsorship Partner</span>
+                    <span>🤝</span>
+                  </div>
+                  <div>
+                    <strong className="text-xl font-black text-amber-300">{aggregatedStats.monetization.sponsorshipViews}</strong>
+                    <span className="text-xs text-white/40 ml-1.5">card views</span>
+                  </div>
+                  <div className="text-[11px] text-white/60 space-y-0.5 pt-1 border-t border-white/5">
+                    <div className="flex justify-between">
+                      <span>Partner Outbound Clicks:</span>
+                      <strong className="text-white font-mono">{aggregatedStats.monetization.sponsorshipClicks}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Ethical Separation:</span>
+                      <strong className="text-amber-400">100% Enforced</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Consent Compliance & Unit Cost */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 space-y-2">
+                  <div className="flex justify-between items-center text-xs text-white/50 font-medium">
+                    <span>Consent & Unit Economics</span>
+                    <span>🛡️</span>
+                  </div>
+                  <div>
+                    <strong className="text-xl font-black text-emerald-400">{aggregatedStats.monetization.consentRate}%</strong>
+                    <span className="text-xs text-white/40 ml-1.5">opt-in consent</span>
+                  </div>
+                  <div className="text-[11px] text-white/60 space-y-0.5 pt-1 border-t border-white/5">
+                    <div className="flex justify-between">
+                      <span>Est. Cloud Infra Cost:</span>
+                      <strong className="text-white font-mono">~${aggregatedStats.monetization.estimatedInfrastructureCost}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cost Per Engaged Visitor:</span>
+                      <strong className="text-slate-300 font-mono">~$0.00035</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cost & Policy Footnote */}
+              <div className="p-3 rounded-xl bg-slate-900/60 border border-white/5 text-[11px] text-slate-400 leading-relaxed flex items-start gap-2">
+                <span className="text-cyan-400 text-xs">ℹ️</span>
+                <span>
+                  <strong>Ethical monetization policy:</strong> In accordance with Phase 9 guidelines, core 3D globe navigation and real-time news access remain 100% free with zero paywalls. Live advertising is disabled by default until traffic milestones and ad network approval. Billing processing will only be implemented after user interest proves willingness-to-pay.
+                </span>
               </div>
             </div>
 

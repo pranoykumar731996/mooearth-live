@@ -26,6 +26,7 @@ import {
 } from '@/services/personalizationService';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
+import { AdUnit } from '@/components/Monetization/AdUnit';
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
@@ -1862,6 +1863,9 @@ export default function ArticleViewer({
                     </div>
                   </div>
 
+                  {/* Sustaining Article Advertisement (Off-by-default, CLS-safe) */}
+                  <AdUnit placementId="article_bottom" />
+
                   {/* Navigation Toolbar (Task 7) */}
                   <div className="flex items-center justify-between gap-4 pt-8 border-t border-white/[0.06] font-sans">
                     <button
@@ -2113,6 +2117,9 @@ export default function ArticleViewer({
                         </div>
                       </div>
                     )}
+
+                    {/* Sustaining Sidebar Advertisement */}
+                    <AdUnit placementId="article_sidebar" />
                   </div>
                 )}
 
