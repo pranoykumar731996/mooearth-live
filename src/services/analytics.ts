@@ -566,3 +566,33 @@ export function trackConsentUpdate(consent: { analytics: boolean; advertising: b
   });
 }
 
+// ============================================================
+// Phase 10: Curated Discovery Collections & Community Telemetry
+// ============================================================
+
+/** Track collection creation */
+export function trackCollectionCreated(collectionId: string, category: string, totalLocations: number) {
+  trackEvent('collection', 'create', collectionId, totalLocations, { category });
+}
+
+/** Track collection publication */
+export function trackCollectionPublished(collectionId: string) {
+  trackEvent('collection', 'publish', collectionId);
+}
+
+/** Track collection opened */
+export function trackCollectionOpened(collectionId: string, title?: string) {
+  trackEvent('collection', 'open', collectionId, undefined, { title });
+}
+
+/** Track collection shared */
+export function trackCollectionShared(collectionId: string, method: string) {
+  trackEvent('collection', 'share', collectionId, undefined, { method });
+}
+
+/** Track collection content report */
+export function trackCollectionReported(collectionId: string, reason: string) {
+  trackEvent('collection', 'report', collectionId, undefined, { reason });
+}
+
+

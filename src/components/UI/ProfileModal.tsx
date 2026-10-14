@@ -35,6 +35,15 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LOCALES_META, SupportedLocale } from '@/lib/i18n';
 import { MooEarthPlusModal } from '@/components/Monetization/MooEarthPlusModal';
+import { DiscoveryCollection } from '@/types/collections';
+import {
+  getUserCollections,
+  deleteCollection,
+  publishCollection,
+  unpublishCollection,
+} from '@/services/collectionService';
+import CollectionBuilderModal from '@/components/Collections/CollectionBuilderModal';
+import { getCollectionShareUrl, copyToClipboard } from '@/utils/share';
 
 export interface ProfileModalProps {
   isOpen: boolean;
@@ -45,9 +54,10 @@ export interface ProfileModalProps {
   onSelectLocation?: (location: any) => void;
   onFocusCoordinates?: (coords: { lat: number; lng: number }) => void;
   onOpenAuth?: () => void;
+  onStartCollectionTour?: (collection: DiscoveryCollection) => void;
 }
 
-type ProfileTab = 'overview' | 'saved' | 'preferences' | 'history' | 'account';
+type ProfileTab = 'overview' | 'saved' | 'preferences' | 'collections' | 'history' | 'account';
 
 const AVAILABLE_TOPICS = [
   { id: 'breaking', label: 'World News', emoji: '🌍' },
@@ -73,6 +83,7 @@ export default function ProfileModal({
   onSelectLocation,
   onFocusCoordinates,
   onOpenAuth,
+  onStartCollectionTour,
 }: ProfileModalProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const { locale, setLocale, dict, allLocales, t } = useLanguage();
@@ -87,6 +98,27 @@ export default function ProfileModal({
   const [preferences, setPreferences] = useState<UserPreferences>(getGuestPreferences());
   const [discoveryHistory, setDiscoveryHistory] = useState<DiscoveryHistoryItem[]>([]);
   const [bookmarkFilter, setBookmarkFilter] = useState<'all' | 'places' | 'articles'>('all');
+
+  // Curated Discovery Collections State (Phase 10)
+  const [collections, setCollections] = useState<DiscoveryCollection[]>([]);
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<DiscoveryCollection | null>(null);
+  const [collectionCopiedId, setCollectionCopiedId] = useState<string | null>(null);
+
+  const reloadCollections = useCallback(async () => {
+    try {
+      const cols = await getUserCollections(currentUser?.uid);
+      setCollections(cols);
+    } catch (e) {
+      console.warn('Failed to load collections:', e);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      reloadCollections();
+    }
+  }, [isOpen, reloadCollections]);
 
   const filteredSavedPlaces = useMemo(() => {
     if (bookmarkFilter === 'places') return savedPlaces.filter((p) => p.type !== 'article');
@@ -448,6 +480,7 @@ export default function ProfileModal({
           {[
             { id: 'overview', label: dict.profile?.tabs?.overview || 'Overview', icon: '🏆' },
             { id: 'saved', label: `${dict.profile?.tabs?.saved || 'Saved'} (${savedPlaces.length})`, icon: '★' },
+            { id: 'collections', label: `Collections (${collections.length})`, icon: '🧭' },
             { id: 'preferences', label: dict.profile?.tabs?.preferences || 'Interests', icon: '🎯' },
             { id: 'history', label: `${dict.profile?.tabs?.history || 'History'} (${discoveryHistory.length})`, icon: '⏱️' },
             { id: 'account', label: dict.profile?.tabs?.account || 'Privacy', icon: '🛡️' },
@@ -702,6 +735,175 @@ export default function ProfileModal({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: COLLECTIONS (Phase 10 Curated Experiences) ──────── */}
+          {activeTab === 'collections' && (
+            <div className="space-y-4 font-sans">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/40 to-blue-950/30 border border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2">
+                    <span>🧭</span>
+                    <span>Curated Discovery Collections</span>
+                  </h3>
+                  <p className="text-xs text-white/60 mt-0.5">
+                    Build interactive world tours with verified locations, educator notes, and quiz checkpoints.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingCollection(null);
+                    setIsBuilderOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer shrink-0 self-start sm:self-auto flex items-center gap-1.5"
+                >
+                  <span>+</span>
+                  <span>Create Collection</span>
+                </button>
+              </div>
+
+              {collections.length === 0 ? (
+                <div className="text-center py-10 px-4 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 space-y-3">
+                  <div className="text-3xl">🧭</div>
+                  <div className="text-sm font-bold text-white">No Discovery Collections Yet</div>
+                  <p className="text-xs text-white/50 max-w-sm mx-auto">
+                    Assemble your favorite geographic spots, world landmarks, or educational journeys and share them with the community.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setEditingCollection(null);
+                      setIsBuilderOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-bold text-white transition-colors cursor-pointer"
+                  >
+                    Start with a Template ➔
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {collections.map((col) => {
+                    const isPublished = col.status === 'published';
+                    const isCopied = collectionCopiedId === col.id;
+                    return (
+                      <div
+                        key={col.id}
+                        className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="text-2xl p-2 rounded-xl bg-white/5 border border-white/10 shrink-0">
+                              {col.coverEmoji || '🧭'}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                  isPublished
+                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                                    : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+                                }`}>
+                                  {isPublished ? '● Published' : '○ Private Draft'}
+                                </span>
+                                <span className="text-[11px] text-white/40">
+                                  {col.totalLocations} {col.totalLocations === 1 ? 'stop' : 'stops'}
+                                </span>
+                                {col.viewsCount !== undefined && col.viewsCount > 0 && (
+                                  <span className="text-[10px] text-white/40 font-mono">
+                                    👁️ {col.viewsCount}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-sm font-bold text-white truncate mt-1">
+                                {col.title}
+                              </h4>
+                              {col.description && (
+                                <p className="text-xs text-white/60 line-clamp-2 mt-0.5">
+                                  {col.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions Bar */}
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap text-xs">
+                          <div className="flex items-center gap-2">
+                            {/* Tour in Globe */}
+                            <button
+                              onClick={() => {
+                                if (onStartCollectionTour) {
+                                  onStartCollectionTour(col);
+                                  onClose();
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span>🌍</span>
+                              <span>Tour in Globe</span>
+                            </button>
+
+                            {/* Share button */}
+                            {isPublished && (
+                              <button
+                                onClick={async () => {
+                                  const url = getCollectionShareUrl(col.id);
+                                  await copyToClipboard(url);
+                                  setCollectionCopiedId(col.id);
+                                  setTimeout(() => setCollectionCopiedId(null), 2000);
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                {isCopied ? <span className="text-emerald-400 font-bold">Copied!</span> : <span>Share ↗</span>}
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            {/* Toggle Publish/Unpublish */}
+                            <button
+                              onClick={async () => {
+                                if (isPublished) {
+                                  await unpublishCollection(col.id, currentUser);
+                                } else {
+                                  await publishCollection(col.id, currentUser);
+                                }
+                                reloadCollections();
+                              }}
+                              className="px-2 py-1 rounded-lg text-[11px] text-white/60 hover:text-white transition-colors cursor-pointer"
+                            >
+                              {isPublished ? 'Unpublish' : 'Publish'}
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => {
+                                setEditingCollection(col);
+                                setIsBuilderOpen(true);
+                              }}
+                              className="px-2 py-1 rounded-lg text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                            >
+                              Edit ✏️
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Are you sure you want to delete "${col.title}"?`)) {
+                                  await deleteCollection(col.id, currentUser);
+                                  reloadCollections();
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg text-[11px] text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                            >
+                              Delete 🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1096,6 +1298,22 @@ export default function ProfileModal({
         isOpen={isPlusModalOpen}
         onClose={() => setIsPlusModalOpen(false)}
         source="profile_dashboard"
+      />
+
+      {/* Curated Collection Builder Modal (Phase 10) */}
+      <CollectionBuilderModal
+        isOpen={isBuilderOpen}
+        onClose={() => {
+          setIsBuilderOpen(false);
+          setEditingCollection(null);
+        }}
+        editingCollection={editingCollection}
+        currentUser={currentUser}
+        onCollectionSaved={() => {
+          reloadCollections();
+          setIsBuilderOpen(false);
+          setEditingCollection(null);
+        }}
       />
     </div>
   );

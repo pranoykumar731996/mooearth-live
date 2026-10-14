@@ -173,6 +173,10 @@ export default function AdminLayout({
           <Link href="/admin/seo" className="text-white/60 hover:text-white transition-colors">
             SEO & Search Console
           </Link>
+          <span className="text-white/20">|</span>
+          <Link href="/admin/moderation" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">
+            Community Moderation 🛡️
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">

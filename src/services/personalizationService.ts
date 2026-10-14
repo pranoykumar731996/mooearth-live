@@ -93,6 +93,21 @@ export function getGuestSavedPlaces(): SavedPlace[] {
   }
 }
 
+/** Get saved places for authenticated user or fallback to guest storage */
+export async function getSavedPlaces(uid?: string): Promise<SavedPlace[]> {
+  if (uid) {
+    try {
+      const profile = await fetchUserProfile(uid);
+      if (profile && Array.isArray(profile.savedPlaces)) {
+        return profile.savedPlaces;
+      }
+    } catch {
+      // Fallback to guest places
+    }
+  }
+  return getGuestSavedPlaces();
+}
+
 export function saveGuestPlace(place: SavedPlace): SavedPlace[] {
   if (typeof window === 'undefined') return [];
   try {

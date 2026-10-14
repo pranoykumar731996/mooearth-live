@@ -26,6 +26,35 @@ export function getChallengeShareUrl(
 }
 
 /**
+ * Generate a shareable URL for a curated discovery collection.
+ */
+export function getCollectionShareUrl(id: string): string {
+  const base = typeof window !== 'undefined' && window.location.origin
+    ? window.location.origin
+    : 'https://mooearth.live';
+  return `${base}/collections/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Generate share text for a discovery collection.
+ */
+export function getCollectionShareText(params: {
+  title: string;
+  totalLocations: number;
+  creatorName?: string;
+}): string {
+  const { title, totalLocations, creatorName } = params;
+  let text = `🧭 Explore "${title}" on MooEarth.Live!\n\n`;
+  text += `📍 ${totalLocations} curated world discoveries\n`;
+  if (creatorName && creatorName !== 'Explorer') {
+    text += `Curated by ${creatorName}\n`;
+  }
+  text += `\nJourney through the interactive 3D globe:\n`;
+  return text;
+}
+
+
+/**
  * Generate share text for a game result.
  */
 export function getShareText(params: {

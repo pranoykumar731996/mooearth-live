@@ -82,5 +82,40 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    // 5. Discovery Collections (Phase 10: Curated World-Discovery Collections)
+    match /collections/{collectionId} {
+      // Public can read published, unflagged collections; creators can read their own drafts
+      allow read: if (resource.data.status == 'published' && (!('moderationStatus' in resource.data) || resource.data.moderationStatus != 'removed')) ||
+                     (request.auth != null && request.auth.uid == resource.data.creatorUid);
+
+      // Authenticated creators can create collections matching their UID
+      allow create: if request.auth != null && 
+                       request.auth.uid == request.resource.data.creatorUid &&
+                       request.resource.data.keys().hasAll(['id', 'title', 'creatorUid', 'status', 'locations', 'createdAt']) &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() > 0 &&
+                       request.resource.data.title.size() <= 120 &&
+                       request.resource.data.locations is list &&
+                       request.resource.data.locations.size() <= 30;
+
+      // Authenticated creators can edit their own collections OR increment metrics (views, shares, reports)
+      allow update: if (request.auth != null && request.auth.uid == resource.data.creatorUid && request.resource.data.creatorUid == resource.data.creatorUid) ||
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewsCount', 'sharesCount', 'reportsCount', 'status']));
+
+      // Only creator can delete their collection
+      allow delete: if request.auth != null && request.auth.uid == resource.data.creatorUid;
+    }
+
+    // 6. Collection Moderation Reports
+    match /collection_reports/{reportId} {
+      // Public or authenticated users can submit a report with bounded payload
+      allow create: if request.resource.data.keys().hasAll(['collectionId', 'reason', 'status', 'createdAt']) &&
+                       request.resource.data.collectionId is string &&
+                       request.resource.data.reason is string &&
+                       (!('details' in request.resource.data) || (request.resource.data.details is string && request.resource.data.details.size() <= 1000));
+      // Reading and managing reports is restricted to administrative processes
+      allow read, update, delete: if false;
+    }
   }
 }

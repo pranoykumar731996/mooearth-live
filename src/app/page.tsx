@@ -48,6 +48,9 @@ const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloating
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
 const WindParticleOverlay = dynamic(() => import('@/components/Weather/WindParticleOverlay'), { ssr: false });
 const DailyChallengeRetentionCard = dynamic(() => import('@/components/Daily/DailyChallengeRetentionCard'), { ssr: false });
+const GlobeCollectionTour = dynamic(() => import('@/components/Collections/GlobeCollectionTour'), { ssr: false });
+import { DiscoveryCollection } from '@/types/collections';
+import { getCollectionById } from '@/services/collectionService';
 import { ContinentRecord, CONTINENT_CENTROIDS } from '@/data/continents';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { PlayEarthMode } from '@/types';
@@ -136,6 +139,7 @@ export default function HomePage({
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedCelebration, setSelectedCelebration] = useState<any>(null);
+  const [activeCollectionTour, setActiveCollectionTour] = useState<DiscoveryCollection | null>(null);
 
   // Sync user preferences with personalization updates
   useEffect(() => {
@@ -243,6 +247,16 @@ export default function HomePage({
         setIsDeveloper(true);
       } else if (isDevStorage || isLocal) {
         setIsDeveloper(true);
+      }
+
+      // Phase 10: Collection Tour Deep Link (?collection=col_xxx or ?c=tmpl_xxx)
+      const collectionId = params.get('collection') || params.get('c');
+      if (collectionId) {
+        getCollectionById(collectionId).then((col) => {
+          if (col) {
+            setActiveCollectionTour(col);
+          }
+        });
       }
     }
   }, []);
@@ -1792,6 +1806,9 @@ export default function HomePage({
             globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.6 }, 1200);
             playHoverBlip();
           }}
+          onStartCollectionTour={(col) => {
+            setActiveCollectionTour(col);
+          }}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onSignOut={async () => {
             console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
@@ -2036,6 +2053,31 @@ export default function HomePage({
             onFocusCoordinates={(coords) => {
               globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.25 }, 1200);
               playHoverBlip();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Curated World Discovery Collection Tour HUD (Phase 10) */}
+      <AnimatePresence>
+        {activeCollectionTour && (
+          <GlobeCollectionTour
+            collection={activeCollectionTour}
+            onClose={() => {
+              setActiveCollectionTour(null);
+              try {
+                const params = new URLSearchParams(window.location.search);
+                params.delete('collection');
+                params.delete('c');
+                const qs = params.toString();
+                window.history.replaceState({}, '', qs ? `/?${qs}` : '/');
+              } catch {}
+            }}
+            onFlyTo={(coords, duration) => {
+              globeApiRef.current?.flyTo(coords, duration);
+            }}
+            onSelectCountry={(countryName) => {
+              handleSelectCountry(countryName);
             }}
           />
         )}
