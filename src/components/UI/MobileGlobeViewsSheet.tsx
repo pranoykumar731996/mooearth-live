@@ -114,6 +114,11 @@ export default function MobileGlobeViewsSheet({
                       <span className="font-extrabold text-xs text-white tracking-tight leading-tight">
                         {opt.name}
                       </span>
+                      {opt.id === 'weather' && (
+                        <span className="px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300 font-mono text-[8px] font-black tracking-wider uppercase shrink-0">
+                          RADAR
+                        </span>
+                      )}
                     </div>
 
                     <span className="text-[9px] text-white/40 leading-relaxed font-medium relative z-10">

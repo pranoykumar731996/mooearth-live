@@ -109,6 +109,13 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
           <span>HUMIDITY: {metrics.humidity}%</span>
           <span>BAROMETER: STABLE</span>
         </div>
+        <a
+          href={`/weather/${encodeURIComponent(country.toLowerCase().replace(/\s+/g, '-'))}`}
+          className="w-full mt-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 via-sky-500/20 to-blue-600/20 border border-cyan-400/35 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-cyan-500/30 transition-all cursor-pointer shadow-[0_0_15px_rgba(0,229,255,0.15)] active:scale-98"
+        >
+          <span>🌦️</span>
+          <span>View 7-Day Live Climate & Radar Telemetry →</span>
+        </a>
       </div>
     );
   }
@@ -653,9 +660,22 @@ export default function MobileCountrySheet({
                   <h3 className="text-base font-black text-white leading-tight flex items-center gap-2">
                     <span>{getLocalizedCountryName(country, locale)}</span>
                   </h3>
-                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
-                    {getLocalizedContinentName(countryMeta?.continent || '', locale)} • {t('countryHub.capital', 'Capital')}: {countryMeta?.capital}
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <p className="text-[9px] text-white/40 uppercase tracking-wider font-bold">
+                      {getLocalizedContinentName(countryMeta?.continent || '', locale)} • {t('countryHub.capital', 'Capital')}: {countryMeta?.capital}
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleTabClick('weather');
+                        onPlaySound();
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-[9px] font-black text-cyan-300 tracking-wider uppercase transition-all active:scale-95 cursor-pointer shadow-[0_0_8px_rgba(0,229,255,0.2)]"
+                      title="View Live Weather Radar"
+                    >
+                      <span>🌦️</span>
+                      <span>WEATHER</span>
+                    </button>
+                  </div>
                 </>
               )}
             </div>

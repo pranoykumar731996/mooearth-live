@@ -208,9 +208,9 @@ export default function WeatherFloatingHUD({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.95 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
-        className={`fixed z-30 pointer-events-auto select-none ${
+        className={`fixed z-50 pointer-events-auto select-none ${
           isMobile
-            ? 'top-20 left-3 right-3 max-h-[82vh] overflow-y-auto'
+            ? 'top-16 left-3 right-3 max-h-[82vh] overflow-y-auto'
             : 'top-20 left-24 w-[380px]'
         }`}
       >

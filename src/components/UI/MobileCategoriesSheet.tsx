@@ -142,6 +142,11 @@ export default function MobileCategoriesSheet({
                       <span className="font-extrabold text-xs text-white tracking-tight leading-tight flex items-center gap-1.5">
                         <span>{opt.icon}</span> {opt.name}
                       </span>
+                      {opt.id === 'weather' && (
+                        <span className="px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300 font-mono text-[8px] font-black tracking-wider uppercase shrink-0">
+                          LIVE RADAR
+                        </span>
+                      )}
                     </div>
 
                     <span className="text-[9px] text-white/40 leading-relaxed font-medium relative z-10">

@@ -304,22 +304,24 @@ export default function Navbar({
           {onToggleWeather ? (
             <button
               onClick={onToggleWeather}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+              className={`h-7 px-2 xs:px-2.5 rounded-full flex items-center gap-1 font-black text-[9px] tracking-wider border transition-all cursor-pointer ${
                 isWeatherActive
-                  ? 'bg-cyan-400 text-black shadow-[0_0_15px_rgba(0,229,255,0.8)]'
-                  : 'text-white/80 hover:text-cyan-300 bg-white/5 border border-white/10'
+                  ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.8)] font-black'
+                  : 'bg-cyan-500/15 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/25'
               }`}
-              title={isWeatherActive ? "Turn Off Weather Layer" : "Turn On Weather Layer"}
+              title={isWeatherActive ? "Turn Off Weather Layer" : "Turn On Live Weather"}
             >
-              <span className="text-sm">🌦️</span>
+              <span className="text-xs">🌦️</span>
+              <span className="font-extrabold">{isWeatherActive ? 'RADAR' : 'WEATHER'}</span>
             </button>
           ) : (
             <Link
               href="/weather"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-cyan-300 active:scale-95 transition-all bg-white/5 border border-white/10"
+              className="h-7 px-2 xs:px-2.5 rounded-full flex items-center gap-1 font-black text-[9px] tracking-wider border border-cyan-500/35 text-cyan-300 bg-cyan-500/15 hover:bg-cyan-500/25 active:scale-95 transition-all"
               title="MooEarth Weather Intelligence"
             >
-              <span className="text-sm">🌤️</span>
+              <span className="text-xs">🌤️</span>
+              <span className="font-extrabold">WEATHER</span>
             </Link>
           )}
 

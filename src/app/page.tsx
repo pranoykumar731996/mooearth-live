@@ -2124,59 +2124,69 @@ export default function HomePage({
 
 
 
-      {/* Mobile-Only Floating Action Button Stack (matches user screenshot design) */}
+      {/* Mobile Floating Weather Quick Action Pill (Thumb Zone) */}
+      {isMobile && !isPlayEarthActive && (
+        <div 
+          className="fixed z-30 pointer-events-auto transition-all duration-300"
+          style={{
+            left: '12px',
+            bottom: isFullScreenGlobe ? '20px' : `calc(${mobileSheet.sheetHeightPercent}vh + 14px)`,
+          }}
+        >
+          <button
+            onClick={() => {
+              const next = globeView !== 'weather';
+              setGlobeView(next ? 'weather' : 'standard');
+              playHoverBlip();
+              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Standard View Restored');
+            }}
+            className={`h-9.5 px-3 rounded-full flex items-center gap-1.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-xl transition-all duration-300 cursor-pointer active:scale-95 ${
+              globeView === 'weather'
+                ? 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 border-cyan-300 shadow-[0_0_25px_rgba(0,229,255,0.8)] scale-105'
+                : 'bg-[#060a16]/92 text-cyan-300 border-cyan-400/50 shadow-[0_0_20px_rgba(0,229,255,0.35)] hover:border-cyan-300'
+            }`}
+            title={globeView === 'weather' ? "Turn Off Weather Layer" : "Turn On Atmospheric Radar & Live Weather Layer"}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
+              }`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
+              }`} />
+            </span>
+            <span className="text-sm">{globeView === 'weather' ? '🌦️' : '🌤️'}</span>
+            <span className="font-black text-[11px] tracking-wide">
+              {globeView === 'weather' ? 'RADAR: ON' : 'WEATHER'}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile-Only Compact Floating Action Dock (Guaranteed full coverage, no clipping) */}
       {isMobile && (
         <div 
-          className="fixed right-4 z-40 flex flex-col gap-4.5 items-center pointer-events-auto transition-all duration-300"
-          style={{ bottom: isFullScreenGlobe || isPlayEarthActive ? '24px' : `calc(${mobileSheet.sheetHeightPercent}vh + 16px)` }}
+          className="fixed right-3 top-20 z-40 p-1.5 rounded-full bg-[#060a16]/85 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex flex-col gap-2 items-center pointer-events-auto max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-none transition-all duration-300"
         >
-          {/* Globe/Fullscreen Toggle */}
+          {/* Quick Weather Toggle (Mobile) */}
           <button
             onClick={() => {
-              setIsFullScreenGlobe(!isFullScreenGlobe);
+              const next = globeView !== 'weather';
+              setGlobeView(next ? 'weather' : 'standard');
               playHoverBlip();
+              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Standard View Restored');
             }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
-              !isFullScreenGlobe
-                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
-                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer relative ${
+              globeView === 'weather'
+                ? 'bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-950 border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.8)] scale-105'
+                : 'bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 hover:text-white shadow-[0_0_12px_rgba(0,229,255,0.25)]'
             }`}
-            title={isFullScreenGlobe ? "Show Live Events panel" : "Hide Live Events panel"}
+            title="Toggle Live Weather Radar"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="2" y1="12" x2="22" y2="12" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-          </button>
-
-          {/* Microphone/EarthCast Toggle Removed */}
-
-          {/* Megaphone/Speaker Mute/Unmute Toggle */}
-          <button
-            onClick={() => {
-              setIsMuted(!isMuted);
-              playHoverBlip();
-            }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
-              !isMuted
-                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
-                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
-            }`}
-            title={isMuted ? "Unmute Sound" : "Mute Sound"}
-          >
-            {isMuted ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-              </svg>
+            {globeView === 'weather' && (
+              <span className="w-2 h-2 bg-slate-950 rounded-full animate-ping absolute top-0.5 right-0.5" />
             )}
+            <span className="text-lg">🌦️</span>
           </button>
 
           {/* Mobile Play Earth Floating Trigger (Eye-Stopper Thumb Zone) */}
@@ -2188,36 +2198,16 @@ export default function HomePage({
               if (nextActive) handleSelectCountry(null);
               playHoverBlip();
             }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer relative ${
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer relative ${
               isPlayEarthActive
                 ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] scale-105 animate-pulse'
                 : 'bg-gradient-to-br from-emerald-500/35 via-teal-500/30 to-cyan-500/35 border-emerald-400/70 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105'
             }`}
             title="Play Earth Gaming Platform"
           >
-            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-0.5 right-0.5" />
-            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping absolute top-0.5 right-0.5" />
-            <span className="text-xl">🎮</span>
-          </button>
-
-          {/* Chatbot/Robot (AI Assistant) Toggle */}
-          <button
-            onClick={() => {
-              setIsAssistantOpen(!isAssistantOpen);
-              playHoverBlip();
-            }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
-              isAssistantOpen
-                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
-                : 'bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_15px_rgba(0,229,255,0.4)] hover:scale-105'
-            }`}
-            title={isAssistantOpen ? "Close AI Assistant" : "MooEarth AI Assistant"}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="10" rx="2" />
-              <circle cx="12" cy="5" r="2" />
-              <path d="M12 7v4M9 16h.01M15 16h.01M8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
+            <span className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-0.5 right-0.5" />
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping absolute top-0.5 right-0.5" />
+            <span className="text-lg">🎮</span>
           </button>
 
           {/* Mobile Categories Selector Toggle */}
@@ -2226,14 +2216,14 @@ export default function HomePage({
               setIsMobileCategoriesOpen(!isMobileCategoriesOpen);
               playHoverBlip();
             }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isMobileCategoriesOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
             }`}
             title="Event Categories"
           >
-            <span className="text-xl">🗂️</span>
+            <span className="text-lg">🗂️</span>
           </button>
 
           {/* Globe Views / Layers Selector Toggle */}
@@ -2242,30 +2232,81 @@ export default function HomePage({
               setIsMobileViewsOpen(!isMobileViewsOpen);
               playHoverBlip();
             }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isMobileViewsOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
             }`}
             title="Globe Layers"
           >
-            <span className="text-xl">🗺️</span>
+            <span className="text-lg">🗺️</span>
           </button>
 
-          {/* Quick Weather Toggle (Mobile) */}
+          {/* Chatbot/Robot (AI Assistant) Toggle */}
           <button
             onClick={() => {
-              setGlobeView(v => v === 'weather' ? 'standard' : 'weather');
+              setIsAssistantOpen(!isAssistantOpen);
               playHoverBlip();
             }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
-              globeView === 'weather'
-                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.7)] scale-105'
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+              isAssistantOpen
+                ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
+                : 'bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_15px_rgba(0,229,255,0.4)] hover:scale-105'
+            }`}
+            title={isAssistantOpen ? "Close AI Assistant" : "MooEarth AI Assistant"}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="10" rx="2" />
+              <circle cx="12" cy="5" r="2" />
+              <path d="M12 7v4M9 16h.01M15 16h.01M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </button>
+
+          {/* Globe/Fullscreen Toggle */}
+          <button
+            onClick={() => {
+              setIsFullScreenGlobe(!isFullScreenGlobe);
+              playHoverBlip();
+            }}
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              !isFullScreenGlobe
+                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
             }`}
-            title="Toggle Weather Radar"
+            title={isFullScreenGlobe ? "Show Live Events panel" : "Hide Live Events panel"}
           >
-            <span className="text-xl">🌦️</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+          </button>
+
+          {/* Megaphone/Speaker Mute/Unmute Toggle */}
+          <button
+            onClick={() => {
+              setIsMuted(!isMuted);
+              playHoverBlip();
+            }}
+            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              !isMuted
+                ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={isMuted ? "Unmute Sound" : "Mute Sound"}
+          >
+            {isMuted ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+            )}
           </button>
         </div>
       )}
