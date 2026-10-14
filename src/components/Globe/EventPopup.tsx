@@ -11,6 +11,8 @@ import { CATEGORY_MAP } from '@/lib/constants';
 import FootballMatchCenter from './FootballMatchCenter';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName } from '@/lib/i18n';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -59,6 +61,7 @@ function getFlagChar(country: string): string {
 }
 
 export default function EventPopup({ event, onClose }: EventPopupProps) {
+  const { locale, dict, t } = useLanguage();
   const placeId = useMemo(() => {
     if (!event) return null;
     const cleanId = event.id || event.title?.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 50);
@@ -170,13 +173,13 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
             {/* Country & Category */}
             <div className="flex flex-col gap-1 mb-4 shrink-0 pr-8">
               <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                <span>Country:</span>
-                <span className="text-white font-extrabold mr-1.5">{event.country}</span>
+                <span>{dict.eventPopup?.discoveredNation || 'Country'}:</span>
+                <span className="text-white font-extrabold mr-1.5">{getLocalizedCountryName(event.country, locale)}</span>
                 <span className="text-white/20">|</span>
                 <span className="ml-1.5">Category:</span>
                 <span className="text-white font-extrabold flex items-center gap-1">
-                  <span>{CATEGORY_MAP[event.category].emoji}</span>
-                  <span>{CATEGORY_MAP[event.category].label}</span>
+                  <span>{CATEGORY_MAP[event.category]?.emoji || '📰'}</span>
+                  <span>{CATEGORY_MAP[event.category]?.label || event.category}</span>
                 </span>
               </div>
               <span className="text-[10px] text-white/40 font-medium" suppressHydrationWarning>{formatRelativeTime(event.publishedAt)}</span>
@@ -203,7 +206,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                   {/* Location */}
                   <div className="flex items-center gap-2 text-sm text-white/50">
                     <span className="text-base">{getFlag(event.country)}</span>
-                    <span className="font-medium text-white/70">{event.city}, {event.country}</span>
+                    <span className="font-medium text-white/70">{event.city}, {getLocalizedCountryName(event.country, locale)}</span>
                   </div>
 
                   {/* AI Summary */}
@@ -213,7 +216,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-blue-600" />
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
-                        AI Summary
+                        {t('articleViewer.aiSummaryBadge', 'AI Summary')}
                       </span>
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                     </div>
@@ -239,7 +242,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                              hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(0,229,255,0.2)]
                              transition-all duration-300 group"
                 >
-                  <span>Read Source</span>
+                  <span>{dict.eventPopup?.readCoverage || 'Read Source'}</span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -253,8 +256,8 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
                       : 'bg-white/5 hover:bg-white/10 border-white/5 text-white/60 hover:text-white'
                   }`}
-                  title={isSaved ? 'Saved in bookmarks (Click to remove)' : 'Save story to bookmarks'}
-                  aria-label={isSaved ? 'Remove bookmark' : 'Bookmark story'}
+                  title={isSaved ? (dict.eventPopup?.saved || 'Saved') : (dict.eventPopup?.saveStory || 'Save story to bookmarks')}
+                  aria-label={isSaved ? 'Remove bookmark' : (dict.eventPopup?.saveStory || 'Bookmark story')}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={isSaved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
                     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
@@ -265,8 +268,8 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                 <button
                   onClick={handleShare}
                   className="w-12 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer"
-                  title="Share story link"
-                  aria-label="Share story"
+                  title={dict.eventPopup?.share || 'Share story'}
+                  aria-label={dict.eventPopup?.share || 'Share story'}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="18" cy="5" r="3" />

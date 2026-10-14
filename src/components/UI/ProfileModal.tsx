@@ -32,6 +32,8 @@ import {
   updateUserProfile,
   deleteUserData,
 } from '@/services/personalizationService';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LOCALES_META, SupportedLocale } from '@/lib/i18n';
 
 export interface ProfileModalProps {
   isOpen: boolean;
@@ -72,6 +74,7 @@ export default function ProfileModal({
   onOpenAuth,
 }: ProfileModalProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const { locale, setLocale, dict, allLocales, t } = useLanguage();
   
   // Real Game State
   const [gameState, setGameState] = useState<PlayerGameState | null>(null);
@@ -441,11 +444,11 @@ export default function ProfileModal({
         {/* Tab Selector */}
         <div className="flex border-b border-white/[0.08] bg-black/20 p-1.5 gap-1 shrink-0 overflow-x-auto scrollbar-none">
           {[
-            { id: 'overview', label: 'Overview', icon: '🏆' },
-            { id: 'saved', label: `Saved (${savedPlaces.length})`, icon: '★' },
-            { id: 'preferences', label: 'Interests', icon: '🎯' },
-            { id: 'history', label: `History (${discoveryHistory.length})`, icon: '⏱️' },
-            { id: 'account', label: 'Privacy', icon: '🛡️' },
+            { id: 'overview', label: dict.profile?.tabs?.overview || 'Overview', icon: '🏆' },
+            { id: 'saved', label: `${dict.profile?.tabs?.saved || 'Saved'} (${savedPlaces.length})`, icon: '★' },
+            { id: 'preferences', label: dict.profile?.tabs?.preferences || 'Interests', icon: '🎯' },
+            { id: 'history', label: `${dict.profile?.tabs?.history || 'History'} (${discoveryHistory.length})`, icon: '⏱️' },
+            { id: 'account', label: dict.profile?.tabs?.account || 'Privacy', icon: '🛡️' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -472,7 +475,7 @@ export default function ProfileModal({
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
                   <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
-                    GLOBAL RANK
+                    {dict.profile?.stats?.rank || 'GLOBAL RANK'}
                   </span>
                   <span className="text-xl font-black text-white">
                     {loadingRank ? '...' : rank ? `#${rank}` : currentUser ? 'Unranked' : 'Guest'}
@@ -480,7 +483,7 @@ export default function ProfileModal({
                 </div>
                 <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
                   <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
-                    EXPLORER LEVEL
+                    {dict.profile?.stats?.level || 'EXPLORER LEVEL'}
                   </span>
                   <span className="text-xl font-black text-cyan-400">
                     Lv.{gameState?.level || 1}
@@ -488,7 +491,7 @@ export default function ProfileModal({
                 </div>
                 <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
                   <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
-                    EXPERIENCE XP
+                    {dict.profile?.stats?.xp || 'EXPERIENCE XP'}
                   </span>
                   <span className="text-lg font-black text-white">
                     {(gameState?.xp || 0).toLocaleString()} XP
@@ -496,7 +499,7 @@ export default function ProfileModal({
                 </div>
                 <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
                   <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
-                    COUNTRIES EXPLORED
+                    {dict.profile?.stats?.explored || 'COUNTRIES EXPLORED'}
                   </span>
                   <span className="text-lg font-black text-white">
                     {gameState?.countriesExplored?.length || 0}
@@ -684,12 +687,59 @@ export default function ProfileModal({
           {/* ── TAB 3: PERSONALIZED INTERESTS & PREFERENCES ────────────── */}
           {activeTab === 'preferences' && (
             <div className="space-y-4 font-sans text-xs">
+              {/* Language Preference Card */}
+              <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-cyan-500/25 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white text-sm flex items-center gap-2">
+                      <span>🌐</span>
+                      <span>{dict.profile?.preferences?.languageTitle || 'Preferred Language'}</span>
+                    </p>
+                    <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">
+                      {dict.profile?.preferences?.languageSubtitle || 'Select your preferred language for discovery, AI summaries, and geography games.'}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/35 shrink-0">
+                    {LOCALES_META[locale]?.nativeName || locale.toUpperCase()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {allLocales.map((locCode) => {
+                    const meta = LOCALES_META[locCode];
+                    const isSelected = locale === locCode;
+                    return (
+                      <button
+                        key={locCode}
+                        onClick={() => {
+                          setLocale(locCode);
+                          const updated = saveGuestPreferences({ preferredLanguage: locCode });
+                          setPreferences(updated);
+                          if (currentUser?.uid) {
+                            updateUserProfile(currentUser.uid, { preferences: updated });
+                          }
+                          triggerToast(`🌐 ${meta.name} (${meta.nativeName})`);
+                        }}
+                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-md font-bold'
+                            : 'bg-white/[0.02] border-white/5 text-white/60 hover:text-white hover:border-white/20'
+                        }`}
+                      >
+                        <span className="text-base">{meta.flag}</span>
+                        <span className="text-[11px] font-bold leading-tight">{meta.nativeName}</span>
+                        <span className="text-[9px] text-white/40">{meta.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Feed Personalization Mode Toggle */}
               <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/40 to-blue-950/20 border border-cyan-500/30 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-bold text-white text-sm">Personalized Feed Ranking</p>
+                  <p className="font-bold text-white text-sm">{dict.profile?.preferences?.feedToggleTitle || 'Personalized Feed Ranking'}</p>
                   <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">
-                    Prioritize news headlines matching your favorite topics and countries in the live feed.
+                    {dict.profile?.preferences?.feedToggleSubtitle || 'Prioritize news headlines matching your favorite topics and countries in the live feed.'}
                   </p>
                 </div>
                 <button

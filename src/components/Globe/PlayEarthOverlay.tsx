@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EarthQuestion, PlayerGameState, QuizCategory, PlayEarthPhase, GameBadge, PlayEarthMode } from '@/types';
 import { 
@@ -24,6 +24,7 @@ import { getCoordinatesForCountry } from '@/lib/constants';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { getLocalizedQuestion } from '@/lib/i18n';
 import { trackEvent, trackShareClick, trackShareComplete } from '@/services/analytics';
 import { shareContent, getChallengeShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
@@ -492,6 +493,9 @@ export default function PlayEarthOverlay({
   const [gameState, setGameState] = useState<PlayerGameState>(() => loadGameState(username));
   const [selectedCategory, setSelectedCategory] = useState<QuizCategory>('geography');
   const [currentQuestion, setCurrentQuestion] = useState<EarthQuestion | null>(null);
+  const displayQuestion = useMemo(() => {
+    return currentQuestion ? getLocalizedQuestion(currentQuestion, locale) : null;
+  }, [currentQuestion, locale]);
   const [timer, setTimer] = useState(TIMER_SECONDS);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -3967,11 +3971,11 @@ export default function PlayEarthOverlay({
                   : 'border-white/5'
               }`}>
                 <h4 className="text-xs font-bold text-white leading-relaxed mb-3 whitespace-pre-wrap">
-                  {renderTextWithFlags(currentQuestion.question)}
+                  {renderTextWithFlags((displayQuestion || currentQuestion).question)}
                 </h4>
 
                 <div className="space-y-1.5">
-                  {currentQuestion.choices.map((choice, i) => {
+                  {(displayQuestion || currentQuestion).choices.map((choice, i) => {
                     const isSelected = selectedAnswer === i;
                     const isCorrectChoice = i === currentQuestion.correctIndex;
                     const showResult = selectedAnswer !== null;
@@ -4035,13 +4039,13 @@ export default function PlayEarthOverlay({
                 {!isCorrect && (
                   <div className="mb-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15">
                     <span className="text-[8px] text-emerald-400/60 uppercase font-black">Correct Choice</span>
-                    <p className="text-xs text-emerald-300 font-bold leading-tight">{renderTextWithFlags(currentQuestion.choices[currentQuestion.correctIndex])}</p>
+                    <p className="text-xs text-emerald-300 font-bold leading-tight">{renderTextWithFlags((displayQuestion || currentQuestion).choices[currentQuestion.correctIndex])}</p>
                   </div>
                 )}
 
-                {currentQuestion.funFact && (
+                {(displayQuestion || currentQuestion).funFact && (
                   <p className="text-[10px] text-white/60 bg-white/5 border border-white/5 rounded-xl p-3 leading-relaxed mb-4">
-                    💡 {renderTextWithFlags(currentQuestion.funFact)}
+                    💡 {renderTextWithFlags((displayQuestion || currentQuestion).funFact!)}
                   </p>
                 )}
 
@@ -4937,7 +4941,7 @@ export default function PlayEarthOverlay({
                   {activeMode === 'survival' ? '🔥' : activeMode === 'clock' ? '⏱️' : activeMode === 'flag' ? '🚩' : activeMode === 'capital' ? '🏙️' : '🌍'}
                 </span>
                 <span className="text-[11px] sm:text-xs font-bold text-white truncate max-w-[190px] sm:max-w-xs">
-                  {renderTextWithFlags(currentQuestion.question)}
+                  {renderTextWithFlags((displayQuestion || currentQuestion).question)}
                 </span>
                 <div className={`px-2 py-0.5 rounded-full border font-mono font-black text-xs shrink-0 ${
                   timerCritical ? 'border-red-500/60 bg-red-500/15 text-red-300 animate-pulse' : 'border-white/10 bg-white/5 text-white'
@@ -5024,12 +5028,12 @@ export default function PlayEarthOverlay({
               <div className="flex-1 overflow-y-auto scrollbar-thin p-3 sm:p-5 pt-2 sm:pt-3 space-y-2 min-h-0">
                 {/* Question Text */}
                 <h3 className="text-xs sm:text-sm font-bold text-white leading-snug whitespace-pre-wrap">
-                  {renderTextWithFlags(currentQuestion.question)}
+                  {renderTextWithFlags((displayQuestion || currentQuestion).question)}
                 </h3>
 
                 {/* Answer Choices */}
                 <div className="space-y-1.5 sm:space-y-2">
-                {currentQuestion.choices.map((choice, i) => {
+                {(displayQuestion || currentQuestion).choices.map((choice, i) => {
                   const isSelected = selectedAnswer === i;
                   const isCorrectChoice = i === currentQuestion.correctIndex;
                   const showResult = selectedAnswer !== null;
@@ -5177,17 +5181,17 @@ export default function PlayEarthOverlay({
                     Correct Answer
                   </p>
                   <p className="text-xs sm:text-sm text-emerald-300 font-bold">
-                    {renderTextWithFlags(currentQuestion.choices[currentQuestion.correctIndex])}
+                    {renderTextWithFlags((displayQuestion || currentQuestion).choices[currentQuestion.correctIndex])}
                   </p>
                 </div>
               )}
 
-              {currentQuestion.funFact && (
+              {(displayQuestion || currentQuestion).funFact && (
                 <div className="mb-4 px-3.5 py-2.5 rounded-2xl bg-cyan-500/5 border border-cyan-500/10">
                   <p className="text-[9px] text-cyan-400/60 uppercase tracking-widest font-bold mb-0.5">
                     💡 Fun Fact
                   </p>
-                  <p className="text-[11px] text-white/70 leading-relaxed">{renderTextWithFlags(currentQuestion.funFact)}</p>
+                  <p className="text-[11px] text-white/70 leading-relaxed">{renderTextWithFlags((displayQuestion || currentQuestion).funFact!)}</p>
                 </div>
               )}
 

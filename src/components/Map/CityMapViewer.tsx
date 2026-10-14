@@ -31,6 +31,8 @@ import {
   getDefaultMapStyleKey,
   getFailoverStyle,
 } from '@/services/map/mapStyles';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName } from '@/lib/i18n';
 
 export type { MapStyleKey, MapStyleOption };
 export { MAP_STYLES, DEFAULT_CITY_ZOOM };
@@ -78,6 +80,7 @@ export default function CityMapViewer({
   onOpenWeather,
   className = '',
 }: CityMapViewerProps) {
+  const { locale, dict } = useLanguage();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -348,7 +351,7 @@ export default function CityMapViewer({
             title="Return to interactive 3D Earth globe"
           >
             <span className="text-base group-hover:rotate-12 transition-transform">🌍</span>
-            <span>Return to Earth</span>
+            <span>{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
             <span className="text-[10px] text-cyan-400/60 font-normal">⟵ Orbit</span>
           </button>
 
@@ -360,7 +363,7 @@ export default function CityMapViewer({
                 {cityName}
               </div>
               <div className="text-[10px] text-white/50 truncate">
-                {countryName || 'Metropolis'} · {latitude.toFixed(2)}°, {longitude.toFixed(2)}°
+                {(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · {latitude.toFixed(2)}°, {longitude.toFixed(2)}°
               </div>
             </div>
             <button

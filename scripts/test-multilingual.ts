@@ -45,10 +45,10 @@ function t(path: string, locale: SupportedLocale, fallback?: string): string {
 }
 
 // 1. Verify Supported Locales Count & Codes
-const expectedLocales: SupportedLocale[] = ['en', 'es', 'fr', 'pt', 'de', 'ja', 'hi', 'ar'];
+const expectedLocales: SupportedLocale[] = ['en', 'es', 'fr', 'pt', 'de', 'ja', 'hi', 'ar', 'or'];
 assert(
-  SUPPORTED_LOCALES.length === 8 && expectedLocales.every(loc => SUPPORTED_LOCALES.includes(loc)),
-  `All 8 expected locales are supported (${SUPPORTED_LOCALES.join(', ')})`
+  SUPPORTED_LOCALES.length === 9 && expectedLocales.every(loc => SUPPORTED_LOCALES.includes(loc)),
+  `All 9 expected locales are supported (${SUPPORTED_LOCALES.join(', ')})`
 );
 
 // 2. Verify Every Supported Locale has a Dictionary with Core Sections
@@ -128,7 +128,17 @@ assert(
   'Arabic sidebar.news is translated to "الأخبار"'
 );
 
-// 10. Verify Country Name Localization
+// 10. Verify Translations for Odia
+assert(
+  t('navbar.playEarth', 'or') === 'ପ୍ଲେ ଆର୍ଥ',
+  'Odia navbar.playEarth is translated to "ପ୍ଲେ ଆର୍ଥ"'
+);
+assert(
+  t('sidebar.weather', 'or') === 'ପାଣିପାଗ',
+  'Odia sidebar.weather is translated to "ପାଣିପାଗ"'
+);
+
+// 11. Verify Country Name Localization
 const testCountries = [
   { key: 'spain', es: 'España', ar: 'إسبانيا', ja: 'スペイン', hi: 'स्पेन' },
   { key: 'brazil', es: 'Brasil', ar: 'البرازيل', ja: 'ブラジル', hi: 'ब्राज़ील' },

@@ -4,7 +4,7 @@
 
 import { SupportedLocale } from './types';
 
-export const LOCALIZED_COUNTRIES: Record<string, Record<SupportedLocale, string>> = {
+export const LOCALIZED_COUNTRIES: Record<string, Partial<Record<SupportedLocale, string>>> = {
   spain: {
     en: 'Spain',
     es: 'España',
@@ -387,7 +387,7 @@ export const LOCALIZED_COUNTRIES: Record<string, Record<SupportedLocale, string>
   },
 };
 
-export const LOCALIZED_CONTINENTS: Record<string, Record<SupportedLocale, string>> = {
+export const LOCALIZED_CONTINENTS: Record<string, Partial<Record<SupportedLocale, string>>> = {
   asia: { en: 'Asia', es: 'Asia', fr: 'Asie', pt: 'Ásia', de: 'Asien', ja: 'アジア', hi: 'एशिया', ar: 'آسيا' },
   europe: { en: 'Europe', es: 'Europa', fr: 'Europe', pt: 'Europa', de: 'Europa', ja: 'ヨーロッパ', hi: 'यूरोप', ar: 'أوروبا' },
   africa: { en: 'Africa', es: 'África', fr: 'Afrique', pt: 'África', de: 'Afrika', ja: 'アフリカ', hi: 'अफ़्रीका', ar: 'إفريقيا' },

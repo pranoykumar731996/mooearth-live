@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { EarthQuestion } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedQuestion } from '@/lib/i18n';
 
 interface CountryQuizRunnerProps {
   questions: EarthQuestion[];
@@ -15,19 +17,24 @@ export default function CountryQuizRunner({
   countryName,
   countrySlug,
 }: CountryQuizRunnerProps) {
-  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const { locale } = useLanguage();
+  const [userAnswers, setUserAnswers] = useState<Record<string, number>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
-  const handleSelectOption = (questionId: string, option: string) => {
+  const localizedQuestions = useMemo(() => {
+    return questions.map(q => getLocalizedQuestion(q, locale));
+  }, [questions, locale]);
+
+  const handleSelectOption = (questionId: string, optionIdx: number) => {
     if (revealed[questionId]) return; // locked once answered
 
-    setUserAnswers(prev => ({ ...prev, [questionId]: option }));
+    setUserAnswers(prev => ({ ...prev, [questionId]: optionIdx }));
     setRevealed(prev => ({ ...prev, [questionId]: true }));
   };
 
   const answeredCount = Object.keys(revealed).length;
-  const correctCount = questions.filter(
-    q => userAnswers[q.id] === q.choices[q.correctIndex]
+  const correctCount = localizedQuestions.filter(
+    q => userAnswers[q.id] === q.correctIndex
   ).length;
 
   return (
@@ -72,11 +79,11 @@ export default function CountryQuizRunner({
 
       {/* Questions List */}
       <div className="space-y-6">
-        {questions.map((q, idx) => {
+        {localizedQuestions.map((q, idx) => {
           const isAnswered = revealed[q.id];
-          const selectedOption = userAnswers[q.id];
+          const selectedOptionIdx = userAnswers[q.id];
+          const isCorrect = selectedOptionIdx === q.correctIndex;
           const correctAnswer = q.choices[q.correctIndex];
-          const isCorrect = selectedOption === correctAnswer;
 
           return (
             <div
@@ -126,8 +133,8 @@ export default function CountryQuizRunner({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 {q.choices.map((opt: string, optIdx: number) => {
                   const letter = String.fromCharCode(65 + optIdx);
-                  const isThisOptionSelected = selectedOption === opt;
-                  const isThisOptionCorrect = opt === correctAnswer;
+                  const isThisOptionSelected = selectedOptionIdx === optIdx;
+                  const isThisOptionCorrect = optIdx === q.correctIndex;
 
                   let btnStyle = 'border-white/10 bg-white/[0.02] hover:bg-white/[0.06] text-white/90 hover:border-cyan-500/40';
 
@@ -146,7 +153,7 @@ export default function CountryQuizRunner({
                       key={opt}
                       type="button"
                       disabled={isAnswered}
-                      onClick={() => handleSelectOption(q.id, opt)}
+                      onClick={() => handleSelectOption(q.id, optIdx)}
                       className={`p-4 rounded-xl border text-left flex items-start gap-3 transition-all ${btnStyle}`}
                     >
                       <span className="w-5 h-5 rounded-md bg-black/40 border border-white/10 text-[10px] font-mono flex items-center justify-center shrink-0 mt-0.5 text-white/60">

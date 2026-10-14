@@ -24,6 +24,7 @@ import {
   getTranslation,
   isSupportedLocale,
 } from '@/lib/i18n';
+import { getGuestPreferences, saveGuestPreferences } from '@/services/personalizationService';
 
 export interface LanguageContextType {
   locale: SupportedLocale;
@@ -86,9 +87,15 @@ export function LanguageProvider({ children, initialLocale }: LanguageProviderPr
       return fromPath;
     }
     if (typeof window !== 'undefined') {
+      try {
+        const guestPrefs = getGuestPreferences();
+        if (guestPrefs.preferredLanguage && isSupportedLocale(guestPrefs.preferredLanguage)) {
+          return guestPrefs.preferredLanguage as SupportedLocale;
+        }
+      } catch {}
       const saved = localStorage.getItem('mooearth_locale');
       if (saved && isSupportedLocale(saved)) {
-        return saved;
+        return saved as SupportedLocale;
       }
     }
     return DEFAULT_LOCALE;
@@ -101,9 +108,29 @@ export function LanguageProvider({ children, initialLocale }: LanguageProviderPr
       setLocaleState(fromPath);
       if (typeof window !== 'undefined') {
         localStorage.setItem('mooearth_locale', fromPath);
+        saveGuestPreferences({ preferredLanguage: fromPath });
       }
     }
   }, [pathname, detectLocaleFromPath, locale]);
+
+  // Listen to profile / personalization changes from other tabs or components
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handlePersonalizationUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.key === 'preferences') {
+        const lang = customEvent.detail.payload?.preferredLanguage;
+        if (lang && isSupportedLocale(lang) && lang !== locale) {
+          setLocaleState(lang);
+          localStorage.setItem('mooearth_locale', lang);
+        }
+      }
+    };
+    window.addEventListener('mooearth_personalization_update', handlePersonalizationUpdate);
+    return () => {
+      window.removeEventListener('mooearth_personalization_update', handlePersonalizationUpdate);
+    };
+  }, [locale]);
 
   // Sync HTML document attributes (lang & dir for RTL support)
   useEffect(() => {
@@ -129,6 +156,7 @@ export function LanguageProvider({ children, initialLocale }: LanguageProviderPr
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('mooearth_locale', newLocale);
+        saveGuestPreferences({ preferredLanguage: newLocale });
         const isRtl = newLocale === 'ar';
         document.documentElement.lang = newLocale;
         document.documentElement.dir = isRtl ? 'rtl' : 'ltr';

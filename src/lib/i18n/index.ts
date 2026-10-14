@@ -10,6 +10,7 @@ export * from './types';
 export * from './dictionaries';
 export * from './countryNames';
 export * from './uiTranslations';
+export * from './gameTranslations';
 import { UI_EXTENSIONS } from './uiTranslations';
 
 /**
@@ -32,6 +33,10 @@ export function getTranslation(locale: string = DEFAULT_LOCALE): TranslationDict
     timeline: extensions.timeline,
     bottomBar: extensions.bottomBar,
     searchBar: extensions.searchBar,
+    profile: extensions.profile,
+    eventPopup: extensions.eventPopup,
+    cityMap: extensions.cityMap,
+    articleViewer: extensions.articleViewer,
   };
 }
 

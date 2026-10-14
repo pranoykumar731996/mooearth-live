@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { EarthQuestion } from '@/types';
 import { getChallengeShareUrl, getShareText, getWhatsAppShareUrl, getXShareUrl } from '@/utils/share';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedQuestion } from '@/lib/i18n';
 
 // Simple Web Audio synthesized sounds for browser gameplay (zero audio assets needed)
 function playTone(freq: number, type: OscillatorType, duration: number, delay: number = 0) {
@@ -64,6 +66,7 @@ export default function PlayableGameLandingRunner({
   countryName,
   badge = 'Interactive Play Earth Trial',
 }: PlayableGameLandingRunnerProps) {
+  const { locale } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [questions, setQuestions] = useState<EarthQuestion[]>(initialQuestions);
   const [gameState, setGameState] = useState<'intro' | 'playing' | 'completed'>('intro');
@@ -213,6 +216,9 @@ export default function PlayableGameLandingRunner({
     copyScorecard();
   }
 
+  const rawQ = questions[currentIndex];
+  const currentQ = useMemo(() => rawQ ? getLocalizedQuestion(rawQ, locale) : null, [rawQ, locale]);
+
   if (!mounted) {
     return (
       <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] text-center min-h-[320px] flex items-center justify-center">
@@ -220,8 +226,6 @@ export default function PlayableGameLandingRunner({
       </div>
     );
   }
-
-  const currentQ = questions[currentIndex];
 
   return (
     <div className="w-full relative" id="playable-game-viewport">

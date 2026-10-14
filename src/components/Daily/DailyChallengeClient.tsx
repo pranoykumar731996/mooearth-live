@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { EarthQuestion } from '@/types';
 import { getDailyEarthQuestion } from '@/data/questions';
 import { COUNTRY_METADATA } from '@/data/questions/countryMetadata';
-import { SupportedLocale, getTranslation } from '@/lib/i18n';
+import { SupportedLocale, getTranslation, getLocalizedQuestion } from '@/lib/i18n';
 import StreakNotificationPrompt from '@/components/PWA/StreakNotificationPrompt';
 import LanguageSelector from '@/components/UI/LanguageSelector';
 
@@ -305,10 +305,11 @@ export default function DailyChallengeClient({ locale = 'en' }: DailyChallengeCl
     setTimeout(() => setToastMessage(null), 3500);
   }
 
-  if (!mounted) return null;
+  const rawQ = questions[currentIndex];
+  const currentQ = useMemo(() => rawQ ? getLocalizedQuestion(rawQ, locale) : null, [rawQ, locale]);
+  const currentMeta = Object.values(COUNTRY_METADATA).find(m => m.name === rawQ?.country);
 
-  const currentQ = questions[currentIndex];
-  const currentMeta = Object.values(COUNTRY_METADATA).find(m => m.name === currentQ?.country);
+  if (!mounted) return null;
 
   return (
     <div style={{

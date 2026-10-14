@@ -2,7 +2,7 @@
 // MooEarth Live — Internationalization (i18n) Types
 // ============================================================
 
-export type SupportedLocale = 'en' | 'es' | 'fr' | 'pt' | 'de' | 'ja' | 'hi' | 'ar';
+export type SupportedLocale = 'en' | 'es' | 'fr' | 'pt' | 'de' | 'ja' | 'hi' | 'ar' | 'or';
 
 export interface LocaleMeta {
   code: SupportedLocale;
@@ -10,6 +10,110 @@ export interface LocaleMeta {
   nativeName: string;
   flag: string;
   dir: 'ltr' | 'rtl';
+}
+
+export interface ProfileTranslation {
+  title: string;
+  guestUser: string;
+  tabs: {
+    overview: string;
+    saved: string;
+    preferences: string;
+    history: string;
+    account: string;
+  };
+  stats: {
+    xp: string;
+    level: string;
+    streak: string;
+    explored: string;
+    rank: string;
+  };
+  saved: {
+    title: string;
+    filterAll: string;
+    filterPlaces: string;
+    filterStories: string;
+    emptyTitle: string;
+    emptySubtitle: string;
+    readStory: string;
+    flyTo: string;
+    share: string;
+    remove: string;
+  };
+  preferences: {
+    title: string;
+    languageTitle: string;
+    languageSubtitle: string;
+    topicsTitle: string;
+    topicsSubtitle: string;
+    feedToggleTitle: string;
+    feedToggleSubtitle: string;
+    countriesTitle: string;
+    countriesSubtitle: string;
+  };
+  history: {
+    title: string;
+    clear: string;
+    empty: string;
+  };
+  account: {
+    title: string;
+    signInBtn: string;
+    signOutBtn: string;
+    syncSubtitle: string;
+  };
+}
+
+export interface EventPopupTranslation {
+  verifiedStory: string;
+  published: string;
+  saveStory: string;
+  saved: string;
+  share: string;
+  readCoverage: string;
+  close: string;
+  discoveredNation: string;
+}
+
+export interface CityMapTranslation {
+  returnToEarth: string;
+  weatherTitle: string;
+  feelsLike: string;
+  wind: string;
+  humidity: string;
+  rain: string;
+  satellite: string;
+  streets: string;
+  dark: string;
+}
+
+export interface ArticleViewerTranslation {
+  bookmark: string;
+  saved: string;
+  readerMode: string;
+  standardMode: string;
+  close: string;
+  by: string;
+  published: string;
+  aiKeyTakeaways: string;
+  mainEvent: string;
+  importantDevelopment: string;
+  whyItMatters: string;
+  countryImpact: string;
+  discoveredNation: string;
+  capital: string;
+  population: string;
+  activityScore: string;
+  relatedStories: string;
+  readSource: string;
+  translateStory: string;
+  translating: string;
+  translatedBadge: string;
+  originalHeadline: string;
+  aiSummaryBadge: string;
+  nextStory: string;
+  prevStory: string;
 }
 
 export interface WorldMapTranslation {
@@ -372,4 +476,8 @@ export interface TranslationDictionary {
   bottomBar?: BottomBarTranslation;
   searchBar?: SearchBarTranslation;
   continents?: ContinentsTranslation;
+  profile?: ProfileTranslation;
+  eventPopup?: EventPopupTranslation;
+  cityMap?: CityMapTranslation;
+  articleViewer?: ArticleViewerTranslation;
 }

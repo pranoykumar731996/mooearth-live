@@ -207,8 +207,9 @@ export default function ArticleViewer({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
   const { t } = useTranslation();
-  const { locale } = useLanguage();
+  const { locale, dict } = useLanguage();
   const [targetLanguage, setTargetLanguage] = useState<string>(locale || 'en');
+  const [showOriginalHeadline, setShowOriginalHeadline] = useState<boolean>(false);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translatedSummary, setTranslatedSummary] = useState<string | null>(null);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
@@ -436,7 +437,8 @@ export default function ArticleViewer({
   const [prevActiveEvent, setPrevActiveEvent] = useState<WorldEvent | null>(null);
   if (activeEvent !== prevActiveEvent) {
     setPrevActiveEvent(activeEvent);
-    setTargetLanguage('en');
+    setTargetLanguage(locale || 'en');
+    setShowOriginalHeadline(false);
     setTranslatedTitle(null);
     setTranslatedSummary(null);
     setTranslatedContent(null);
@@ -616,25 +618,23 @@ export default function ArticleViewer({
     };
   }, [activeEvent, loading]);
 
-  if (!event || !activeEvent) return null;
-
   // Configuration
-  const categoryConfig = CATEGORY_MAP[activeEvent.category as EventCategory] || CATEGORY_MAP.breaking;
-  const { title: cleanTitle, publisher } = parsePublisher(activeEvent.title, activeEvent.source);
+  const categoryConfig = activeEvent ? (CATEGORY_MAP[activeEvent.category as EventCategory] || CATEGORY_MAP.breaking) : CATEGORY_MAP.breaking;
+  const { title: cleanTitle, publisher } = activeEvent ? parsePublisher(activeEvent.title, activeEvent.source) : { title: '', publisher: '' };
 
   // Article navigation indexes
-  const currentIndex = allEvents.findIndex((e) => e.id === activeEvent.id);
+  const currentIndex = activeEvent ? allEvents.findIndex((e) => e.id === activeEvent.id) : -1;
   const prevStory = currentIndex > 0 ? allEvents[currentIndex - 1] : null;
   const nextStory = currentIndex !== -1 && currentIndex < allEvents.length - 1 ? allEvents[currentIndex + 1] : null;
 
   // Country details
-  const countryDetails = getCountryInfo(activeEvent.country, allEvents);
+  const countryDetails = getCountryInfo(activeEvent?.country || '', allEvents);
 
   // Keyword score computation for highly relevant related stories
-  const activeKeywords = activeEvent.title.toLowerCase()
+  const activeKeywords = activeEvent ? activeEvent.title.toLowerCase()
     .replace(/[^\w\s]/g, '')
     .split(/\s+/)
-    .filter(word => word.length > 4 && !['about', 'after', 'again', 'could', 'would', 'their', 'there', 'world'].includes(word));
+    .filter(word => word.length > 4 && !['about', 'after', 'again', 'could', 'would', 'their', 'there', 'world'].includes(word)) : [];
 
   const getKeywordScore = (title: string) => {
     const t = title.toLowerCase();
@@ -646,7 +646,7 @@ export default function ArticleViewer({
   };
 
   // Find related stories from same country
-  const relatedStories = allEvents
+  const relatedStories = activeEvent ? allEvents
     .filter((e) => e.country === activeEvent.country && e.id !== activeEvent.id && e.category !== 'football')
     .map(e => ({
       event: e,
@@ -654,10 +654,10 @@ export default function ArticleViewer({
     }))
     .sort((a, b) => b.score - a.score || new Date(b.event.publishedAt).getTime() - new Date(a.event.publishedAt).getTime())
     .map(item => item.event)
-    .slice(0, 3);
+    .slice(0, 3) : [];
 
-  const displayImage = articleDetails?.image || CATEGORY_IMAGES[activeEvent.category as EventCategory] || CATEGORY_IMAGES.breaking;
-  const articleBody = articleDetails?.fullContent || activeEvent.summary || 'No further content is available.';
+  const displayImage = articleDetails?.image || (activeEvent ? CATEGORY_IMAGES[activeEvent.category as EventCategory] : null) || CATEGORY_IMAGES.breaking;
+  const articleBody = articleDetails?.fullContent || activeEvent?.summary || 'No further content is available.';
 
   const handleTranslate = async (langCode: string) => {
     setIsLangDropdownOpen(false);
@@ -743,6 +743,13 @@ export default function ArticleViewer({
     }
   };
 
+  // Auto-translate if global app locale is non-English
+  useEffect(() => {
+    if (FEATURES.enableTranslation && locale && locale !== 'en' && activeEvent && !loading) {
+      handleTranslate(locale);
+    }
+  }, [locale, activeEvent?.id, loading]);
+
   const handleToggleArticleBookmark = () => {
     if (!activeEvent || !articleBookmarkId) return;
 
@@ -810,6 +817,8 @@ export default function ArticleViewer({
       setIsCountrySaved(true);
     }
   };
+
+  if (!event || !activeEvent) return null;
 
   const renderDebugPanel = () => {
     if (!articleDebugInfo) return null;
@@ -981,10 +990,28 @@ export default function ArticleViewer({
               </div>
             )}
 
-            {/* Title */}
-            <h1 className="text-lg font-black text-white leading-tight tracking-tight">
-              {translatedTitle || cleanTitle}
-            </h1>
+            {/* Title & Translated indicator */}
+            <div className="space-y-1.5">
+              {translatedTitle && (
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    🌐 {dict.articleViewer?.translatedBadge || 'TRANSLATED'} ({targetLanguage.toUpperCase()})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowOriginalHeadline(!showOriginalHeadline)}
+                    className="text-[10px] text-white/50 hover:text-white underline cursor-pointer"
+                  >
+                    {showOriginalHeadline
+                      ? (dict.articleViewer?.translatedBadge ? `Show ${targetLanguage.toUpperCase()}` : 'Show translation')
+                      : (dict.articleViewer?.originalHeadline || 'View original headline')}
+                  </button>
+                </div>
+              )}
+              <h1 className="text-lg font-black text-white leading-tight tracking-tight">
+                {showOriginalHeadline ? cleanTitle : (translatedTitle || cleanTitle)}
+              </h1>
+            </div>
 
             {/* Byline metadata */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/40 pb-2 border-b border-white/[0.06]">
@@ -1350,7 +1377,7 @@ export default function ArticleViewer({
                 <span className={`text-sm ${isArticleSaved ? 'text-amber-400' : 'text-white/60'}`}>
                   {isArticleSaved ? '★' : '☆'}
                 </span>
-                <span className="opacity-90">{isArticleSaved ? 'Saved' : 'Bookmark'}</span>
+                <span className="opacity-90">{isArticleSaved ? (dict.articleViewer?.saved || 'Saved') : (dict.articleViewer?.bookmark || 'Bookmark')}</span>
               </button>
 
               {/* Reading Mode Button */}
@@ -1364,7 +1391,7 @@ export default function ArticleViewer({
                 title="Toggle Reading Mode (AA)"
               >
                 <span>AA</span>
-                <span className="opacity-60">{readingMode ? 'Reader On' : 'Standard'}</span>
+                <span className="opacity-60">{readingMode ? (dict.articleViewer?.readerMode || 'Reader On') : (dict.articleViewer?.standardMode || 'Standard')}</span>
               </button>
 
               {/* Close Button */}
@@ -1420,10 +1447,28 @@ export default function ArticleViewer({
                     </div>
                   )}
 
-                  {/* Headline */}
-                  <h1 className={`text-2xl lg:text-3xl font-black text-white leading-tight tracking-tight ${readingMode ? 'font-serif font-extrabold' : 'font-sans'}`}>
-                    {(FEATURES.enableTranslation && translatedTitle) || cleanTitle}
-                  </h1>
+                  {/* Headline & Translated indicator */}
+                  <div className="space-y-1.5">
+                    {translatedTitle && (
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          🌐 {dict.articleViewer?.translatedBadge || 'TRANSLATED'} ({targetLanguage.toUpperCase()})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowOriginalHeadline(!showOriginalHeadline)}
+                          className="text-xs text-white/50 hover:text-white underline cursor-pointer"
+                        >
+                          {showOriginalHeadline
+                            ? (dict.articleViewer?.translatedBadge ? `Show ${targetLanguage.toUpperCase()}` : 'Show translation')
+                            : (dict.articleViewer?.originalHeadline || 'View original headline')}
+                        </button>
+                      </div>
+                    )}
+                    <h1 className={`text-2xl lg:text-3xl font-black text-white leading-tight tracking-tight ${readingMode ? 'font-serif font-extrabold' : 'font-sans'}`}>
+                      {showOriginalHeadline ? cleanTitle : ((FEATURES.enableTranslation && translatedTitle) || cleanTitle)}
+                    </h1>
+                  </div>
 
                   {/* Byline metadata */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/50 border-b border-white/[0.06] pb-4 font-sans font-medium">
