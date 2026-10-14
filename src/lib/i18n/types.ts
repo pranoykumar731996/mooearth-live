@@ -114,6 +114,12 @@ export interface ArticleViewerTranslation {
   aiSummaryBadge: string;
   nextStory: string;
   prevStory: string;
+  summaryOverview?: string;
+  detailedReport?: string;
+  countryContext?: string;
+  categoryContext?: string;
+  activeStream?: string;
+  saveNation?: string;
 }
 
 export interface WorldMapTranslation {

@@ -13,6 +13,7 @@ import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { useTranslation, useLanguage } from '@/contexts/LanguageContext';
+import { getLocalizedCountryName } from '@/lib/i18n';
 import { auth } from '@/lib/firebase';
 import {
   SavedPlace,
@@ -745,8 +746,10 @@ export default function ArticleViewer({
 
   // Auto-translate if global app locale is non-English
   useEffect(() => {
-    if (FEATURES.enableTranslation && locale && locale !== 'en' && activeEvent && !loading) {
-      handleTranslate(locale);
+    if (FEATURES.enableTranslation && locale && locale !== 'en' && activeEvent && !loading && !isTranslating) {
+      if (!translatedTitle || targetLanguage !== locale) {
+        handleTranslate(locale);
+      }
     }
   }, [locale, activeEvent?.id, loading]);
 
@@ -1037,15 +1040,15 @@ export default function ArticleViewer({
 
             {renderDebugPanel()}
 
-            {/* Key Facts (only shown in English mode or if loaded) */}
-            {targetLanguage === 'en' && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+            {/* Key Facts */}
+            {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
               <div
                 className="rounded-xl p-4 border border-cyan-500/10 bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
                 style={{ borderLeft: `3px solid ${categoryConfig.color}` }}
               >
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">
-                    AI Key Takeaways
+                    {dict.articleViewer?.aiKeyTakeaways || 'AI Key Takeaways'}
                   </span>
                   <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
                 </div>
@@ -1053,8 +1056,24 @@ export default function ArticleViewer({
                   {articleDetails.keyFacts.map((fact, idx) => {
                     const separatorIndex = fact.indexOf(':');
                     if (separatorIndex !== -1) {
-                      const label = fact.substring(0, separatorIndex + 1);
-                      const text = fact.substring(separatorIndex + 1);
+                      const rawLabel = fact.substring(0, separatorIndex).trim();
+                      let label = fact.substring(0, separatorIndex + 1);
+                      let text = fact.substring(separatorIndex + 1);
+
+                      if (rawLabel.toLowerCase().includes('main event')) {
+                        label = `${dict.articleViewer?.mainEvent || 'Main Event'}:`;
+                        if (translatedTitle) text = ` ${translatedTitle}`;
+                      } else if (rawLabel.toLowerCase().includes('important development')) {
+                        label = `${dict.articleViewer?.importantDevelopment || 'Important Development'}:`;
+                      } else if (rawLabel.toLowerCase().includes('why it matters')) {
+                        label = `${dict.articleViewer?.whyItMatters || 'Why It Matters'}:`;
+                      } else if (rawLabel.toLowerCase().includes('country impact')) {
+                        label = `${dict.articleViewer?.countryImpact || 'Country Impact'}:`;
+                        if (activeEvent?.country) {
+                          text = text.replace(activeEvent.country, getLocalizedCountryName(activeEvent.country, locale));
+                        }
+                      }
+
                       return (
                         <li key={idx} className="flex items-start gap-2 text-[11px] text-white/85 leading-relaxed font-medium">
                           <span className="mt-1.5 w-1 h-1 shrink-0 rounded-full bg-cyan-400" />
@@ -1079,14 +1098,14 @@ export default function ArticleViewer({
             {isTranslating ? (
               <div className="p-8 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center justify-center py-16 gap-3">
                 <div className="w-6 h-6 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
-                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">Translating article content...</p>
+                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse">{dict.articleViewer?.translating || 'Translating article content...'}</p>
               </div>
             ) : (
               <>
                 {/* AI Summary Insight */}
                 {(translatedSummary || articleDetails?.aiSummary) && (
                   <div className="space-y-2 text-xs text-white/70 leading-relaxed">
-                    <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Summary Overview</h3>
+                    <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">{dict.articleViewer?.summaryOverview || 'Summary Overview'}</h3>
                     <div className="space-y-2">
                       {(translatedSummary || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
                         <p key={idx}>{para}</p>
@@ -1097,7 +1116,7 @@ export default function ArticleViewer({
 
                 {/* Full Content Body */}
                 <div className="space-y-2 pt-3 border-t border-white/[0.05]">
-                  <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">Detailed Report</h3>
+                  <h3 className="text-[9px] font-black text-white/40 uppercase tracking-widest">{dict.articleViewer?.detailedReport || 'Detailed Report'}</h3>
                   <div className="space-y-2 text-xs text-white/70 leading-relaxed">
                     {(translatedContent || articleBody).split('\n\n').map((para, idx) => (
                       <p key={idx}>{para}</p>
@@ -1500,14 +1519,14 @@ export default function ArticleViewer({
                   {renderDebugPanel()}
 
                   {/* AI Story Summary - Bullet Points */}
-                  {(!FEATURES.enableTranslation || targetLanguage === 'en') && articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
+                  {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
                     <div
                       className="rounded-2xl p-5 border border-cyan-500/10 relative overflow-hidden bg-cyan-500/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] font-sans"
                       style={{ borderLeft: `4px solid ${categoryConfig.color}` }}
                     >
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
-                          AI Key Takeaways
+                          {dict.articleViewer?.aiKeyTakeaways || 'AI Key Takeaways'}
                         </span>
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                       </div>
@@ -1515,15 +1534,31 @@ export default function ArticleViewer({
                         {articleDetails.keyFacts.map((fact, idx) => {
                           const separatorIndex = fact.indexOf(':');
                           if (separatorIndex !== -1) {
-                            const label = fact.substring(0, separatorIndex + 1);
-                            const text = fact.substring(separatorIndex + 1);
+                            const rawLabel = fact.substring(0, separatorIndex).trim();
+                            let label = fact.substring(0, separatorIndex + 1);
+                            let text = fact.substring(separatorIndex + 1);
+
+                            if (rawLabel.toLowerCase().includes('main event')) {
+                              label = `${dict.articleViewer?.mainEvent || 'Main Event'}:`;
+                              if (translatedTitle) text = ` ${translatedTitle}`;
+                            } else if (rawLabel.toLowerCase().includes('important development')) {
+                              label = `${dict.articleViewer?.importantDevelopment || 'Important Development'}:`;
+                            } else if (rawLabel.toLowerCase().includes('why it matters')) {
+                              label = `${dict.articleViewer?.whyItMatters || 'Why It Matters'}:`;
+                            } else if (rawLabel.toLowerCase().includes('country impact')) {
+                              label = `${dict.articleViewer?.countryImpact || 'Country Impact'}:`;
+                              if (activeEvent?.country) {
+                                text = text.replace(activeEvent.country, getLocalizedCountryName(activeEvent.country, locale));
+                              }
+                            }
+
                             return (
                               <li key={idx} className="flex items-start gap-3 text-xs lg:text-sm text-white/85 leading-relaxed font-medium">
                                 <span className="mt-1.5 w-1.5 h-1.5 shrink-0 rounded-full bg-cyan-400" />
                                 <span>
                                   <strong className="text-cyan-300 font-bold">{label}</strong>
                                   {text}
-                                  </span>
+                                </span>
                               </li>
                             );
                           }
@@ -1548,14 +1583,14 @@ export default function ArticleViewer({
                   {FEATURES.enableTranslation && isTranslating ? (
                     <div className="p-8 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col items-center justify-center py-20 gap-3 font-sans">
                       <div className="w-8 h-8 rounded-full border-2 border-indigo-500/20 border-t-indigo-400 animate-spin" />
-                      <p className="text-xs text-indigo-400 font-black uppercase tracking-widest animate-pulse">Translating article content...</p>
+                      <p className="text-xs text-indigo-400 font-black uppercase tracking-widest animate-pulse">{dict.articleViewer?.translating || 'Translating article content...'}</p>
                     </div>
                   ) : (
                     <>
                       {/* AI Summary Insight Description (Task 2 & 10) */}
                       {((FEATURES.enableTranslation && translatedSummary) || articleDetails?.aiSummary) && (
                         <div className={`space-y-4 pt-2 ${readingMode ? 'text-lg text-white/90 font-serif leading-relaxed' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
-                          <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Summary Overview</h3>
+                          <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">{dict.articleViewer?.summaryOverview || 'Summary Overview'}</h3>
                           <div className="space-y-3">
                             {((FEATURES.enableTranslation && translatedSummary) || articleDetails?.aiSummary || '').split('\n\n').map((para, idx) => (
                               <p key={idx}>{para}</p>
@@ -1566,7 +1601,7 @@ export default function ArticleViewer({
 
                       {/* Full Content Body */}
                       <div className="space-y-4 pt-4 border-t border-white/[0.05]">
-                        <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">Detailed Report</h3>
+                        <h3 className="text-xs font-black text-white/40 uppercase tracking-widest font-sans">{dict.articleViewer?.detailedReport || 'Detailed Report'}</h3>
                         <div className={`space-y-4 ${readingMode ? 'text-lg lg:text-xl text-white/95 leading-relaxed font-serif' : 'text-sm text-white/70 leading-relaxed font-sans'}`}>
                           {((FEATURES.enableTranslation && translatedContent) || articleBody).split('\n\n').map((para, idx) => (
                             <p key={idx}>{para}</p>
@@ -1954,7 +1989,7 @@ export default function ArticleViewer({
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 shadow-lg relative overflow-hidden space-y-4">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/[0.02] rounded-full blur-2xl pointer-events-none" />
                       <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                        Country Context
+                        {dict.articleViewer?.countryContext || 'Country Context'}
                       </div>
                       
                       <div className="flex items-center justify-between gap-3">
@@ -1964,10 +1999,10 @@ export default function ArticleViewer({
                           </span>
                           <div>
                             <h2 className="text-lg font-extrabold text-white leading-tight">
-                              {activeEvent.country}
+                              {getLocalizedCountryName(activeEvent.country, locale)}
                             </h2>
                             <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">
-                              Discovered Nation
+                              {dict.articleViewer?.discoveredNation || 'Discovered Nation'}
                             </p>
                           </div>
                         </div>
@@ -1983,17 +2018,17 @@ export default function ArticleViewer({
                           title={isCountrySaved ? `Remove ${activeEvent.country} from bookmarks` : `Save ${activeEvent.country} to bookmarks`}
                         >
                           <span>{isCountrySaved ? '★' : '☆'}</span>
-                          <span>{isCountrySaved ? 'Saved' : 'Save Nation'}</span>
+                          <span>{isCountrySaved ? (dict.articleViewer?.saved || 'Saved') : (dict.articleViewer?.saveNation || dict.articleViewer?.bookmark || 'Save Nation')}</span>
                         </button>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 border-t border-white/[0.05] pt-4 text-left">
                         <div>
-                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block">Capital</span>
+                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block">{dict.articleViewer?.capital || 'Capital'}</span>
                           <span className="text-xs font-extrabold text-white">{countryDetails.capital}</span>
                         </div>
                         <div>
-                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block">Population</span>
+                          <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block">{dict.articleViewer?.population || 'Population'}</span>
                           <span className="text-xs font-extrabold text-white">{countryDetails.population}</span>
                         </div>
                       </div>
@@ -2001,7 +2036,7 @@ export default function ArticleViewer({
                       {/* Dynamic Country Activity Score */}
                       <div className="space-y-2 border-t border-white/[0.05] pt-4">
                         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider">
-                          <span className="text-white/30">Activity Score</span>
+                          <span className="text-white/30">{dict.articleViewer?.activityScore || 'Activity Score'}</span>
                           <span className="text-cyan-400 font-extrabold">{countryDetails.activityScore}%</span>
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -2018,21 +2053,21 @@ export default function ArticleViewer({
                     {/* Category Badge Widget */}
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 relative overflow-hidden">
                       <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                        Category Context
+                        {dict.articleViewer?.categoryContext || 'Category Context'}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{categoryConfig.emoji}</span>
                         <div>
                           <span className="text-sm font-extrabold block" style={{ color: categoryConfig.color }}>
-                            {categoryConfig.label}
+                            {t(`categories.${activeEvent.category}`, categoryConfig.label)}
                           </span>
                           <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">
-                            Active Stream
+                            {dict.articleViewer?.activeStream || 'Active Stream'}
                           </span>
                         </div>
                       </div>
                       <p className="text-[11px] text-white/50 leading-relaxed font-medium">
-                        You are reading news categorised under <strong>{categoryConfig.label}</strong> for <strong>{activeEvent.country}</strong>. Select the icons at the footer or other sidebar updates to swap feeds.
+                        You are reading news categorised under <strong>{t(`categories.${activeEvent.category}`, categoryConfig.label)}</strong> for <strong>{getLocalizedCountryName(activeEvent.country, locale)}</strong>.
                       </p>
                     </div>
 
@@ -2040,7 +2075,7 @@ export default function ArticleViewer({
                     {relatedStories.length > 0 && (
                       <div className="space-y-4 pt-2 text-left">
                         <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                          Related Brazil Stories
+                          {dict.articleViewer?.relatedStories || 'Related Stories'} ({getLocalizedCountryName(activeEvent.country, locale)})
                         </div>
                         <div className="space-y-3">
                           {relatedStories.map((story) => {

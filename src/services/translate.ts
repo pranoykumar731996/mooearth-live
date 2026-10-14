@@ -203,10 +203,10 @@ class ModelCircuitBreaker {
 }
 
 const breakers = {
-  groqVersatile: new ModelCircuitBreaker('Groq Llama 3.3 70B'),
-  groqInstant: new ModelCircuitBreaker('Groq Llama 3.1 8B'),
-  geminiLatest: new ModelCircuitBreaker('Gemini Flash Latest'),
-  gemini20: new ModelCircuitBreaker('Gemini 2.0 Flash')
+  groqQwen: new ModelCircuitBreaker('Groq Qwen 3.8 27B'),
+  groqGptOss: new ModelCircuitBreaker('Groq GPT OSS 20B'),
+  geminiLite: new ModelCircuitBreaker('Gemini Flash Lite Latest'),
+  geminiLatest: new ModelCircuitBreaker('Gemini Flash Latest')
 };
 
 // ─── Groq API Request Implementation ───────────────────────────────────────────
@@ -236,7 +236,8 @@ async function tryGroqSingle(
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.1,
-        max_tokens: 4096
+        max_tokens: 4096,
+        response_format: { type: 'json_object' }
       }),
       signal: AbortSignal.timeout(30000) // 30s timeout
     });
@@ -372,11 +373,11 @@ async function tryGemini(
  * Translates article title, summary, and content into a target language.
  * 
  * Model priority:
- *   1. Groq Llama 3.3 70B   — PRIMARY (highest quality translation)
- *   2. Groq Llama 3.1 8B    — SECONDARY (fast, separate rate limits)
- *   3. Gemini Flash Latest  — BACKUP PRIMARY (1.5 Flash, works under 2.0 Flash 429)
- *   4. Gemini 2.0 Flash     — BACKUP SECONDARY (often quota-exhausted)
- *   5. Simulated fallback   — LAST RESORT (never a real translation)
+ *   1. Groq Qwen 3.8 27B         — PRIMARY (high speed, exceptional multilingual quality)
+ *   2. Groq GPT OSS 20B         — SECONDARY (fast backup on separate Groq limits)
+ *   3. Gemini Flash Lite Latest — TERTIARY (reliable Google multimodal backup)
+ *   4. Gemini Flash Latest      — QUATERNARY (Google general model backup)
+ *   5. Simulated fallback       — LAST RESORT (safe fallback)
  */
 export async function translateArticle(
   targetLang: string,
@@ -392,27 +393,27 @@ export async function translateArticle(
   const geminiKey = process.env.GEMINI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
 
-  // ── 1. Try Groq Llama 3.3 70B ──
+  // ── 1. Try Groq Qwen 3.8 27B (Primary) ──
   if (groqKey) {
-    const r1 = await tryGroq('llama-3.3-70b-versatile', groqKey, userPrompt, breakers.groqVersatile);
+    const r1 = await tryGroq('qwen/qwen3.8-27b', groqKey, userPrompt, breakers.groqQwen);
     if (r1) return r1;
   }
 
-  // ── 2. Try Groq Llama 3.1 8B ──
+  // ── 2. Try Groq GPT OSS 20B (Secondary) ──
   if (groqKey) {
-    const r2 = await tryGroq('llama-3.1-8b-instant', groqKey, userPrompt, breakers.groqInstant);
+    const r2 = await tryGroq('openai/gpt-oss-20b', groqKey, userPrompt, breakers.groqGptOss);
     if (r2) return r2;
   }
 
-  // ── 3. Try Gemini Flash Latest ──
+  // ── 3. Try Gemini Flash Lite Latest (Tertiary) ──
   if (geminiKey) {
-    const r3 = await tryGemini('gemini-flash-latest', geminiKey, userPrompt, breakers.geminiLatest);
+    const r3 = await tryGemini('gemini-flash-lite-latest', geminiKey, userPrompt, breakers.geminiLite);
     if (r3) return r3;
   }
 
-  // ── 4. Try Gemini 2.0 Flash ──
+  // ── 4. Try Gemini Flash Latest (Quaternary) ──
   if (geminiKey) {
-    const r4 = await tryGemini('gemini-2.0-flash', geminiKey, userPrompt, breakers.gemini20);
+    const r4 = await tryGemini('gemini-flash-latest', geminiKey, userPrompt, breakers.geminiLatest);
     if (r4) return r4;
   }
 
