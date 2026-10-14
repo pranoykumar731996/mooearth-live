@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
@@ -13,6 +13,7 @@ import LanguageSelector from '@/components/UI/LanguageSelector';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { BRANDING } from '@/config/branding';
 import { ApiStatus } from '@/hooks/useLiveEvents';
+import { COUNTRY_COORDINATES } from '@/lib/constants';
 
 interface NavbarProps {
   events: WorldEvent[];
@@ -22,6 +23,8 @@ interface NavbarProps {
   onSelectEvent: (event: WorldEvent) => void;
   onSelectCountry?: (country: string | null) => void;
   onSelectLocation?: (location: any | null) => void;
+  selectedCountry?: string | null;
+  selectedLocation?: any | null;
   currentUser: { username: string; avatar: string; country: string } | null;
   onAuthClick: () => void;
   onSignOut: () => void;
@@ -47,6 +50,8 @@ export default function Navbar({
   onSelectEvent,
   onSelectCountry,
   onSelectLocation,
+  selectedCountry,
+  selectedLocation,
   currentUser,
   onAuthClick,
   onSignOut,
@@ -66,8 +71,32 @@ export default function Navbar({
   const { t } = useTranslation();
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const [dailyCompleted, setDailyCompleted] = useState(false);
   const [dailyStreak, setDailyStreak] = useState(0);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    }
+    if (isMobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
+
+  // Compute direct Weather Radar URL preserving current location / coordinates
+  const weatherUrl = selectedLocation && selectedLocation.lat != null && selectedLocation.lng != null
+    ? `/weather?lat=${selectedLocation.lat.toFixed(4)}&lng=${selectedLocation.lng.toFixed(4)}&city=${encodeURIComponent(selectedLocation.name || '')}&country=${encodeURIComponent(selectedLocation.country || '')}`
+    : selectedCountry && (COUNTRY_COORDINATES[selectedCountry.toLowerCase()] || COUNTRY_COORDINATES[selectedCountry])
+    ? `/weather?lat=${(COUNTRY_COORDINATES[selectedCountry.toLowerCase()] || COUNTRY_COORDINATES[selectedCountry]).lat.toFixed(4)}&lng=${(COUNTRY_COORDINATES[selectedCountry.toLowerCase()] || COUNTRY_COORDINATES[selectedCountry]).lng.toFixed(4)}&country=${encodeURIComponent(selectedCountry)}`
+    : '/weather';
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -123,16 +152,20 @@ export default function Navbar({
         background: 'linear-gradient(180deg, rgba(5,5,15,0.85) 0%, rgba(5,5,15,0.6) 100%)',
       }}
     >
-      {/* Mobile Search Overlay Mode */}
+      {/* Mobile Search Overlay Mode (Dedicated full-width header, preventing overlap with language selector) */}
       {isMobileSearchActive && (
-        <div className="absolute inset-0 z-50 bg-[#070712] flex items-center px-4 gap-3">
+        <div className="fixed inset-x-0 top-0 h-16 z-[100] bg-[#070712] border-b border-white/10 px-3 flex items-center gap-2.5 shadow-2xl">
           <button 
+            type="button"
             onClick={() => setIsMobileSearchActive(false)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+            aria-label="Back to navigation (Close Search)"
+            className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-white/70 hover:text-white active:bg-white/15 transition-colors cursor-pointer shrink-0"
           >
-            ←
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
           </button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <SearchBar 
               events={events} 
               activeCategory={activeCategory} 
@@ -269,137 +302,230 @@ export default function Navbar({
 
       {/* Right Section */}
       <div className="flex items-center shrink-0">
-        {/* Mobile-Only Header Icon Bar (matches user screenshot design) */}
-        <div className="flex sm:hidden items-center gap-1.5 xs:gap-2">
-          {/* Search Icon */}
-          <button
-            onClick={() => setIsMobileSearchActive(true)}
-            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
-            title="Search"
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
-
-          {/* About & Legal Icon (Mobile) */}
-          <Link href="/about">
+        {/* Mobile-Only Header Icon Bar (Responsive, non-clipped, accessible dropdown) */}
+        {!isMobileSearchActive && (
+          <div ref={mobileMenuRef} className="relative flex sm:hidden items-center gap-1.5 xs:gap-2">
+            {/* Search Icon (Mobile) */}
             <button
-              className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
-              title={t('navbar.aboutLegal', 'About & Legal')}
+              type="button"
+              onClick={() => {
+                setIsMobileSearchActive(true);
+                setIsMobileMenuOpen(false);
+              }}
+              className="w-9 h-9 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer rounded-xl bg-white/5 border border-white/10 shrink-0"
+              title={t('navbar.search', 'Search')}
+              aria-label={t('navbar.search', 'Search')}
             >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="10" r="10" />
-                <path d="M12 16v-4" />
-                <path d="M12 8h.01" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </button>
-          </Link>
 
-          {/* Language Selector (Mobile) */}
-          <LanguageSelector compact={true} />
-
-          {/* Weather Mode (Mobile) */}
-          {onToggleWeather ? (
-            <button
-              onClick={onToggleWeather}
-              className={`h-7 px-2 xs:px-2.5 rounded-full flex items-center gap-1 font-black text-[9px] tracking-wider border transition-all cursor-pointer ${
-                isWeatherActive
-                  ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.8)] font-black'
-                  : 'bg-cyan-500/15 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/25'
-              }`}
-              title={isWeatherActive ? "Turn Off Weather Layer" : "Turn On Live Weather"}
+            {/* Direct Weather Radar Navigation (Mobile - Fix 4) */}
+            <Link
+              href={weatherUrl}
+              className="h-9 px-2 xs:px-2.5 rounded-xl flex items-center gap-1 font-bold text-[10px] tracking-wider border border-cyan-400/40 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 active:scale-95 transition-all shadow-[0_0_12px_rgba(0,229,255,0.2)] shrink-0"
+              title="Open Weather Radar & Forecast"
+              aria-label="Open Weather Radar & Forecast"
             >
               <span className="text-xs">🌦️</span>
-              <span className="font-extrabold">{isWeatherActive ? 'RADAR' : 'WEATHER'}</span>
-            </button>
-          ) : (
-            <Link
-              href="/weather"
-              className="h-7 px-2 xs:px-2.5 rounded-full flex items-center gap-1 font-black text-[9px] tracking-wider border border-cyan-500/35 text-cyan-300 bg-cyan-500/15 hover:bg-cyan-500/25 active:scale-95 transition-all"
-              title="MooEarth Weather Intelligence"
-            >
-              <span className="text-xs">🌤️</span>
-              <span className="font-extrabold">WEATHER</span>
+              <span className="font-extrabold text-[9px] tracking-wider">RADAR</span>
             </Link>
-          )}
 
-          {/* Play Earth Game Mode (Eye-Stopper Pill for Mobile) */}
-          <button
-            onClick={onTogglePlayEarth}
-            className={`h-8 px-2.5 rounded-full flex items-center gap-1 font-black text-[10px] tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer relative active:scale-95 shadow-sm ${
-              isPlayEarthActive
-                ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_20px_rgba(52,211,153,0.8)] animate-pulse'
-                : 'bg-gradient-to-r from-emerald-500/30 via-teal-500/35 to-cyan-500/30 border-emerald-400/70 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)] hover:border-emerald-300 ring-1 ring-emerald-400/30'
-            }`}
-            title={isPlayEarthActive ? t('playEarthOverlay.exitMode', 'Exit Play Earth Mode') : `${t('navbar.playEarth', 'Play Earth')} — ${t('navbar.modesBadge', '11+ MODES')}!`}
-          >
-            {/* Blinking green live beacon */}
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_6px_#10b981]" />
-            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping absolute left-2.5" />
-            <span className="text-xs">🎮</span>
-            <span className="font-black text-[10px] text-emerald-200 tracking-tight">{t('navbar.play', 'PLAY')}</span>
-          </button>
+            {/* Language Selector (Mobile - Never overlaps search) */}
+            <div className="shrink-0">
+              <LanguageSelector compact={true} />
+            </div>
 
-          {/* Daily Challenge Pill (Mobile) */}
-          <Link
-            href="/daily"
-            title={dailyCompleted ? "Today's Daily Challenge Completed!" : "Play Today's Daily Challenge!"}
-            className={`h-8 px-2 rounded-full flex items-center gap-1 font-black text-[10px] tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer active:scale-95 shadow-sm ${
-              dailyCompleted
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-            }`}
-          >
-            <span className="text-xs">{dailyCompleted ? '✅' : '📅'}</span>
-            <span className="font-extrabold">{dailyCompleted ? 'DONE' : 'DAILY'}</span>
-          </Link>
-
-          <button
-            onClick={onLeaderboardClick}
-            className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
-            title={t('navbar.leaderboards', 'Leaderboards')}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-              <path d="M7.5 13.5v7.25L12 18.5l4.5 2.25v-7.25" />
-              <path d="M12 2L4.5 5.5v5a7.5 7.5 0 0 0 15 0v-5L12 2Z" />
-            </svg>
-          </button>
-
-          {isDeveloper && onToggleDebug && (
+            {/* More Menu Toggle (Mobile - Fix 3: Play Earth, Daily, Leaderboards, About, Profile) */}
             <button
-              onClick={onToggleDebug}
-              className={`w-8 h-8 flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
-                showDebugConsole ? 'text-cyan-400' : 'text-white/80 hover:text-white'
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center text-sm transition-all cursor-pointer shrink-0 ${
+                isMobileMenuOpen
+                  ? 'bg-cyan-500/25 border-cyan-400 text-cyan-300 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
+                  : 'bg-white/5 border-white/10 text-white/80 hover:text-white'
               }`}
-              title={showDebugConsole ? "Hide UX Debug Console" : "Show UX Debug Console"}
+              title="More Options & Games"
+              aria-label="More navigation and gaming features"
+              aria-expanded={isMobileMenuOpen}
             >
-              ⚙️
+              {currentUser ? (
+                <span className="text-base">{currentUser.avatar}</span>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="1.5" />
+                  <circle cx="19" cy="12" r="1.5" />
+                  <circle cx="5" cy="12" r="1.5" />
+                </svg>
+              )}
             </button>
-          )}
 
-          {currentUser ? (
-            <button
-              onClick={onProfileClick}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500/25 to-blue-500/25
-                         border border-cyan-400/30 flex items-center justify-center
-                         text-base cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.2)]
-                         hover:border-cyan-400/60 active:scale-95 transition-all duration-300 pointer-events-auto"
-              title={`Profile: @${currentUser.username}`}
-            >
-              {currentUser.avatar}
-            </button>
-          ) : (
-            <button
-              onClick={onAuthClick}
-              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-[9px] tracking-wider shadow-[0_0_10px_rgba(0,229,255,0.15)] active:scale-95 transition-all duration-300 pointer-events-auto"
-            >
-              {t('navbar.signIn', 'SIGN IN')}
-            </button>
-          )}
-        </div>
+            {/* Accessible Mobile Dropdown Menu */}
+            {isMobileMenuOpen && (
+              <div 
+                className="absolute right-0 top-11 w-64 rounded-2xl bg-[#080d22]/98 border border-cyan-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.95)] p-2 z-[70] backdrop-blur-2xl flex flex-col gap-1 animate-fadeIn"
+                role="menu"
+                aria-orientation="vertical"
+              >
+                {/* Menu Header */}
+                <div className="px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-[10px] font-mono text-white/50 uppercase tracking-wider">
+                  <span>Features & Games</span>
+                  <button 
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-white/40 hover:text-white p-1"
+                    aria-label="Close menu"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Play Earth Mode */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onTogglePlayEarth();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer border ${
+                    isPlayEarthActive
+                      ? 'bg-emerald-400 text-slate-950 border-emerald-300 font-black shadow-[0_0_15px_rgba(52,211,153,0.6)]'
+                      : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span>🎮 {t('navbar.playEarth', 'Play Earth')}</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
+                    11+ MODES
+                  </span>
+                </button>
+
+                {/* Daily Challenge */}
+                <Link
+                  href="/daily"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all border ${
+                    dailyCompleted
+                      ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                      : 'bg-amber-500/10 border-amber-500/25 text-amber-300 hover:bg-amber-500/20'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>{dailyCompleted ? '✅' : '📅'}</span>
+                    <span>{t('navbar.dailyChallenge', 'Daily Challenge')}</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                    {dailyCompleted ? 'DONE' : dailyStreak > 0 ? `🔥 ${dailyStreak}` : 'PLAY'}
+                  </span>
+                </Link>
+
+                {/* Leaderboards */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLeaderboardClick();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-left"
+                >
+                  <span className="text-sm">🏆</span>
+                  <span>{t('navbar.leaderboards', 'Global Leaderboards')}</span>
+                </button>
+
+                {/* About & Legal */}
+                <Link
+                  href="/about"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors text-left"
+                >
+                  <span className="text-sm">ℹ️</span>
+                  <span>{t('navbar.aboutLegal', 'About & Legal')}</span>
+                </Link>
+
+                {/* Audio Mute/Unmute */}
+                <button
+                  type="button"
+                  onClick={onToggleMute}
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-sm">{isMuted ? '🔇' : '🔊'}</span>
+                    <span>{isMuted ? t('navbar.unmuteAudio', 'Unmute Sound') : t('navbar.muteAudio', 'Mute Sound')}</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-white/40">
+                    {isMuted ? 'OFF' : 'ON'}
+                  </span>
+                </button>
+
+                {/* Developer Debug Console */}
+                {isDeveloper && onToggleDebug && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToggleDebug();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/10 transition-colors cursor-pointer text-left"
+                  >
+                    <span className="text-sm">⚙️</span>
+                    <span>{showDebugConsole ? 'Hide UX Debug Console' : 'Show UX Debug Console'}</span>
+                  </button>
+                )}
+
+                {/* User Profile or Sign In */}
+                <div className="pt-1 mt-1 border-t border-white/10">
+                  {currentUser ? (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onProfileClick();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2 text-left cursor-pointer min-h-[40px] flex-1 min-w-0"
+                      >
+                        <span className="text-lg shrink-0">{currentUser.avatar}</span>
+                        <div className="truncate">
+                          <div className="text-xs font-bold text-white truncate">@{currentUser.username}</div>
+                          <div className="text-[9px] text-cyan-400 font-mono truncate">{currentUser.country}</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSignOut();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="text-[10px] text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 border border-red-500/20 font-mono font-bold shrink-0 ml-2 cursor-pointer"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onAuthClick();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full min-h-[44px] px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs tracking-wider shadow-[0_0_15px_rgba(0,229,255,0.2)] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span>👤</span>
+                      <span>{t('navbar.signIn', 'SIGN IN')}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
           <button
@@ -440,40 +566,32 @@ export default function Navbar({
             )}
           </Link>
 
-          {/* Weather Intelligence Platform Toggle & Radar Link (Desktop) */}
-          {onToggleWeather ? (
-            <div className="flex items-center gap-1.5 pointer-events-auto">
+          {/* Weather Intelligence Platform Direct Navigation (Desktop - Fix 4) */}
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+            <Link
+              href={weatherUrl}
+              title="Open MooEarth Weather Intelligence Radar Platform"
+              className="relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold tracking-wider border border-cyan-400/40 bg-gradient-to-r from-cyan-500/15 via-blue-500/20 to-cyan-500/15 text-cyan-200 hover:text-white hover:border-cyan-300 hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all pointer-events-auto cursor-pointer group"
+            >
+              <span className="text-base group-hover:scale-110 transition-transform">🌦️</span>
+              <span className="font-extrabold text-cyan-200">WEATHER RADAR</span>
+            </Link>
+
+            {onToggleWeather && (
               <button
+                type="button"
                 onClick={onToggleWeather}
-                title={isWeatherActive ? "Turn Off Weather Layer" : "Turn On Weather Layer on 3D Earth"}
-                className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold tracking-wider border transition-all cursor-pointer ${
+                title={isWeatherActive ? "Turn Off 3D Globe Weather Overlay" : "Turn On 3D Globe Weather Overlay"}
+                className={`h-9 px-2.5 rounded-xl flex items-center justify-center text-[10px] font-mono font-bold transition-all border cursor-pointer ${
                   isWeatherActive
-                    ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_0_22px_rgba(0,229,255,0.75)] font-black'
-                    : 'border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-blue-500/20 to-cyan-500/15 text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] shadow-[0_0_10px_rgba(6,182,212,0.2)]'
+                    ? 'bg-cyan-400 text-slate-950 border-cyan-300 font-black shadow-[0_0_12px_rgba(0,229,255,0.6)]'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:text-cyan-300 hover:border-cyan-500/40'
                 }`}
               >
-                <span className="text-base">{isWeatherActive ? '🌦️' : '🌤️'}</span>
-                <span className="font-bold">{isWeatherActive ? 'WEATHER: ON' : 'TURN ON WEATHER'}</span>
+                {isWeatherActive ? 'GLOBE: ON' : 'GLOBE LAYER'}
               </button>
-
-              <Link
-                href="/weather"
-                title="MooEarth Weather Intelligence Radar"
-                className="h-9 px-2 rounded-xl flex items-center justify-center text-[10px] font-mono font-bold text-white/50 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 bg-white/5 transition-all"
-              >
-                RADAR ↗
-              </Link>
-            </div>
-          ) : (
-            <Link
-              href="/weather"
-              title="MooEarth Weather Intelligence Platform"
-              className="relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold tracking-wider border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-blue-500/20 to-cyan-500/15 text-cyan-300 hover:border-cyan-400 hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all pointer-events-auto cursor-pointer group"
-            >
-              <span className="text-base group-hover:scale-110 transition-transform">🌤️</span>
-              <span className="font-bold text-cyan-200">WEATHER</span>
-            </Link>
-          )}
+            )}
+          </div>
 
           {/* Phase 3: Cinematic Mode Toggle */}
           <button

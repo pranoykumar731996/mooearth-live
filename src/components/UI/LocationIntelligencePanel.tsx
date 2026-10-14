@@ -331,12 +331,17 @@ export default function LocationIntelligencePanel({
       transition={{ duration: 0.28, ease: 'easeOut' }}
       className={`glass-panel border border-cyan-500/25 shadow-[0_16px_50px_rgba(0,0,0,0.75)] flex flex-col z-40 overflow-hidden ${
         isMobile
-          ? 'fixed bottom-3 left-3 right-3 max-h-[76vh] rounded-3xl'
+          ? 'fixed bottom-3 left-3 right-3 max-h-[min(72vh,calc(100vh-135px))] rounded-3xl'
           : 'fixed right-6 top-24 bottom-24 w-[400px] rounded-3xl'
       }`}
       style={{
         background: 'linear-gradient(180deg, rgba(8, 14, 30, 0.97) 0%, rgba(3, 6, 14, 0.99) 100%)',
         backdropFilter: 'blur(28px)',
+        ...(isMobile ? {
+          left: 'max(12px, env(safe-area-inset-left))',
+          right: 'max(12px, env(safe-area-inset-right))',
+          bottom: 'max(12px, env(safe-area-inset-bottom))',
+        } : {}),
       }}
       aria-label={`${canonical.name} Location Intelligence Panel`}
       role="region"
@@ -360,9 +365,9 @@ export default function LocationIntelligencePanel({
       </AnimatePresence>
 
       {/* Header: Title, Flag, Badges, Close Button */}
-      <div className="p-4 sm:p-5 border-b border-white/[0.08] relative z-10 flex items-start justify-between gap-3 shrink-0">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
+      <div className="p-3.5 sm:p-5 border-b border-white/[0.08] relative z-10 flex items-start justify-between gap-2 shrink-0">
+        <div className="min-w-0 flex-1 pr-1">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/35 text-[9px] font-mono font-bold tracking-wider text-cyan-300">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
               {canonical.type === 'country' ? 'SOVEREIGN NATION' : 'GLOBAL METROPOLIS'}
@@ -374,16 +379,16 @@ export default function LocationIntelligencePanel({
             )}
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate flex items-center gap-2">
-            <span>{canonical.name}</span>
+          <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight truncate flex items-center gap-2">
+            <span className="truncate">{canonical.name}</span>
             <CountryFlag flag={canonical.flag} className="w-5 h-3.5 object-cover rounded shadow shrink-0" />
           </h2>
 
           <div className="flex items-center gap-2 text-xs text-white/60 font-medium truncate mt-0.5">
             {canonical.type === 'country' && canonical.capital ? (
-              <span>Capital: <span className="text-cyan-300 font-semibold">{canonical.capital}</span></span>
+              <span className="truncate">Capital: <span className="text-cyan-300 font-semibold">{canonical.capital}</span></span>
             ) : (
-              <span>
+              <span className="truncate">
                 {canonical.state && `${canonical.state}, `}
                 <button
                   onClick={() => onSelectCountry?.(canonical.country)}
@@ -397,12 +402,12 @@ export default function LocationIntelligencePanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Bookmark Button */}
           <button
             onClick={handleToggleBookmark}
             aria-label={isSaved ? `Remove ${canonical.name} from saved places` : `Save ${canonical.name} to bookmarks`}
-            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-9 h-9 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
               isSaved
                 ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.35)] scale-105'
                 : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/50 hover:text-amber-300'
@@ -416,24 +421,30 @@ export default function LocationIntelligencePanel({
           <button
             onClick={handleShareLocation}
             aria-label="Share location link"
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-cyan-300 flex items-center justify-center transition-all cursor-pointer"
+            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-cyan-300 flex items-center justify-center transition-all cursor-pointer"
             title="Share Location Link"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
               <polyline points="16 6 12 2 8 6" />
               <line x1="12" y1="2" x2="12" y2="15" />
             </svg>
           </button>
 
-          {/* Return to Earth / Close Button */}
+          {/* Return to Earth / Close Button - 44x44 touch target */}
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             aria-label="Return to Earth (Close Panel)"
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/25 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg shrink-0"
             title="Return to Earth Orbit"
           >
-            ✕
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       </div>

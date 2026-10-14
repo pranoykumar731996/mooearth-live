@@ -130,6 +130,11 @@ export default function WeatherDashboard() {
     [router, viewMode]
   );
 
+  // Return to Earth URL preserving selected location / coordinates
+  const returnHomeUrl = weather.selectedLocation
+    ? `/?lat=${weather.selectedLocation.latitude.toFixed(4)}&lng=${weather.selectedLocation.longitude.toFixed(4)}&city=${encodeURIComponent(weather.selectedLocation.name || '')}&country=${encodeURIComponent(weather.selectedLocation.country || '')}`
+    : '/';
+
   // Helper: get flyTo duration respecting reduced-motion
   const getFlyDuration = useCallback((ms: number) => (prefersReducedMotion() ? 0 : ms), []);
 
@@ -234,6 +239,19 @@ export default function WeatherDashboard() {
       });
       // Globe flyTo will happen in handleInitGlobeApi when the globe is ready
       return;
+    } else if (country) {
+      const coords = getCoordinatesForCountry(country);
+      if (coords) {
+        weather.fetchWeatherForLocation({
+          latitude: coords.lat,
+          longitude: coords.lng,
+          name: country,
+          country: country,
+          timezone: 'auto',
+          source: 'url',
+        });
+        return;
+      }
     }
 
     // Default: load Tokyo
@@ -474,10 +492,14 @@ export default function WeatherDashboard() {
               </div>
             )}
             <Link
-              href="/"
-              className="text-xs px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              href={returnHomeUrl}
+              className="min-h-[44px] px-2.5 sm:px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border border-cyan-400/40 text-cyan-200 hover:text-white flex items-center gap-1.5 font-bold text-xs shadow-[0_0_12px_rgba(0,229,255,0.2)] transition-all cursor-pointer active:scale-95 shrink-0"
+              title="Return to MooEarth 3D Interactive World"
+              aria-label="Return to Earth"
             >
-              ← Globe
+              <span className="text-sm">🌍</span>
+              <span className="font-extrabold tracking-wide hidden xs:inline">Return to Earth</span>
+              <span className="font-extrabold tracking-wide xs:hidden">Earth</span>
             </Link>
           </div>
         </div>

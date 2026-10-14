@@ -1141,6 +1141,8 @@ export default function HomePage({
           onSelectEvent={handleEventNavigate}
           onSelectCountry={handleSelectCountry}
           onSelectLocation={handleSelectLocation}
+          selectedCountry={selectedCountry}
+          selectedLocation={selectedLocation}
           currentUser={currentUser}
           onAuthClick={() => {
             console.log('[page.tsx] Diagnostic: User clicked SIGN IN (opening AuthModal)');
@@ -2163,10 +2165,14 @@ export default function HomePage({
         </div>
       )}
 
-      {/* Mobile-Only Compact Floating Action Dock (Guaranteed full coverage, no clipping) */}
+      {/* Mobile-Only Compact Floating Action Dock (Guaranteed full coverage, no clipping or panel collision) */}
       {isMobile && (
         <div 
-          className="fixed right-3 top-20 z-40 p-1.5 rounded-full bg-[#060a16]/85 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex flex-col gap-2 items-center pointer-events-auto max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-none transition-all duration-300"
+          className={`fixed right-3 z-40 p-1.5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-all duration-300 pointer-events-auto ${
+            (selectedLocation || selectedCountry) && !selectedContinent
+              ? 'top-18 bg-[#060a16]/95 rounded-2xl flex flex-row gap-1.5 items-center max-w-[calc(100vw-24px)] overflow-x-auto scrollbar-none z-30'
+              : 'top-20 bg-[#060a16]/85 rounded-full flex flex-col gap-2 items-center max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-none z-40'
+          }`}
         >
           {/* Quick Weather Toggle (Mobile) */}
           <button
@@ -2176,7 +2182,7 @@ export default function HomePage({
               playHoverBlip();
               showToast(next ? '🌦️ Live Weather Radar Activated' : 'Standard View Restored');
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer relative ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer relative ${
               globeView === 'weather'
                 ? 'bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-950 border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.8)] scale-105'
                 : 'bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 hover:text-white shadow-[0_0_12px_rgba(0,229,255,0.25)]'
@@ -2198,7 +2204,7 @@ export default function HomePage({
               if (nextActive) handleSelectCountry(null);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer relative ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer relative ${
               isPlayEarthActive
                 ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] scale-105 animate-pulse'
                 : 'bg-gradient-to-br from-emerald-500/35 via-teal-500/30 to-cyan-500/35 border-emerald-400/70 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] hover:scale-105'
@@ -2216,7 +2222,7 @@ export default function HomePage({
               setIsMobileCategoriesOpen(!isMobileCategoriesOpen);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isMobileCategoriesOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
@@ -2232,7 +2238,7 @@ export default function HomePage({
               setIsMobileViewsOpen(!isMobileViewsOpen);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isMobileViewsOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
@@ -2248,7 +2254,7 @@ export default function HomePage({
               setIsAssistantOpen(!isAssistantOpen);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer ${
               isAssistantOpen
                 ? 'bg-cyan-400 text-black border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.6)] scale-105'
                 : 'bg-cyan-500 border border-cyan-400 text-white shadow-[0_0_15px_rgba(0,229,255,0.4)] hover:scale-105'
@@ -2268,7 +2274,7 @@ export default function HomePage({
               setIsFullScreenGlobe(!isFullScreenGlobe);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
               !isFullScreenGlobe
                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
@@ -2288,7 +2294,7 @@ export default function HomePage({
               setIsMuted(!isMuted);
               playHoverBlip();
             }}
-            className={`w-10.5 h-10.5 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
               !isMuted
                 ? 'bg-cyan-500/15 border-cyan-400/50 text-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.3)]'
                 : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
