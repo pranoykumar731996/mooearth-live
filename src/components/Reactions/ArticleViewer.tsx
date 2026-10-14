@@ -931,8 +931,25 @@ export default function ArticleViewer({
             ← Back to List
           </button>
           
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-            <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5 text-white">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleArticleBookmark}
+              id="inline-article-bookmark-btn"
+              className={`h-8 px-2.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
+                isArticleSaved
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                  : 'bg-white/5 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+              }`}
+              title={isArticleSaved ? 'Saved in bookmarks (Click to remove)' : 'Save story to bookmarks'}
+              aria-label={isArticleSaved ? 'Remove bookmark' : 'Bookmark story'}
+            >
+              <span className={`text-xs ${isArticleSaved ? 'text-amber-400' : 'text-white/60'}`}>
+                {isArticleSaved ? '★' : '☆'}
+              </span>
+              <span>{isArticleSaved ? 'Saved' : 'Save'}</span>
+            </button>
+
+            <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-xl border border-white/5 text-white text-[10px] font-bold uppercase tracking-wider">
               <span>{getFlagEmoji(activeEvent.country)}</span>
               <span>{activeEvent.country}</span>
             </span>
@@ -1161,20 +1178,37 @@ export default function ArticleViewer({
                 )}
               </div>
 
-              <a
-                href={articleDetails?.source || activeEvent.source}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent('article', 'source_click', activeEvent.id, 1, { publisher })}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm"
-              >
-                <span>Read Source on {publisher}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleToggleArticleBookmark}
+                  className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+                    isArticleSaved
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                  }`}
+                  title={isArticleSaved ? 'Saved in bookmarks' : 'Bookmark story'}
+                >
+                  <span className={isArticleSaved ? 'text-amber-400' : 'text-white/60'}>
+                    {isArticleSaved ? '★' : '☆'}
+                  </span>
+                  <span>{isArticleSaved ? 'Saved' : 'Save Story'}</span>
+                </button>
+
+                <a
+                  href={articleDetails?.source || activeEvent.source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackEvent('article', 'source_click', activeEvent.id, 1, { publisher })}
+                  className="flex-[2] inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm"
+                >
+                  <span className="truncate">Source on {publisher}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </a>
+              </div>
             </div>
 
 
