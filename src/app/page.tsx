@@ -36,7 +36,6 @@ const TimelineSlider = dynamic(() => import('@/components/Timeline/TimelineSlide
 const AuthModal = dynamic(() => import('@/components/Layout/AuthModal'));
 const LeaderboardModal = dynamic(() => import('@/components/UI/LeaderboardModal'));
 const ProfileModal = dynamic(() => import('@/components/UI/ProfileModal'));
-const UploadModal = dynamic(() => import('@/components/Celebrations/UploadModal'));
 const MediaViewer = dynamic(() => import('@/components/Celebrations/MediaViewer'));
 const PlayEarthOverlay = dynamic(() => import('@/components/Globe/PlayEarthOverlay'));
 const FocusDebugPanel = dynamic(() => import('@/components/UI/FocusDebugPanel'));
@@ -135,7 +134,6 @@ export default function HomePage({
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(() => getGuestPreferences());
   const [celebrations, setCelebrations] = useState<any[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedCelebration, setSelectedCelebration] = useState<any>(null);
@@ -648,7 +646,7 @@ export default function HomePage({
   }, [customCelebration, dismissHookCelebration]);
 
   // Phase 7: Sound Design (Web Audio API Procedural Synth Engine)
-  const { playHoverBlip, playDeepPulse, playUploadSuccess, playGoalCelebration, playNarrationIntro, playTensionDrone, playCorrectSound, playWrongSound, playTimerTick, playLevelUp } = useSoundDesign(isMuted, globalEnergyScore);
+  const { playHoverBlip, playDeepPulse, playGoalCelebration, playNarrationIntro, playTensionDrone, playCorrectSound, playWrongSound, playTimerTick, playLevelUp } = useSoundDesign(isMuted, globalEnergyScore);
 
   // Synchronize location into URL query parameters without full page reload
   const syncUrlLocation = useCallback((countryName: string | null, loc: LocationRecord | null) => {
@@ -919,12 +917,10 @@ export default function HomePage({
   // Synchronize computed Focus Mode state
   const computedFocusMode = isPlayEarthActive || 
                             (selectedCountry !== null && isDashboardOpen) || 
-                            (activeArticle !== null) || 
-                            isUploadModalOpen;
+                            (activeArticle !== null);
 
   const computedActivity = isPlayEarthActive ? 'Play Earth'
                           : activeArticle !== null ? 'Article Reader'
-                          : isUploadModalOpen ? 'Upload Reaction'
                           : (selectedCountry !== null && isDashboardOpen) ? 'Country Explorer'
                           : 'None';
 
@@ -964,36 +960,6 @@ export default function HomePage({
     setCurrentUser(user);
     setIsAuthModalOpen(false);
   }, []);
-
-  const handleUploadSuccess = useCallback((newCeleb: any) => {
-    playUploadSuccess();
-    
-    // Trigger the global visual celebration for the upload
-    const manualCeleb = {
-      active: true,
-      country: newCeleb.country,
-      team: `@${newCeleb.username}`,
-      player: `Shared a ${newCeleb.type.toUpperCase()} reaction!`,
-      goalTime: new Date(newCeleb.timestamp).getMinutes(),
-      matchTitle: newCeleb.match,
-      homeTeam: `@${newCeleb.username}`,
-      awayTeam: 'Fans Network',
-      homeScore: 1,
-      awayScore: 0,
-      colors: newCeleb.type === 'video'
-        ? { primary: '#00e5ff', secondary: '#ffffff', glow: 'rgba(0, 229, 255, 0.6)' }
-        : newCeleb.type === 'image'
-        ? { primary: '#e040fb', secondary: '#ffffff', glow: 'rgba(224, 64, 251, 0.6)' }
-        : { primary: '#00e676', secondary: '#ffffff', glow: 'rgba(0, 230, 118, 0.6)' },
-      lat: newCeleb.lat,
-      lng: newCeleb.lng,
-    };
-    
-    setCustomCelebration(manualCeleb);
-    setTimeout(() => {
-      setCustomCelebration(null);
-    }, 10000);
-  }, [playUploadSuccess]);
 
   const handleReportSuccess = useCallback((id: string) => {
     setCelebrations(prev => prev.filter(c => c.id !== id));
@@ -1860,17 +1826,6 @@ export default function HomePage({
         )}
       </AnimatePresence>
 
-      {/* UPLOAD REACTION MODAL */}
-      {isUploadModalOpen && (
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          matches={[]}
-          currentUser={currentUser}
-          onUploadSuccess={handleUploadSuccess}
-        />
-      )}
-
       {/* MEDIA VIEWER MODAL */}
       {selectedCelebration && (
         <MediaViewer
@@ -2142,22 +2097,6 @@ export default function HomePage({
 
           <button
             onClick={() => {
-              playHoverBlip();
-              if (!currentUser) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsUploadModalOpen(true);
-              }
-            }}
-            className="h-14 w-14 md:w-auto md:px-5 rounded-2xl flex items-center justify-center md:gap-2 bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 shadow-[0_0_30px_rgba(230,64,251,0.25)] hover:shadow-[0_0_45px_rgba(230,64,251,0.45)] hover:scale-105 transition-all duration-300 font-bold text-xs tracking-wider text-white cursor-pointer"
-            title="Upload Reaction"
-          >
-            <span>📣</span>
-            <span className="hidden md:inline">UPLOAD REACTION</span>
-          </button>
-
-          <button
-            onClick={() => {
               setIsAssistantOpen(!isAssistantOpen);
               playHoverBlip();
             }}
@@ -2259,22 +2198,6 @@ export default function HomePage({
             <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-0.5 right-0.5" />
             <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping absolute top-0.5 right-0.5" />
             <span className="text-xl">🎮</span>
-          </button>
-
-          {/* Mobile Upload Reaction Trigger (📣) */}
-          <button
-            onClick={() => {
-              playHoverBlip();
-              if (!currentUser) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsUploadModalOpen(true);
-              }
-            }}
-            className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 text-white shadow-[0_0_15px_rgba(230,64,251,0.35)] hover:scale-105 transition-all duration-300 pointer-events-auto cursor-pointer"
-            title="Upload Reaction"
-          >
-            <span className="text-[17px]">📣</span>
           </button>
 
           {/* Chatbot/Robot (AI Assistant) Toggle */}

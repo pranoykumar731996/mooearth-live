@@ -255,7 +255,7 @@ export interface TimelineTranslation {
 }
 
 export interface BottomBarTranslation {
-  uploadReaction: string;
+  uploadReaction?: string;
 }
 
 export interface SearchBarTranslation {

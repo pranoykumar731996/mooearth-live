@@ -253,7 +253,6 @@ interface MobileCountrySheetProps {
   onLevelUp: () => void;
   onReactionLoaded?: (reaction: ReactionEvent | null) => void;
   isFocusMode?: boolean;
-  onUploadClick?: () => void;
 }
 
 type SheetHeightState = 'collapsed' | 'half' | 'full';
@@ -279,7 +278,6 @@ export default function MobileCountrySheet({
   onLevelUp,
   onReactionLoaded,
   isFocusMode = false,
-  onUploadClick,
 }: MobileCountrySheetProps) {
   const { t, locale } = useTranslation();
   const [sheetState, setSheetState] = useState<SheetHeightState>('half');
@@ -663,15 +661,6 @@ export default function MobileCountrySheet({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {onUploadClick && (
-              <button
-                onClick={onUploadClick}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 border border-purple-400/40 text-white font-bold text-[9px] tracking-wider active:scale-95 transition-all cursor-pointer shadow-[0_0_10px_rgba(230,64,251,0.2)]"
-                title="Upload Reaction"
-              >
-                📣 {t('countryHub.uploadReaction', 'REACT')}
-              </button>
-            )}
             <button
               onClick={() => {
                 onPlaySound();

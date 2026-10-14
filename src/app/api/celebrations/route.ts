@@ -46,56 +46,12 @@ export async function GET() {
   });
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    // Rate limiting: 30 writes per minute per IP
-    const clientIp = getClientIp(request);
-    if (writeRateLimiter.isLimited(clientIp)) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Please wait before posting again.' },
-        { status: 429 }
-      );
-    }
-
-    const body = await request.json();
-    const { username, avatar, country, match, type, url, comment, lat, lng } = body;
-
-    if (!username || !country || !type || !url) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Profanity Filter for comments
-    const profaneWords = ['spam', 'abuse', 'nsfw', 'fuck', 'shit', 'asshole', 'bitch'];
-    let filteredComment = comment || '';
-    profaneWords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, 'gi');
-      filteredComment = filteredComment.replace(regex, '***');
-    });
-
-    const db = readDb();
-    const newCelebration = {
-      id: `celeb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      username,
-      avatar: avatar || '👤',
-      country,
-      match: match || 'Global Fan Reaction',
-      type,
-      url,
-      comment: filteredComment,
-      lat: Number(lat) || 0,
-      lng: Number(lng) || 0,
-      timestamp: Date.now(),
-      reports: 0
-    };
-
-    db.push(newCelebration);
-    writeDb(db);
-
-    return NextResponse.json({ success: true, celebration: newCelebration });
-  } catch (error) {
-    console.error('Error creating celebration:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
+// Reaction upload is permanently disabled
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Upload reaction feature has been permanently disabled' },
+    { status: 410 }
+  );
 }
 
 // Support reporting a celebration (PUT /api/celebrations)

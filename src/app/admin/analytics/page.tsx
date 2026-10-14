@@ -473,7 +473,7 @@ export default function AdminAnalyticsPage() {
       .slice(0, 5);
 
     // Funnel Steps
-    // Landing -> Country Click -> Article Read -> Quiz Engage -> Media Upload
+    // Landing -> Country Click -> Article Read -> Quiz Engage -> Globe 3D Exploration
     const funnelSteps = [
       { name: '1. Landing Page', count: totalSessions, pct: 100 },
       { 
@@ -492,8 +492,8 @@ export default function AdminAnalyticsPage() {
         get pct() { return Math.round((this.count / totalSessions) * 100) || 0; }
       },
       { 
-        name: '5. Upload Reaction Content', 
-        count: sessions.filter(s => s.uploads && (s.uploads.photos > 0 || s.uploads.videos > 0 || s.uploads.voice > 0)).length,
+        name: '5. Globe 3D Exploration', 
+        count: sessions.filter(s => s.globe && ((s.globe.rotations || 0) > 0 || (s.globe.zooms || 0) > 0)).length,
         get pct() { return Math.round((this.count / totalSessions) * 100) || 0; }
       }
     ];
