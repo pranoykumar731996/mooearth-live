@@ -186,8 +186,12 @@ export async function generateNextChallenge(
     }
   }
 
-  // 6. Record and return
+  // 6. Security Invariant: Ensure challenge is strictly non-duplicate
   if (challenge) {
+    if (globalAntiRepeat.wouldRepeat(challenge)) {
+      console.warn('[SECURITY GUARDRAIL INTERCEPTED DUPLICATE CHALLENGE]:', challenge.id, challenge.fingerprint);
+      return null;
+    }
     globalAntiRepeat.record(challenge);
     session.activeChallenge = challenge;
   }

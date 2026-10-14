@@ -557,7 +557,7 @@ export default function PlayEarthOverlay({
   const [phase, setPhase] = useState<PlayEarthPhase>('intro');
   const [gameState, setGameState] = useState<PlayerGameState>(() => loadGameState(username));
   const [selectedCategory, setSelectedCategory] = useState<QuizCategory>('geography');
-  const [currentQuestion, setCurrentQuestion] = useState<EarthQuestion | null>(null);
+  const [currentQuestion, setRawCurrentQuestion] = useState<EarthQuestion | null>(null);
   const displayQuestion = useMemo(() => {
     return currentQuestion ? getLocalizedQuestion(currentQuestion, locale) : null;
   }, [currentQuestion, locale]);
@@ -893,6 +893,69 @@ export default function PlayEarthOverlay({
     }
     seenQuestionBriefsRef.current = mergedBriefs;
   }, [gameState, username]);
+
+  /**
+   * 🛡️ ZERO-REPEAT RUNTIME SECURITY BARRIER
+   * Intercepts EVERY attempt to set a question across all game modes.
+   * If any component, API response, race condition, or fallback tries to serve an
+   * already-seen question or semantic duplicate, this security layer intercepts it,
+   * blocks it, and automatically injects a verified unique question from the global vault.
+   */
+  const setCurrentQuestion = useCallback((candidate: EarthQuestion | null | ((prev: EarthQuestion | null) => EarthQuestion | null)) => {
+    if (typeof candidate === 'function') {
+      setRawCurrentQuestion(prev => {
+        const next = candidate(prev);
+        if (!next) return null;
+        const ids = Array.from(seenQuestionIdsRef.current);
+        const briefs = seenQuestionBriefsRef.current;
+        if (ids.includes(next.id) || briefs.some(b => areQuestionsDuplicate(next, b)) || isQuestionSeen(username, next)) {
+          console.warn('[SECURITY INTERCEPTOR BLOCKED DUPLICATE QUESTION]:', next.id);
+          const safeQ = getUniqueFlagOrCapitalQuestion(Math.random() > 0.5 ? 'flag' : 'capital', 'medium', ids, briefs);
+          seenQuestionIdsRef.current.add(safeQ.id);
+          seenQuestionBriefsRef.current.push({ id: safeQ.id, question: safeQ.question, country: safeQ.country, category: safeQ.category });
+          recordSeenQuestion(username, safeQ);
+          return safeQ;
+        }
+        return next;
+      });
+      return;
+    }
+
+    if (!candidate) {
+      setRawCurrentQuestion(null);
+      return;
+    }
+
+    const answeredIdsList = Array.from(seenQuestionIdsRef.current);
+    const answeredQs = seenQuestionBriefsRef.current;
+
+    const isDuplicate =
+      answeredIdsList.includes(candidate.id) ||
+      answeredQs.some(b => areQuestionsDuplicate(candidate, b)) ||
+      isQuestionSeen(username, candidate);
+
+    if (isDuplicate) {
+      console.warn('[SECURITY INTERCEPTOR BLOCKED DUPLICATE QUESTION]:', candidate.id, candidate.question);
+      const safeQ = getUniqueFlagOrCapitalQuestion(
+        Math.random() > 0.5 ? 'flag' : 'capital',
+        'medium',
+        answeredIdsList,
+        answeredQs
+      );
+      seenQuestionIdsRef.current.add(safeQ.id);
+      seenQuestionBriefsRef.current.push({
+        id: safeQ.id,
+        question: safeQ.question,
+        country: safeQ.country,
+        category: safeQ.category
+      });
+      recordSeenQuestion(username, safeQ);
+      setRawCurrentQuestion(safeQ);
+      return;
+    }
+
+    setRawCurrentQuestion(candidate);
+  }, [username]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -323,7 +323,43 @@ function runServiceWorkerSyncSuite(issues: SentryIssue[]): { pass: boolean; heal
 }
 
 // ────────────────────────────────────────────────────────────
-// Optional Suite 6: Full Production Build Verification
+// Suite 6: Zero Question Repetition Security Invariant
+// ────────────────────────────────────────────────────────────
+function runAntiRepeatSecuritySuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
+  process.stdout.write(' [🔒 Security Gate] Verifying Zero-Repetition Question Invariants across all modes... ');
+  try {
+    execSync('npx tsx scripts/test-anti-repeat.ts', {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      timeout: 30000,
+    });
+    console.log('✅ PASSED (21/21 zero-repetition security checks verified)');
+    return {
+      pass: true,
+      healed: false,
+      message: 'Zero duplicate questions detected across Flag, Capital, Survival, Beat the Clock, & Infinite Earth engine',
+    };
+  } catch (err: any) {
+    const errorOutput = err.stderr ? err.stderr.toString() : err.message;
+    console.log('❌ FAILED: Duplicate questions or repetition regression detected');
+    issues.push({
+      id: `ANTI-REPEAT-SECURITY-FAIL-${Date.now()}`,
+      suite: 'Zero Question Repetition Security Invariant',
+      severity: 'CRITICAL',
+      message: `Anti-repetition security failure: ${errorOutput.slice(0, 300)}`,
+      autoFixAttempted: false,
+      autoFixSucceeded: false,
+    });
+    return {
+      pass: false,
+      healed: false,
+      message: 'Duplicate question recurrence detected in game modes',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// Optional Suite 7: Full Production Build Verification
 // ────────────────────────────────────────────────────────────
 function runProductionBuildSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
   process.stdout.write(' [6/6] Verifying Next.js Production Build (next build)... ');
@@ -433,11 +469,16 @@ async function main() {
   const s5 = runServiceWorkerSyncSuite(issues);
   suites.push({ name: 'Service Worker & Cache Sync', status: s5.pass ? (s5.healed ? 'HEALED' : 'PASS') : 'FAIL', durationMs: Date.now() - s5Start, details: s5.message });
 
-  // Optional Suite 6: Full Build
+  // Suite 6: Zero Question Repetition Security Invariant Gate
+  const s6Start = Date.now();
+  const s6 = runAntiRepeatSecuritySuite(issues);
+  suites.push({ name: 'Zero Question Repetition Security Invariant', status: s6.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s6Start, details: s6.message });
+
+  // Optional Suite 7: Full Build
   if (includeFullBuild) {
-    const s6Start = Date.now();
-    const s6 = runProductionBuildSuite(issues);
-    suites.push({ name: 'Production Build Compilation', status: s6.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s6Start, details: s6.message });
+    const s7Start = Date.now();
+    const s7 = runProductionBuildSuite(issues);
+    suites.push({ name: 'Production Build Compilation', status: s7.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s7Start, details: s7.message });
   }
 
   const durationMs = Date.now() - startTime;

@@ -30,6 +30,9 @@ jobs:
       - name: 🛡️ Run Sentry Regression Sentinel
         run: npm run test:sentry
 
+      - name: 🔒 Zero Question Repetition Security Audit
+        run: npm run test:anti-repeat
+
       - name: 🚀 Build Next.js Production Bundle
         run: npm run build
         env:
