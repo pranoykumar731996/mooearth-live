@@ -321,13 +321,27 @@ export const NewsProvider: DataProvider = {
 
     if (events.length === 0) return null;
 
+    const recentNewsTargets = new Set(
+      (request.excludeFingerprints || [])
+        .filter((f): f is string => typeof f === 'string' && f.startsWith('news:'))
+        .map(f => (f.split(':')[2] || '').replace(/_/g, ' ').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    const unseenEvents = events.filter(e => {
+      const c = (e.country || '').toLowerCase().trim();
+      const city = (e.city || '').toLowerCase().trim();
+      return !recentNewsTargets.has(c) && !recentNewsTargets.has(city);
+    });
+    const candidateEvents = unseenEvents.length > 0 ? unseenEvents : events;
+
     if (request.type) {
-      return generateNewsByType(request.type, events, difficulty);
+      return generateNewsByType(request.type, candidateEvents, difficulty);
     }
 
     const shuffledTypes = shuffle(SUPPORTED_TYPES);
     for (const type of shuffledTypes) {
-      const challenge = generateNewsByType(type, events, difficulty);
+      const challenge = generateNewsByType(type, candidateEvents, difficulty);
       if (challenge) return challenge;
     }
 

@@ -8,9 +8,15 @@ import {
   getContinentForCountry,
   isQuestionExpired
 } from '@/data/questions';
+import { COUNTRY_METADATA, findCountryMeta } from '@/data/questions/countryMetadata';
 import { generateQuestions } from '@/data/questions/generator';
+import { 
+  areQuestionsDuplicate as historyAreQuestionsDuplicate, 
+  QuestionBrief 
+} from '@/services/questionHistoryService';
 import { aiRateLimiter, getClientIp } from '@/lib/rate-limiter';
 
+export const areQuestionsDuplicate = historyAreQuestionsDuplicate;
 export const dynamic = 'force-dynamic';
 
 const API_URL = 'https://api.openai.com/v1/chat/completions';
@@ -188,102 +194,217 @@ function saveGeneratedQuestion(question: EarthQuestion) {
   }
 }
 
-/** Universal fallback generator that works for ANY country, strictly same-country locked */
-function generateUniversalFallback(country: string, category: string): EarthQuestion {
+/** Multi-template universal question generator with anti-repeat safeguards */
+function generateUniversalFallback(
+  country: string, 
+  category: string,
+  excludeIds: string[] = [],
+  excludeQuestions: { id: string; question: string; country: string }[] = []
+): EarthQuestion | null {
   const canonical = getCanonicalCountryName(country);
-  const continent = getContinentForCountry(canonical) || 'Earth';
-  const cat = getCanonicalCategory(category);
+  const meta = findCountryMeta(canonical);
+  const continent = (meta?.continent || getContinentForCountry(canonical) || 'Earth').trim();
+  const excludeSet = new Set(excludeIds);
+  const isCandidateDuplicate = (q: EarthQuestion) => {
+    if (excludeSet.has(q.id)) return true;
+    for (const aq of excludeQuestions) {
+      if (historyAreQuestionsDuplicate(q, aq)) return true;
+    }
+    return false;
+  };
 
-  if (cat === 'geography' || cat === 'mixed') {
+  const allMeta = Object.values(COUNTRY_METADATA);
+  const candidates: EarthQuestion[] = [];
+
+  // Template 1: Continent (Geography / Mixed)
+  if (meta?.continent || continent !== 'Earth') {
     const choices = [continent, 'Asia', 'Europe', 'Africa', 'Americas', 'Oceania'];
     const uniqueChoices = [...new Set(choices)].slice(0, 4);
     const shuffled = shuffle(uniqueChoices);
-    const correctIndex = shuffled.indexOf(continent);
-
-    return {
-      id: `universal-geo-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+    const question = `In which continent is the nation of ${canonical} located?`;
+    candidates.push({
+      id: `universal-cont-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
       country: canonical,
       category: 'geography',
       difficulty: 'easy',
-      question: `In which continent is the nation of ${canonical} located?`,
+      question,
       choices: shuffled,
-      correctIndex: correctIndex === -1 ? 0 : correctIndex,
+      correctIndex: shuffled.indexOf(continent),
       funFact: `${canonical} is situated in ${continent}. It offers a unique geographical landscape to explore.`
-    };
+    });
   }
 
-  if (cat === 'history') {
-    const choices = [canonical, 'Global Union', 'Universal Territory', 'United Continents'];
-    const shuffled = shuffle(choices);
-    return {
-      id: `universal-hist-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
-      country: canonical,
-      category: 'history',
-      difficulty: 'medium',
-      question: `Which sovereign country is the main focus of this history and cultural heritage challenge?`,
-      choices: shuffled,
-      correctIndex: shuffled.indexOf(canonical),
-      funFact: `We are studying the historical timeline and heritage of ${canonical} in this round.`
-    };
+  // Template 2: Capital City
+  if (meta?.capital) {
+    const wrongCapitals = shuffle(allMeta.map(m => m.capital).filter(c => c && c !== meta.capital)).slice(0, 3);
+    if (wrongCapitals.length >= 3) {
+      const choices = shuffle([meta.capital, ...wrongCapitals]);
+      const question = `What is the capital city of ${canonical}?`;
+      candidates.push({
+        id: `universal-cap-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'medium',
+        question,
+        choices,
+        correctIndex: choices.indexOf(meta.capital),
+        funFact: `${meta.capital} is the primary capital city of ${canonical}.`
+      });
+    }
   }
 
-  if (cat === 'sports') {
-    const wrongPool = ['Argentina', 'Germany', 'Japan', 'Brazil', 'France', 'Italy', 'Spain', 'United Kingdom', 'United States'];
-    const filteredWrongs = wrongPool.filter(c => c !== canonical);
-    const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
-    const shuffled = shuffle(uniqueChoices);
-    return {
-      id: `universal-sports-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
-      country: canonical,
-      category: 'sports',
-      difficulty: 'easy',
-      question: `Which country's international sports teams play under the national colors of ${canonical}?`,
-      choices: shuffled,
-      correctIndex: shuffled.indexOf(canonical),
-      funFact: `Athletes and national sports teams proudly represent the sovereignty of ${canonical}.`
-    };
+  // Template 3: Flag
+  if (meta?.flag) {
+    const wrongCountries = shuffle(allMeta.map(m => m.name).filter(n => n && n !== canonical)).slice(0, 3);
+    if (wrongCountries.length >= 3) {
+      const choices = shuffle([canonical, ...wrongCountries]);
+      const question = `Which sovereign nation is represented by this national flag?\n\n${meta.flag}`;
+      candidates.push({
+        id: `universal-flag-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'easy',
+        question,
+        choices,
+        correctIndex: choices.indexOf(canonical),
+        funFact: `${meta.flag} is the official national flag of ${canonical}.`
+      });
+    }
   }
 
-  if (cat === 'science') {
-    const wrongPool = ['Brazil', 'Canada', 'Australia', 'Japan', 'Germany', 'France', 'United States', 'United Kingdom'];
-    const filteredWrongs = wrongPool.filter(c => c !== canonical);
-    const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
-    const shuffled = shuffle(uniqueChoices);
-    return {
-      id: `universal-sci-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
-      country: canonical,
-      category: 'science',
-      difficulty: 'medium',
-      question: `Which country's geographical coordinate mapping, biodiversity, and ecosystems are we examining?`,
-      choices: shuffled,
-      correctIndex: shuffled.indexOf(canonical),
-      funFact: `Every country, including ${canonical}, has distinct ecosystems and environmental sciences.`
-    };
+  // Template 4: Currency
+  if (meta?.currency) {
+    const wrongCurrencies = shuffle(allMeta.map(m => m.currency).filter(c => c && c !== meta.currency)).slice(0, 3);
+    if (wrongCurrencies.length >= 3) {
+      const choices = shuffle([meta.currency, ...wrongCurrencies]);
+      const question = `What is the official currency used in ${canonical}?`;
+      candidates.push({
+        id: `universal-curr-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'medium',
+        question,
+        choices,
+        correctIndex: choices.indexOf(meta.currency),
+        funFact: `The official currency of ${canonical} is the ${meta.currency}.`
+      });
+    }
   }
 
-  // Current Affairs & mixed fallbacks
-  const wrongPool = ['United States', 'United Kingdom', 'France', 'Japan', 'Germany', 'Brazil', 'Canada', 'Australia'];
-  const filteredWrongs = wrongPool.filter(c => c !== canonical);
-  const uniqueChoices = [canonical, ...filteredWrongs].slice(0, 4);
-  const shuffled = shuffle(uniqueChoices);
-  return {
-    id: `universal-curr-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
-    country: canonical,
-    category: 'current-affairs',
-    difficulty: 'medium',
-    question: `Which nation is the primary subject of current affairs, politics, and local developments in this challenge card?`,
-    choices: shuffled,
-    correctIndex: shuffled.indexOf(canonical),
-    funFact: `You are playing the Current Affairs and events challenge specifically for ${canonical}.`
-  };
+  // Template 5: Language
+  if (meta?.language) {
+    const wrongLangs = shuffle([...new Set(allMeta.map(m => m.language).filter(l => l && l !== meta.language))]).slice(0, 3);
+    if (wrongLangs.length >= 3) {
+      const choices = shuffle([meta.language, ...wrongLangs]);
+      const question = `Which official or primary language is spoken in ${canonical}?`;
+      candidates.push({
+        id: `universal-lang-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'history',
+        difficulty: 'medium',
+        question,
+        choices,
+        correctIndex: choices.indexOf(meta.language),
+        funFact: `${meta.language} is widely spoken and recognized across ${canonical}.`
+      });
+    }
+  }
+
+  // Template 6: Landmark
+  if (meta?.landmark) {
+    const wrongLandmarks = shuffle(allMeta.map(m => m.landmark).filter(l => l && l !== meta.landmark)).slice(0, 3);
+    if (wrongLandmarks.length >= 3) {
+      const choices = shuffle([meta.landmark, ...wrongLandmarks]);
+      const question = `Which famous landmark or natural wonder is located in ${canonical}?`;
+      candidates.push({
+        id: `universal-land-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'medium',
+        question,
+        choices,
+        correctIndex: choices.indexOf(meta.landmark),
+        funFact: `${meta.landmark} is one of the most iconic landmarks of ${canonical}.`
+      });
+    }
+  }
+
+  // Template 7: Border Neighbor
+  if (meta?.neighbours && meta.neighbours.length > 0) {
+    const correctNeighbour = meta.neighbours[0];
+    const nonNeighbours = shuffle(allMeta.map(m => m.name).filter(n => n !== canonical && !meta.neighbours!.includes(n))).slice(0, 3);
+    if (nonNeighbours.length >= 3) {
+      const choices = shuffle([correctNeighbour, ...nonNeighbours]);
+      const question = `Which of these nations shares an international land border with ${canonical}?`;
+      candidates.push({
+        id: `universal-border-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'hard',
+        question,
+        choices,
+        correctIndex: choices.indexOf(correctNeighbour),
+        funFact: `${canonical} shares a land border with ${correctNeighbour}. Neighboring countries include: ${meta.neighbours.join(', ')}.`
+      });
+    }
+  }
+
+  // Template 8: Famous Dish
+  if (meta?.famousDish) {
+    const dish = meta.famousDish;
+    const wrongDishes = shuffle(
+      allMeta.map(m => m.famousDish).filter((d): d is string => Boolean(d) && d !== dish)
+    ).slice(0, 3);
+    if (wrongDishes.length >= 3) {
+      const choices: string[] = shuffle([dish, ...wrongDishes]);
+      const question = `Which traditional dish or culinary specialty originates from ${canonical}?`;
+      candidates.push({
+        id: `universal-dish-${canonical.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'easy',
+        question,
+        choices,
+        correctIndex: choices.indexOf(dish),
+        funFact: `${dish} is a famous culinary tradition of ${canonical}.`
+      });
+    }
+  }
+
+  // Shuffle candidates and pick the first unseen candidate
+  for (const cand of shuffle(candidates)) {
+    if (!isCandidateDuplicate(cand)) {
+      return cand;
+    }
+  }
+
+  // If ALL specific templates for this country have been answered,
+  // offer a Regional Master Challenge from the same continent
+  const sameContinentCountries = allMeta.filter(m => m.continent === continent && m.name !== canonical);
+  if (sameContinentCountries.length >= 4) {
+    const targetNeighbor = shuffle(sameContinentCountries)[0];
+    const otherContinentCountries = shuffle(allMeta.filter(m => m.continent !== continent)).slice(0, 3);
+    if (otherContinentCountries.length >= 3) {
+      const choices = shuffle([targetNeighbor.name, ...otherContinentCountries.map(m => m.name)]);
+      const question = `Regional Master Challenge: Having explored ${canonical}, which other nation is also located in ${continent}?`;
+      const regCand: EarthQuestion = {
+        id: `universal-regmaster-${canonical.toLowerCase().replace(/[^a-z]/g, '')}-${targetNeighbor.name.toLowerCase().replace(/[^a-z]/g, '')}`,
+        country: canonical,
+        category: 'geography',
+        difficulty: 'hard',
+        question,
+        choices,
+        correctIndex: choices.indexOf(targetNeighbor.name),
+        funFact: `Both ${canonical} and ${targetNeighbor.name} are situated in ${continent}. You are mastering the continent!`
+      };
+      if (!isCandidateDuplicate(regCand)) {
+        return regCand;
+      }
+    }
+  }
+
+  return null;
 }
-
-import { 
-  areQuestionsDuplicate as historyAreQuestionsDuplicate, 
-  QuestionBrief 
-} from '@/services/questionHistoryService';
-
-export const areQuestionsDuplicate = historyAreQuestionsDuplicate;
 
 export async function POST(request: NextRequest) {
   let requestCountry = 'Global';
@@ -470,9 +591,9 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
     }
 
     // ------ LAYER 4.5: UNIVERSAL SAME-COUNTRY GENERATION (FINAL CRASH RESISTANT) ------
-    const universalQ = generateUniversalFallback(canonicalCountry, category);
-    console.log(`[PLAY EARTH DEBUG] Layer 4.5: Universal fallback ID="${universalQ.id}" (isDuplicate? ${isDuplicate(universalQ)})`);
-    if (!isDuplicate(universalQ)) {
+    const universalQ = generateUniversalFallback(canonicalCountry, category, clientAnsweredIds, clientAnsweredQuestions);
+    console.log(`[PLAY EARTH DEBUG] Layer 4.5: Universal fallback ID="${universalQ?.id}" (isDuplicate? ${universalQ ? isDuplicate(universalQ) : 'null'})`);
+    if (universalQ && !isDuplicate(universalQ)) {
       saveGeneratedQuestion(universalQ);
       console.log(`[PLAY EARTH DEBUG] Layer 4.5 Match Found: ID="${universalQ.id}" for Country="${universalQ.country}"`);
       return NextResponse.json({ question: universalQ, source: 'universal-fallback' });
@@ -486,9 +607,12 @@ Ensure the question, options, answer, and fact are 100% focused on ${canonicalCo
     console.error('CRITICAL /api/quiz/next error:', err);
     try {
       const universalQ = generateUniversalFallback(requestCountry, requestCategory);
-      return NextResponse.json({ question: universalQ, source: 'error-safe-fallback' });
+      if (universalQ) {
+        return NextResponse.json({ question: universalQ, source: 'error-safe-fallback' });
+      }
+      return NextResponse.json({ question: null, source: 'exhausted' });
     } catch (inner: any) {
-      return NextResponse.json({ error: 'Critical server error', details: err.message }, { status: 500 });
+      return NextResponse.json({ question: null, source: 'exhausted' }, { status: 200 });
     }
   }
 }

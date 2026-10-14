@@ -460,14 +460,27 @@ export const WeatherProvider: DataProvider<WeatherDataset> = {
 
     if (observations.length < 4) return null;
 
+    const recentWeatherTargets = new Set(
+      (request.excludeFingerprints || [])
+        .filter((f): f is string => typeof f === 'string' && f.startsWith('weather:'))
+        .map(f => (f.split(':')[2] || '').replace(/_/g, ' ').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    const unseenObservations = observations.filter(o => 
+      !recentWeatherTargets.has(o.country.toLowerCase().trim()) && 
+      !recentWeatherTargets.has(o.city.toLowerCase().trim())
+    );
+    const candidateObs = unseenObservations.length >= 4 ? unseenObservations : observations;
+
     if (request.type) {
-      return generateWeatherByType(request.type, observations, difficulty);
+      return generateWeatherByType(request.type, candidateObs, difficulty);
     }
 
     // Pick a random weather challenge type
     const shuffledTypes = shuffle(SUPPORTED_TYPES);
     for (const type of shuffledTypes) {
-      const challenge = generateWeatherByType(type, observations, difficulty);
+      const challenge = generateWeatherByType(type, candidateObs, difficulty);
       if (challenge) return challenge;
     }
 

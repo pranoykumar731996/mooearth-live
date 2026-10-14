@@ -463,19 +463,28 @@ export function getQuestionsForCountry(
 
   const unseen = uniqueMatches.filter(q => !excludeSet.has(q.id));
 
-  // If there are unseen questions, return them shuffled
+  // If there are enough unseen questions, return them shuffled
   if (unseen.length >= count) {
     return shuffle(unseen).slice(0, count);
   }
 
-  // If we run out of unseen, pad with already-answered (oldest first) to avoid empty states in sync mode
-  const answered = uniqueMatches.filter(q => excludeSet.has(q.id));
-  const sortedAnswered = [...answered].sort((a, b) => {
-    return answeredIds.lastIndexOf(a.id) - answeredIds.lastIndexOf(b.id);
-  });
+  // If local/procedural pool for this specific category is exhausted, generate fresh discovery questions for this country
+  const results = [...shuffle(unseen)];
+  
+  // Try generating fresh discovery questions for this country across all categories
+  for (let attempt = 0; attempt < 25 && results.length < count; attempt++) {
+    const discQ = generateDiscoveryQuestion({
+      countryName: canonicalCountry,
+      excludeIds: [...answeredIds, ...results.map(r => r.id)],
+      seed: Date.now() + attempt * 31,
+    });
+    if (discQ && !excludeSet.has(discQ.id) && !results.some(r => r.id === discQ.id)) {
+      results.push(discQ);
+      excludeSet.add(discQ.id);
+    }
+  }
 
-  const finalCombined = [...shuffle(unseen), ...sortedAnswered];
-  return finalCombined.slice(0, count);
+  return results;
 }
 
 /**

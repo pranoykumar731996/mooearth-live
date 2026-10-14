@@ -21,7 +21,7 @@ import {
   matchCountry
 } from '@/data/questions';
 import { getCoordinatesForCountry } from '@/lib/constants';
-import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
+import { COUNTRY_METADATA, findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
 import { CountryFlag, renderTextWithFlags } from '@/components/UI/CountryFlag';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getLocalizedQuestion } from '@/lib/i18n';
@@ -449,27 +449,92 @@ export function getUniqueFlagOrCapitalQuestion(
   answeredQuestions: { id: string; question: string; country: string }[],
   countryName?: string
 ): EarthQuestion {
-  const maxAttempts = 120;
-  let q: EarthQuestion | null = null;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+  const answeredIdSet = new Set(answeredIds);
+  const askedCountries = new Set<string>();
+  for (const aq of answeredQuestions) {
+    if (aq.country) {
+      askedCountries.add(aq.country.toLowerCase().trim());
+    }
+  }
+
+  const isDuplicate = (candidate: EarthQuestion) => {
+    if (answeredIdSet.has(candidate.id)) return true;
+    return answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
+  };
+
+  // 1. If a specific countryName was requested, check if it was already asked
+  if (countryName) {
+    const norm = countryName.toLowerCase().trim();
+    if (!askedCountries.has(norm)) {
+      const candidate = mode === 'flag'
+        ? generateFlagQuestion(difficulty, answeredIds, countryName, answeredQuestions)
+        : generateCapitalQuestion(difficulty, answeredIds, countryName, answeredQuestions);
+      if (!isDuplicate(candidate)) {
+        return candidate;
+      }
+    }
+    // If countryName was already asked or produced a duplicate, discard countryName and rotate globally!
+  }
+
+  // 2. Filter all countries with valid metadata for countries that have NOT been asked
+  const allMeta = Object.values(COUNTRY_METADATA).filter(m => (mode === 'flag' ? m.flag : m.capital) && m.name);
+  const unseenMeta = allMeta.filter(m => !askedCountries.has(m.name.toLowerCase().trim()));
+  
+  // Try unseen countries first
+  const pool = unseenMeta.length > 0 ? unseenMeta : allMeta;
+  const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+
+  for (const meta of shuffledPool) {
     const candidate = mode === 'flag'
-      ? generateFlagQuestion(difficulty, answeredIds, countryName, answeredQuestions)
-      : generateCapitalQuestion(difficulty, answeredIds, countryName, answeredQuestions);
+      ? generateFlagQuestion(difficulty, answeredIds, meta.name, answeredQuestions)
+      : generateCapitalQuestion(difficulty, answeredIds, meta.name, answeredQuestions);
     
-    const duplicate = answeredQuestions.some(aq => areQuestionsDuplicate(candidate, aq));
-    if (!duplicate) {
+    if (!isDuplicate(candidate)) {
       return candidate;
     }
-    if (!q) q = candidate;
   }
 
-  // Fallback to procedural question if all flags/capitals exhausted
-  if (countryName) {
-    const proc = generateQuestions(countryName, 'geography', 2, answeredIds, answeredQuestions);
-    if (proc.length > 0) return proc[0];
+  // 3. Fallback: generate a fresh discovery question if flag/capital pool is completely saturated
+  const discoveryCandidates = [
+    ...generateQuestions(countryName || 'Global', 'geography', 5, answeredIds, answeredQuestions),
+    ...generateQuestions(countryName || 'Global', 'trivia', 5, answeredIds, answeredQuestions),
+  ];
+  for (const dc of discoveryCandidates) {
+    if (!isDuplicate(dc)) {
+      return dc;
+    }
   }
 
-  return q || (mode === 'flag' ? generateFlagQuestion(difficulty, answeredIds, countryName) : generateCapitalQuestion(difficulty, answeredIds, countryName));
+  // 4. Final safety net: guaranteed non-repeating procedural question
+  const randomCountry = allMeta[Math.floor(Math.random() * allMeta.length)] || { name: 'Brazil', capital: 'Brasília', flag: '🇧🇷' };
+  const fallbackId = `safenet-${mode}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  if (mode === 'flag') {
+    const wrongOptions = allMeta.filter(m => m.name !== randomCountry.name).map(m => m.name).slice(0, 3);
+    const choices = [randomCountry.name, ...wrongOptions].sort(() => Math.random() - 0.5);
+    return {
+      id: fallbackId,
+      country: randomCountry.name,
+      category: 'geography',
+      difficulty,
+      question: `Flag Explorer: Which nation is represented by this national flag?\n\n${randomCountry.flag}`,
+      choices,
+      correctIndex: choices.indexOf(randomCountry.name),
+      funFact: `${randomCountry.flag} is the flag of ${randomCountry.name}.`
+    };
+  } else {
+    const wrongOptions = allMeta.filter(m => m.capital && m.capital !== randomCountry.capital).map(m => m.capital).slice(0, 3);
+    const choices = [randomCountry.capital, ...wrongOptions].sort(() => Math.random() - 0.5);
+    return {
+      id: fallbackId,
+      country: randomCountry.name,
+      category: 'geography',
+      difficulty,
+      question: `Capital Explorer: What is the primary capital city of ${randomCountry.name}?`,
+      choices,
+      correctIndex: choices.indexOf(randomCountry.capital),
+      funFact: `${randomCountry.capital} is the capital of ${randomCountry.name}.`
+    };
+  }
 }
 
 
@@ -1583,12 +1648,13 @@ export default function PlayEarthOverlay({
         finalSource = source;
         break;
       }
-      if (!q) {
-        q = candidate;
-        finalSource = source;
-      }
     }
     
+    if (!q) {
+      q = getUniqueFlagOrCapitalQuestion(Math.random() > 0.5 ? 'flag' : 'capital', 'medium', answeredIdsList, answeredQs);
+      finalSource = 'Discovery Vault';
+    }
+
     if (q) {
       seenQuestionIdsRef.current.add(q.id);
       seenQuestionBriefsRef.current.push({
@@ -1664,7 +1730,14 @@ export default function PlayEarthOverlay({
     } catch (err) {
       console.warn('API error, falling back to local procedural template', err);
       // Local fallback with strict anti-repeat
-      const q = getUniqueFlagOrCapitalQuestion('capital', 'medium', Array.from(seenQuestionIdsRef.current), seenQuestionBriefsRef.current, selectedCountry || undefined);
+      const answeredIdsList = Array.from(seenQuestionIdsRef.current);
+      const answeredQs = seenQuestionBriefsRef.current;
+      const proc = generateQuestions(selectedCountry || 'Global', category as QuizCategory, 5, answeredIdsList, answeredQs);
+      const unseenProc = proc.filter(candidate => !answeredIdsList.includes(candidate.id) && !answeredQs.some(aq => areQuestionsDuplicate(candidate, aq)));
+      const q = unseenProc.length > 0
+        ? unseenProc[0]
+        : getUniqueFlagOrCapitalQuestion('capital', 'medium', answeredIdsList, answeredQs, selectedCountry || undefined);
+
       seenQuestionIdsRef.current.add(q.id);
       seenQuestionBriefsRef.current.push({
         id: q.id,
@@ -1675,7 +1748,7 @@ export default function PlayEarthOverlay({
       recordSeenQuestion(username, q);
 
       setCurrentQuestion(q);
-      setQuestionSource('Capital Generator (Local Fallback)');
+      setQuestionSource('Discovery Generator (Local Fallback)');
       setSelectedAnswer(null);
       setIsCorrect(null);
       setTimer(15);
@@ -1725,10 +1798,12 @@ export default function PlayEarthOverlay({
           selectedCountryName = candidate.country || randomCountry;
           break;
         }
-        if (!selectedQ) {
-          selectedQ = candidate;
-          selectedCountryName = candidate.country || randomCountry;
-        }
+      }
+
+      if (!selectedQ) {
+        selectedQ = getUniqueFlagOrCapitalQuestion(Math.random() > 0.5 ? 'flag' : 'capital', 'medium', answeredIdsList, answeredQs);
+        selectedCountryName = selectedQ.country || 'Global';
+        sourceName = 'Survival Safe Engine';
       }
 
       if (selectedQ) {
@@ -1947,8 +2022,7 @@ export default function PlayEarthOverlay({
             activeMode,
             difficulty,
             Array.from(seenQuestionIdsRef.current),
-            seenQuestionBriefsRef.current,
-            selectedCountry || undefined
+            seenQuestionBriefsRef.current
           );
           seenQuestionIdsRef.current.add(nextQuestion.id);
           seenQuestionBriefsRef.current.push({

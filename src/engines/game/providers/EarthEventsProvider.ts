@@ -332,13 +332,27 @@ export const EarthEventsProvider: DataProvider<EarthEventDataset> = {
 
     if (events.length === 0) return null;
 
+    const recentEventTargets = new Set(
+      (request.excludeFingerprints || [])
+        .filter((f): f is string => typeof f === 'string' && f.startsWith('events:'))
+        .map(f => (f.split(':')[2] || '').replace(/_/g, ' ').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    const unseenEvents = events.filter(e => {
+      const c = (e.country || '').toLowerCase().trim();
+      const loc = (e.location || '').toLowerCase().trim();
+      return !recentEventTargets.has(c) && !recentEventTargets.has(loc);
+    });
+    const candidateEvents = unseenEvents.length > 0 ? unseenEvents : events;
+
     if (request.type) {
-      return generateEarthByType(request.type, events, difficulty);
+      return generateEarthByType(request.type, candidateEvents, difficulty);
     }
 
     const shuffledTypes = shuffle(SUPPORTED_TYPES);
     for (const type of shuffledTypes) {
-      const challenge = generateEarthByType(type, events, difficulty);
+      const challenge = generateEarthByType(type, candidateEvents, difficulty);
       if (challenge) return challenge;
     }
 

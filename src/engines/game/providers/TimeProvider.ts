@@ -72,12 +72,20 @@ function isDaylight(lng: number): boolean {
 // ---- Challenge Generators ----
 
 function generateTimezoneChallenge(
-  difficulty: ChallengeDifficulty
+  difficulty: ChallengeDifficulty,
+  excludeTargets: Set<string> = new Set()
 ): EarthChallenge | null {
   const entries = Object.entries(COUNTRY_COORDINATES);
   if (entries.length < 4) return null;
 
-  const shuffled = shuffle(entries);
+  const unseenEntries = entries.filter(([key, data]) => {
+    const normKey = key.toLowerCase().trim();
+    const normCountry = (data.country || '').toLowerCase().trim();
+    return !excludeTargets.has(normKey) && !excludeTargets.has(normCountry);
+  });
+
+  const pool = unseenEntries.length >= 4 ? unseenEntries : entries;
+  const shuffled = shuffle(pool);
   const [targetKey, targetData] = shuffled[0];
 
   const localTime = getLocalTime(targetData.lng);
@@ -124,7 +132,8 @@ function generateTimezoneChallenge(
 }
 
 function generateDayNightChallenge(
-  difficulty: ChallengeDifficulty
+  difficulty: ChallengeDifficulty,
+  excludeTargets: Set<string> = new Set()
 ): EarthChallenge | null {
   const entries = Object.entries(COUNTRY_COORDINATES);
   if (entries.length < 2) return null;
@@ -138,7 +147,12 @@ function generateDayNightChallenge(
   const matching = entries.filter(([, d]) => isDaylight(d.lng) === seekDay);
   if (matching.length === 0) return null;
 
-  const target = shuffle(matching)[0];
+  const unseenMatching = matching.filter(([k, d]) => {
+    const cName = (d.country || k).toLowerCase().trim();
+    return !excludeTargets.has(cName) && !excludeTargets.has(`${label}:${cName}`);
+  });
+  const pool = unseenMatching.length > 0 ? unseenMatching : matching;
+  const target = shuffle(pool)[0];
   const [targetKey, targetData] = target;
 
   const hint = difficulty === 'easy'
@@ -201,14 +215,20 @@ export const TimeProvider: DataProvider = {
 
   async generateChallenge(request: ChallengeRequest): Promise<EarthChallenge | null> {
     const difficulty = request.difficulty || 'medium';
+    const excludeTargets = new Set(
+      (request.excludeFingerprints || [])
+        .filter((f): f is string => typeof f === 'string' && f.startsWith('time:'))
+        .map(f => (f.split(':')[2] || '').replace(/_/g, ' ').toLowerCase().trim())
+        .filter(Boolean)
+    );
 
     if (request.type) {
-      return generateTimeByType(request.type, difficulty);
+      return generateTimeByType(request.type, difficulty, excludeTargets);
     }
 
     const shuffledTypes = shuffle(SUPPORTED_TYPES);
     for (const type of shuffledTypes) {
-      const challenge = generateTimeByType(type, difficulty);
+      const challenge = generateTimeByType(type, difficulty, excludeTargets);
       if (challenge) return challenge;
     }
 
@@ -218,13 +238,14 @@ export const TimeProvider: DataProvider = {
 
 function generateTimeByType(
   type: ChallengeType,
-  difficulty: ChallengeDifficulty
+  difficulty: ChallengeDifficulty,
+  excludeTargets: Set<string> = new Set()
 ): EarthChallenge | null {
   switch (type) {
     case 'TIMEZONE_CHALLENGE':
-      return generateTimezoneChallenge(difficulty);
+      return generateTimezoneChallenge(difficulty, excludeTargets);
     case 'DAY_NIGHT_CHALLENGE':
-      return generateDayNightChallenge(difficulty);
+      return generateDayNightChallenge(difficulty, excludeTargets);
     default:
       return null;
   }

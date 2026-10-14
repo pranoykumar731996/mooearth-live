@@ -32,6 +32,7 @@ import {
 
 import { initializeGameEngine } from '../src/engines/game/init';
 import { createSession, generateNextChallenge } from '../src/engines/game/ChallengeGenerator';
+import { getUniqueFlagOrCapitalQuestion } from '../src/components/Globe/PlayEarthOverlay';
 import type { EarthQuestion } from '../src/types';
 
 let passedChecks = 0;
@@ -305,6 +306,81 @@ async function runAntiRepeatTests() {
     const signedInUser = `user_${Date.now()}`;
     migrateGuestSeenQuestions(signedInUser);
     assert(isQuestionSeen(signedInUser, guestQ), 'Guest question history migrated seamlessly to authenticated user');
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 9. Flag Mode Continuous Streak Anti-Repeat Test (50 Questions)
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n📋 Suite 9: Flag Mode Continuous Streak (50 Questions starting from clicked country "France")');
+  {
+    const seenIds = new Set<string>();
+    const seenBriefs: QuestionBrief[] = [];
+    const initialCountry = 'France';
+    let flagStreakDuplicates = 0;
+    const countriesServed = new Set<string>();
+
+    for (let step = 0; step < 50; step++) {
+      // Step 0 passes initial clicked country, subsequent steps rotate without pinned country
+      const q = getUniqueFlagOrCapitalQuestion(
+        'flag',
+        'medium',
+        Array.from(seenIds),
+        seenBriefs,
+        step === 0 ? initialCountry : undefined
+      );
+
+      if (seenIds.has(q.id)) {
+        flagStreakDuplicates++;
+      }
+      if (seenBriefs.some(b => areQuestionsDuplicate(q, b))) {
+        flagStreakDuplicates++;
+      }
+
+      seenIds.add(q.id);
+      seenBriefs.push({ id: q.id, question: q.question, country: q.country, category: q.category });
+      if (q.country) countriesServed.add(q.country.toLowerCase().trim());
+      recordSeenQuestion(testUser, q);
+    }
+
+    assert(flagStreakDuplicates === 0, '0 duplicate questions across 50 consecutive Flag Challenge streak questions', `Duplicates: ${flagStreakDuplicates}`);
+    assert(countriesServed.size >= 40, `Served questions across ${countriesServed.size} distinct countries (never stuck repeating France)`);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 10. Capital Mode Continuous Streak Anti-Repeat Test (50 Questions)
+  // ─────────────────────────────────────────────────────────────
+  console.log('\n📋 Suite 10: Capital Mode Continuous Streak (50 Questions starting from clicked country "Brazil")');
+  {
+    const seenIds = new Set<string>();
+    const seenBriefs: QuestionBrief[] = [];
+    const initialCountry = 'Brazil';
+    let capStreakDuplicates = 0;
+    const countriesServed = new Set<string>();
+
+    for (let step = 0; step < 50; step++) {
+      const q = getUniqueFlagOrCapitalQuestion(
+        'capital',
+        'medium',
+        Array.from(seenIds),
+        seenBriefs,
+        step === 0 ? initialCountry : undefined
+      );
+
+      if (seenIds.has(q.id)) {
+        capStreakDuplicates++;
+      }
+      if (seenBriefs.some(b => areQuestionsDuplicate(q, b))) {
+        capStreakDuplicates++;
+      }
+
+      seenIds.add(q.id);
+      seenBriefs.push({ id: q.id, question: q.question, country: q.country, category: q.category });
+      if (q.country) countriesServed.add(q.country.toLowerCase().trim());
+      recordSeenQuestion(testUser, q);
+    }
+
+    assert(capStreakDuplicates === 0, '0 duplicate questions across 50 consecutive Capital Challenge streak questions', `Duplicates: ${capStreakDuplicates}`);
+    assert(countriesServed.size >= 40, `Served questions across ${countriesServed.size} distinct countries (never stuck repeating Brazil)`);
   }
 
   console.log('\n═════════════════════════════════════════════════════════════════');

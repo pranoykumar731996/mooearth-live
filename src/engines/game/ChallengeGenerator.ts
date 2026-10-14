@@ -115,7 +115,7 @@ function getDailySeed(): number {
 
 // ---- Challenge Generation ----
 
-const globalAntiRepeat = new AntiRepeatEngine(50);
+const globalAntiRepeat = new AntiRepeatEngine(5000);
 
 /**
  * Generate the next challenge for the session.
@@ -210,8 +210,8 @@ async function tryGenerateFromEngine(
     const available = await provider.isAvailable();
     if (!available) return null;
 
-    // Try up to 3 times to avoid anti-repeat collisions
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Try up to 25 times to avoid anti-repeat collisions across the large global dataset
+    for (let attempt = 0; attempt < 25; attempt++) {
       const challenge = await provider.generateChallenge(request);
       if (!challenge) return null;
 

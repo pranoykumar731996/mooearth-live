@@ -16,7 +16,20 @@ export interface QuestionBrief {
 }
 
 const STORAGE_PREFIX = 'mooearth_seen_questions_v2_';
-const MAX_PERSISTED_HISTORY = 1500;
+const MAX_PERSISTED_HISTORY = 3000;
+
+/**
+ * Normalizes username to a stable key for storage.
+ * 'Guest', 'Anonymous', null, undefined, or empty string all map to 'Guest'.
+ */
+export function normalizeUserKey(username?: string | null): string {
+  if (!username || typeof username !== 'string') return 'Guest';
+  const trimmed = username.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'guest' || trimmed.toLowerCase() === 'anonymous') {
+    return 'Guest';
+  }
+  return trimmed;
+}
 
 // Universal stop words for semantic deduplication
 const STOP_WORDS = new Set([
@@ -52,11 +65,26 @@ export function getQuestionSignature(text: string): string {
     ['dollar', 'currency'],
     ['peso', 'currency'],
     ['euro', 'currency'],
+    ['pound', 'currency'],
+    ['franc', 'currency'],
+    ['dinar', 'currency'],
+    ['rupee', 'currency'],
+    ['yen', 'currency'],
+    ['yuan', 'currency'],
     ['language', 'language'],
     ['speak', 'language'],
     ['continent', 'continent'],
+    ['hemisphere', 'hemisphere'],
     ['landmark', 'landmark'],
     ['monument', 'landmark'],
+    ['tower', 'landmark'],
+    ['castle', 'landmark'],
+    ['palace', 'landmark'],
+    ['pyramid', 'landmark'],
+    ['cathedral', 'landmark'],
+    ['temple', 'landmark'],
+    ['museum', 'landmark'],
+    ['statue', 'landmark'],
     ['border', 'border'],
     ['neighbour', 'border'],
     ['neighbor', 'border'],
@@ -81,6 +109,12 @@ export function getQuestionSignature(text: string): string {
     ['mountain', 'geography_feature'],
     ['peak', 'geography_feature'],
     ['river', 'geography_feature'],
+    ['lake', 'geography_feature'],
+    ['elevation', 'geography_feature'],
+    ['timezone', 'timezone'],
+    ['time zone', 'timezone'],
+    ['island', 'island'],
+    ['archipelago', 'island'],
   ];
 
   for (const [kw, sig] of keywords) {
@@ -95,12 +129,13 @@ export const extractConceptSignature = getQuestionSignature;
  * Clears seen questions history for a user (useful for test resets).
  */
 export function clearSeenQuestions(username: string = 'Guest'): void {
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   memorySeenBriefs.delete(userKey);
   memorySeenIds.delete(userKey);
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(`${STORAGE_PREFIX}${userKey}`);
+      localStorage.removeItem(`${ENGINE_FP_PREFIX}${userKey}`);
     } catch (e) {}
   }
 }
@@ -154,7 +189,7 @@ export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boo
         if (w2.has(w)) intersection++;
       }
       const union = w1.size + w2.size - intersection;
-      if (union > 0 && (intersection / union) > 0.45) {
+      if (union > 0 && (intersection / union) > 0.40) {
         return true;
       }
     }
@@ -171,7 +206,7 @@ export function areQuestionsDuplicate(q1: QuestionBrief, q2: QuestionBrief): boo
         if (w2.has(w)) intersection++;
       }
       const union = w1.size + w2.size - intersection;
-      if (union > 0 && (intersection / union) > 0.55) {
+      if (union > 0 && (intersection / union) > 0.50) {
         return true;
       }
     }
@@ -188,7 +223,7 @@ const memorySeenIds: Map<string, Set<string>> = new Map();
  * Loads persistent seen questions for a username.
  */
 export function getSeenQuestions(username: string = 'Guest'): QuestionBrief[] {
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   if (memorySeenBriefs.has(userKey)) {
     return memorySeenBriefs.get(userKey)!;
   }
@@ -219,7 +254,7 @@ export function getSeenQuestions(username: string = 'Guest'): QuestionBrief[] {
  * Gets a set of seen question IDs for fast lookup.
  */
 export function getSeenQuestionIds(username: string = 'Guest'): string[] {
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   if (!memorySeenIds.has(userKey)) {
     getSeenQuestions(userKey);
   }
@@ -231,7 +266,7 @@ export function getSeenQuestionIds(username: string = 'Guest'): string[] {
  */
 function persistSeenQuestions(username: string = 'Guest'): void {
   if (typeof window === 'undefined') return;
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   const list = memorySeenBriefs.get(userKey) || [];
 
   try {
@@ -250,7 +285,7 @@ function persistSeenQuestions(username: string = 'Guest'): void {
  */
 export function isQuestionSeen(username: string = 'Guest', question: QuestionBrief): boolean {
   if (!question) return false;
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   const seenList = getSeenQuestions(userKey);
   const seenIds = memorySeenIds.get(userKey);
 
@@ -266,7 +301,7 @@ export function isQuestionSeen(username: string = 'Guest', question: QuestionBri
  */
 export function recordSeenQuestion(username: string = 'Guest', question: QuestionBrief): void {
   if (!question || !question.question) return;
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   const seenList = getSeenQuestions(userKey);
   const seenIds = memorySeenIds.get(userKey) || new Set<string>();
 
@@ -296,7 +331,7 @@ export function recordSeenQuestion(username: string = 'Guest', question: Questio
  */
 export function recordSeenQuestions(username: string = 'Guest', questions: QuestionBrief[]): void {
   if (!Array.isArray(questions) || questions.length === 0) return;
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   const seenList = getSeenQuestions(userKey);
   const seenIds = memorySeenIds.get(userKey) || new Set<string>();
 
@@ -334,7 +369,7 @@ export function filterUnseenQuestions<T extends QuestionBrief>(
   candidates: T[]
 ): T[] {
   if (!Array.isArray(candidates) || candidates.length === 0) return [];
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   return candidates.filter(c => !isQuestionSeen(userKey, c));
 }
 
@@ -342,37 +377,48 @@ export function filterUnseenQuestions<T extends QuestionBrief>(
  * Migrates questions seen while playing as 'Guest' into the authenticated user's history.
  */
 export function migrateGuestSeenQuestions(toUsername: string): void {
-  if (!toUsername || toUsername === 'Guest') return;
+  const targetKey = normalizeUserKey(toUsername);
+  if (targetKey === 'Guest') return;
+
   const guestQuestions = getSeenQuestions('Guest');
   if (guestQuestions.length > 0) {
-    recordSeenQuestions(toUsername, guestQuestions);
+    recordSeenQuestions(targetKey, guestQuestions);
+  }
+
+  const guestFps = getSeenEngineFingerprints('Guest');
+  for (const fp of guestFps) {
+    recordSeenEngineFingerprint(targetKey, fp);
   }
 }
 
 /**
  * Engine fingerprints anti-repeat helpers.
+ * Persists in localStorage across browser sessions so challenges never repeat!
  */
-const ENGINE_FP_PREFIX = 'mooearth_engine_seen_fps_';
+const ENGINE_FP_PREFIX = 'mooearth_engine_seen_fps_v2_';
 
 export function getSeenEngineFingerprints(username: string = 'Guest'): string[] {
   if (typeof window === 'undefined') return [];
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   try {
-    const raw = sessionStorage.getItem(`${ENGINE_FP_PREFIX}${userKey}`);
+    const raw = localStorage.getItem(`${ENGINE_FP_PREFIX}${userKey}`);
     if (raw) return JSON.parse(raw);
+    // Legacy fallback from sessionStorage
+    const legacy = sessionStorage.getItem(`mooearth_engine_seen_fps_${userKey}`);
+    if (legacy) return JSON.parse(legacy);
   } catch (e) {}
   return [];
 }
 
 export function recordSeenEngineFingerprint(username: string = 'Guest', fingerprint: string): void {
   if (typeof window === 'undefined' || !fingerprint) return;
-  const userKey = username || 'Guest';
+  const userKey = normalizeUserKey(username);
   try {
     const existing = getSeenEngineFingerprints(userKey);
     if (!existing.includes(fingerprint)) {
       existing.push(fingerprint);
-      const capped = existing.slice(-200);
-      sessionStorage.setItem(`${ENGINE_FP_PREFIX}${userKey}`, JSON.stringify(capped));
+      const capped = existing.slice(-2000);
+      localStorage.setItem(`${ENGINE_FP_PREFIX}${userKey}`, JSON.stringify(capped));
     }
   } catch (e) {}
 }

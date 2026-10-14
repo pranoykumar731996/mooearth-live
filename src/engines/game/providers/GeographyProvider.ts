@@ -70,12 +70,19 @@ function generateGlobeHunt(
   excludeCountries: string[],
   targetCountry?: string
 ): EarthChallenge | null {
-  const country = targetCountry || selectCountryForDifficulty(difficulty, excludeCountries);
+  const normExclude = excludeCountries.map(c => c.toLowerCase().trim().replace(/_/g, ' '));
+  let country = targetCountry;
+  if (country && normExclude.includes(country.toLowerCase().trim())) {
+    country = undefined; // Discard already-seen target country
+  }
+  if (!country) {
+    country = selectCountryForDifficulty(difficulty, normExclude);
+  }
   const coords = getCoordinates(country);
   if (!coords) return null;
 
   const meta = (Object.values(COUNTRY_METADATA) as CountryMeta[]).find(
-    m => m.name.toLowerCase() === country.toLowerCase()
+    m => m.name.toLowerCase() === country!.toLowerCase()
   );
   const hint = difficulty === 'easy' && meta
     ? `Hint: This country is in ${meta.continent}.`
@@ -109,9 +116,13 @@ function generateRandomLocation(
   difficulty: ChallengeDifficulty,
   excludeCountries: string[]
 ): EarthChallenge | null {
-  const pool = getMetaWithCoords().filter(
-    m => !excludeCountries.includes(m.name.toLowerCase())
+  const normExclude = excludeCountries.map(c => c.toLowerCase().trim().replace(/_/g, ' '));
+  let pool = getMetaWithCoords().filter(
+    m => !normExclude.includes(m.name.toLowerCase().trim())
   );
+  if (pool.length === 0) {
+    pool = getMetaWithCoords();
+  }
   if (pool.length === 0) return null;
 
   const target = shuffle(pool)[0];
@@ -371,7 +382,10 @@ export const GeographyProvider: DataProvider = {
     const difficulty = request.difficulty || 'medium';
     const recentCountries = (request.excludeFingerprints || [])
       .filter((f): f is string => typeof f === 'string' && f.startsWith('geography:'))
-      .map(f => f.split(':')[2] || '')
+      .map(f => {
+        const raw = f.split(':')[2] || '';
+        return raw.replace(/_/g, ' ').toLowerCase().trim();
+      })
       .filter(Boolean);
 
     // If a specific type is requested, generate that

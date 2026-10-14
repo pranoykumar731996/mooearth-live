@@ -7,12 +7,12 @@
 import { ChallengeType, EarthChallenge, GameEngineType } from './types';
 
 /** Maximum fingerprints retained before oldest are evicted */
-const DEFAULT_WINDOW_SIZE = 50;
+const DEFAULT_WINDOW_SIZE = 5000;
 
 /**
  * AntiRepeatEngine maintains a rolling set of recent challenge fingerprints
- * to ensure variety. Fingerprints encode engine, challenge type, target,
- * source timestamp, difficulty, and a random seed.
+ * to ensure variety. Fingerprints encode engine, challenge type, and target
+ * so the same challenge never repeats.
  */
 export class AntiRepeatEngine {
   private recentFingerprints: string[] = [];
@@ -26,7 +26,7 @@ export class AntiRepeatEngine {
   // ---- Fingerprint Generation ----
 
   /**
-   * Compute a deterministic fingerprint for a challenge configuration.
+   * Compute a deterministic semantic fingerprint for a challenge configuration.
    * Used both to tag generated challenges and to check for duplicates
    * before presenting to the user.
    */
@@ -37,14 +37,8 @@ export class AntiRepeatEngine {
     sourceTimestamp?: string,
     seed?: number
   ): string {
-    const parts = [
-      engine,
-      type,
-      target.toLowerCase().replace(/\s+/g, '_'),
-      sourceTimestamp || 'static',
-      seed !== undefined ? String(seed) : 'auto',
-    ];
-    return parts.join(':');
+    const normTarget = (target || 'global').toLowerCase().trim().replace(/[\s_]+/g, '_');
+    return `${engine}:${type}:${normTarget}`;
   }
 
   /**

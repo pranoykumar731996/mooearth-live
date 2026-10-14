@@ -155,14 +155,14 @@ export function selectCountryForDifficulty(
   difficulty: ChallengeDifficulty,
   excludeCountries: string[] = []
 ): string {
-  const exclude = new Set(excludeCountries.map(c => c.toLowerCase()));
-  const metaEntries = (Object.values(COUNTRY_METADATA) as CountryMeta[]).filter(
-    m => m.name && !exclude.has(m.name.toLowerCase())
+  const exclude = new Set(excludeCountries.map(c => c.toLowerCase().trim().replace(/_/g, ' ')));
+  let metaEntries = (Object.values(COUNTRY_METADATA) as CountryMeta[]).filter(
+    m => m.name && !exclude.has(m.name.toLowerCase().trim())
   );
 
   if (metaEntries.length === 0) {
-    // Absolute fallback
-    return 'India';
+    // If all countries in metadata were excluded, cycle back to full set randomly
+    metaEntries = Object.values(COUNTRY_METADATA) as CountryMeta[];
   }
 
   // Filter by familiarity tier
@@ -180,8 +180,8 @@ export function selectCountryForDifficulty(
     pool = metaEntries.filter(m => getCountryFamiliarity(m.name) >= 0.5);
   }
 
-  // Fallback to full pool if filters are too aggressive
-  if (pool.length < 3) pool = metaEntries;
+  // Fallback to remaining pool if difficulty filter left fewer than 2
+  if (pool.length < 2) pool = metaEntries;
 
   const idx = Math.floor(Math.random() * pool.length);
   return pool[idx].name;
