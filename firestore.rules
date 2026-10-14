@@ -8,27 +8,35 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // 1. Users & Player Profiles (Leaderboards & Game XP)
+    // 1. Users & Player Profiles (Leaderboards, Game XP & Personalization)
     match /users/{userId} {
-      // Leaderboards and profiles are publicly readable
+      // Leaderboards and profiles are readable
       allow read: if true;
 
-      // Creation must satisfy schema validation with bounded XP/level values
-      allow create: if request.resource.data.keys().hasAll(['username']) &&
-                       request.resource.data.username is string &&
-                       request.resource.data.username.size() > 0 &&
-                       request.resource.data.username.size() <= 60 &&
-                       (!('xp' in request.resource.data) || (request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 1000000)) &&
-                       (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 0 && request.resource.data.level <= 100));
-
-      // Updates must also satisfy schema validation; XP cannot jump by more than 1000 per write
-      allow update: if request.resource.data.keys().hasAll(['username']) &&
+      // Creation: must be authenticated as the owner, with schema validation
+      allow create: if request.auth != null && request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['username']) &&
                        request.resource.data.username is string &&
                        request.resource.data.username.size() > 0 &&
                        request.resource.data.username.size() <= 60 &&
                        (!('xp' in request.resource.data) || (request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 1000000)) &&
                        (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 0 && request.resource.data.level <= 100)) &&
-                       (!('xp' in request.resource.data) || !('xp' in resource.data) || request.resource.data.xp - resource.data.xp <= 1000);
+                       (!('savedPlaces' in request.resource.data) || (request.resource.data.savedPlaces is list && request.resource.data.savedPlaces.size() <= 100)) &&
+                       (!('discoveryHistory' in request.resource.data) || (request.resource.data.discoveryHistory is list && request.resource.data.discoveryHistory.size() <= 50)) &&
+                       (!('preferences' in request.resource.data) || request.resource.data.preferences is map);
+
+      // Updates: must be authenticated owner; XP cannot jump by more than 1000 per write; bounded arrays
+      allow update: if request.auth != null && request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['username']) &&
+                       request.resource.data.username is string &&
+                       request.resource.data.username.size() > 0 &&
+                       request.resource.data.username.size() <= 60 &&
+                       (!('xp' in request.resource.data) || (request.resource.data.xp is number && request.resource.data.xp >= 0 && request.resource.data.xp <= 1000000)) &&
+                       (!('level' in request.resource.data) || (request.resource.data.level is number && request.resource.data.level >= 0 && request.resource.data.level <= 100)) &&
+                       (!('xp' in request.resource.data) || !('xp' in resource.data) || request.resource.data.xp - resource.data.xp <= 1000) &&
+                       (!('savedPlaces' in request.resource.data) || (request.resource.data.savedPlaces is list && request.resource.data.savedPlaces.size() <= 100)) &&
+                       (!('discoveryHistory' in request.resource.data) || (request.resource.data.discoveryHistory is list && request.resource.data.discoveryHistory.size() <= 50)) &&
+                       (!('preferences' in request.resource.data) || request.resource.data.preferences is map);
 
       // Prevent unauthorized deletion of user accounts
       allow delete: if request.auth != null && request.auth.uid == userId;

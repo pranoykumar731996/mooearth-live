@@ -17,6 +17,13 @@ import { LocationRecord } from '@/data/locations';
 import { WorldEvent } from '@/types';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
+import {
+  saveGuestPlace,
+  removeGuestPlace,
+  isPlaceSavedLocal,
+  recordDiscoveryHistory,
+  SavedPlace,
+} from '@/services/personalizationService';
 
 interface CityExplorerPanelProps {
   location: LocationRecord;
@@ -94,6 +101,75 @@ export default function CityExplorerPanel({
     return location.population.toLocaleString();
   }, [location.population]);
 
+  // Bookmark & History Tracking
+  const placeId = `city_${location.name.toLowerCase().replace(/\s+/g, '_')}_${location.country.toLowerCase().replace(/\s+/g, '_')}`;
+  const [isSaved, setIsSaved] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(isPlaceSavedLocal(placeId));
+
+    // Record discovery history when city panel is opened
+    recordDiscoveryHistory({
+      id: placeId,
+      type: 'city',
+      title: location.name,
+      subtitle: `${location.country}${location.state ? ` (${location.state})` : ''}`,
+      country: location.country,
+      coordinates: { lat: location.lat, lng: location.lng },
+      flag: countryMeta?.flag,
+    });
+
+    const handleSync = (e: any) => {
+      if (e.detail?.key === 'saved_places') {
+        setIsSaved(isPlaceSavedLocal(placeId));
+      }
+    };
+    window.addEventListener('mooearth_personalization_update', handleSync);
+    return () => window.removeEventListener('mooearth_personalization_update', handleSync);
+  }, [placeId, location, countryMeta]);
+
+  const handleToggleBookmark = () => {
+    if (isSaved) {
+      removeGuestPlace(placeId);
+      setIsSaved(false);
+    } else {
+      const place: SavedPlace = {
+        id: placeId,
+        type: 'city',
+        name: location.name,
+        country: location.country,
+        state: location.state,
+        coordinates: { lat: location.lat, lng: location.lng },
+        flag: countryMeta?.flag,
+        savedAt: Date.now(),
+      };
+      saveGuestPlace(place);
+      setIsSaved(true);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/?city=${encodeURIComponent(location.name)}&lat=${location.lat.toFixed(4)}&lng=${location.lng.toFixed(4)}`
+      : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${location.name} — MooEarth Live`,
+          text: `Explore live intelligence and weather for ${location.name} on MooEarth.Live!`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      }
+    } catch {
+      // User dismissed share
+    }
+  };
+
   return (
     <motion.aside
       key={`city-panel-${location.id}`}
@@ -111,11 +187,18 @@ export default function CityExplorerPanel({
         backdropFilter: 'blur(24px)',
       }}
     >
+      {/* Toast Alert */}
+      {showShareToast && (
+        <div className="absolute top-16 left-4 right-4 z-50 py-2 px-3 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-center text-xs font-bold text-cyan-200 shadow-lg backdrop-blur-md">
+          📋 City link copied to clipboard!
+        </div>
+      )}
+
       {/* Radial neon glow header */}
       <div className="absolute -top-16 -right-16 w-44 h-44 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-16 -left-16 w-44 h-44 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header with Title & Close */}
+      {/* Header with Title & Action Buttons */}
       <div className="p-5 border-b border-white/[0.08] relative z-10 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -144,13 +227,44 @@ export default function CityExplorerPanel({
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          aria-label="Close City Explorer"
-          className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Bookmark Button */}
+          <button
+            onClick={handleToggleBookmark}
+            aria-label={isSaved ? `Remove ${location.name} from saved places` : `Bookmark ${location.name}`}
+            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+              isSaved
+                ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.35)] scale-105'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/50 hover:text-amber-300'
+            }`}
+            title={isSaved ? 'Saved in bookmarks (Click to remove)' : 'Save city to bookmarks'}
+          >
+            <span className="text-sm leading-none">{isSaved ? '★' : '☆'}</span>
+          </button>
+
+          {/* Share Button */}
+          <button
+            onClick={handleShareLocation}
+            aria-label="Share city link"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-cyan-300 flex items-center justify-center transition-all cursor-pointer"
+            title="Share City Link"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
+
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            aria-label="Close City Explorer"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Body */}

@@ -25,6 +25,13 @@ import {
   fetchLiveLocationWeather,
   deduplicateNewsArticles,
 } from '@/services/locationIntelligence';
+import {
+  saveGuestPlace,
+  removeGuestPlace,
+  isPlaceSavedLocal,
+  recordDiscoveryHistory,
+  SavedPlace,
+} from '@/services/personalizationService';
 import type { ForecastResponse } from '@/services/weather/types';
 
 export interface LocationIntelligencePanelProps {
@@ -86,6 +93,92 @@ export default function LocationIntelligencePanel({
     }
     return { lat: canonical.lat, lng: canonical.lng };
   }, [canonical]);
+
+  // Canonical Bookmark identity
+  const placeId = useMemo(() => {
+    if (!canonical) return '';
+    return canonical.type === 'country'
+      ? `country_${canonical.country.toLowerCase().replace(/\s+/g, '_')}`
+      : `city_${canonical.name.toLowerCase().replace(/\s+/g, '_')}_${canonical.country.toLowerCase().replace(/\s+/g, '_')}`;
+  }, [canonical]);
+
+  const [isSaved, setIsSaved] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  useEffect(() => {
+    if (!placeId) return;
+    setIsSaved(isPlaceSavedLocal(placeId));
+
+    // Listen for cross-component bookmark sync
+    const handleSync = (e: any) => {
+      if (e.detail?.key === 'saved_places') {
+        setIsSaved(isPlaceSavedLocal(placeId));
+      }
+    };
+    window.addEventListener('mooearth_personalization_update', handleSync);
+    return () => window.removeEventListener('mooearth_personalization_update', handleSync);
+  }, [placeId]);
+
+  // Record discovery history when location dossier is explored
+  useEffect(() => {
+    if (!canonical || !targetCoordinates || !placeId) return;
+    recordDiscoveryHistory({
+      id: placeId,
+      type: canonical.type,
+      title: canonical.name,
+      subtitle: canonical.type === 'country' ? canonical.region || 'Sovereign Nation' : canonical.country,
+      country: canonical.country,
+      coordinates: targetCoordinates,
+      flag: canonical.flag,
+    });
+  }, [canonical, targetCoordinates, placeId]);
+
+  const handleToggleBookmark = () => {
+    if (!canonical || !targetCoordinates || !placeId) return;
+    if (isSaved) {
+      removeGuestPlace(placeId);
+      setIsSaved(false);
+    } else {
+      const place: SavedPlace = {
+        id: placeId,
+        type: canonical.type,
+        name: canonical.name,
+        country: canonical.country,
+        state: canonical.state,
+        coordinates: targetCoordinates,
+        flag: canonical.flag,
+        savedAt: Date.now(),
+      };
+      saveGuestPlace(place);
+      setIsSaved(true);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (!canonical || !targetCoordinates) return;
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/?${
+          canonical.type === 'country'
+            ? `country=${encodeURIComponent(canonical.country)}`
+            : `city=${encodeURIComponent(canonical.name)}&lat=${targetCoordinates.lat.toFixed(4)}&lng=${targetCoordinates.lng.toFixed(4)}`
+        }`
+      : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${canonical.name} — MooEarth Live`,
+          text: `Explore real-time weather and planetary intelligence for ${canonical.name} on MooEarth.Live!`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      }
+    } catch {
+      // User cancelled share
+    }
+  };
 
   // ── 2. Live Local Digital Clock ─────────────────────────────
   useEffect(() => {
@@ -252,6 +345,20 @@ export default function LocationIntelligencePanel({
       <div className="absolute -top-16 -right-16 w-52 h-52 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
+      {/* Share Toast Notification */}
+      <AnimatePresence>
+        {showShareToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-16 left-4 right-4 z-50 py-2.5 px-4 rounded-xl bg-cyan-500/25 border border-cyan-400/40 text-cyan-200 text-xs font-bold text-center shadow-lg backdrop-blur-md"
+          >
+            📋 Location link copied to clipboard!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header: Title, Flag, Badges, Close Button */}
       <div className="p-4 sm:p-5 border-b border-white/[0.08] relative z-10 flex items-start justify-between gap-3 shrink-0">
         <div className="min-w-0 flex-1">
@@ -290,14 +397,45 @@ export default function LocationIntelligencePanel({
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          aria-label="Return to Earth (Close Panel)"
-          className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
-          title="Return to Earth Orbit"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Bookmark Button */}
+          <button
+            onClick={handleToggleBookmark}
+            aria-label={isSaved ? `Remove ${canonical.name} from saved places` : `Save ${canonical.name} to bookmarks`}
+            className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+              isSaved
+                ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.35)] scale-105'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/50 hover:text-amber-300'
+            }`}
+            title={isSaved ? 'Saved in your places (Click to remove)' : 'Bookmark location'}
+          >
+            <span className="text-sm leading-none">{isSaved ? '★' : '☆'}</span>
+          </button>
+
+          {/* Share Button */}
+          <button
+            onClick={handleShareLocation}
+            aria-label="Share location link"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-cyan-300 flex items-center justify-center transition-all cursor-pointer"
+            title="Share Location Link"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+          </button>
+
+          {/* Return to Earth / Close Button */}
+          <button
+            onClick={onClose}
+            aria-label="Return to Earth (Close Panel)"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            title="Return to Earth Orbit"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Mobile Tab Selector (Compact Navigation) */}

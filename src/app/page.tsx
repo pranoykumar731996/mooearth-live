@@ -59,6 +59,11 @@ import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { SIDEBAR_ITEMS, COUNTRY_COORDINATES } from '@/lib/constants';
+import {
+  mergeGuestDataToAccount,
+  getGuestPreferences,
+  UserPreferences,
+} from '@/services/personalizationService';
 
 const TEAM_FLAGS: Record<string, string> = {
   'Mexico': '🇲🇽',
@@ -123,13 +128,26 @@ export default function HomePage({
   const [activeArticle, setActiveArticle] = useState<WorldEvent | null>(null);
 
   // Live Fan Celebration states
-  const [currentUser, setCurrentUser] = useState<{ username: string; avatar: string; country: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ username: string; avatar: string; country: string; uid?: string } | null>(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>(() => getGuestPreferences());
   const [celebrations, setCelebrations] = useState<any[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedCelebration, setSelectedCelebration] = useState<any>(null);
+
+  // Sync user preferences with personalization updates
+  useEffect(() => {
+    setUserPreferences(getGuestPreferences());
+    const handleSync = (e: any) => {
+      if (e.detail?.key === 'preferences') {
+        setUserPreferences(e.detail.payload);
+      }
+    };
+    window.addEventListener('mooearth_personalization_update', handleSync);
+    return () => window.removeEventListener('mooearth_personalization_update', handleSync);
+  }, []);
 
   // Streak tracking
   const { streak, showCelebration: showStreakCelebration, dismissCelebration: dismissStreakCelebration } = useStreaks(currentUser?.username || null);
@@ -452,16 +470,21 @@ export default function HomePage({
       console.log('[page.tsx] Diagnostic: onAuthStateChanged triggered. User UID:', user ? user.uid : 'null');
       if (user) {
         let profile = {
+          uid: user.uid,
           username: user.displayName || user.email?.split('@')[0] || 'User',
-          avatar: '⚽',
-          country: 'Brazil'
+          avatar: '🌍',
+          country: 'Global'
         };
         try {
+          // Merge guest bookmarks and preferences safely upon login
+          await mergeGuestDataToAccount(user.uid);
+
           // Fetch custom profile attributes from Firestore
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
             profile = {
+              uid: user.uid,
               username: data.username || profile.username,
               avatar: data.avatar || profile.avatar,
               country: data.country || profile.country
@@ -476,11 +499,12 @@ export default function HomePage({
               createdAt: Date.now()
             };
             try {
-              await setDoc(doc(db, 'users', user.uid), defaultProfile);
+              await setDoc(doc(db, 'users', user.uid), defaultProfile, { merge: true });
             } catch (writeErr) {
               console.warn('[page.tsx] Diagnostic: Failed to write default profile to Firestore:', writeErr);
             }
             profile = {
+              uid: user.uid,
               username: defaultProfile.username,
               avatar: defaultProfile.avatar,
               country: defaultProfile.country
@@ -525,6 +549,7 @@ export default function HomePage({
     activeCategory,
     selectedCountry: selectedLocation ? null : selectedCountry,
     isReactionData: !!(selectedCountry && activeReaction && activeReaction.country === selectedCountry),
+    preferences: userPreferences,
   });
 
   // Load initial article if provided (SEO URL parameters support)
@@ -1761,6 +1786,13 @@ export default function HomePage({
           isOpen={isProfileModalOpen}
           onClose={() => setIsProfileModalOpen(false)}
           currentUser={currentUser}
+          onSelectCountry={handleSelectCountry}
+          onSelectLocation={handleSelectLocation}
+          onFocusCoordinates={(coords) => {
+            globeApiRef.current?.flyTo({ lat: coords.lat, lng: coords.lng, altitude: 1.6 }, 1200);
+            playHoverBlip();
+          }}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
           onSignOut={async () => {
             console.log('[page.tsx] Diagnostic: signOut() flow initiated...');
             try {

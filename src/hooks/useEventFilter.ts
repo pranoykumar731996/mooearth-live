@@ -1,5 +1,5 @@
 // ============================================================
-// MooEarth Live — Event Filter Hook
+// MooEarth Live — Event Filter & Personalized Ranking Hook
 // ============================================================
 
 'use client';
@@ -7,6 +7,8 @@
 import { useMemo } from 'react';
 import { EventCategory, WorldEvent } from '@/types';
 import { matchCountry } from '@/data/questions';
+import { UserPreferences } from '@/services/personalizationService';
+import { rankPersonalizedEvents } from '@/services/personalizedNews';
 
 interface UseEventFilterOptions {
   events: WorldEvent[];
@@ -14,6 +16,7 @@ interface UseEventFilterOptions {
   activeCategory: EventCategory | null;
   selectedCountry?: string | null;
   isReactionData?: boolean;
+  preferences?: UserPreferences | null;
 }
 
 export function useEventFilter({
@@ -22,16 +25,17 @@ export function useEventFilter({
   activeCategory,
   selectedCountry,
   isReactionData = false,
+  preferences = null,
 }: UseEventFilterOptions): WorldEvent[] {
   return useMemo(() => {
     let filtered = events;
 
-    // Filter by selected country if active
+    // 1. Filter by selected country if active
     if (selectedCountry) {
       filtered = filtered.filter((e) => matchCountry(e.country, selectedCountry));
     }
 
-    // Filter by category - skip if this is reaction data (server-side reactions are pre-filtered / have fallback headlines)
+    // 2. Filter by category - skip if this is reaction data
     if (activeCategory && !isReactionData) {
       filtered = filtered.filter((e) => {
         if (activeCategory === 'sports' || activeCategory === 'football') {
@@ -41,7 +45,7 @@ export function useEventFilter({
       });
     }
 
-    // Filter by search query
+    // 3. Filter by search query
     const query = searchQuery.trim().toLowerCase();
     if (query) {
       filtered = filtered.filter(
@@ -54,6 +58,12 @@ export function useEventFilter({
       );
     }
 
+    // 4. Personalized Ranking (if user preferences are enabled and not in a specific country zoom)
+    if (preferences && preferences.isPersonalizedFeedActive && !selectedCountry && !isReactionData) {
+      const personalized = rankPersonalizedEvents(filtered, preferences);
+      filtered = personalized.events;
+    }
+
     return filtered;
-  }, [events, searchQuery, activeCategory, selectedCountry, isReactionData]);
+  }, [events, searchQuery, activeCategory, selectedCountry, isReactionData, preferences]);
 }

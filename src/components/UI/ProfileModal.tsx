@@ -1,38 +1,164 @@
+// ============================================================
+// MooEarth.Live — Personalization & Profile Dashboard
+// ============================================================
+// Supports:
+// - Authenticated profiles & Guest Explorer mode
+// - Saved places (bookmarks) with 1-click globe flyTo & city explore
+// - Personalized news & discovery preferences (topics & countries)
+// - Bounded discovery history with 1-click clear
+// - Real game progression stats (no fake/fabricated data)
+// - Account privacy controls, sign out, and data deletion
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { PlayerGameState, GameBadge } from '@/types';
 import { shareContent } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
+import {
+  SavedPlace,
+  UserPreferences,
+  DiscoveryHistoryItem,
+  getGuestSavedPlaces,
+  removeGuestPlace,
+  getGuestPreferences,
+  saveGuestPreferences,
+  getGuestDiscoveryHistory,
+  clearDiscoveryHistory,
+  fetchUserProfile,
+  updateUserProfile,
+  deleteUserData,
+} from '@/services/personalizationService';
 
-interface ProfileModalProps {
+export interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: { username: string; avatar: string; country: string } | null;
+  currentUser: { username: string; avatar: string; country: string; uid?: string } | null;
   onSignOut?: () => void;
+  onSelectCountry?: (country: string | null) => void;
+  onSelectLocation?: (location: any) => void;
+  onFocusCoordinates?: (coords: { lat: number; lng: number }) => void;
+  onOpenAuth?: () => void;
 }
 
-export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }: ProfileModalProps) {
+type ProfileTab = 'overview' | 'saved' | 'preferences' | 'history' | 'account';
+
+const AVAILABLE_TOPICS = [
+  { id: 'breaking', label: 'World News', emoji: '🌍' },
+  { id: 'technology', label: 'Technology', emoji: '💻' },
+  { id: 'business', label: 'Business & Finance', emoji: '📈' },
+  { id: 'science', label: 'Science & Environment', emoji: '🔬' },
+  { id: 'entertainment', label: 'Culture & Entertainment', emoji: '🎬' },
+  { id: 'sports', label: 'Sports & Athletics', emoji: '⚽' },
+];
+
+const POPULAR_COUNTRIES = [
+  'Japan', 'France', 'Brazil', 'United States', 'United Kingdom',
+  'Germany', 'India', 'Canada', 'Australia', 'Spain', 'Italy',
+  'South Korea', 'Mexico', 'Argentina', 'South Africa', 'Egypt'
+];
+
+export default function ProfileModal({
+  isOpen,
+  onClose,
+  currentUser,
+  onSignOut,
+  onSelectCountry,
+  onSelectLocation,
+  onFocusCoordinates,
+  onOpenAuth,
+}: ProfileModalProps) {
+  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  
+  // Real Game State
   const [gameState, setGameState] = useState<PlayerGameState | null>(null);
   const [rank, setRank] = useState<number | null>(null);
-  const [showShareToast, setShowShareToast] = useState(false);
   const [loadingRank, setLoadingRank] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen || !currentUser) return;
+  // Personalization State
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
+  const [preferences, setPreferences] = useState<UserPreferences>(getGuestPreferences());
+  const [discoveryHistory, setDiscoveryHistory] = useState<DiscoveryHistoryItem[]>([]);
+  
+  // Edit Profile State
+  const [editUsername, setEditUsername] = useState('');
+  const [editAvatar, setEditAvatar] = useState('🌍');
+  const [editCountry, setEditCountry] = useState('Global');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
+  
+  // Confirmations & Toast
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [isConfirmingClearHistory, setIsConfirmingClearHistory] = useState(false);
+  const [isConfirmingDeleteAccount, setIsConfirmingDeleteAccount] = useState(false);
 
-    // Load local game state
+  // 1. Initial State Load
+  const loadData = useCallback(async () => {
+    if (currentUser?.uid) {
+      // Authenticated User
+      const profile = await fetchUserProfile(currentUser.uid);
+      if (profile) {
+        setSavedPlaces(profile.savedPlaces);
+        setPreferences(profile.preferences);
+        setDiscoveryHistory(profile.discoveryHistory);
+        setEditUsername(profile.username);
+        setEditAvatar(profile.avatar);
+        setEditCountry(profile.country);
+      } else {
+        setSavedPlaces(getGuestSavedPlaces());
+        setPreferences(getGuestPreferences());
+        setDiscoveryHistory(getGuestDiscoveryHistory());
+        setEditUsername(currentUser.username);
+        setEditAvatar(currentUser.avatar);
+        setEditCountry(currentUser.country);
+      }
+    } else {
+      // Guest User
+      setSavedPlaces(getGuestSavedPlaces());
+      setPreferences(getGuestPreferences());
+      setDiscoveryHistory(getGuestDiscoveryHistory());
+      setEditUsername(currentUser?.username || 'Guest Explorer');
+      setEditAvatar(currentUser?.avatar || '🌍');
+      setEditCountry(currentUser?.country || 'Planet Earth');
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen, loadData]);
+
+  // Listen for storage changes from other components
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      if (e.detail?.key === 'saved_places') {
+        setSavedPlaces(e.detail.payload);
+      } else if (e.detail?.key === 'preferences') {
+        setPreferences(e.detail.payload);
+      } else if (e.detail?.key === 'history') {
+        setDiscoveryHistory(e.detail.payload);
+      }
+    };
+    window.addEventListener('mooearth_personalization_update', handleSync);
+    return () => window.removeEventListener('mooearth_personalization_update', handleSync);
+  }, []);
+
+  // 2. Load Local Game Progression (Real Data Only)
+  useEffect(() => {
+    if (!isOpen) return;
+
     try {
-      const raw = localStorage.getItem(`mooearth_quiz_progress_${currentUser.username}`);
+      const usernameKey = currentUser?.username || 'guest';
+      const raw = localStorage.getItem(`mooearth_quiz_progress_${usernameKey}`);
       if (raw) {
         setGameState(JSON.parse(raw));
       } else {
-        // Create initial placeholder if not quizzed yet
         setGameState({
-          username: currentUser.username,
+          username: usernameKey,
           xp: 0,
           level: 1,
           streak: 0,
@@ -47,15 +173,18 @@ export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }
           badges: [],
         });
       }
-    } catch (err) {
-      console.error('[ProfileModal] Error reading game state:', err);
+    } catch {
+      // Fallback
     }
   }, [isOpen, currentUser]);
 
+  // 3. Fetch Global Rank
   useEffect(() => {
-    if (!isOpen || !gameState) return;
+    if (!isOpen || !gameState || gameState.xp === 0 || !currentUser) {
+      setRank(null);
+      return;
+    }
 
-    // Fetch user rank from Firestore
     const fetchRank = async () => {
       setLoadingRank(true);
       try {
@@ -63,8 +192,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }
         const q = query(usersRef, where('xp', '>', gameState.xp));
         const snap = await getDocs(q);
         setRank(snap.size + 1);
-      } catch (err) {
-        console.error('[ProfileModal] Error fetching rank:', err);
+      } catch {
         setRank(null);
       } finally {
         setLoadingRank(false);
@@ -72,188 +200,730 @@ export default function ProfileModal({ isOpen, onClose, currentUser, onSignOut }
     };
 
     fetchRank();
-  }, [isOpen, gameState]);
+  }, [isOpen, gameState, currentUser]);
 
-  const handleShareProfile = async () => {
-    if (!currentUser) return;
-    
-    const refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
-    const shareUrl = `/${refQuery}`; // Link to MooEarth centering or centering profile
-    
-    const didShare = await shareContent({
-      title: `${currentUser.username} Fan Profile — ${BRANDING.name}`,
-      text: `🌍 Check out my fan stats on MooEarth Live! Level ${gameState?.level || 1} with ${gameState?.xp || 0} XP and ${gameState?.badges?.length || 0} achievements.`,
-      url: shareUrl
-    });
+  // Helper Toast Trigger
+  const triggerToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2500);
+  };
 
-    if (!didShare) {
-      setShowShareToast(true);
-      setTimeout(() => setShowShareToast(false), 2000);
+  // Saved Place Handlers
+  const handleRemoveSavedPlace = (placeId: string) => {
+    const updated = removeGuestPlace(placeId);
+    setSavedPlaces(updated);
+    if (currentUser?.uid) {
+      updateUserProfile(currentUser.uid, { savedPlaces: updated });
+    }
+    triggerToast('Location removed from saved places');
+  };
+
+  const handleOpenSavedPlaceOnGlobe = (place: SavedPlace) => {
+    onClose();
+    if (place.coordinates && onFocusCoordinates) {
+      onFocusCoordinates(place.coordinates);
+    }
+    if (place.type === 'country' && onSelectCountry) {
+      onSelectCountry(place.country || place.name);
+    } else if (place.type === 'city' && onSelectLocation) {
+      onSelectLocation({
+        id: place.id,
+        name: place.name,
+        country: place.country || '',
+        state: place.state || '',
+        lat: place.coordinates.lat,
+        lng: place.coordinates.lng,
+        type: 'city',
+      });
     }
   };
 
-  const handleShareBadge = async (badge: GameBadge) => {
-    if (!currentUser) return;
-    
-    const refQuery = `?ref=${encodeURIComponent(currentUser.username)}`;
-    const shareUrl = `/play-earth${refQuery}`;
-    
-    const didShare = await shareContent({
-      title: `Achievement Earned — ${BRANDING.name}`,
-      text: `🏆 I unlocked the "${badge.emoji} ${badge.label}" badge on MooEarth Live! Can you beat my high score?`,
-      url: shareUrl
-    });
-
-    if (!didShare) {
-      setShowShareToast(true);
-      setTimeout(() => setShowShareToast(false), 2000);
+  const handleSharePlace = async (place: SavedPlace) => {
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/?${
+          place.type === 'country'
+            ? `country=${encodeURIComponent(place.country || place.name)}`
+            : `city=${encodeURIComponent(place.name)}&lat=${place.coordinates.lat.toFixed(4)}&lng=${place.coordinates.lng.toFixed(4)}`
+        }`
+      : '';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${place.name} — MooEarth Live`,
+          text: `Check out ${place.name} on MooEarth.Live!`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        triggerToast('📋 Location link copied to clipboard!');
+      }
+    } catch {
+      // Dismissed
     }
   };
 
-  if (!isOpen || !currentUser) return null;
+  // Preference Handlers
+  const handleToggleTopic = (topicId: string) => {
+    const current = preferences.favoriteTopics || [];
+    const next = current.includes(topicId)
+      ? current.filter((t) => t !== topicId)
+      : [...current, topicId];
+    const updated = saveGuestPreferences({ favoriteTopics: next });
+    setPreferences(updated);
+    if (currentUser?.uid) {
+      updateUserProfile(currentUser.uid, { preferences: updated });
+    }
+  };
+
+  const handleToggleCountry = (country: string) => {
+    const current = preferences.favoriteCountries || [];
+    const next = current.includes(country)
+      ? current.filter((c) => c !== country)
+      : [...current, country];
+    const updated = saveGuestPreferences({ favoriteCountries: next });
+    setPreferences(updated);
+    if (currentUser?.uid) {
+      updateUserProfile(currentUser.uid, { preferences: updated });
+    }
+  };
+
+  const handleTogglePersonalizedFeed = () => {
+    const updated = saveGuestPreferences({
+      isPersonalizedFeedActive: !preferences.isPersonalizedFeedActive,
+    });
+    setPreferences(updated);
+    if (currentUser?.uid) {
+      updateUserProfile(currentUser.uid, { preferences: updated });
+    }
+    triggerToast(
+      updated.isPersonalizedFeedActive
+        ? 'Personalized news ranking enabled'
+        : 'Global live news feed restored'
+    );
+  };
+
+  // History Handlers
+  const handleClearHistory = () => {
+    clearDiscoveryHistory();
+    setDiscoveryHistory([]);
+    if (currentUser?.uid) {
+      updateUserProfile(currentUser.uid, { discoveryHistory: [] });
+    }
+    setIsConfirmingClearHistory(false);
+    triggerToast('Discovery history cleared');
+  };
+
+  // Account Profile Update
+  const handleSaveProfile = async () => {
+    if (!currentUser?.uid) return;
+    setIsSavingProfile(true);
+    const success = await updateUserProfile(currentUser.uid, {
+      username: editUsername,
+      avatar: editAvatar,
+      country: editCountry,
+    });
+    setIsSavingProfile(false);
+    if (success) {
+      setProfileSuccessMsg('Profile updated successfully!');
+      setTimeout(() => setProfileSuccessMsg(null), 3000);
+    }
+  };
+
+  // Delete User Account & Data
+  const handleDeleteAccount = async () => {
+    if (!currentUser?.uid) return;
+    const ok = await deleteUserData(currentUser.uid);
+    if (ok) {
+      if (onSignOut) onSignOut();
+      onClose();
+      triggerToast('Account and personal data permanently deleted');
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-[90vw] max-w-[440px] rounded-3xl p-6 glass border border-white/10 relative overflow-hidden flex flex-col max-h-[85vh]"
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+        className="w-full max-w-[560px] rounded-3xl glass border border-white/10 relative overflow-hidden flex flex-col max-h-[90vh] shadow-2xl"
         style={{
-          background: 'linear-gradient(135deg, rgba(15,15,25,0.95) 0%, rgba(5,5,15,0.95) 100%)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 229, 255, 0.1)'
+          background: 'linear-gradient(135deg, rgba(14, 18, 32, 0.98) 0%, rgba(6, 9, 20, 0.98) 100%)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(0, 229, 255, 0.12)',
         }}
       >
-        {/* Toast Alert */}
+        {/* Toast Notification */}
         <AnimatePresence>
-          {showShareToast && (
+          {toastMsg && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="absolute top-16 left-4 right-4 z-[110] py-2.5 px-4 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-center text-xs font-bold text-cyan-200 shadow-lg"
+              className="absolute top-16 left-4 right-4 z-[120] py-2.5 px-4 rounded-xl bg-cyan-500/25 border border-cyan-400/40 text-center text-xs font-bold text-cyan-200 shadow-xl backdrop-blur-md"
             >
-              📋 Link copied to clipboard!
+              {toastMsg}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        {/* Ambient Neon Backlights */}
+        <div className="absolute -top-20 -right-20 w-52 h-52 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-52 h-52 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">Fan Profile</h2>
-        <p className="text-xs text-white/40 mb-5">Your global stats and unlocked credentials.</p>
-
-        {/* User Card */}
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 mb-5 relative overflow-hidden font-sans">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-xl pointer-events-none" />
-          <div className="w-14 h-14 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-3xl">
-            {currentUser.avatar}
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-white leading-tight">
-              {currentUser.username}
-            </h3>
-            <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1">
-              <span>📍 代表</span>
-              <span>{currentUser.country}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-5 font-sans">
-          <div className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/5">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block mb-0.5">Global Rank</span>
-            <span className="text-xl font-black text-white">
-              {loadingRank ? '...' : rank ? `#${rank}` : 'Unranked'}
-            </span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/5">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block mb-0.5">Level</span>
-            <span className="text-xl font-black text-cyan-400">
-              Lv.{gameState?.level || 1}
-            </span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/5">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block mb-0.5">Total XP</span>
-            <span className="text-lg font-black text-white">
-              {(gameState?.xp || 0).toLocaleString()} XP
-            </span>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-white/[0.01] border border-white/5">
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider block mb-0.5">Countries Explored</span>
-            <span className="text-lg font-black text-white">
-              {gameState?.countriesExplored?.length || 0}
-            </span>
-          </div>
-        </div>
-
-        {/* Badges Section */}
-        <div className="flex-1 flex flex-col min-h-0 font-sans">
-          <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2.5">
-            Unlocked Achievements ({gameState?.badges?.length || 0})
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-            {!gameState?.badges || gameState.badges.length === 0 ? (
-              <div className="p-6 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/30">
-                No badges unlocked yet. Head to the globe and complete country quizzes to earn badges!
+        {/* Header Bar */}
+        <div className="p-5 pb-3 border-b border-white/[0.08] relative z-10 flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              {currentUser?.avatar || '🌍'}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+                  {currentUser?.username || 'Guest Explorer'}
+                </h2>
+                {!currentUser && (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    GUEST
+                  </span>
+                )}
               </div>
-            ) : (
-              gameState.badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-2xl shrink-0">{badge.emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white leading-tight">
-                        {badge.label}
-                      </p>
-                      <p className="text-[9px] text-white/40 leading-snug mt-0.5">
-                        {badge.description}
-                      </p>
-                    </div>
+              <p className="text-xs text-white/50 truncate flex items-center gap-1.5 mt-0.5">
+                <span>📍 {currentUser?.country || 'Planet Earth'}</span>
+                <span>•</span>
+                <span className="text-cyan-400 font-mono text-[11px]">
+                  {currentUser ? `Level ${gameState?.level || 1}` : 'Local Browser Session'}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            aria-label="Close Profile Dashboard"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Guest Conversion Banner */}
+        {!currentUser && (
+          <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-purple-950/40 border-b border-cyan-500/20 px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+            <span className="text-cyan-200/90 font-medium truncate">
+              💡 Sign in to sync your saved places and streaks across devices.
+            </span>
+            <button
+              onClick={() => {
+                onClose();
+                if (onOpenAuth) onOpenAuth();
+              }}
+              className="px-3 py-1 rounded-lg bg-cyan-500 text-black font-extrabold text-[11px] tracking-wide hover:bg-cyan-400 cursor-pointer transition-all shrink-0"
+            >
+              SIGN IN
+            </button>
+          </div>
+        )}
+
+        {/* Tab Selector */}
+        <div className="flex border-b border-white/[0.08] bg-black/20 p-1.5 gap-1 shrink-0 overflow-x-auto scrollbar-none">
+          {[
+            { id: 'overview', label: 'Overview', icon: '🏆' },
+            { id: 'saved', label: `Saved (${savedPlaces.length})`, icon: '★' },
+            { id: 'preferences', label: 'Interests', icon: '🎯' },
+            { id: 'history', label: `History (${discoveryHistory.length})`, icon: '⏱️' },
+            { id: 'account', label: 'Privacy', icon: '🛡️' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as ProfileTab)}
+              className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold font-mono tracking-wider transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/35 shadow-sm'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin relative z-10 min-h-0">
+          
+          {/* ── TAB 1: OVERVIEW & REAL STATS ───────────────────────────── */}
+          {activeTab === 'overview' && (
+            <div className="space-y-4 font-sans">
+              {/* Stats 2x2 Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    GLOBAL RANK
+                  </span>
+                  <span className="text-xl font-black text-white">
+                    {loadingRank ? '...' : rank ? `#${rank}` : currentUser ? 'Unranked' : 'Guest'}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    EXPLORER LEVEL
+                  </span>
+                  <span className="text-xl font-black text-cyan-400">
+                    Lv.{gameState?.level || 1}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    EXPERIENCE XP
+                  </span>
+                  <span className="text-lg font-black text-white">
+                    {(gameState?.xp || 0).toLocaleString()} XP
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <span className="text-[10px] font-mono font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    COUNTRIES EXPLORED
+                  </span>
+                  <span className="text-lg font-black text-white">
+                    {gameState?.countriesExplored?.length || 0}
+                  </span>
+                </div>
+              </div>
+
+              {/* Achievements Section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-mono font-black text-white/50 uppercase tracking-widest">
+                    UNLOCKED ACHIEVEMENTS ({gameState?.badges?.length || 0})
+                  </span>
+                </div>
+
+                {!gameState?.badges || gameState.badges.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/40 space-y-1">
+                    <p className="text-lg mb-1">🎖️</p>
+                    <p className="font-semibold text-white/70">No badges unlocked yet</p>
+                    <p>Play Earth challenges or explore sovereign nations on the 3D globe to earn achievements.</p>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    {gameState.badges.map((badge: GameBadge) => (
+                      <div
+                        key={badge.id}
+                        className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-2xl shrink-0">{badge.emoji}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate">{badge.label}</p>
+                            <p className="text-[10px] text-white/40 leading-snug mt-0.5">{badge.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 2: SAVED PLACES (BOOKMARKS) ────────────────────────── */}
+          {activeTab === 'saved' && (
+            <div className="space-y-3 font-sans">
+              <div className="flex items-center justify-between text-xs text-white/50 mb-1">
+                <span>Locations bookmarked from 3D Globe & City Explorer</span>
+                <span className="font-mono text-[11px] text-cyan-400">{savedPlaces.length}/50</span>
+              </div>
+
+              {savedPlaces.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/40 space-y-2">
+                  <p className="text-3xl mb-1">★</p>
+                  <p className="font-bold text-white/80">No saved places yet</p>
+                  <p className="max-w-[340px] mx-auto text-white/50 leading-relaxed">
+                    Click the star icon (★) in any Country or City panel to save locations for 1-click planetary access.
+                  </p>
                   <button
-                    onClick={() => handleShareBadge(badge)}
-                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-cyan-400 border border-white/5 hover:border-cyan-500/20 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0"
-                    title="Share Badge Achievement"
+                    onClick={onClose}
+                    className="mt-3 px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/35 font-bold text-xs hover:bg-cyan-500/30 cursor-pointer transition-all"
                   >
-                    📤
+                    Explore 3D Globe
                   </button>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                <div className="space-y-2">
+                  {savedPlaces.map((place) => (
+                    <div
+                      key={place.id}
+                      className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all flex items-center justify-between gap-3 group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-2xl shrink-0">{place.flag || '📍'}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{place.name}</p>
+                          <p className="text-[10px] text-white/40 font-mono truncate">
+                            {place.type.toUpperCase()} • {place.country || 'Global'}
+                            {place.coordinates && ` (${place.coordinates.lat.toFixed(1)}°, ${place.coordinates.lng.toFixed(1)}°)`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Fly to Globe */}
+                        <button
+                          onClick={() => handleOpenSavedPlaceOnGlobe(place)}
+                          title="Fly to location on 3D Globe"
+                          className="px-2.5 py-1 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-500/40 text-cyan-300 text-xs font-bold cursor-pointer transition-all flex items-center gap-1"
+                        >
+                          <span>Fly</span>
+                          <span>🌐</span>
+                        </button>
+
+                        {/* Share */}
+                        <button
+                          onClick={() => handleSharePlace(place)}
+                          title="Share place link"
+                          className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                        >
+                          ↗
+                        </button>
+
+                        {/* Remove */}
+                        <button
+                          onClick={() => handleRemoveSavedPlace(place.id)}
+                          title="Remove bookmark"
+                          className="w-7 h-7 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 flex items-center justify-center transition-all cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB 3: PERSONALIZED INTERESTS & PREFERENCES ────────────── */}
+          {activeTab === 'preferences' && (
+            <div className="space-y-4 font-sans text-xs">
+              {/* Feed Personalization Mode Toggle */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/40 to-blue-950/20 border border-cyan-500/30 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-white text-sm">Personalized Feed Ranking</p>
+                  <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">
+                    Prioritize news headlines matching your favorite topics and countries in the live feed.
+                  </p>
+                </div>
+                <button
+                  onClick={handleTogglePersonalizedFeed}
+                  className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+                    preferences.isPersonalizedFeedActive ? 'bg-cyan-500' : 'bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                      preferences.isPersonalizedFeedActive ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Topics Selection */}
+              <div>
+                <p className="text-[11px] font-mono font-black text-white/50 uppercase tracking-widest mb-2">
+                  FAVORITE TOPICS
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {AVAILABLE_TOPICS.map((topic) => {
+                    const isSelected = preferences.favoriteTopics.includes(topic.id);
+                    return (
+                      <button
+                        key={topic.id}
+                        onClick={() => handleToggleTopic(topic.id)}
+                        className={`p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5 cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-200 shadow-sm'
+                            : 'bg-white/[0.02] border-white/5 text-white/60 hover:text-white hover:border-white/15'
+                        }`}
+                      >
+                        <span className="text-xl">{topic.emoji}</span>
+                        <div className="min-w-0">
+                          <p className="font-bold truncate">{topic.label}</p>
+                          <p className="text-[9px] text-white/40">{isSelected ? 'Active' : 'Off'}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Favorite Countries */}
+              <div>
+                <p className="text-[11px] font-mono font-black text-white/50 uppercase tracking-widest mb-2">
+                  FAVORITE COUNTRIES & REGIONS
+                </p>
+                <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin">
+                  {POPULAR_COUNTRIES.map((country) => {
+                    const isSelected = preferences.favoriteCountries.includes(country);
+                    return (
+                      <button
+                        key={country}
+                        onClick={() => handleToggleCountry(country)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
+                            : 'bg-white/[0.02] border-white/10 text-white/60 hover:text-white hover:border-white/20'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}
+                        {country}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 4: DISCOVERY HISTORY ──────────────────────────────── */}
+          {activeTab === 'history' && (
+            <div className="space-y-3 font-sans">
+              <div className="flex items-center justify-between text-xs text-white/50 mb-1">
+                <span>Recently explored countries, cities & challenges</span>
+                {discoveryHistory.length > 0 && (
+                  <button
+                    onClick={() => setIsConfirmingClearHistory(true)}
+                    className="text-red-400 hover:text-red-300 font-bold hover:underline cursor-pointer"
+                  >
+                    Clear History
+                  </button>
+                )}
+              </div>
+
+              {/* Confirm Clear Modal */}
+              {isConfirmingClearHistory && (
+                <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-500/30 text-xs space-y-2">
+                  <p className="font-bold text-red-200">Clear entire exploration history?</p>
+                  <p className="text-white/60 text-[11px]">
+                    This will permanently remove your recently viewed places log from this session.
+                  </p>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleClearHistory}
+                      className="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-[11px] hover:bg-red-500 cursor-pointer"
+                    >
+                      Yes, Clear
+                    </button>
+                    <button
+                      onClick={() => setIsConfirmingClearHistory(false)}
+                      className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-bold text-[11px] hover:bg-white/20 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {discoveryHistory.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/40 space-y-1">
+                  <p className="text-2xl mb-1">⏱️</p>
+                  <p className="font-bold text-white/70">No exploration history yet</p>
+                  <p>Locations and challenges you explore will appear here automatically.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {discoveryHistory.map((item) => (
+                    <div
+                      key={`${item.id}-${item.timestamp}`}
+                      className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-2xl shrink-0">{item.flag || '📍'}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{item.title}</p>
+                          <p className="text-[10px] text-white/40 truncate mt-0.5">
+                            {item.subtitle || item.type.toUpperCase()} • {new Date(item.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      {item.coordinates && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            if (onFocusCoordinates) onFocusCoordinates(item.coordinates!);
+                            if (item.type === 'country' && onSelectCountry) {
+                              onSelectCountry(item.country || item.title);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-semibold cursor-pointer shrink-0"
+                        >
+                          View 🌐
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB 5: ACCOUNT & PRIVACY CONTROLS ──────────────────────── */}
+          {activeTab === 'account' && (
+            <div className="space-y-4 font-sans text-xs">
+              {/* Profile Editor (Authenticated Only) */}
+              {currentUser ? (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                  <p className="font-bold text-white text-sm">Edit Profile Information</p>
+                  <div>
+                    <label className="text-[10px] text-white/40 font-mono uppercase block mb-1">Display Name</label>
+                    <input
+                      type="text"
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      maxLength={40}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-white/40 font-mono uppercase block mb-1">Avatar Emoji</label>
+                    <div className="flex gap-2">
+                      {['🌍', '👑', '⚽', '🚀', '🌟', '🧭', '🦁', '🦊'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => setEditAvatar(emoji)}
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center text-lg cursor-pointer ${
+                            editAvatar === emoji
+                              ? 'bg-cyan-500/20 border-cyan-400'
+                              : 'bg-white/5 border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={isSavingProfile}
+                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    {profileSuccessMsg && (
+                      <span className="text-emerald-400 text-[11px] font-bold">{profileSuccessMsg}</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+                  <p className="font-bold text-white text-sm">Guest Session</p>
+                  <p className="text-white/50 text-[11px] leading-relaxed">
+                    You are exploring anonymously. Create a free profile to secure your display name and sync saved places across devices.
+                  </p>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onOpenAuth) onOpenAuth();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-cyan-500 text-black font-bold text-xs hover:bg-cyan-400 cursor-pointer"
+                  >
+                    Create Account / Sign In
+                  </button>
+                </div>
+              )}
+
+              {/* Privacy Transparency Statement */}
+              <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 space-y-2">
+                <p className="font-bold text-white text-xs flex items-center gap-1.5">
+                  <span>🛡️</span>
+                  <span>Data Protection & Privacy Safeguards</span>
+                </p>
+                <p className="text-white/50 text-[11px] leading-relaxed">
+                  MooEarth values your digital sovereignty:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-white/40 text-[11px]">
+                  <li>We never sell your data or display targeted advertising trackers.</li>
+                  <li>Continuous GPS coordinates and camera movements are never logged.</li>
+                  <li>Your discovery history and saved bookmarks are strictly private to you.</li>
+                </ul>
+              </div>
+
+              {/* Sign Out & Account Deletion */}
+              <div className="space-y-2 pt-2">
+                {currentUser && (
+                  <button
+                    onClick={() => {
+                      if (onSignOut) onSignOut();
+                      onClose();
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs tracking-wider cursor-pointer transition-colors"
+                  >
+                    SIGN OUT
+                  </button>
+                )}
+
+                {currentUser && !isConfirmingDeleteAccount && (
+                  <button
+                    onClick={() => setIsConfirmingDeleteAccount(true)}
+                    className="w-full py-2 rounded-xl text-red-400/80 hover:text-red-300 text-[11px] font-semibold cursor-pointer transition-colors"
+                  >
+                    Delete Account & Stored Data
+                  </button>
+                )}
+
+                {isConfirmingDeleteAccount && (
+                  <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-500/30 text-xs space-y-2">
+                    <p className="font-bold text-red-200">Permanently delete account?</p>
+                    <p className="text-white/60 text-[11px]">
+                      This will delete your user document, saved bookmarks, and history from our database. This action cannot be undone.
+                    </p>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={handleDeleteAccount}
+                        className="px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-[11px] hover:bg-red-500 cursor-pointer"
+                      >
+                        Confirm Delete
+                      </button>
+                      <button
+                        onClick={() => setIsConfirmingDeleteAccount(false)}
+                        className="px-3 py-1.5 rounded-xl bg-white/10 text-white font-bold text-[11px] hover:bg-white/20 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
 
-        {/* Share & Sign Out Buttons */}
-        <div className="mt-5 space-y-2 shrink-0">
-          <button
-            onClick={handleShareProfile}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm tracking-wide shadow-lg hover:shadow-cyan-500/35 cursor-pointer hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
-          >
-            📤 SHARE PROFILE LINK
-          </button>
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-white/[0.08] relative z-10 flex items-center justify-between gap-3 shrink-0 bg-black/40">
           <button
             onClick={() => {
-              if (onSignOut) onSignOut();
-              onClose();
+              shareContent({
+                title: `${BRANDING.name} — Living 3D Globe`,
+                text: `Explore Earth live with real-time news, weather, and world intelligence!`,
+                url: typeof window !== 'undefined' ? window.location.origin : 'https://mooearth.live',
+              });
             }}
-            className="w-full py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600/20 border border-red-600/25 text-red-400 font-bold text-xs tracking-wider cursor-pointer transition-colors"
+            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           >
-            SIGN OUT
+            <span>Share MooEarth</span>
+            <span>↗</span>
+          </button>
+
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs tracking-wider cursor-pointer transition-all shadow-md"
+          >
+            RETURN TO GLOBE
           </button>
         </div>
       </motion.div>
