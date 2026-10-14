@@ -82,6 +82,13 @@ export default function ProfileModal({
   const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences>(getGuestPreferences());
   const [discoveryHistory, setDiscoveryHistory] = useState<DiscoveryHistoryItem[]>([]);
+  const [bookmarkFilter, setBookmarkFilter] = useState<'all' | 'places' | 'articles'>('all');
+
+  const filteredSavedPlaces = useMemo(() => {
+    if (bookmarkFilter === 'places') return savedPlaces.filter((p) => p.type !== 'article');
+    if (bookmarkFilter === 'articles') return savedPlaces.filter((p) => p.type === 'article');
+    return savedPlaces;
+  }, [savedPlaces, bookmarkFilter]);
   
   // Edit Profile State
   const [editUsername, setEditUsername] = useState('');
@@ -235,27 +242,31 @@ export default function ProfileModal({
         lng: place.coordinates.lng,
         type: 'city',
       });
+    } else if (place.type === 'article' && place.country && onSelectCountry) {
+      onSelectCountry(place.country);
     }
   };
 
   const handleSharePlace = async (place: SavedPlace) => {
     const url = typeof window !== 'undefined'
-      ? `${window.location.origin}/?${
-          place.type === 'country'
-            ? `country=${encodeURIComponent(place.country || place.name)}`
-            : `city=${encodeURIComponent(place.name)}&lat=${place.coordinates.lat.toFixed(4)}&lng=${place.coordinates.lng.toFixed(4)}`
-        }`
+      ? place.type === 'article' && place.url
+        ? place.url
+        : `${window.location.origin}/?${
+            place.type === 'country'
+              ? `country=${encodeURIComponent(place.country || place.name)}`
+              : `city=${encodeURIComponent(place.name)}&lat=${place.coordinates.lat.toFixed(4)}&lng=${place.coordinates.lng.toFixed(4)}`
+          }`
       : '';
     try {
       if (navigator.share) {
         await navigator.share({
           title: `${place.name} — MooEarth Live`,
-          text: `Check out ${place.name} on MooEarth.Live!`,
+          text: place.type === 'article' ? `Read "${place.name}" on MooEarth Live!` : `Check out ${place.name} on MooEarth.Live!`,
           url,
         });
       } else {
         await navigator.clipboard.writeText(url);
-        triggerToast('📋 Location link copied to clipboard!');
+        triggerToast('📋 Link copied to clipboard!');
       }
     } catch {
       // Dismissed
@@ -533,16 +544,52 @@ export default function ProfileModal({
           {activeTab === 'saved' && (
             <div className="space-y-3 font-sans">
               <div className="flex items-center justify-between text-xs text-white/50 mb-1">
-                <span>Locations bookmarked from 3D Globe & City Explorer</span>
+                <span>Locations and stories bookmarked across MooEarth</span>
                 <span className="font-mono text-[11px] text-cyan-400">{savedPlaces.length}/50</span>
               </div>
+
+              {/* Filter Pills */}
+              {savedPlaces.length > 0 && (
+                <div className="flex items-center gap-1.5 pb-1">
+                  <button
+                    onClick={() => setBookmarkFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      bookmarkFilter === 'all'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/35'
+                        : 'bg-white/5 text-white/60 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    All ({savedPlaces.length})
+                  </button>
+                  <button
+                    onClick={() => setBookmarkFilter('places')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      bookmarkFilter === 'places'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/35'
+                        : 'bg-white/5 text-white/60 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    Places ({savedPlaces.filter((p) => p.type !== 'article').length})
+                  </button>
+                  <button
+                    onClick={() => setBookmarkFilter('articles')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      bookmarkFilter === 'articles'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/35'
+                        : 'bg-white/5 text-white/60 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    Stories ({savedPlaces.filter((p) => p.type === 'article').length})
+                  </button>
+                </div>
+              )}
 
               {savedPlaces.length === 0 ? (
                 <div className="p-8 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/40 space-y-2">
                   <p className="text-3xl mb-1">★</p>
-                  <p className="font-bold text-white/80">No saved places yet</p>
+                  <p className="font-bold text-white/80">No saved bookmarks yet</p>
                   <p className="max-w-[340px] mx-auto text-white/50 leading-relaxed">
-                    Click the star icon (★) in any Country or City panel to save locations for 1-click planetary access.
+                    Click the star icon (★) in any Country, City, or News Article to save for 1-click planetary access.
                   </p>
                   <button
                     onClick={onClose}
@@ -551,25 +598,54 @@ export default function ProfileModal({
                     Explore 3D Globe
                   </button>
                 </div>
+              ) : filteredSavedPlaces.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-white/[0.01] border border-white/5 text-center text-xs text-white/40 space-y-1">
+                  <p className="font-bold text-white/70">No {bookmarkFilter} bookmarked</p>
+                  <p className="text-[11px] text-white/40">Switch back to "All" to view your other saved items.</p>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {savedPlaces.map((place) => (
+                  {filteredSavedPlaces.map((place) => (
                     <div
                       key={place.id}
                       className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all flex items-center justify-between gap-3 group"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className="text-2xl shrink-0">{place.flag || '📍'}</span>
+                        <span className="text-2xl shrink-0">{place.flag || (place.type === 'article' ? '📰' : '📍')}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-white truncate">{place.name}</p>
-                          <p className="text-[10px] text-white/40 font-mono truncate">
-                            {place.type.toUpperCase()} • {place.country || 'Global'}
-                            {place.coordinates && ` (${place.coordinates.lat.toFixed(1)}°, ${place.coordinates.lng.toFixed(1)}°)`}
+                          <p className="text-[10px] text-white/40 font-mono truncate flex items-center gap-1.5 flex-wrap">
+                            <span className={`px-1.5 py-0.2 rounded font-black uppercase tracking-wider text-[9px] ${
+                              place.type === 'article'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                            }`}>
+                              {place.type === 'article' ? 'Story' : place.type}
+                            </span>
+                            <span>•</span>
+                            <span>{place.publisher ? `${place.publisher} • ` : ''}{place.country || 'Global'}</span>
+                            {place.coordinates && (
+                              <span>({place.coordinates.lat.toFixed(1)}°, {place.coordinates.lng.toFixed(1)}°)</span>
+                            )}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Read link for articles */}
+                        {place.type === 'article' && place.url && (
+                          <a
+                            href={place.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Read source report"
+                            className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white text-xs font-bold transition-all flex items-center gap-1"
+                          >
+                            <span>Read</span>
+                            <span>↗</span>
+                          </a>
+                        )}
+
                         {/* Fly to Globe */}
                         <button
                           onClick={() => handleOpenSavedPlaceOnGlobe(place)}
@@ -583,7 +659,7 @@ export default function ProfileModal({
                         {/* Share */}
                         <button
                           onClick={() => handleSharePlace(place)}
-                          title="Share place link"
+                          title="Share link"
                           className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer"
                         >
                           ↗
@@ -756,6 +832,8 @@ export default function ProfileModal({
                             if (onFocusCoordinates) onFocusCoordinates(item.coordinates!);
                             if (item.type === 'country' && onSelectCountry) {
                               onSelectCountry(item.country || item.title);
+                            } else if (item.type === 'article' && item.country && onSelectCountry) {
+                              onSelectCountry(item.country);
                             }
                           }}
                           className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-semibold cursor-pointer shrink-0"

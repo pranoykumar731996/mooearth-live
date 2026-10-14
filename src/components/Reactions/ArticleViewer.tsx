@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent, EventCategory, EarthQuestion } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
@@ -13,6 +13,16 @@ import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { useTranslation, useLanguage } from '@/contexts/LanguageContext';
+import { auth } from '@/lib/firebase';
+import {
+  SavedPlace,
+  isPlaceSavedLocal,
+  saveGuestPlace,
+  removeGuestPlace,
+  getGuestSavedPlaces,
+  updateUserProfile,
+  recordDiscoveryHistory,
+} from '@/services/personalizationService';
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
@@ -100,6 +110,20 @@ function getFlagEmoji(country: string): React.ReactNode {
   };
   const emoji = flags[country] || '🌍';
   return <CountryFlag flag={emoji} className="w-5 h-3.5 object-cover rounded-[2px] shadow-[0_1px_2px_rgba(0,0,0,0.2)]" />;
+}
+
+function getFlagEmojiString(country: string): string {
+  const flags: Record<string, string> = {
+    'Spain': '🇪🇸', 'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'United Kingdom': '🇬🇧',
+    'Germany': '🇩🇪', 'France': '🇫🇷', 'Italy': '🇮🇹', 'Portugal': '🇵🇹',
+    'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Croatia': '🇭🇷', 'Uruguay': '🇺🇾',
+    'Colombia': '🇨🇴', 'Mexico': '🇲🇽', 'United States': '🇺🇸', 'Japan': '🇯🇵',
+    'South Korea': '🇰🇷', 'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Canada': '🇨🇦',
+    'Australia': '🇦🇺', 'China': '🇨🇳', 'India': '🇮🇳', 'Cuba': '🇨🇺', 'Libya': '🇱🇾',
+    'Cambodia': '🇰🇭', 'Bosnia and Herzegovina': '🇧🇦', 'Democratic Republic of the Congo': '🇨🇩',
+    'Ivory Coast': '🇨🇮'
+  };
+  return flags[country] || '🌍';
 }
 
 function parsePublisher(title: string, sourceUrl: string): { title: string; publisher: string } {
@@ -200,6 +224,60 @@ export default function ArticleViewer({
     rendered: string;
     cached?: string;
   } | null>(null);
+
+  // Bookmark state for active article and country
+  const [isArticleSaved, setIsArticleSaved] = useState<boolean>(false);
+  const [isCountrySaved, setIsCountrySaved] = useState<boolean>(false);
+
+  const articleBookmarkId = useMemo(() => {
+    if (!activeEvent) return null;
+    const cleanId = activeEvent.id || activeEvent.title?.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 50);
+    return `article_${cleanId}`;
+  }, [activeEvent]);
+
+  const countryBookmarkId = useMemo(() => {
+    if (!activeEvent?.country) return null;
+    return `country_${activeEvent.country.toLowerCase().replace(/\s+/g, '_')}`;
+  }, [activeEvent]);
+
+  useEffect(() => {
+    if (!articleBookmarkId) return;
+    setIsArticleSaved(isPlaceSavedLocal(articleBookmarkId));
+    if (countryBookmarkId) {
+      setIsCountrySaved(isPlaceSavedLocal(countryBookmarkId));
+    }
+
+    const handleSync = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.key === 'saved_places') {
+        setIsArticleSaved(isPlaceSavedLocal(articleBookmarkId));
+        if (countryBookmarkId) {
+          setIsCountrySaved(isPlaceSavedLocal(countryBookmarkId));
+        }
+      }
+    };
+
+    window.addEventListener('mooearth_personalization_update', handleSync);
+    return () => window.removeEventListener('mooearth_personalization_update', handleSync);
+  }, [articleBookmarkId, countryBookmarkId]);
+
+  // Record reading in Discovery History
+  useEffect(() => {
+    if (!activeEvent || !articleBookmarkId) return;
+    const cleanTitle = (activeEvent.title || '').replace(/<[^>]*>/g, '').trim();
+    recordDiscoveryHistory({
+      id: articleBookmarkId,
+      type: 'article',
+      title: cleanTitle,
+      subtitle: activeEvent.country ? `${activeEvent.country} • News Report` : 'News Report',
+      country: activeEvent.country,
+      coordinates: {
+        lat: Number(activeEvent.lat) || 0,
+        lng: Number(activeEvent.lng) || 0,
+      },
+      flag: getFlagEmojiString(activeEvent.country),
+    });
+  }, [articleBookmarkId, activeEvent]);
 
   // Article Comprehension Quiz state
   const [quizActive, setQuizActive] = useState(false);
@@ -662,6 +740,74 @@ export default function ArticleViewer({
       trackEvent('translation', 'failure', langCode);
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleToggleArticleBookmark = () => {
+    if (!activeEvent || !articleBookmarkId) return;
+
+    if (isArticleSaved) {
+      removeGuestPlace(articleBookmarkId);
+      if (auth?.currentUser?.uid) {
+        const currentSaved = getGuestSavedPlaces();
+        updateUserProfile(auth.currentUser.uid, { savedPlaces: currentSaved });
+      }
+      setIsArticleSaved(false);
+    } else {
+      const place: SavedPlace = {
+        id: articleBookmarkId,
+        type: 'article',
+        name: cleanTitle,
+        country: activeEvent.country,
+        category: activeEvent.category,
+        publisher,
+        url: activeEvent.source || (articleDetails?.source ?? ''),
+        coordinates: {
+          lat: Number(activeEvent.lat) || 0,
+          lng: Number(activeEvent.lng) || 0,
+        },
+        flag: getFlagEmojiString(activeEvent.country),
+        savedAt: Date.now(),
+        articleId: activeEvent.id,
+      };
+      saveGuestPlace(place);
+      if (auth?.currentUser?.uid) {
+        const currentSaved = getGuestSavedPlaces();
+        updateUserProfile(auth.currentUser.uid, { savedPlaces: currentSaved });
+      }
+      setIsArticleSaved(true);
+    }
+  };
+
+  const handleToggleCountryBookmark = () => {
+    if (!activeEvent?.country || !countryBookmarkId) return;
+
+    if (isCountrySaved) {
+      removeGuestPlace(countryBookmarkId);
+      if (auth?.currentUser?.uid) {
+        const currentSaved = getGuestSavedPlaces();
+        updateUserProfile(auth.currentUser.uid, { savedPlaces: currentSaved });
+      }
+      setIsCountrySaved(false);
+    } else {
+      const countryPlace: SavedPlace = {
+        id: countryBookmarkId,
+        type: 'country',
+        name: activeEvent.country,
+        country: activeEvent.country,
+        coordinates: {
+          lat: Number(activeEvent.lat) || 0,
+          lng: Number(activeEvent.lng) || 0,
+        },
+        flag: getFlagEmojiString(activeEvent.country),
+        savedAt: Date.now(),
+      };
+      saveGuestPlace(countryPlace);
+      if (auth?.currentUser?.uid) {
+        const currentSaved = getGuestSavedPlaces();
+        updateUserProfile(auth.currentUser.uid, { savedPlaces: currentSaved });
+      }
+      setIsCountrySaved(true);
     }
   };
 
@@ -1155,6 +1301,24 @@ export default function ArticleViewer({
                 </div>
               )}
 
+              {/* Bookmark Article Button */}
+              <button
+                onClick={handleToggleArticleBookmark}
+                id="article-bookmark-btn"
+                className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
+                  isArticleSaved
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                    : 'bg-white/5 text-white/60 border-white/5 hover:text-white hover:bg-white/10'
+                }`}
+                title={isArticleSaved ? 'Saved in bookmarks (Click to remove)' : 'Save story to bookmarks'}
+                aria-label={isArticleSaved ? 'Remove bookmark' : 'Bookmark story'}
+              >
+                <span className={`text-sm ${isArticleSaved ? 'text-amber-400' : 'text-white/60'}`}>
+                  {isArticleSaved ? '★' : '☆'}
+                </span>
+                <span className="opacity-90">{isArticleSaved ? 'Saved' : 'Bookmark'}</span>
+              </button>
+
               {/* Reading Mode Button */}
               <button
                 onClick={() => setReadingMode(!readingMode)}
@@ -1495,6 +1659,22 @@ export default function ArticleViewer({
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      {/* Bookmark Story Button */}
+                      <button
+                        onClick={handleToggleArticleBookmark}
+                        className={`px-3 py-2 rounded-xl transition-all cursor-pointer border text-xs font-bold flex items-center gap-1.5 ${
+                          isArticleSaved
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/35 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                            : 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/5'
+                        }`}
+                        title={isArticleSaved ? 'Remove from saved stories' : 'Bookmark this story'}
+                      >
+                        <span className={isArticleSaved ? 'text-amber-400' : 'text-white/50'}>
+                          {isArticleSaved ? '★' : '☆'}
+                        </span>
+                        <span>{isArticleSaved ? 'Story Bookmarked' : 'Save Story'}</span>
+                      </button>
+
                       {/* Native Share / Copy */}
                       <button
                         onClick={handleShare}
@@ -1698,18 +1878,34 @@ export default function ArticleViewer({
                         Country Context
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl" role="img" aria-label="Flag">
-                          {getFlagEmoji(activeEvent.country)}
-                        </span>
-                        <div>
-                          <h2 className="text-lg font-extrabold text-white leading-tight">
-                            {activeEvent.country}
-                          </h2>
-                          <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">
-                            Discovered Nation
-                          </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl" role="img" aria-label="Flag">
+                            {getFlagEmoji(activeEvent.country)}
+                          </span>
+                          <div>
+                            <h2 className="text-lg font-extrabold text-white leading-tight">
+                              {activeEvent.country}
+                            </h2>
+                            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">
+                              Discovered Nation
+                            </p>
+                          </div>
                         </div>
+
+                        {/* Bookmark Country Button */}
+                        <button
+                          onClick={handleToggleCountryBookmark}
+                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                            isCountrySaved
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/35'
+                              : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
+                          }`}
+                          title={isCountrySaved ? `Remove ${activeEvent.country} from bookmarks` : `Save ${activeEvent.country} to bookmarks`}
+                        >
+                          <span>{isCountrySaved ? '★' : '☆'}</span>
+                          <span>{isCountrySaved ? 'Saved' : 'Save Nation'}</span>
+                        </button>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 border-t border-white/[0.05] pt-4 text-left">

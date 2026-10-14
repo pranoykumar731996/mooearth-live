@@ -294,4 +294,51 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
     expect(result.events[0].id).toBe('event_1');
     expect(result.reason).toBeDefined();
   });
+
+  // ── 5. NEWS ARTICLE BOOKMARKING & HISTORY LOGGING ─────────────────
+  test('7. News article bookmarks can be saved, deduplicated, retrieved, and removed', () => {
+    const articleBookmark: SavedPlace = {
+      id: 'article_event_india_energy_123',
+      type: 'article',
+      name: 'U.S. State Secretary Rubio to visit India for energy talks next week',
+      country: 'India',
+      category: 'technology',
+      publisher: 'PTI',
+      url: 'https://example.com/article/123',
+      coordinates: { lat: 28.6139, lng: 77.2090 },
+      flag: '🇮🇳',
+      savedAt: Date.now(),
+      articleId: 'event_india_energy_123',
+    };
+
+    saveGuestPlace(articleBookmark);
+    expect(isPlaceSavedLocal('article_event_india_energy_123')).toBe(true);
+
+    const places = getGuestSavedPlaces();
+    expect(places.length).toBe(1);
+    expect(places[0].type).toBe('article');
+    expect(places[0].name).toContain('U.S. State Secretary Rubio');
+    expect(places[0].publisher).toBe('PTI');
+
+    // History logging for reading article
+    recordDiscoveryHistory({
+      id: 'article_event_india_energy_123',
+      type: 'article',
+      title: articleBookmark.name,
+      subtitle: `${articleBookmark.publisher} • ${articleBookmark.country}`,
+      country: articleBookmark.country,
+      coordinates: articleBookmark.coordinates,
+      flag: articleBookmark.flag,
+    });
+
+    const history = getGuestDiscoveryHistory();
+    expect(history.length).toBe(1);
+    expect(history[0].type).toBe('article');
+    expect(history[0].title).toContain('U.S. State Secretary Rubio');
+
+    // Remove article bookmark
+    removeGuestPlace('article_event_india_energy_123');
+    expect(isPlaceSavedLocal('article_event_india_energy_123')).toBe(false);
+    expect(getGuestSavedPlaces().length).toBe(0);
+  });
 });

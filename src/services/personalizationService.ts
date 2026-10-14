@@ -13,14 +13,18 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export interface SavedPlace {
-  id: string; // e.g. "country_japan" or "city_tokyo_japan"
-  type: 'country' | 'city' | 'coordinates';
+  id: string; // e.g. "country_japan", "city_tokyo_japan", or "article_..."
+  type: 'country' | 'city' | 'coordinates' | 'article';
   name: string;
   country?: string;
   state?: string;
   coordinates: { lat: number; lng: number };
   flag?: string;
   savedAt: number; // Unix timestamp in ms
+  url?: string;
+  category?: string;
+  publisher?: string;
+  articleId?: string;
 }
 
 export interface UserPreferences {
@@ -32,13 +36,14 @@ export interface UserPreferences {
 
 export interface DiscoveryHistoryItem {
   id: string;
-  type: 'country' | 'city' | 'quiz' | 'challenge';
+  type: 'country' | 'city' | 'quiz' | 'challenge' | 'article';
   title: string;
   subtitle?: string;
   country?: string;
   coordinates?: { lat: number; lng: number };
   flag?: string;
   timestamp: number;
+  url?: string;
 }
 
 export interface UserProfileData {
