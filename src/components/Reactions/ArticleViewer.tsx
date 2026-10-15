@@ -27,6 +27,7 @@ import {
 
 const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 import { AdUnit } from '@/components/Monetization/AdUnit';
+import { EvidenceDepthReport } from '@/components/UI/EvidenceDepthReport';
 
 const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
@@ -1126,36 +1127,10 @@ export default function ArticleViewer({
                 </div>
               </>
             )}
-
-            {/* Cross-Publisher Coverage (Multi-Source Cluster Attribution) */}
-            {articleDetails?.relatedSources && articleDetails.relatedSources.length > 0 && (
-              <div className="rounded-xl p-3 border border-white/10 bg-white/[0.02] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">
-                    Cross-Publisher Coverage ({articleDetails.relatedSources.length + 1} Sources)
-                  </span>
-                  <span className="text-[9px] text-white/40 font-medium">Verified Multi-Wire</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {articleDetails.relatedSources.map((source, sIdx) => (
-                    <a
-                      key={sIdx}
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/5 transition-all"
-                    >
-                      <span>{source.publisher}</span>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                        <polyline points="15 3 21 3 21 9" />
-                      </svg>
-                    </a>
-                  ))}
-                </div>
-              </div>
+            {/* Evidence Depth & Multi-Source Transparency Report */}
+            {articleDetails && (
+              <EvidenceDepthReport article={articleDetails} />
             )}
-
             {/* Share / Read Source / Translate buttons */}
             <div className="flex flex-col gap-2 pt-4 border-t border-white/[0.05]">
               {FEATURES.enableTranslation && translationError && (
@@ -1612,7 +1587,10 @@ export default function ArticleViewer({
                     </>
                   )}
 
-
+                  {/* Evidence Depth & Multi-Source Transparency Report */}
+                  {articleDetails && (
+                    <EvidenceDepthReport article={articleDetails} />
+                  )}
 
                   {/* Article-to-Play-Earth Quiz Bridge Card */}
                   <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/[0.08] via-purple-500/[0.04] to-cyan-500/[0.06] border border-amber-500/25 shadow-lg relative overflow-hidden font-sans space-y-4">

@@ -1,6 +1,19 @@
 import { WorldEvent } from '@/types';
 import { BoundedMap } from '@/lib/rate-limiter';
-import { resolveArticleAccess, findRelatedCluster } from './newsEngine';
+import {
+  resolveArticleAccess,
+  findRelatedCluster,
+  conductMultiSourceResearch,
+  generateArticleWithAi,
+  enforcePublicationGate,
+  EvidenceDepthMode,
+  PublicationStatus,
+  EvidenceRecord,
+  AttributedStatement,
+  TimelineDevelopment,
+  SourceTransparencyReport,
+  ResearchTelemetry,
+} from './newsEngine';
 
 export interface ArticleDetails {
   id: string;
@@ -27,7 +40,22 @@ export interface ArticleDetails {
     summaryGenerated: boolean;
     cacheHit: boolean;
     validationPassed: boolean;
+    [key: string]: any;
   };
+
+  // Multi-Source AI Research & Evidence Depth Fields
+  depthMode?: EvidenceDepthMode;
+  publicationStatus?: PublicationStatus;
+  newlyReportedFacts?: string[];
+  attributedStatements?: AttributedStatement[];
+  timelineDevelopments?: TimelineDevelopment[];
+  historicalBackground?: string;
+  analysisAndImplications?: string;
+  competingAccountsOrContradictions?: string[];
+  unresolvedQuestions?: string[];
+  evidenceRecord?: EvidenceRecord;
+  sourceTransparency?: SourceTransparencyReport;
+  telemetry?: ResearchTelemetry;
 }
 
 // Curated premium images for each category
@@ -703,6 +731,9 @@ async function generateWithOpenAI(apiKey: string, prompt: string): Promise<any> 
   }
 }
 
+// In-flight research promise tracker to guarantee zero duplicate AI calls (SingleFlight pattern)
+const inFlightResearchMap = new Map<string, Promise<ArticleDetails>>();
+
 export async function fetchOrGenerateArticleDetails(
   id: string,
   url: string,
@@ -715,11 +746,13 @@ export async function fetchOrGenerateArticleDetails(
   const cleanTitle = cleanText(title);
   const cleanSummary = cleanText(summary);
 
-  // Generate unique cache key using ID, URL, and timestamp
-  const cacheKey = `${id.trim()}||${url.trim()}||${publishedAt.trim()}`;
-  
-  if (articleCache.has(cacheKey)) {
-    const cached = articleCache.get(cacheKey)!;
+  // 1. Generate unique and canonical topic cache keys
+  const specificKey = `${id.trim()}||${url.trim()}||${publishedAt.trim()}`;
+  const canonicalKey = `canonical__${cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60)}__${(country || 'global').toLowerCase()}`;
+
+  // Check cache for canonical topic
+  if (articleCache.has(canonicalKey)) {
+    const cached = articleCache.get(canonicalKey)!;
     return {
       ...cached,
       debug: {
@@ -731,359 +764,128 @@ export async function fetchOrGenerateArticleDetails(
           summaryGenerated: false,
           validationPassed: true,
         }),
-        cacheHit: true
-      }
+        cacheHit: true,
+      },
     };
   }
 
-  const finalizeDetails = async (det: ArticleDetails): Promise<ArticleDetails> => {
-    if (!det.relatedSources || det.relatedSources.length === 0) {
-      try {
-        const cluster = await findRelatedCluster(cleanTitle, country);
-        if (cluster && cluster.primaryArticle.relatedSources && cluster.primaryArticle.relatedSources.length > 0) {
-          det.relatedSources = cluster.primaryArticle.relatedSources;
-          det.topicKeywords = cluster.topicKeywords;
-        }
-      } catch {
-        // Non-blocking
-      }
-    }
-    articleCache.set(cacheKey, det);
-    return det;
-  };
-
-  // Validate URL structure
-  let isValidUrl = false;
-  try {
-    new URL(url);
-    isValidUrl = true;
-  } catch (e) {
-    isValidUrl = false;
-  }
-
-  if (!isValidUrl) {
-    console.warn(`[ArticleService] Invalid article URL: ${url}`);
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, "Global Wire");
-    details.debug = {
-      articleId: id,
-      publisher: "Unknown",
-      sourceUrl: url,
-      contentRetrieved: false,
-      summaryGenerated: false,
-      cacheHit: false,
-      validationPassed: false
-    };
-    return await finalizeDetails(details);
-  }
-
-  // Retrieve article HTML content
-  console.log(`[ArticleService] Retrieving content for: ${url}`);
-  const retrieved = await retrieveArticleContent(url);
-
-  // Derive clean publisher name without ever exposing raw HTML tags
-  const titleParts = cleanTitle.split(' - ');
-  const titlePublisher = titleParts.length > 1 ? titleParts[titleParts.length - 1].trim() : '';
-
-  const publisherName = (isValidPublisherOrAuthor(retrieved.publisher) ? retrieved.publisher! : '') ||
-    (isValidPublisherOrAuthor(titlePublisher) ? titlePublisher : '') ||
-    extractPublisherFromUrl(url);
-
-  const authorName = isValidPublisherOrAuthor(retrieved.author) ? retrieved.author! : undefined;
-
-  // Data Integrity Validation Check
-  let validationPassed = true;
-  if (retrieved.success) {
-    validationPassed = verifyArticleIntegrity(
-      cleanTitle,
-      retrieved.title || '',
-      retrieved.content || '',
-      retrieved.excerpt || ''
-    );
-  } else {
-    // If we can't retrieve the content, we cannot validate it. We still proceed to check if the feed description is valid.
-    validationPassed = false;
-  }
-
-  const isFallbackValid = (desc: string) => {
-    if (!desc) return false;
-    const cleanDesc = cleanText(desc);
-    return (
-      cleanDesc.length > 40 &&
-      cleanDesc.toLowerCase() !== cleanTitle.toLowerCase() &&
-      !cleanDesc.toLowerCase().includes('summary unavailable')
-    );
-  };
-
-  if (retrieved.success && !validationPassed) {
-    console.warn(`[ArticleService] Data integrity validation failed (title mismatch) for: ${url}`);
-    if (isFallbackValid(cleanSummary)) {
-      console.log(`[ArticleService] Falling back to RSS description due to integrity check failure.`);
-      const details: ArticleDetails = {
-        id,
-        title: cleanTitle,
-        source: cleanText(url),
-        publishedAt,
-        country,
-        category,
-        aiSummary: cleanSummary,
-        fullContent: cleanSummary,
-        keyFacts: [
-          `Main Event: ${cleanTitle}`,
-          `Important Development: Summary from RSS feed preview.`,
-          `Why It Matters: Scraped page title or content did not align with feed.`,
-          `Country Impact: Relevant developments are monitored in ${country}.`
-        ],
-        author: authorName,
-        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-        description: cleanSummary,
-        accessLevel: 'synthesis',
-        accessLabel: 'Verified Synthesis',
-        debug: {
+  // Check cache for specific ID/URL
+  if (articleCache.has(specificKey)) {
+    const cached = articleCache.get(specificKey)!;
+    return {
+      ...cached,
+      debug: {
+        ...(cached.debug || {
           articleId: id,
-          publisher: publisherName,
+          publisher: cached.author || "Unknown",
           sourceUrl: url,
           contentRetrieved: true,
           summaryGenerated: false,
-          cacheHit: false,
-          validationPassed: false
-        }
-      };
-      return await finalizeDetails(details);
-    }
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
-    details.debug = {
-      articleId: id,
-      publisher: publisherName,
-      sourceUrl: url,
-      contentRetrieved: true,
-      summaryGenerated: false,
-      cacheHit: false,
-      validationPassed: false
+          validationPassed: true,
+        }),
+        cacheHit: true,
+      },
     };
-    return await finalizeDetails(details);
   }
 
-  // Determine if publisher provides a valid official description/excerpt
-  let officialDescription = '';
-  const isDescriptionValid = (desc: string) => {
-    if (!desc) return false;
-    const cleanDesc = cleanText(desc);
-    return (
-      cleanDesc.length > 80 &&
-      cleanDesc.split(/\s+/).length > 10 &&
-      cleanDesc.toLowerCase() !== cleanTitle.toLowerCase()
-    );
-  };
-
-  if (isDescriptionValid(retrieved.excerpt)) {
-    officialDescription = cleanText(retrieved.excerpt);
-  } else if (isDescriptionValid(cleanSummary)) {
-    officialDescription = cleanSummary;
+  // 2. Check in-flight research map (deduplicate parallel clicks on the same story)
+  if (inFlightResearchMap.has(canonicalKey)) {
+    return inFlightResearchMap.get(canonicalKey)!;
   }
 
-  // Bypass AI if official description is sufficient
-  if (officialDescription) {
-    console.log(`[ArticleService] Publisher description is valid. Bypassing AI summarizer.`);
-    const details: ArticleDetails = {
-      id,
-      title: cleanTitle,
-      source: cleanText(url),
-      publishedAt,
-      country,
-      category,
-      aiSummary: officialDescription,
-      fullContent: retrieved.content && retrieved.content.length > 150 
-        ? retrieved.content 
-        : officialDescription,
-      keyFacts: [
-        `Main Event: ${cleanTitle}`,
-        `Important Development: Official summary provided directly by the publisher.`,
-        `Why It Matters: Direct source details have been verified for accuracy.`,
-        `Country Impact: Relevant developments are monitored in ${country}.`
-      ],
-      author: authorName,
-      image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-      description: cleanSummary,
-      accessLevel: 'synthesis',
-      accessLabel: 'Verified Synthesis',
-      debug: {
-        articleId: id,
-        publisher: publisherName,
-        sourceUrl: url,
-        contentRetrieved: retrieved.success,
-        summaryGenerated: false,
-        cacheHit: false,
-        validationPassed: true
-      }
-    };
+  // 3. Initiate the multi-source research promise
+  const researchPromise = (async () => {
+    try {
+      console.log(`[ArticleService] Initiating Multi-Source Research Engine for: "${cleanTitle}"`);
 
-    return await finalizeDetails(details);
-  }
+      // A. Conduct multi-source research across independent outlets, public documents, and GDELT
+      const evidence = await conductMultiSourceResearch({
+        headline: cleanTitle,
+        url,
+        summary: cleanSummary,
+        country: country || 'Global',
+        category: category || 'breaking',
+        publishedAt: publishedAt || new Date().toISOString(),
+      });
 
-  // If content was not retrieved successfully, we cannot summarize it reliably. No fake summaries allowed.
-  if (!retrieved.success) {
-    console.warn(`[ArticleService] Retrieval failed and no valid description exists.`);
-    if (isFallbackValid(cleanSummary)) {
-      console.log(`[ArticleService] Falling back to RSS description due to retrieval failure.`);
+      // B. Generate evidence-dependent article (briefing, multi_source, deep_dive)
+      const generated = await generateArticleWithAi(evidence, category || 'breaking', url);
+
+      // C. Run publication quality gate (sufficiency, claim alignment, stale detection, status)
+      const finalized = enforcePublicationGate(generated, evidence);
+
+      // D. Map to ArticleDetails structure
+      const primaryPub = evidence.sources[0]?.publisher || extractPublisherFromUrl(url) || 'News Wire';
       const details: ArticleDetails = {
-        id,
-        title: cleanTitle,
+        id: id || finalized.id,
+        title: finalized.title || cleanTitle,
         source: cleanText(url),
-        publishedAt,
-        country,
-        category,
-        aiSummary: cleanSummary,
-        fullContent: cleanSummary,
-        keyFacts: [
-          `Main Event: ${cleanTitle}`,
-          `Important Development: Summary from RSS feed preview.`,
-          `Why It Matters: Scraped page content was blocked or paywalled.`,
-          `Country Impact: Relevant developments are monitored in ${country}.`
-        ],
-        author: authorName,
-        image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-        description: cleanSummary,
-        accessLevel: 'synthesis',
-        accessLabel: 'Verified Synthesis',
+        publishedAt: finalized.publishedAt || publishedAt,
+        country: finalized.country || country,
+        category: finalized.category || category,
+        aiSummary: finalized.aiSummary,
+        fullContent: finalized.fullContent,
+        keyFacts: finalized.keyFacts,
+        author: finalized.author || `${primaryPub} & MooEarth Research Bureau`,
+        image: finalized.image || CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
+        description: cleanSummary || finalized.aiSummary,
+        accessLevel: finalized.accessLevel,
+        accessLabel: finalized.accessLabel,
+        relatedSources: finalized.relatedSources,
+        topicKeywords: evidence.entities.organizations.concat(evidence.entities.people),
+        
+        // Multi-Source Depth & Transparency Fields
+        depthMode: finalized.depthMode,
+        publicationStatus: finalized.publicationStatus,
+        newlyReportedFacts: finalized.newlyReportedFacts,
+        attributedStatements: finalized.attributedStatements,
+        timelineDevelopments: finalized.timelineDevelopments,
+        historicalBackground: finalized.historicalBackground,
+        analysisAndImplications: finalized.analysisAndImplications,
+        competingAccountsOrContradictions: finalized.competingAccountsOrContradictions,
+        unresolvedQuestions: finalized.unresolvedQuestions,
+        evidenceRecord: finalized.evidenceRecord,
+        sourceTransparency: finalized.sourceTransparency,
+        telemetry: finalized.telemetry,
         debug: {
           articleId: id,
-          publisher: publisherName,
+          publisher: primaryPub,
           sourceUrl: url,
-          contentRetrieved: false,
-          summaryGenerated: false,
+          contentRetrieved: evidence.corroboration.accessibleSourcesCount > 0,
+          summaryGenerated: true,
           cacheHit: false,
-          validationPassed: false
-        }
+          validationPassed: finalized.publicationStatus !== 'under_review',
+          depthMode: finalized.depthMode,
+          publicationStatus: finalized.publicationStatus,
+          sourcesCount: evidence.sources.length,
+          accessibleCount: evidence.corroboration.accessibleSourcesCount,
+        },
       };
-      return await finalizeDetails(details);
+
+      // Store in memory cache with both canonical and specific keys
+      articleCache.set(canonicalKey, details);
+      articleCache.set(specificKey, details);
+
+      return details;
+    } catch (err: any) {
+      console.error(`[ArticleService] Multi-source research encountered error, falling back gracefully:`, err);
+      const fallbackDetails = generateUnavailableArticle(
+        id,
+        title,
+        country,
+        category,
+        url,
+        publishedAt,
+        cleanSummary,
+        extractPublisherFromUrl(url)
+      );
+      articleCache.set(specificKey, fallbackDetails);
+      return fallbackDetails;
+    } finally {
+      inFlightResearchMap.delete(canonicalKey);
     }
-    const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
-    details.debug = {
-      articleId: id,
-      publisher: publisherName,
-      sourceUrl: url,
-      contentRetrieved: false,
-      summaryGenerated: false,
-      cacheHit: false,
-      validationPassed: false
-    };
-    return await finalizeDetails(details);
-  }
+  })();
 
-  // AI Summarization is required
-  console.log(`[ArticleService] Running AI Summarization for title: ${cleanTitle}`);
-  const prompt = `
-SYSTEM PROMPT:
-You are a news summarization assistant.
-Summarize ONLY the supplied article.
-Requirements:
-* Preserve factual accuracy.
-* Preserve names, places, dates, and scores.
-* Do not add information.
-* Do not speculate.
-* Do not combine information from other articles.
-* Produce a concise summary of approximately 100–200 words.
-* If the supplied content is insufficient, return 'Summary unavailable' rather than inventing missing details.
-
-INPUT ARTICLE DETAILS:
-- TITLE: ${cleanTitle}
-- PUBLISHER: ${publisherName}
-- DESCRIPTION: ${officialDescription || 'None'}
-- BODY CONTENT:
-${retrieved.content || 'None'}
-
-OUTPUT FORMAT:
-Generate a JSON response conforming strictly to the following JSON structure:
-{
-  "aiSummary": "Your concise summary of approximately 100-200 words goes here, following the system prompt rules. If content is insufficient, put 'Summary unavailable'.",
-  "fullContent": "The detailed content of the article (or a substantial summary of the body content if available). If content is insufficient, put 'The full content of this article could not be retrieved from the publisher\\'s website. Please use the link below to read the original article on their official site.'",
-  "keyFacts": [
-    "Main Event: [description of main event]",
-    "Important Development: [description of important development]",
-    "Why It Matters: [description of why it matters]",
-    "Country Impact: [description of country impact]"
-  ],
-  "author": "Reporter Name"
-}
-
-Respond with RAW VALID JSON ONLY. Do not wrap in markdown or add extra text.
-`;
-
-  let parsed: any = null;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-
-  if (geminiApiKey) {
-    parsed = await generateWithGemini20(geminiApiKey, prompt);
-    if (!parsed) {
-      parsed = await generateWithGeminiLatest(geminiApiKey, prompt);
-    }
-  }
-
-  if (!parsed && openaiApiKey) {
-    parsed = await generateWithOpenAI(openaiApiKey, prompt);
-  }
-
-  // Check if AI generated content successfully
-  if (parsed && parsed.aiSummary && parsed.fullContent && Array.isArray(parsed.keyFacts)) {
-    const aiSummaryText = cleanText(parsed.aiSummary);
-    
-    // Check if the AI returned 'Summary unavailable'
-    if (aiSummaryText.toLowerCase().includes('summary unavailable') || parsed.keyFacts.length === 0) {
-      console.warn(`[ArticleService] AI returned 'Summary unavailable' for: ${cleanTitle}`);
-      const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
-      details.debug = {
-        articleId: id,
-        publisher: publisherName,
-        sourceUrl: url,
-        contentRetrieved: true,
-        summaryGenerated: true,
-        cacheHit: false,
-        validationPassed: true
-      };
-      return await finalizeDetails(details);
-    }
-
-    const details: ArticleDetails = {
-      id,
-      title: cleanTitle,
-      source: cleanText(url),
-      publishedAt,
-      country,
-      category,
-      aiSummary: aiSummaryText,
-      fullContent: cleanText(parsed.fullContent),
-      keyFacts: parsed.keyFacts.map((fact: string) => cleanText(fact)),
-      author: (parsed.author && isValidPublisherOrAuthor(parsed.author)) ? cleanText(parsed.author) : authorName,
-      image: CATEGORY_IMAGES[category] || CATEGORY_IMAGES.breaking,
-      description: cleanSummary,
-      accessLevel: 'full',
-      accessLabel: 'Full Report',
-      debug: {
-        articleId: id,
-        publisher: publisherName,
-        sourceUrl: url,
-        contentRetrieved: true,
-        summaryGenerated: true,
-        cacheHit: false,
-        validationPassed: true
-      }
-    };
-
-    return await finalizeDetails(details);
-  }
-
-  // AI Generation failed/timed out: fallback to Summary Unavailable (No fake summaries allowed!)
-  console.warn(`[ArticleService] AI article summarization failed or timed out for "${title}". Returning unavailable.`);
-  const details = generateUnavailableArticle(id, title, country, category, url, publishedAt, cleanSummary, publisherName);
-  details.debug = {
-    articleId: id,
-    publisher: publisherName,
-    sourceUrl: url,
-    contentRetrieved: true,
-    summaryGenerated: false,
-    cacheHit: false,
-    validationPassed: true
-  };
-  return await finalizeDetails(details);
+  inFlightResearchMap.set(canonicalKey, researchPromise);
+  return await researchPromise;
 }

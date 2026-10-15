@@ -11,10 +11,14 @@ import { WorldEvent, EventCategory } from '@/types';
 import { getCountryByName } from '@/data/countries';
 
 export * from './types';
+export * from './evidenceTypes';
 export * from './rssFeeds';
 export * from './gdeltClient';
 export * from './clustering';
 export * from './accessResolver';
+export * from './researchEngine';
+export * from './articleGenerator';
+export * from './qualityGate';
 
 // Master in-memory cache for news clusters (90-second TTL)
 interface EngineCache {
