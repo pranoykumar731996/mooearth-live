@@ -6,13 +6,6 @@ import { CategoryConfig, EventCategory, GlobePointOfView, SidebarItem } from '@/
 
 /** Category visual configuration map */
 export const CATEGORY_MAP: Record<EventCategory, CategoryConfig> = {
-  breaking: {
-    label: 'Breaking News',
-    emoji: '📰',
-    color: '#ef4444',
-    glowColor: 'rgba(239, 68, 68, 0.5)',
-    bgColor: 'rgba(239, 68, 68, 0.15)',
-  },
   sports: {
     label: 'Sports',
     emoji: '🏅',
@@ -27,33 +20,12 @@ export const CATEGORY_MAP: Record<EventCategory, CategoryConfig> = {
     glowColor: 'rgba(16, 185, 129, 0.5)',
     bgColor: 'rgba(16, 185, 129, 0.15)',
   },
-  technology: {
-    label: 'Technology',
-    emoji: '💻',
-    color: '#3b82f6',
-    glowColor: 'rgba(59, 130, 246, 0.5)',
-    bgColor: 'rgba(59, 130, 246, 0.15)',
-  },
-  business: {
-    label: 'Business',
-    emoji: '💰',
-    color: '#eab308',
-    glowColor: 'rgba(234, 179, 8, 0.5)',
-    bgColor: 'rgba(234, 179, 8, 0.15)',
-  },
   weather: {
     label: 'Weather',
     emoji: '🌦',
     color: '#f97316',
     glowColor: 'rgba(249, 115, 22, 0.5)',
     bgColor: 'rgba(249, 115, 22, 0.15)',
-  },
-  entertainment: {
-    label: 'Entertainment',
-    emoji: '🎬',
-    color: '#a855f7',
-    glowColor: 'rgba(168, 85, 247, 0.5)',
-    bgColor: 'rgba(168, 85, 247, 0.15)',
   },
   seismic: {
     label: 'Seismic & Volcanic',
@@ -138,7 +110,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'science_nature', label: 'Science & Discovery', icon: '🔬', category: 'science_nature' },
   { id: 'weather', label: 'Weather', icon: '🌤️', category: 'weather' },
   { id: 'football', label: 'Football', icon: '⚽', category: 'football' },
-  { id: 'breaking', label: 'News Archive', icon: '📰', category: 'breaking' },
   { id: 'info', label: 'About & Legal', icon: 'ℹ️' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];

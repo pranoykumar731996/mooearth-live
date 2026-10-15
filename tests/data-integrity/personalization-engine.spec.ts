@@ -212,7 +212,7 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
         id: 'event_1',
         title: 'New Renewable Energy Project in Germany',
         summary: 'Germany launches new solar array',
-        category: 'business',
+        category: 'science_nature',
         country: 'Germany',
         city: 'Berlin',
         lat: 52.52,
@@ -224,7 +224,7 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
         id: 'event_2',
         title: 'Breakthrough Quantum Computer Unveiled in Tokyo',
         summary: 'Japanese scientists announce quantum speedup',
-        category: 'technology',
+        category: 'space_weather',
         country: 'Japan',
         city: 'Tokyo',
         lat: 35.6762,
@@ -236,7 +236,7 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
         id: 'event_3',
         title: 'Tech Summit Opens in France',
         summary: 'Artificial intelligence ethics discussion',
-        category: 'technology',
+        category: 'space_weather',
         country: 'France',
         city: 'Paris',
         lat: 48.8566,
@@ -248,18 +248,18 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
 
     const preferences: UserPreferences = {
       favoriteCountries: ['Japan'],
-      favoriteTopics: ['technology'],
+      favoriteTopics: ['space_weather'],
       isPersonalizedFeedActive: true,
     };
 
     // Soft ranking mode
     const ranked = rankPersonalizedEvents(mockEvents, preferences);
     expect(ranked.isPersonalized).toBe(true);
-    // Japan + Technology gets country (15) + topic (8) = 23 points -> Must be first!
+    // Japan + Space Weather gets country (15) + topic (8) = 23 points -> Must be first!
     expect(ranked.events[0].id).toBe('event_2');
-    // France + Technology gets topic (8) -> Must be second
+    // France + Space Weather gets topic (8) -> Must be second
     expect(ranked.events[1].id).toBe('event_3');
-    // Germany + Business gets 0 affinity -> Third
+    // Germany + Science Nature gets 0 affinity -> Third
     expect(ranked.events[2].id).toBe('event_1');
   });
 
@@ -269,7 +269,7 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
         id: 'event_1',
         title: 'Local Art Exhibition in Canada',
         summary: 'Cultural showcase',
-        category: 'entertainment',
+        category: 'severe_weather',
         country: 'Canada',
         city: 'Toronto',
         lat: 43.6532,
@@ -302,7 +302,7 @@ test.describe('Phase 7 — Personalization, Profiles & Saved Places Engine', () 
       type: 'article',
       name: 'U.S. State Secretary Rubio to visit India for energy talks next week',
       country: 'India',
-      category: 'technology',
+      category: 'science_nature',
       publisher: 'PTI',
       url: 'https://example.com/article/123',
       coordinates: { lat: 28.6139, lng: 77.2090 },

@@ -1,5 +1,4 @@
 import { WorldEvent, EventCategory } from '@/types';
-import { fetchLiveNews, searchLiveNews } from './news';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { locations, LocationRecord } from '@/data/locations';
 import {
@@ -58,205 +57,101 @@ export function isArticleInCategory(title: string, summary: string, category: Ev
   if (category === 'science_nature') {
     return ['science', 'discovery', 'species', 'biology', 'nature', 'fossil', 'research', 'satellite', 'observation'].some(kw => text.includes(kw));
   }
-
-  if (category === 'technology') {
-    return ['technology', 'tech', 'software', 'ai', 'science', 'semiconductor', 'computing', 'space', 'quantum', 'cyber', 'internet', 'web', 'data', 'algorithm', 'app', 'device', 'phone', 'robot', 'digital'].some(kw => text.includes(kw));
-  }
-  if (category === 'business') {
-    return ['business', 'economy', 'market', 'stocks', 'finance', 'trade', 'currency', 'inflation', 'corporate', 'startup', 'investment', 'bank', 'earnings', 'revenue', 'ceo', 'industry'].some(kw => text.includes(kw));
-  }
   if (category === 'weather') {
     return ['weather', 'climate', 'storm', 'rain', 'temperature', 'forecast', 'meteorology', 'flood', 'wind', 'atmosphere', 'heat', 'cold', 'degree', 'season', 'cyclone', 'typhoon', 'hurricane', 'drought', 'snow'].some(kw => text.includes(kw));
   }
-  if (category === 'entertainment') {
-    return ['entertainment', 'music', 'movie', 'film', 'actor', 'celebrity', 'star', 'festival', 'concert', 'gaming', 'stream', 'tv', 'pop culture', 'theater', 'arts', 'song', 'album', 'hollywood', 'cinema', 'show'].some(kw => text.includes(kw));
-  }
-  if (category === 'sports') {
+  if (category === 'sports' || category === 'football') {
     return ['sports', 'match', 'championship', 'tournament', 'cup', 'athlete', 'coach', 'stadium', 'olympic', 'football', 'soccer', 'basketball', 'tennis', 'game', 'score', 'team'].some(kw => text.includes(kw));
   }
-  if (category === 'football') {
-    return ['football', 'soccer', 'match', 'league', 'stadium', 'cup', 'club', 'uefa', 'goal', 'score', 'team', 'player'].some(kw => text.includes(kw));
-  }
-  return true; // default/breaking allows all
+
+  return true;
 }
 
+/**
+ * Categorizes an event based on title and summary keywords.
+ */
 export function detectCategory(title: string, summary: string): EventCategory {
-  const text = `${title} ${summary}`.toLowerCase();
-  if (isArticleInCategory(title, summary, 'seismic')) return 'seismic';
-  if (isArticleInCategory(title, summary, 'wildfires')) return 'wildfires';
-  if (isArticleInCategory(title, summary, 'space_weather')) return 'space_weather';
-  if (isArticleInCategory(title, summary, 'severe_weather')) return 'severe_weather';
-  if (['football', 'soccer', 'premier league', 'uefa', 'fifa', 'copa', 'laliga', 'serie a', 'bundesliga', 'striker', 'goalkeeper', 'fc '].some(kw => text.includes(kw))) {
-    return 'football';
+  const categories: EventCategory[] = [
+    'seismic',
+    'wildfires',
+    'space_weather',
+    'severe_weather',
+    'climate_oceans',
+    'science_nature',
+    'football',
+    'weather',
+  ];
+
+  for (const cat of categories) {
+    if (isArticleInCategory(title, summary, cat)) {
+      return cat;
+    }
   }
-  if (['sports', 'championship', 'tournament', 'nba', 'nfl', 'olympic', 'tennis', 'basketball', 'baseball', 'cricket', 'rugby', 'golf', 'grand slam', 'formula 1', 'f1', 'athlete'].some(kw => text.includes(kw))) {
-    return 'sports';
-  }
-  if (['technology', 'tech', 'software', 'ai', 'semiconductor', 'computing', 'cyber', 'quantum', 'smartphone', 'apple inc', 'google cloud', 'nvidia', 'chatgpt', 'openai', 'robotics', 'silicon'].some(kw => text.includes(kw))) {
-    return 'technology';
-  }
-  if (['business', 'market', 'stocks', 'nasdaq', 'dow jones', 'inflation', 'federal reserve', 'central bank', 'revenue', 'ipo', 'gdp', 'economy', 'investors', 'wall street'].some(kw => text.includes(kw))) {
-    return 'business';
-  }
-  if (['weather', 'cyclone', 'typhoon', 'hurricane', 'meteorology', 'storm', 'heatwave', 'flooding', 'tornado', 'blizzard', 'snowfall', 'drought', 'forecast'].some(kw => text.includes(kw))) {
-    return 'weather';
-  }
-  if (['entertainment', 'hollywood', 'box office', 'movie', 'film', 'grammy', 'oscar', 'emmy', 'netflix', 'album', 'celebrity', 'broadway', 'billboard', 'cinema'].some(kw => text.includes(kw))) {
-    return 'entertainment';
-  }
-  return 'breaking';
+
+  return 'science_nature';
 }
 
-export function sanitizeEventCategory(e: WorldEvent): WorldEvent {
-  return e;
-}
-
-export async function fetchAllEvents(category?: string | null, refresh = false, lang = 'en'): Promise<EventsWithStatus> {
+export async function fetchAllEvents(category?: string | null, refresh = false, _lang = 'en'): Promise<EventsWithStatus> {
   const cat = (category && category !== 'home') ? (category as EventCategory) : null;
 
-  // Planetary categories direct route
-  if (
-    cat === 'seismic' ||
-    cat === 'wildfires' ||
-    cat === 'space_weather' ||
-    cat === 'severe_weather' ||
-    cat === 'climate_oceans' ||
-    cat === 'science_nature'
-  ) {
-    const planetaryEvents = await searchPlanetaryEvents('', cat);
-    return {
-      events: planetaryEvents.map(planetaryEventToWorldEvent),
-      status: {
-        newsActive: true,
-        footballActive: false,
-      },
-    };
+  // 1. Fetch live planetary events
+  const planetaryEvents = await fetchLivePlanetaryEvents(refresh);
+  let events = planetaryEvents.map(planetaryEventToWorldEvent);
+
+  // Filter if a specific category is requested
+  if (cat) {
+    events = events.filter(e => e.category === cat || isArticleInCategory(e.title, e.summary, cat));
   }
 
-  // If a specific category is requested (technology, sports, football, weather, business, entertainment)
-  if (cat && cat !== 'breaking') {
-    const searchTerm = cat === 'football' ? 'football soccer match' : cat;
-    const newsResult = await searchLiveNews(searchTerm, cat, undefined, refresh, lang);
-    let events = (newsResult.events || []).map(e => ({ ...e, category: cat }));
-    
-    // Filter to ensure relevance, falling back to raw results if overly strict
-    const filtered = events.filter(e => isArticleInCategory(e.title, e.summary, cat));
-    if (filtered.length > 0) {
-      events = filtered;
-    }
-
-    events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-
-    return {
-      events,
-      status: {
-        newsActive: newsResult.active,
-        footballActive: cat === 'football' || cat === 'sports',
-      }
-    };
-  }
-
-  // Home or breaking: fetch live news & live planetary events and merge
-  const [newsResult, planetaryEvents] = await Promise.allSettled([
-    fetchLiveNews(refresh, lang),
-    fetchLivePlanetaryEvents(refresh),
-  ]);
-
-  const rawNews = newsResult.status === 'fulfilled' ? newsResult.value.events : [];
-  const rawPlanetary = planetaryEvents.status === 'fulfilled' ? planetaryEvents.value.map(planetaryEventToWorldEvent) : [];
-
-  const classifiedNews = rawNews.map((e) => {
-    const detected = detectCategory(e.title, e.summary);
-    return detected !== 'breaking' ? { ...e, category: detected } : e;
-  });
-
-  const merged = [...rawPlanetary, ...classifiedNews].sort((a, b) => {
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+  events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
   return {
-    events: merged,
+    events,
     status: {
-      newsActive: newsResult.status === 'fulfilled' ? newsResult.value.active : true,
-      footballActive: merged.some((e) => e.category === 'football' || e.category === 'sports'),
+      newsActive: false,
+      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
     },
   };
 }
 
-export async function searchAllEvents(query: string, category?: string | null, refresh = false, lang = 'en'): Promise<EventsWithStatus> {
-  const cat = (category && category !== 'home') ? (category as EventCategory) : null;
-
-  if (
-    cat === 'seismic' ||
-    cat === 'wildfires' ||
-    cat === 'space_weather' ||
-    cat === 'severe_weather' ||
-    cat === 'climate_oceans' ||
-    cat === 'science_nature'
-  ) {
-    const planetaryEvents = await searchPlanetaryEvents(query, cat);
-    return {
-      events: planetaryEvents.map(planetaryEventToWorldEvent),
-      status: {
-        newsActive: true,
-        footballActive: false,
-      },
-    };
-  }
-
-  const detectedCountry = detectCountry(query);
-  const searchTerm = cat ? (cat === 'breaking' ? `${query} news` : `${query} ${cat}`) : query;
-  
-  const newsResult = await searchLiveNews(searchTerm, cat, detectedCountry, refresh, lang);
-  let newsEvents = (newsResult.events || []).map(e => ({ ...e, ...(cat ? { category: cat } : {}) }));
+export async function searchAllEvents(query: string, category?: string | null, _refresh = false, _lang = 'en'): Promise<EventsWithStatus> {
+  const cat = (category && category !== 'home') ? (category as EventCategory) : undefined;
+  const planetaryEvents = await searchPlanetaryEvents(query, cat);
+  let events = planetaryEvents.map(planetaryEventToWorldEvent);
 
   if (cat) {
-    newsEvents = newsEvents.filter(e => isArticleInCategory(e.title, e.summary, cat));
+    events = events.filter(e => e.category === cat || isArticleInCategory(e.title, e.summary, cat));
   }
 
-  newsEvents.sort((a, b) => {
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+  events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
   return {
-    events: newsEvents,
+    events,
     status: {
-      newsActive: newsResult.active,
-      footballActive: newsEvents.some(e => e.category === 'football' || e.category === 'sports'),
-    }
+      newsActive: false,
+      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
+    },
   };
 }
 
 /**
- * Builds a search query for Google News RSS incorporating the category filter.
- */
-function buildLocationQuery(locName: string, category?: string | null): string {
-  if (!category || category === 'home') return `"${locName}"`;
-  if (category === 'breaking') return `"${locName}" news`;
-  if (category === 'sports') return `"${locName}" sports`;
-  if (category === 'football') return `"${locName}" football`;
-  return `"${locName}" ${category}`;
-}
-
-/**
- * Geographic News Fallback Engine
- * Fetches news specifically related to a Location, falling back if no results exist:
+ * Geographic Fallback Engine for Planetary Events
+ * Fetches events specifically related to a Location:
  * City -> State -> Country -> Global
  */
 export async function getLocationEvents(
   locationId: string,
   category?: string | null,
   refresh = false,
-  lang = 'en'
+  _lang = 'en'
 ): Promise<LocationEventsResult> {
   const resolvedLocation = locations.find(l => l.id === locationId);
   if (!resolvedLocation) {
     throw new Error(`Location ID "${locationId}" not found in database.`);
   }
 
+  const cat = (category && category !== 'home') ? (category as EventCategory) : undefined;
   let events: WorldEvent[] = [];
-  let newsActive = false;
-
   let activeLocation: any = resolvedLocation;
   let fallbackLevel: 'city' | 'state' | 'country' | 'global' = 'city';
 
@@ -272,30 +167,23 @@ export async function getLocationEvents(
     }));
   };
 
-  const cat = (category && category !== 'home') ? (category as EventCategory) : null;
-
-  // 1. Try City level (if resolved is city)
+  // 1. Try City level
   if (resolvedLocation.type === 'city') {
-    const q = buildLocationQuery(resolvedLocation.name, category);
-    const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh, lang);
-    if (res.events && res.events.length > 0) {
-      events = tagArticles(res.events, resolvedLocation);
-      newsActive = res.active;
+    const cityEvents = await searchPlanetaryEvents(resolvedLocation.name, cat);
+    if (cityEvents.length > 0) {
+      events = tagArticles(cityEvents.map(planetaryEventToWorldEvent), resolvedLocation);
       fallbackLevel = 'city';
     }
   }
 
-  // 2. Try State level (if city returned 0, or if resolved is state)
+  // 2. Try State level
   if (events.length === 0 && (resolvedLocation.type === 'city' || resolvedLocation.type === 'state')) {
     const stateName = resolvedLocation.type === 'city' ? resolvedLocation.state : resolvedLocation.name;
     const stateLoc = locations.find(l => l.name === stateName && l.type === 'state');
-    
     if (stateName) {
-      const q = buildLocationQuery(stateName, category);
-      const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh, lang);
-      if (res.events && res.events.length > 0) {
-        events = tagArticles(res.events, stateLoc || resolvedLocation);
-        newsActive = res.active;
+      const stateEvents = await searchPlanetaryEvents(stateName, cat);
+      if (stateEvents.length > 0) {
+        events = tagArticles(stateEvents.map(planetaryEventToWorldEvent), stateLoc || resolvedLocation);
         fallbackLevel = 'state';
         activeLocation = stateLoc || {
           id: `state-${stateName.toLowerCase()}`,
@@ -313,14 +201,12 @@ export async function getLocationEvents(
     }
   }
 
-  // 3. Try Country level (if city/state returned 0, or if resolved is country)
+  // 3. Try Country level
   if (events.length === 0) {
     const countryLoc = locations.find(l => l.name === resolvedLocation.country && l.type === 'country');
-    const q = buildLocationQuery(resolvedLocation.country, category);
-    const res = await searchLiveNews(q, cat, resolvedLocation.country, refresh);
-    if (res.events && res.events.length > 0) {
-      events = tagArticles(res.events, countryLoc || resolvedLocation);
-      newsActive = res.active;
+    const countryEvents = await searchPlanetaryEvents(resolvedLocation.country, cat);
+    if (countryEvents.length > 0) {
+      events = tagArticles(countryEvents.map(planetaryEventToWorldEvent), countryLoc || resolvedLocation);
       fallbackLevel = 'country';
       activeLocation = countryLoc || resolvedLocation;
     }
@@ -328,9 +214,8 @@ export async function getLocationEvents(
 
   // 4. Try Global level fallback
   if (events.length === 0) {
-    const res = await fetchLiveNews(refresh);
-    events = res.events;
-    newsActive = res.active;
+    const allPlanetary = await fetchLivePlanetaryEvents(refresh);
+    events = allPlanetary.map(planetaryEventToWorldEvent);
     fallbackLevel = 'global';
     activeLocation = {
       name: 'Global',
@@ -342,20 +227,18 @@ export async function getLocationEvents(
     };
   }
 
-  // Double-filter events strictly by category (isolated categories)
+  // Strict category filtering
   if (cat) {
     events = events.filter(e => isArticleInCategory(e.title, e.summary, cat));
   }
 
-  events.sort((a, b) => {
-    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-  });
+  events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
   return {
     events,
     status: {
-      newsActive,
-      footballActive: false
+      newsActive: false,
+      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
     },
     resolvedLocation,
     activeLocation,

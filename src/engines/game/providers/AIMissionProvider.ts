@@ -21,7 +21,7 @@ import { adjustTimeLimit, selectCountryForDifficulty } from '../DifficultyEngine
 import { getDefaultTimeLimit, getBasePoints } from '../registry';
 import { COUNTRY_METADATA, CountryMeta } from '@/data/questions/countryMetadata';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
-import { fetchLiveNews } from '@/services/news';
+import { fetchLivePlanetaryEvents, planetaryEventToWorldEvent } from '@/services/planetaryEngine';
 import { WorldEvent } from '@/types';
 
 // ---- Mission Codename Generator ----
@@ -109,14 +109,14 @@ async function getLiveEventsSafe(): Promise<WorldEvent[]> {
     return cachedEvents;
   }
   try {
-    const res = await fetchLiveNews();
-    if (res && res.events && res.events.length > 0) {
-      cachedEvents = res.events;
+    const raw = await fetchLivePlanetaryEvents();
+    if (raw && raw.length > 0) {
+      cachedEvents = raw.map(planetaryEventToWorldEvent);
       eventsCacheTime = now;
       return cachedEvents;
     }
   } catch (err) {
-    console.warn('[AIMissionProvider] Live news fetch fallback:', err);
+    console.warn('[AIMissionProvider] Planetary events fetch fallback:', err);
   }
   return cachedEvents;
 }

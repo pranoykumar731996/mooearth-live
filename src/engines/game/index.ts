@@ -111,7 +111,6 @@ export { initializeGameEngine, isEngineInitialized } from './init';
 export {
   GeographyProvider,
   WeatherProvider,
-  NewsProvider,
   TimeProvider,
   EarthEventsProvider,
   AIMissionProvider,

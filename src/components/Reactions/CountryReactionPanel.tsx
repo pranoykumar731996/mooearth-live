@@ -8,12 +8,10 @@ import { CATEGORY_MAP, getCountryRecommendations } from '@/lib/constants';
 import TrendingHashtags from './TrendingHashtags';
 import ReactionFeed from './ReactionFeed';
 import { shareContent } from '@/utils/share';
-import { BRANDING } from '@/config/branding';
-import { isCountryWhitelisted } from '@/config/publishers';
 import { resolveCanonicalSlug } from '@/data/countries';
+import { BRANDING } from '@/config/branding';
 import dynamic from 'next/dynamic';
 import { useTranslation } from '@/contexts/LanguageContext';
-const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
 const CLIENT_REACTION_CACHE = new Map<string, { data: ReactionEvent; timestamp: number }>();
 const CACHE_TTL = 10000; // 10 seconds client-side cache
@@ -37,24 +35,11 @@ function getDeterministicMetrics(country: string, category: string | null) {
     const conditions = ['Sunny', 'Partly Cloudy', 'Mostly Cloudy', 'Showers', 'Clear Sky'][getVal(0, 4, 4)];
     return { temp, humidity, aqi, aqiStatus, conditions };
   }
-  if (cat === 'business') {
-    const gdpGrowth = (getVal(1, 6, 1) / 10).toFixed(1);
-    const inflation = (getVal(15, 80, 2) / 10).toFixed(1);
-    const marketIndex = getVal(10000, 45000, 3);
-    const marketChange = (getVal(-20, 25, 4) / 10).toFixed(2);
-    return { gdpGrowth, inflation, marketIndex, marketChange };
-  }
-  if (cat === 'technology') {
-    const startupFunding = getVal(100, 5000, 1);
-    const innovationIndex = getVal(60, 95, 2);
-    const techTalentGrowth = (getVal(5, 25, 3) / 10).toFixed(1);
-    return { startupFunding, innovationIndex, techTalentGrowth };
-  }
-  if (cat === 'entertainment') {
-    const boxOffice = getVal(10, 250, 1);
-    const streamingSubscribers = (getVal(5, 85, 2) / 10).toFixed(1);
-    const trendingShow = ['Earth Beat', 'Live Globe', 'Orbit Stars', 'Solar Wind', 'Blue Planet'][getVal(0, 4, 3)];
-    return { boxOffice, streamingSubscribers, trendingShow };
+  if (cat === 'seismic' || cat === 'wildfires') {
+    const activeSensors = getVal(12, 140, 1);
+    const seismicScore = (getVal(10, 45, 2) / 10).toFixed(1);
+    const tectonicStatus = ['Normal Seismicity', 'Tectonic Stability', 'Low Magnitude Activity'][getVal(0, 2, 3)];
+    return { activeSensors, seismicScore, tectonicStatus };
   }
   if (cat === 'sports' || cat === 'football') {
     const athleticRank = getVal(1, 120, 1);
@@ -62,17 +47,17 @@ function getDeterministicMetrics(country: string, category: string | null) {
     const eventsWon = getVal(5, 95, 3);
     return { athleticRank, winRatio, eventsWon };
   }
-  // breaking / home / news
-  const pressFreedom = getVal(55, 92, 1);
-  const newsVolume = getVal(150, 2500, 2);
-  return { pressFreedom, newsVolume };
+  // space_weather / climate_oceans / science_nature / home
+  const telemetryPoints = getVal(25, 350, 1);
+  const sensorIntegrity = getVal(94, 99, 2);
+  return { telemetryPoints, sensorIntegrity };
 }
 
 function CategoryMetricsWidget({ country, category }: { country: string; category: EventCategory | null }) {
   const metrics = getDeterministicMetrics(country, category) as any;
   const cat = category || 'home';
 
-  if (cat === 'weather') {
+  if (cat === 'weather' || cat === 'severe_weather') {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
         <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
@@ -100,73 +85,22 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
     );
   }
 
-  if (cat === 'business') {
-    const isPositive = parseFloat(metrics.marketChange || '0') >= 0;
+  if (cat === 'seismic' || cat === 'wildfires') {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
         <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
-          <span>MARKET SUMMARY</span>
-          <span className={isPositive ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
-            {isPositive ? '▲' : '▼'} {metrics.marketChange}%
-          </span>
+          <span>GEOPHYSICAL STATUS</span>
+          <span className="text-red-400 font-extrabold">MONITORED</span>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-2xl font-black text-white">{metrics.marketIndex?.toLocaleString()}</div>
-            <div className="text-[10px] text-white/50">Core Exchange Index</div>
+            <div className="text-2xl font-black text-white">{metrics.activeSensors}</div>
+            <div className="text-[10px] text-white/50">Active Seismic Stations</div>
           </div>
           <div className="text-right">
-            <div className="text-sm font-bold text-white">GDP: +{metrics.gdpGrowth}%</div>
-            <div className="text-[10px] text-white/50">Inflation: {metrics.inflation}%</div>
+            <div className="text-sm font-bold text-white">Index: {metrics.seismicScore}</div>
+            <div className="text-[10px] text-white/50">{metrics.tectonicStatus}</div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (cat === 'technology') {
-    return (
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
-          <span>INNOVATION METRICS</span>
-          <span className="text-blue-400 font-extrabold">GROWING</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-2xl font-black text-white">{metrics.innovationIndex}/100</div>
-            <div className="text-[10px] text-white/50">Global Tech Rank Score</div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-bold text-white">${metrics.startupFunding}M</div>
-            <div className="text-[10px] text-white/50">Startup Funding YTD</div>
-          </div>
-        </div>
-        <div className="text-[10px] text-white/50 font-bold">
-          Developer Pool Talent Growth: +{metrics.techTalentGrowth}% YoY
-        </div>
-      </div>
-    );
-  }
-
-  if (cat === 'entertainment') {
-    return (
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-        <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
-          <span>ENTERTAINMENT TRENDS</span>
-          <span className="text-purple-400 font-extrabold">ACTIVE</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-lg font-black text-white truncate max-w-[130px]">{metrics.trendingShow}</div>
-            <div className="text-[10px] text-white/50">Top Trending Title</div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-bold text-white">${metrics.boxOffice}M</div>
-            <div className="text-[10px] text-white/50">Entertainment Volume</div>
-          </div>
-        </div>
-        <div className="text-[10px] text-white/50 font-bold">
-          Streaming Active Base: {metrics.streamingSubscribers}M Users
         </div>
       </div>
     );
@@ -198,21 +132,21 @@ function CategoryMetricsWidget({ country, category }: { country: string; categor
     );
   }
 
-  // breaking / home / news
+  // space_weather / climate_oceans / science_nature / home
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
       <div className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex justify-between">
-        <span>MEDIA & PRESS METRICS</span>
-        <span className="text-cyan-400 font-extrabold">STABLE</span>
+        <span>PLANETARY TELEMETRY</span>
+        <span className="text-cyan-400 font-extrabold">SYNCHRONIZED</span>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <div className="text-2xl font-black text-white">{metrics.pressFreedom}/100</div>
-          <div className="text-[10px] text-white/50">Press Freedom Index</div>
+          <div className="text-2xl font-black text-white">{metrics.telemetryPoints}</div>
+          <div className="text-[10px] text-white/50">Active Sensors Monitored</div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-bold text-white">{metrics.newsVolume}</div>
-          <div className="text-[10px] text-white/50">Daily Coverage Count</div>
+          <div className="text-sm font-bold text-white">{metrics.sensorIntegrity}%</div>
+          <div className="text-[10px] text-white/50">Data Stream Quality</div>
         </div>
       </div>
     </div>
@@ -243,7 +177,6 @@ export default function CountryReactionPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
-  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
   const [showDebugMonitor, setShowDebugMonitor] = useState(false);
   const [isDebugCollapsed, setIsDebugCollapsed] = useState(false);
 
@@ -463,30 +396,6 @@ export default function CountryReactionPanel({
             {/* Unified Category Metrics Widget */}
             <CategoryMetricsWidget country={country} category={activeCategory} />
 
-            {/* Perspective Lens Promo Card */}
-            {isCountryWhitelisted(country) && (
-              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shadow-lg relative overflow-hidden space-y-3">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-indigo-400 font-black tracking-widest uppercase flex items-center gap-1">
-                    <span>🧠</span>
-                    <span>Perspective Lens</span>
-                  </span>
-                  <span className="text-[8px] bg-indigo-500/20 text-indigo-200 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                    Compare Framing
-                  </span>
-                </div>
-                <p className="text-[11px] text-white/60 leading-relaxed font-medium">
-                  Compare how domestic media in {country} and global publishers cover major stories.
-                </p>
-                <button
-                  onClick={() => setIsPerspectiveOpen(true)}
-                  className="w-full py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-bold text-xs transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
-                >
-                  🧠 Compare Local vs Global News
-                </button>
-              </div>
-            )}
 
             {/* System Filter Monitor (Debug Display) */}
             {showDebugMonitor && (
@@ -652,19 +561,6 @@ export default function CountryReactionPanel({
         )}
       </div>
 
-      {isPerspectiveOpen && reactionData && (
-        <PerspectiveLensModal
-          isOpen={isPerspectiveOpen}
-          onClose={() => setIsPerspectiveOpen(false)}
-          country={country}
-          topic={
-            reactionData.headlines[0]?.title
-              ? (reactionData.headlines[0].title.split(' - ')[0] || reactionData.headlines[0].title)
-              : `${country} developments`
-          }
-          category={activeCategory || 'news'}
-        />
-      )}
     </motion.div>
   );
 }

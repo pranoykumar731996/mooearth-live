@@ -191,22 +191,6 @@ export function createDemoForMode(mode: PlayEarthMode): PlayableDemoState {
         feedback: null,
       };
 
-    case 'news-detective':
-      return {
-        mode: 'news-detective',
-        title: 'News Detective — Intel Clue Demo',
-        badge: 'Intelligence Recon Training',
-        step: 1,
-        totalSteps: 1,
-        completed: false,
-        question: '🕵️ Redacted Intelligence: "Researchers in [REDACTED] unveiled a breakthrough 1,000-qubit processor in Tokyo today."',
-        options: ['Japan 🇯🇵', 'France 🇫🇷', 'Canada 🇨🇦', 'India 🇮🇳'],
-        correctIndex: 0,
-        selectedIndex: null,
-        instruction: 'Identify the sovereign nation from the redacted geopolitical intelligence headline!',
-        hint: 'Tokyo is the capital city of Japan.',
-        feedback: null,
-      };
 
     case 'flag':
       return {
@@ -337,7 +321,7 @@ export function createDemoForMode(mode: PlayEarthMode): PlayableDemoState {
         step: 1,
         totalSteps: 1,
         completed: false,
-        question: 'Infinite Earth rotates automatically between geography, weather, seismic events, news, and time. Try pinpointing Canada 🇨🇦 on the globe!',
+        question: 'Infinite Earth rotates automatically between geography, weather, seismic events, and local time. Try pinpointing Canada 🇨🇦 on the globe!',
         targetName: 'Canada',
         targetEmoji: '🇨🇦',
         options: ['Canada 🇨🇦', 'Australia 🇦🇺', 'India 🇮🇳', 'Egypt 🇪🇬'],
@@ -1004,7 +988,6 @@ export default function PlayEarthOverlay({
           initialMode === 'infinite' ||
           initialMode === 'globe-hunt' ||
           initialMode === 'weather-challenge' ||
-          initialMode === 'news-detective' ||
           initialMode === 'border-escape' ||
           initialMode === 'earthquake-hunt'
         ) {
@@ -1093,8 +1076,6 @@ export default function PlayEarthOverlay({
       type = 'GEO_GLOBE_HUNT';
     } else if (targetMode === 'weather-challenge') {
       engine = 'weather';
-    } else if (targetMode === 'news-detective') {
-      engine = 'news';
     } else if (targetMode === 'border-escape') {
       engine = 'geography';
       type = 'GEO_BORDER_ESCAPE';
@@ -3633,7 +3614,7 @@ export default function PlayEarthOverlay({
                   <div>
                     <span className="text-xl">♾️</span>
                     <span className="text-xs font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 block mt-0.5">Infinite Earth</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Endless engine — geography, weather, news, earthquakes & more!</span>
+                    <span className="text-[8px] text-white/40 leading-snug">Endless engine — geography, weather, earthquakes & multi-sensor missions!</span>
                   </div>
                   <button
                     type="button"
@@ -3690,29 +3671,6 @@ export default function PlayEarthOverlay({
                     🎮 Practice Demo
                   </button>
                 </div>
-
-                {/* News Detective */}
-                <div
-                  onClick={() => handleModeClick('news-detective')}
-                  className="p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left flex flex-col justify-between gap-1 cursor-pointer"
-                >
-                  <div>
-                    <span className="text-xl">🕵️</span>
-                    <span className="text-xs font-black text-white block mt-0.5">News Detective</span>
-                    <span className="text-[8px] text-white/40 leading-snug">Identify countries from real news stories.</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startDemo('news-detective');
-                    }}
-                    className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/25 w-fit"
-                  >
-                    🎮 Practice Demo
-                  </button>
-                </div>
-
                 {/* Earthquake Hunt */}
                 <div
                   onClick={() => handleModeClick('earthquake-hunt')}
@@ -4561,7 +4519,7 @@ export default function PlayEarthOverlay({
                   <div>
                     <span className="text-2xl group-hover:scale-105 transition-transform block">♾️</span>
                     <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-cyan-300 block mt-1">Infinite Earth</span>
-                    <span className="text-xs text-white/40 leading-snug">Endless procedural engine — geography, weather, news, earthquakes & multi-sensor missions!</span>
+                    <span className="text-xs text-white/40 leading-snug">Endless procedural engine — geography, weather, earthquakes & multi-sensor missions!</span>
                   </div>
                   <button
                     type="button"
@@ -4612,28 +4570,6 @@ export default function PlayEarthOverlay({
                     onClick={(e) => {
                       e.stopPropagation();
                       startDemo('weather-challenge');
-                    }}
-                    className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
-                  >
-                    🎮 Practice Demo
-                  </button>
-                </div>
-
-                {/* News Detective */}
-                <div
-                  onClick={() => handleModeClick('news-detective')}
-                  className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/15 transition-all text-left flex flex-col justify-between gap-1.5 cursor-pointer group"
-                >
-                  <div>
-                    <span className="text-2xl group-hover:scale-105 transition-transform block">🕵️</span>
-                    <span className="text-sm font-bold text-white block mt-1">News Detective</span>
-                    <span className="text-xs text-white/40 leading-snug">Identify countries from real global breaking news headlines.</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startDemo('news-detective');
                     }}
                     className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-2.5 py-1 rounded-full border border-cyan-500/25 w-fit transition-colors"
                   >

@@ -1,7 +1,7 @@
 // ============================================================
-// MooEarth Live — Degraded Fallback Event Data
+// MooEarth Live — Degraded Fallback Planetary Event Data
 // ============================================================
-// High-quality baseline events used when live RSS feeds are temporarily unreachable.
+// High-quality baseline events used when live telemetry feeds are temporarily unreachable.
 
 import { WorldEvent } from '@/types';
 
@@ -12,10 +12,10 @@ function createFallbackEvents(): WorldEvent[] {
   const rawEvents = [
     {
       id: 'evt-001',
-      title: 'Japan Unveils Next-Gen Quantum Computer',
+      title: 'Japan Unveils Next-Gen Quantum Computing Facility',
       summary:
         'Tokyo researchers have demonstrated a 1,000-qubit quantum processor that outperforms classical supercomputers on key optimization tasks. The breakthrough could revolutionize drug discovery, materials science, and cryptography within the decade.',
-      category: 'technology' as const,
+      category: 'science_nature' as const,
       country: 'Japan',
       city: 'Tokyo',
       lat: 35.6762,
@@ -27,7 +27,7 @@ function createFallbackEvents(): WorldEvent[] {
       title: 'India Launches Historic Lunar Rover Mission',
       summary:
         'ISRO successfully launched Chandrayaan-4 carrying India\'s most advanced lunar rover. The mission aims to explore the Moon\'s south pole for water ice deposits and rare minerals, marking a major milestone in India\'s space program.',
-      category: 'breaking' as const,
+      category: 'space_weather' as const,
       country: 'India',
       city: 'New Delhi',
       lat: 28.6139,
@@ -36,10 +36,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-003',
-      title: 'London Stock Exchange Hits Record Trading Volume',
+      title: 'Green Hydrogen Grid Breakthrough in the United Kingdom',
       summary:
-        'The London Stock Exchange recorded its highest single-day trading volume in history, driven by a surge in AI and green energy stocks. Analysts attribute the boom to renewed investor confidence in European tech innovation.',
-      category: 'business' as const,
+        'Engineers in London have completed the first commercial trial of a zero-emission green hydrogen electrical distribution grid, supplying clean power to over 100,000 homes during peak seasonal demand.',
+      category: 'science_nature' as const,
       country: 'United Kingdom',
       city: 'London',
       lat: 51.5074,
@@ -48,10 +48,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-004',
-      title: "Broadway's AI-Generated Musical Sells Out Opening Night",
+      title: 'Atmospheric Sensor Array Deployed Across New York Harbor',
       summary:
-        'The first fully AI-composed Broadway musical premiered to a sold-out audience in New York. Critics praised the innovative score while sparking debate about the future of human creativity in the performing arts.',
-      category: 'entertainment' as const,
+        'Environmental scientists have activated a hyper-local marine sensor network across New York Harbor to monitor coastal tide dynamics, storm surges, and particulate distribution in real time.',
+      category: 'climate_oceans' as const,
       country: 'United States',
       city: 'New York',
       lat: 40.7128,
@@ -63,7 +63,7 @@ function createFallbackEvents(): WorldEvent[] {
       title: 'Record Heatwave Sweeps Across Southern Europe',
       summary:
         'Meteorologists declare a level-red alert as temperatures in Spain and Italy shatter 100-year records. The heatwave is expected to disrupt agriculture and power grids for the next two weeks.',
-      category: 'weather' as const,
+      category: 'severe_weather' as const,
       country: 'Spain',
       city: 'Madrid',
       lat: 40.4168,
@@ -72,10 +72,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-006',
-      title: 'China Opens World\'s Longest Maglev Train Network',
+      title: 'China Opens World\'s Longest Maglev Transit Corridor',
       summary:
         'A new high-speed maglev train connecting Beijing to Shanghai in under two hours has officially opened, featuring speeds over 600 km/h. It sets a new standard for sustainable mass transit.',
-      category: 'technology' as const,
+      category: 'science_nature' as const,
       country: 'China',
       city: 'Beijing',
       lat: 39.9042,
@@ -84,10 +84,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-007',
-      title: 'Global Summit on AI Ethics Concludes with Landmark Treaty',
+      title: 'Global Environmental Accord Signed at Geneva Summit',
       summary:
-        '120 nations have signed the Geneva AI Accord, establishing the first comprehensive international framework for regulating artificial general intelligence, autonomous weapons, and data privacy.',
-      category: 'breaking' as const,
+        'Delegates from 120 nations have finalized a landmark treaty to safeguard high-seas biodiversity, monitor deep-sea mining risks, and establish shared satellite data streams for ocean health.',
+      category: 'climate_oceans' as const,
       country: 'Switzerland',
       city: 'Geneva',
       lat: 46.2044,
@@ -99,7 +99,7 @@ function createFallbackEvents(): WorldEvent[] {
       title: 'Brazil Announces Massive Amazon Restoration Project',
       summary:
         'The Brazilian government has committed $5 billion to reforest over 20 million hectares of the Amazon rainforest by 2030, utilizing advanced drone-planting technology to speed up ecological recovery.',
-      category: 'weather' as const,
+      category: 'climate_oceans' as const,
       country: 'Brazil',
       city: 'Brasília',
       lat: -15.7938,
@@ -108,10 +108,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-009',
-      title: 'Cape Town Selected as African Tech Hub Headquarters',
+      title: 'Deep-Sea Observational Buoys Deployed off Cape Town',
       summary:
-        'Cape Town has been designated as the operational headquarters of the African Continental Free Trade Area hub. The initiative is expected to boost intra-African trade by 52% and create millions of jobs across the continent.',
-      category: 'breaking' as const,
+        'Oceanographic researchers have anchored deep-water telemetry buoys off the coast of South Africa to track the Agulhas current and southern ocean heat transport mechanisms.',
+      category: 'climate_oceans' as const,
       country: 'South Africa',
       city: 'Cape Town',
       lat: -33.9249,
@@ -120,10 +120,10 @@ function createFallbackEvents(): WorldEvent[] {
     },
     {
       id: 'evt-010',
-      title: "Singapore Becomes Asia's Top Fintech Capital",
+      title: 'Singapore Completes Solar-Powered Floating Reservoir Network',
       summary:
-        'Singapore has officially surpassed Hong Kong as Asia\'s leading fintech hub, attracting $12 billion in investments this quarter alone. The city-state\'s progressive regulation and talent pool continue to draw global financial innovators.',
-      category: 'business' as const,
+        'Singapore has expanded its clean water reservoir infrastructure with floating photovoltaic arrays that generate renewable power while reducing evaporation rates during high-temperature periods.',
+      category: 'science_nature' as const,
       country: 'Singapore',
       city: 'Singapore',
       lat: 1.3521,

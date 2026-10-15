@@ -6,7 +6,6 @@
 
 import { PlanetaryTelemetry } from '@/types';
 import type { ArticleDetails } from '../article';
-import { isSourceApprovedForAi } from '../newsEngine/sourceRegistry';
 
 const PLANETARY_IMAGES: Record<string, string> = {
   seismic: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800',

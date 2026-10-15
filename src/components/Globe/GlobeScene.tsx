@@ -1436,16 +1436,14 @@ const GlobeScene = React.memo(function GlobeScene({
     
     const countryEvents = events.filter(e => matchCountryNames(e.country, name));
     
-    const newsEvents = countryEvents.filter(e => e.category === 'breaking');
+    const planetaryEvents = countryEvents.filter(e => e.category !== 'sports' && e.category !== 'football');
     const sportsEvents = countryEvents.filter(e => e.category === 'sports' || e.category === 'football');
-    const techEvents = countryEvents.filter(e => e.category === 'technology');
     
     const meta = findCountryMeta(name);
     
-    const totalNews = newsEvents.length * 3 + Math.max(5, (name.length * 7) % 30 + 5);
-    const breakingCount = newsEvents.length > 0 ? newsEvents.length : Math.max(1, (name.length % 5) + 1);
+    const totalEvents = countryEvents.length > 0 ? countryEvents.length : Math.max(3, (name.length * 3) % 15 + 3);
     const sportsCount = sportsEvents.length * 2 + Math.max(2, (name.length * 3) % 15 + 2);
-    const techCount = techEvents.length + Math.max(1, (name.length * 4) % 10 + 1);
+    const planetaryCount = planetaryEvents.length > 0 ? planetaryEvents.length : Math.max(1, (name.length % 5) + 1);
     
     const tempSeed = (name.charCodeAt(0) + name.charCodeAt(name.length - 1)) % 15;
     let baseTemp = 20;
@@ -1472,10 +1470,9 @@ const GlobeScene = React.memo(function GlobeScene({
       capital: meta?.capital || 'N/A',
       population: meta?.population || (selectedCountryFeature.properties.POP_EST ? `${(selectedCountryFeature.properties.POP_EST / 1000000).toFixed(1)}M` : 'N/A'),
       flag: meta?.flag || getFlagEmoji(selectedCountryFeature.properties.ISO_A2),
-      newsCount: totalNews,
-      breakingCount,
+      eventCount: totalEvents,
+      planetaryCount,
       sportsCount,
-      techCount,
       temperature: `${currentTemp}°C`,
       weatherCondition: weatherCond,
       weatherAlert: alert,
@@ -2252,17 +2249,19 @@ const GlobeScene = React.memo(function GlobeScene({
       
       if (hasMatchingEvent) {
         switch (activeCategory) {
-          case 'breaking':
-            return `rgba(59, 130, 246, 0.45)`; // Blue
           case 'sports':
           case 'football':
             return `rgba(16, 185, 129, 0.45)`; // Green
           case 'weather':
+          case 'severe_weather':
             return `rgba(249, 115, 22, 0.45)`; // Orange
-          case 'business':
-            return `rgba(250, 204, 21, 0.45)`; // Gold
-          case 'technology':
-            return `rgba(168, 85, 247, 0.45)`; // Purple
+          case 'seismic':
+          case 'wildfires':
+            return `rgba(239, 68, 68, 0.45)`; // Red
+          case 'space_weather':
+          case 'climate_oceans':
+          case 'science_nature':
+            return `rgba(59, 130, 246, 0.45)`; // Cyan/Blue
           default:
             break;
         }
@@ -2802,29 +2801,17 @@ const GlobeScene = React.memo(function GlobeScene({
             </div>
 
             {/* Context-aware Content */}
-            {activeCategory === 'breaking' ? (
+            {activeCategory === 'sports' || activeCategory === 'football' ? (
               <div className="text-[11px] space-y-1">
                 <div className="flex justify-between text-white/80">
-                  <span>📰 News Stories</span>
-                  <span className="font-bold text-cyan-400">{countryStats.newsCount}</span>
-                </div>
-                <div className="flex justify-between text-red-400/90">
-                  <span>🔥 Breaking Headlines</span>
-                  <span className="font-bold">{countryStats.breakingCount}</span>
-                </div>
-                <div className="text-[9px] text-white/30 italic mt-1">Updated {countryStats.lastUpdatedMin} min ago</div>
-              </div>
-            ) : activeCategory === 'sports' || activeCategory === 'football' ? (
-              <div className="text-[11px] space-y-1">
-                <div className="flex justify-between text-white/80">
-                  <span>⚽ Sports Stories</span>
+                  <span>⚽ Sports Events</span>
                   <span className="font-bold text-emerald-400">{countryStats.sportsCount}</span>
                 </div>
                 <div className="flex justify-between text-white/50">
                   <span>🏆 National Team Updates</span>
                   <span className="text-emerald-400/90 font-bold">Active</span>
                 </div>
-                <div className="text-[9px] text-white/30 italic mt-1">Trending Sports News</div>
+                <div className="text-[9px] text-white/30 italic mt-1">Live Football Telemetry</div>
               </div>
             ) : activeCategory === 'weather' ? (
               <div className="text-[11px] space-y-1">
@@ -2842,28 +2829,28 @@ const GlobeScene = React.memo(function GlobeScene({
                   </div>
                 )}
               </div>
-            ) : activeCategory === 'technology' ? (
+            ) : activeCategory === 'seismic' || activeCategory === 'severe_weather' || activeCategory === 'wildfires' ? (
               <div className="text-[11px] space-y-1">
                 <div className="flex justify-between text-white/80">
-                  <span>💻 Tech Updates</span>
-                  <span className="font-bold text-purple-400">{countryStats.techCount}</span>
+                  <span>🌋 Earth Observatories</span>
+                  <span className="font-bold text-amber-400">{countryStats.planetaryCount}</span>
                 </div>
                 <div className="flex justify-between text-white/50">
-                  <span>🤖 AI Developments</span>
-                  <span className="text-purple-400/90 font-bold">Live</span>
+                  <span>📡 Telemetry Sensor Grid</span>
+                  <span className="text-cyan-400/90 font-bold">Online</span>
                 </div>
-                <div className="text-[9px] text-white/30 italic mt-1">Innovation Hub active</div>
+                <div className="text-[9px] text-white/30 italic mt-1">Real-time USGS & NASA feed</div>
               </div>
             ) : (
-              // Default Stats View (Feature 8)
+              // Default Stats View
               <div className="text-[10px] space-y-1 text-white/75">
                 <div className="flex justify-between">
                   <span>👥 Population</span>
                   <span className="font-bold text-white">{countryStats.population}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>📰 News Feed</span>
-                  <span className="font-bold text-cyan-400">{countryStats.newsCount} Stories</span>
+                  <span>🌐 Active Events</span>
+                  <span className="font-bold text-cyan-400">{countryStats.eventCount} Pulses</span>
                 </div>
               </div>
             )}

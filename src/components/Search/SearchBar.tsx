@@ -19,10 +19,10 @@ interface SearchBarProps {
 
 const PLACEHOLDER_TEXTS = [
   "Search Bhubaneswar, London, Tokyo...",
-  "Show California news...",
-  "Latest technology in Japan...",
-  "Weather updates in Paris...",
-  "Business news in London..."
+  "Explore California live weather...",
+  "Track earthquakes in Japan...",
+  "Weather radar in Paris...",
+  "Planetary telemetry in London..."
 ];
 
 const getFlagEmoji = (countryCode: string) => {
@@ -174,7 +174,7 @@ export default function SearchBar({
           <input
             id="search-input"
             type="text"
-            aria-label="Search globe locations, news and events"
+            aria-label="Search globe locations, weather and planetary telemetry"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -308,7 +308,7 @@ export default function SearchBar({
                           className="w-full flex items-center gap-4 px-3 py-2 rounded-xl hover:bg-white/[0.08] transition-colors text-left cursor-pointer group"
                         >
                           <div className="w-8 h-8 rounded-full flex items-center justify-center bg-black/40 border border-white/5 group-hover:scale-110 transition-transform shadow-inner">
-                            <span className="text-sm">{(CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking).emoji}</span>
+                            <span className="text-sm">{(CATEGORY_MAP[event.category] || CATEGORY_MAP.science_nature).emoji}</span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-white/90 group-hover:text-white truncate transition-colors">{event.title}</p>

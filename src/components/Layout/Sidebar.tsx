@@ -19,12 +19,8 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
     if (itemId === 'home') return '/';
     if (itemId === 'info') return '/about';
     if (itemId === 'settings') return '#settings';
-    if (category === 'breaking') return '/news';
-    if (category) {
-      if (['technology', 'weather', 'business', 'sports'].includes(category)) {
-        return `/${category}`;
-      }
-      return `/category/${category}`;
+    if (category === 'weather' || category === 'sports') {
+      return `/${category}`;
     }
     return '/';
   };
@@ -42,7 +38,7 @@ export default function Sidebar({ activeCategory, onCategoryChange, onSettingsCl
       {SIDEBAR_ITEMS.map((item) => {
         const isActive = item.category ? activeCategory === item.category : !activeCategory && item.id === 'home';
         const href = getHref(item.id, item.category);
-        const translationKey = item.id === 'breaking' ? 'news' : item.id === 'info' ? 'aboutLegal' : item.id;
+        const translationKey = item.id === 'info' ? 'aboutLegal' : item.id;
         const itemLabel = t(`sidebar.${translationKey}`, item.label);
 
         return (

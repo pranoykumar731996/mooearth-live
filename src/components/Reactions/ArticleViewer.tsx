@@ -8,7 +8,6 @@ import { CATEGORY_IMAGES, ArticleDetails } from '@/services/article';
 import { trackEvent } from '@/services/analytics';
 import { shareContent, getWhatsAppShareUrl, getXShareUrl, getFacebookShareUrl, getTelegramShareUrl } from '@/utils/share';
 import { BRANDING } from '@/config/branding';
-import { isCountryWhitelisted } from '@/config/publishers';
 import { FEATURES } from '@/config/features';
 import dynamic from 'next/dynamic';
 import { CountryFlag } from '@/components/UI/CountryFlag';
@@ -25,7 +24,6 @@ import {
   recordDiscoveryHistory,
 } from '@/services/personalizationService';
 
-const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 import { AdUnit } from '@/components/Monetization/AdUnit';
 import { EvidenceDepthReport } from '@/components/UI/EvidenceDepthReport';
 
@@ -208,7 +206,6 @@ export default function ArticleViewer({
   const [readingMode, setReadingMode] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
   const { t } = useTranslation();
   const { locale, dict } = useLanguage();
   const [targetLanguage, setTargetLanguage] = useState<string>(locale || 'en');
@@ -632,7 +629,7 @@ export default function ArticleViewer({
   }, [activeEvent, loading]);
 
   // Configuration
-  const categoryConfig = activeEvent ? (CATEGORY_MAP[activeEvent.category as EventCategory] || CATEGORY_MAP.breaking) : CATEGORY_MAP.breaking;
+  const categoryConfig = activeEvent ? (CATEGORY_MAP[activeEvent.category as EventCategory] || CATEGORY_MAP.science_nature) : CATEGORY_MAP.science_nature;
   const { title: cleanTitle, publisher } = activeEvent ? parsePublisher(activeEvent.title, activeEvent.source) : { title: '', publisher: '' };
 
   // Article navigation indexes
@@ -1251,15 +1248,6 @@ export default function ArticleViewer({
                     </AnimatePresence>
                   </div>
                 )}
-
-                {isCountryWhitelisted(activeEvent.country) && (
-                  <button
-                    onClick={() => setIsPerspectiveOpen(true)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-indigo-600/90 hover:bg-indigo-600 text-white shadow-sm transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
-                  >
-                    <span>🧠 Perspective</span>
-                  </button>
-                )}
               </div>
 
               <div className="flex gap-2">
@@ -1299,15 +1287,6 @@ export default function ArticleViewer({
           </div>
         )}
       </div>
-      {isPerspectiveOpen && (
-        <PerspectiveLensModal
-          isOpen={isPerspectiveOpen}
-          onClose={() => setIsPerspectiveOpen(false)}
-          country={activeEvent.country}
-          topic={cleanTitle}
-          category={activeEvent.category}
-        />
-      )}
       </>
     );
   }
@@ -1977,15 +1956,6 @@ export default function ArticleViewer({
                       </div>
                     )}
 
-                    {isCountryWhitelisted(activeEvent.country) && (
-                      <button
-                        onClick={() => setIsPerspectiveOpen(true)}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-indigo-600/90 hover:bg-indigo-600 text-white shadow-[0_0_25px_rgba(99,102,241,0.2)] hover:shadow-[0_0_35px_rgba(99,102,241,0.4)] hover:scale-[1.02] border border-indigo-500/30 hover:border-indigo-500/50 transition-all duration-300 cursor-pointer"
-                      >
-                        <span>🧠 Perspective Lens</span>
-                      </button>
-                    )}
-
                     <a
                       href={articleDetails?.source || activeEvent.source}
                       target="_blank"
@@ -2123,7 +2093,7 @@ export default function ArticleViewer({
                         </div>
                         <div className="space-y-3">
                           {relatedStories.map((story) => {
-                            const storyConfig = CATEGORY_MAP[story.category as EventCategory] || CATEGORY_MAP.breaking;
+                            const storyConfig = CATEGORY_MAP[story.category as EventCategory] || CATEGORY_MAP.science_nature;
                             const { title: cleanStoryTitle, publisher: storyPublisher } = parsePublisher(story.title, story.source);
                             
                             return (
@@ -2169,15 +2139,6 @@ export default function ArticleViewer({
         </motion.div>
       </div>
     </AnimatePresence>
-    {isPerspectiveOpen && (
-      <PerspectiveLensModal
-        isOpen={isPerspectiveOpen}
-        onClose={() => setIsPerspectiveOpen(false)}
-        country={activeEvent.country}
-        topic={cleanTitle}
-        category={activeEvent.category}
-      />
-    )}
     </>
   );
 }

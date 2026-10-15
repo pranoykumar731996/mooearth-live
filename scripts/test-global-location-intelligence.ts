@@ -185,7 +185,7 @@ async function runTests() {
       id: 'art-1',
       title: 'Japan Advances Semiconductor Technology with New Fab Facility',
       summary: 'Japan unveils major investment in domestic chip production.',
-      category: 'technology',
+      category: 'science_nature',
       country: 'Japan',
       city: 'Tokyo',
       lat: 35.6762,
@@ -197,7 +197,7 @@ async function runTests() {
       id: 'art-2',
       title: 'Japan advances semiconductor technology with new fab facility!', // Near-duplicate
       summary: 'Duplicate wire report.',
-      category: 'technology',
+      category: 'science_nature',
       country: 'Japan',
       city: 'Tokyo',
       lat: 35.6762,

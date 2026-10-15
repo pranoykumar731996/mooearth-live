@@ -10,14 +10,11 @@ import PlayEarthOverlay from '../Globe/PlayEarthOverlay';
 import ArticleViewer from '../Reactions/ArticleViewer';
 import { findCountryMeta } from '@/data/questions/countryMetadata';
 import { matchCountry } from '@/data/questions';
-import { isCountryWhitelisted } from '@/config/publishers';
 import { CountryFlag } from './CountryFlag';
 import { locations, LocationRecord } from '@/data/locations';
 import dynamic from 'next/dynamic';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName, getLocalizedContinentName } from '@/lib/i18n';
-
-const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLensModal'), { ssr: false });
 
 // Categories mapping helper
 const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryValue: EventCategory | 'play_earth' | 'discovery' }[] = [
@@ -293,7 +290,6 @@ export default function MobileCountrySheet({
   const dragControls = useDragControls();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [launchMode, setLaunchMode] = useState<PlayEarthMode | null>(null);
-  const [isPerspectiveOpen, setIsPerspectiveOpen] = useState(false);
   const [showDebugMonitor, setShowDebugMonitor] = useState(false);
   const [isDebugCollapsed, setIsDebugCollapsed] = useState(false);
 
@@ -814,30 +810,6 @@ export default function MobileCountrySheet({
                   );
                 })()}
 
-                {/* Perspective Lens Promo Card */}
-                {isCountryWhitelisted(country) && (
-                  <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shadow-lg relative overflow-hidden space-y-3">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-indigo-400 font-black tracking-widest uppercase flex items-center gap-1">
-                        <span>🧠</span>
-                        <span>Perspective Lens</span>
-                      </span>
-                      <span className="text-[8px] bg-indigo-500/20 text-indigo-200 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                        Compare Framing
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white/60 leading-relaxed font-medium">
-                      Compare how domestic media in {country} and global publishers cover major stories.
-                    </p>
-                    <button
-                      onClick={() => setIsPerspectiveOpen(true)}
-                      className="w-full py-2 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-bold text-xs transition-all cursor-pointer border border-indigo-500/30 hover:border-indigo-500/50"
-                    >
-                      🧠 Compare Local vs Global News
-                    </button>
-                  </div>
-                )}
                 
                 {/* System Filter Monitor (Debug Display) */}
                 {showDebugMonitor && (
@@ -951,19 +923,6 @@ export default function MobileCountrySheet({
         )}
       </div>
 
-      {isPerspectiveOpen && (
-        <PerspectiveLensModal
-          isOpen={isPerspectiveOpen}
-          onClose={() => setIsPerspectiveOpen(false)}
-          country={selectedLocation ? selectedLocation.id : country}
-          topic={
-            reactionData?.headlines[0]?.title
-              ? (reactionData.headlines[0].title.split(' - ')[0] || reactionData.headlines[0].title)
-              : (selectedLocation ? `${selectedLocation.name} developments` : `${country} developments`)
-          }
-          category={activeCategory || 'news'}
-        />
-      )}
     </motion.div>
   );
 }

@@ -140,7 +140,7 @@ export default function LiveFeed({
 }: LiveFeedProps) {
   const { t, locale } = useTranslation();
   const [footballTab, setFootballTab] = useState<FootballTab>('matches');
-  const [mobileActiveTab, setMobileActiveTab] = useState<'matches' | 'news' | 'weather' | 'tech' | 'business' | 'entertainment'>('matches');
+  const [mobileActiveTab, setMobileActiveTab] = useState<'matches' | 'events' | 'weather'>('matches');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -152,17 +152,13 @@ export default function LiveFeed({
   // Sync mobile active tab when the parent category changes (from search or country selection)
   useEffect(() => {
     if (activeCategory) {
-      const catToTabMap: Record<string, 'matches' | 'news' | 'weather' | 'tech' | 'business' | 'entertainment'> = {
+      const catToTabMap: Record<string, 'matches' | 'events' | 'weather'> = {
         football: 'matches',
         sports: 'matches',
-        breaking: 'news',
         weather: 'weather',
-        technology: 'tech',
-        business: 'business',
-        entertainment: 'entertainment',
       };
-      const tab = catToTabMap[activeCategory];
-      if (tab && tab !== mobileActiveTab) {
+      const tab = catToTabMap[activeCategory] || 'events';
+      if (tab !== mobileActiveTab) {
         setMobileActiveTab(tab);
       }
     }
@@ -178,33 +174,17 @@ export default function LiveFeed({
     return events.filter(e => e.category === 'football');
   }, [events]);
 
-  const displayNews = useMemo(() => {
-    return events.filter(e => e.category === 'breaking');
-  }, [events]);
-
-  const displayTech = useMemo(() => {
-    return events.filter(e => e.category === 'technology');
-  }, [events]);
-
   const displayWeather = useMemo(() => {
     return events.filter(e => e.category === 'weather');
-  }, [events]);
-
-  const displayBusiness = useMemo(() => {
-    return events.filter(e => e.category === 'business');
-  }, [events]);
-
-  const displayEntertainment = useMemo(() => {
-    return events.filter(e => e.category === 'entertainment');
   }, [events]);
 
   // Calculate live counters
   const counters = useMemo(() => {
     const counts: Record<string, number> = {
-      breaking: 0, sports: 0, football: 0, technology: 0, business: 0, weather: 0, entertainment: 0
+      football: 0, sports: 0, weather: 0, seismic: 0, severe_weather: 0, wildfires: 0, space_weather: 0, climate_oceans: 0, science_nature: 0
     };
     events.forEach(e => {
-      const cat = CATEGORY_MAP[e.category as EventCategory] ? e.category : 'breaking';
+      const cat = CATEGORY_MAP[e.category as EventCategory] ? e.category : 'science_nature';
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return counts;
@@ -582,7 +562,7 @@ export default function LiveFeed({
               <div className="flex items-center gap-3 overflow-x-auto scrollbar-thin pb-1">
                 {Object.entries(counters).map(([cat, count]) => {
                   if (!count || count === 0) return null;
-                  const config = CATEGORY_MAP[cat as EventCategory] || CATEGORY_MAP.breaking;
+                  const config = CATEGORY_MAP[cat as EventCategory] || CATEGORY_MAP.science_nature;
                   return (
                     <div key={cat} className="flex items-center gap-1.5 shrink-0 bg-white/5 px-2 py-1 rounded-md border border-white/5">
                       <span className="text-xs">{config.emoji}</span>
@@ -604,7 +584,7 @@ export default function LiveFeed({
                 </div>
               ) : (
                 sortedEvents.map((event) => {
-                  const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.breaking;
+                  const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.science_nature;
                   return (
                     <motion.button
                       key={event.id}
@@ -717,10 +697,10 @@ export default function LiveFeed({
             <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05] bg-black/20 shrink-0 select-none">
               <div className="flex items-center gap-2">
                 <span className="text-lg">
-                  {activeCategory ? (CATEGORY_MAP[activeCategory] || CATEGORY_MAP.breaking).emoji : '🏠'}
+                  {activeCategory ? (CATEGORY_MAP[activeCategory] || CATEGORY_MAP.science_nature).emoji : '🏠'}
                 </span>
                 <span className="text-xs font-black tracking-wider text-white uppercase">
-                  {activeCategory ? (CATEGORY_MAP[activeCategory] || CATEGORY_MAP.breaking).label : 'Home Feed'}
+                  {activeCategory ? (CATEGORY_MAP[activeCategory] || CATEGORY_MAP.science_nature).label : 'Home Feed'}
                 </span>
               </div>
               <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full">
@@ -737,7 +717,7 @@ export default function LiveFeed({
                 </div>
               ) : (
                 sortedEvents.map((event) => {
-                  const config = CATEGORY_MAP[event.category as EventCategory] || CATEGORY_MAP.breaking;
+                  const config = CATEGORY_MAP[event.category as EventCategory] || CATEGORY_MAP.science_nature;
                   return (
                     <div
                       key={event.id}

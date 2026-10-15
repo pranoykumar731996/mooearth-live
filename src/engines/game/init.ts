@@ -8,7 +8,6 @@ import { registerProvider } from './ChallengeGenerator';
 import {
   GeographyProvider,
   WeatherProvider,
-  NewsProvider,
   TimeProvider,
   EarthEventsProvider,
   AIMissionProvider,
@@ -29,12 +28,11 @@ export function initializeGameEngine(): void {
   registerProvider(GeographyProvider);   // Always available (offline-safe)
   registerProvider(TimeProvider);        // Always available (offline-safe)
   registerProvider(WeatherProvider);     // Requires Open-Meteo API
-  registerProvider(NewsProvider);        // Requires Google News RSS
   registerProvider(EarthEventsProvider); // Requires USGS API
-  registerProvider(AIMissionProvider);   // Multi-source intelligence recon
+  registerProvider(AIMissionProvider);   // Multi-source planetary recon
 
   initialized = true;
-  console.log('[GameEngine] ✅ Infinite Earth Game Engine initialized with 6 providers');
+  console.log('[GameEngine] ✅ Infinite Earth Game Engine initialized with 5 providers');
 }
 
 /**

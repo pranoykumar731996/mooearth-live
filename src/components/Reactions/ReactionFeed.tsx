@@ -140,9 +140,9 @@ export default function ReactionFeed({
                 );
               } else {
                 const news = item.data as WorldEvent;
-                const cConfig = CATEGORY_MAP[news.category as EventCategory] || CATEGORY_MAP.breaking;
+                const cConfig = CATEGORY_MAP[news.category as EventCategory] || CATEGORY_MAP.science_nature;
                 return (
-                  <Link key={item.id} href={`/article/${news.id}`}>
+                  <Link key={item.id} href={`/?event=${encodeURIComponent(news.id)}`}>
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}

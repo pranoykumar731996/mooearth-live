@@ -4,14 +4,9 @@
 
 /** Supported event categories */
 export type EventCategory =
-  | 'breaking'
-  | 'sports'
   | 'football'
-  | 'technology'
-  | 'business'
+  | 'sports'
   | 'weather'
-  | 'entertainment'
-  // Planetary & Earth Science Categories (Option 3)
   | 'seismic'
   | 'severe_weather'
   | 'wildfires'
@@ -176,7 +171,6 @@ export type PlayEarthMode =
   | 'infinite'
   | 'globe-hunt'
   | 'weather-challenge'
-  | 'news-detective'
   | 'border-escape'
   | 'earthquake-hunt'
   // Stop the Earth

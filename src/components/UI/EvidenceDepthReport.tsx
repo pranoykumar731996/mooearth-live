@@ -83,12 +83,12 @@ export const EvidenceDepthReport: React.FC<EvidenceDepthReportProps> = ({ articl
               <div key={idx} className="relative group">
                 <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-cyan-400/80 border-2 border-black" />
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-mono font-bold text-cyan-300">{step.timeOrPhase}</span>
+                  <span className="text-[11px] font-mono font-bold text-cyan-300">{step.timeOrPhase || step.timeOrDate}</span>
                   {step.sourcePublisher && (
                     <span className="text-[9px] text-white/40 italic">({step.sourcePublisher})</span>
                   )}
                 </div>
-                <p className="text-xs text-white/80 leading-relaxed mt-0.5">{step.development}</p>
+                <p className="text-xs text-white/80 leading-relaxed mt-0.5">{step.development || step.event}</p>
               </div>
             ))}
           </div>
@@ -109,11 +109,11 @@ export const EvidenceDepthReport: React.FC<EvidenceDepthReportProps> = ({ articl
                 className="p-3.5 rounded-xl bg-purple-500/[0.03] border-l-2 border-purple-400 border-y border-r border-white/5 space-y-1.5"
               >
                 <p className="text-xs text-white/90 italic leading-relaxed">
-                  &ldquo;{item.quoteOrClaim}&rdquo;
+                  &ldquo;{item.quoteOrClaim || item.statement}&rdquo;
                 </p>
                 <div className="flex items-center justify-between text-[10px] text-white/50">
                   <span className="font-semibold text-purple-300">
-                    — {item.speakerOrOrg}
+                    — {item.speakerOrOrg || item.sourcePublisher}
                   </span>
                   {item.sourcePublisher && <span className="italic text-white/40">via {item.sourcePublisher}</span>}
                 </div>
@@ -212,7 +212,7 @@ export const EvidenceDepthReport: React.FC<EvidenceDepthReportProps> = ({ articl
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-          {sourcesList.map((src, idx) => {
+          {sourcesList.map((src: any, idx: number) => {
             const isPaywalled = (src.accessStatus as string) === 'paywalled_restricted' || (src.accessStatus as string) === 'failed_unreachable';
             return (
               <a
