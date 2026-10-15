@@ -46,12 +46,57 @@ export async function GET() {
   });
 }
 
-// Reaction upload is permanently disabled
-export async function POST() {
-  return NextResponse.json(
-    { error: 'Upload reaction feature has been permanently disabled' },
-    { status: 410 }
-  );
+import { ALLOWED_CELEBRATION_PRESETS, sanitizeCelebrationReaction } from '@/services/celebration-ai';
+
+// One-tap preset reactions only. Arbitrary freeform text and direct media uploads
+// are permanently deleted/disabled to eliminate UGC defamation and copyright liability.
+export async function POST(request: NextRequest) {
+  try {
+    const clientIp = getClientIp(request);
+    if (writeRateLimiter.isLimited(clientIp)) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please wait before reacting again.' },
+        { status: 429 }
+      );
+    }
+
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      return NextResponse.json(
+        { error: 'Media uploads have been permanently disabled to prevent unmoderated UGC liability.' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { country, reaction, mood } = body;
+
+    const rawReaction = reaction || mood;
+    if (!rawReaction || typeof rawReaction !== 'string') {
+      return NextResponse.json(
+        {
+          error: 'Invalid reaction. Only predefined one-tap reactions are permitted.',
+          allowedPresets: ALLOWED_CELEBRATION_PRESETS,
+        },
+        { status: 400 }
+      );
+    }
+
+    const sanitizedReaction = sanitizeCelebrationReaction(rawReaction);
+
+    return NextResponse.json({
+      success: true,
+      country: country || 'Global',
+      reaction: sanitizedReaction,
+      message: 'One-tap reaction recorded.',
+    });
+  } catch (error) {
+    console.error('Error recording celebration reaction:', error);
+    return NextResponse.json(
+      { error: 'Freeform text and media uploads are disabled. Only preset one-tap reactions are accepted.' },
+      { status: 400 }
+    );
+  }
 }
 
 // Support reporting a celebration (PUT /api/celebrations)

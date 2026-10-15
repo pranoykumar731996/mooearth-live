@@ -6,12 +6,47 @@ export interface AIAnalysisResult {
   explanation: string;
 }
 
+export const ALLOWED_CELEBRATION_PRESETS = [
+  '🔥 Hype',
+  '😄 Celebration',
+  '🎉 Celebrate',
+  '⚡ Electric',
+  '🏆 Victory',
+  '⚽ Goal!',
+  '👏 Applause',
+  '❤️ Pride',
+  '😢 Sadness',
+  '😡 Anger',
+  '😨 Shock',
+  '😐 Neutral',
+] as const;
+
+export type CelebrationPreset = typeof ALLOWED_CELEBRATION_PRESETS[number];
+
+/**
+ * Strict UGC Sanitization: Constrains any input reaction to approved preset emojis/moods.
+ * Eliminates unmoderated freeform user text, defamation, and prompt injection risks.
+ */
+export function sanitizeCelebrationReaction(text: string): string {
+  if (!text) return '😄 Celebration';
+  const clean = text.trim();
+  const matched = ALLOWED_CELEBRATION_PRESETS.find(
+    (preset) => preset.toLowerCase() === clean.toLowerCase() || clean.includes(preset)
+  );
+  return matched || '😄 Celebration';
+}
+
 export async function analyzeCelebrationSentiment(
   country: string,
   uploads: { comment: string; type: string }[]
 ): Promise<AIAnalysisResult> {
-  const combinedComments = uploads.map((u) => `[${u.type}] ${u.comment}`).join('\n');
-  const count = uploads.length;
+  // Strict UGC Defense: Sanitize comments to guaranteed predefined preset reactions
+  const sanitizedUploads = uploads.map((u) => ({
+    type: u.type || 'reaction',
+    comment: sanitizeCelebrationReaction(u.comment),
+  }));
+  const combinedComments = sanitizedUploads.map((u) => `[${u.type}] ${u.comment}`).join('\n');
+  const count = sanitizedUploads.length;
 
   try {
     const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;

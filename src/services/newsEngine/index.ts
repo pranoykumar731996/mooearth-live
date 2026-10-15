@@ -19,6 +19,8 @@ export * from './accessResolver';
 export * from './researchEngine';
 export * from './articleGenerator';
 export * from './qualityGate';
+export * from './sourceRegistry';
+export * from './takedownService';
 
 // Master in-memory cache for news clusters (90-second TTL)
 interface EngineCache {

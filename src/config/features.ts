@@ -11,4 +11,8 @@ export const FEATURES = {
   enablePlusValidation: process.env.NEXT_PUBLIC_ENABLE_PLUS_VALIDATION !== 'false',
   // Flag to enable sponsorship framework and labeled educational partner cards
   enableSponsorships: process.env.NEXT_PUBLIC_ENABLE_SPONSORSHIPS !== 'false',
+  // Flag to enable Google News RSS ingestion & batchexecute resolution
+  // Phase 2 Compliance: Disabled by default for commercial audit safety unless explicitly set to 'true'.
+  // Alternative licensed providers recommended: NewsAPI.org, Bing News Search API, Reuters Connect.
+  enableGoogleNewsRss: process.env.ENABLE_GOOGLE_NEWS_RSS === 'true',
 };

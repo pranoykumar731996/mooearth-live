@@ -1,9 +1,10 @@
 // ============================================================
-// MooEarth Live — Publication Quality Gate & Fact Verification
+// MooEarth Live — Publication Quality Gate & Legal Verification
 // ============================================================
 // Evaluates synthesized articles prior to publication and caching.
 // Enforces evidence sufficiency, claim verification, stale detection,
-// contradiction routing, and explicit publication status.
+// high-impact allegation detection, copied passage warnings,
+// source permission validation, and retraction/takedown routing.
 // ============================================================
 
 import {
@@ -12,6 +13,8 @@ import {
   PublicationStatus,
 } from './evidenceTypes';
 import { isSafeExternalUrl } from '../article';
+import { checkSourcePermission } from './sourceRegistry';
+import { isTakedownActive } from './takedownService';
 
 export interface QualityGateEvaluation {
   passed: boolean;
@@ -22,6 +25,82 @@ export interface QualityGateEvaluation {
   freshnessPassed: boolean;
   contradictionFlags: string[];
   unsupportedClaims: string[];
+  highImpactAllegationsDetected?: boolean;
+  matchedAllegationTerms?: string[];
+  copiedPassageWarnings?: string[];
+  sourcePermissionIssues?: string[];
+}
+
+/**
+ * High-Impact & Potentially Defamatory Claim Patterns.
+ * Stories containing these terms MUST NOT be auto-published without human review.
+ */
+const HIGH_IMPACT_ALLEGATION_PATTERNS = [
+  /\b(arrested|indicted|charged with|pleaded guilty|convicted of|subpoenaed|grand jury)\b/i,
+  /\b(embezzlement|fraud|money laundering|bribery|kickback|ponzi|extortion)\b/i,
+  /\b(war crimes|human rights abuses|genocide|treason|espionage|sanctions violation)\b/i,
+  /\b(insolvency|bankruptcy fraud|defaulting on debt|illicit trading)\b/i,
+  /\b(sexual assault|sexual harassment|sexual misconduct|rape|battery)\b/i,
+  /\b(assassinated|murdered|manslaughter|homicide)\b/i,
+];
+
+export function detectHighImpactAllegations(text: string): {
+  hasAllegation: boolean;
+  matchedTerms: string[];
+} {
+  if (!text) return { hasAllegation: false, matchedTerms: [] };
+  const matchedTerms: string[] = [];
+
+  for (const regex of HIGH_IMPACT_ALLEGATION_PATTERNS) {
+    const globalRegex = new RegExp(regex.source, 'gi');
+    let match: RegExpExecArray | null;
+    while ((match = globalRegex.exec(text)) !== null) {
+      matchedTerms.push(match[1].toLowerCase());
+    }
+  }
+
+  return {
+    hasAllegation: matchedTerms.length > 0,
+    matchedTerms: Array.from(new Set(matchedTerms)),
+  };
+}
+
+/**
+ * Detects verbatim copied passages (>10 consecutive words) from source text
+ * to guarantee that articles represent original writing rather than copied expression.
+ */
+export function detectCopiedPassages(
+  fullContent: string,
+  sources: EvidenceRecord['sources']
+): { hasCopiedPassages: boolean; excerptMatches: string[] } {
+  if (!fullContent || !sources || sources.length === 0) {
+    return { hasCopiedPassages: false, excerptMatches: [] };
+  }
+
+  const excerptMatches: string[] = [];
+  const contentLower = fullContent.toLowerCase();
+
+  for (const src of sources) {
+    const sourceText = (src.substantiveText || src.excerpt || '').toLowerCase();
+    if (sourceText.length < 60) continue;
+
+    // Split source into 10-word windows
+    const words = sourceText.split(/\s+/).filter(Boolean);
+    for (let i = 0; i <= words.length - 10; i += 5) {
+      const windowStr = words.slice(i, i + 10).join(' ');
+      // If window is long enough and found verbatim in content, flag as copied passage warning
+      if (windowStr.length > 40 && contentLower.includes(windowStr)) {
+        excerptMatches.push(`"${windowStr}..." from ${src.publisher}`);
+        if (excerptMatches.length >= 3) break;
+      }
+    }
+    if (excerptMatches.length >= 3) break;
+  }
+
+  return {
+    hasCopiedPassages: excerptMatches.length > 0,
+    excerptMatches,
+  };
 }
 
 /**
@@ -99,8 +178,55 @@ export function evaluatePublicationQuality(
 ): QualityGateEvaluation {
   const reasons: string[] = [];
   const contradictionFlags: string[] = [...evidence.contradictions];
+  const sourcePermissionIssues: string[] = [];
 
-  // 1. Evidence Sufficiency Check
+  // 0. Legal Takedown & Retraction Check (Phase 5)
+  const isRetracted = isTakedownActive(article.title) ||
+    isTakedownActive(article.source) ||
+    isTakedownActive(article.id);
+
+  if (isRetracted) {
+    reasons.push('Article is subject to an active retraction or legal takedown notice.');
+    return {
+      passed: false,
+      status: 'under_review',
+      reasons,
+      evidenceSufficiencyScore: 0,
+      claimAlignmentPassed: false,
+      freshnessPassed: false,
+      contradictionFlags,
+      unsupportedClaims: [],
+    };
+  }
+
+  // 1. High-Impact Allegation Check (Defamation & Crime Risk Guard)
+  const combinedTextForAllegations = `${article.title} ${article.aiSummary} ${(article.newlyReportedFacts || []).join(' ')}`;
+  const allegationCheck = detectHighImpactAllegations(combinedTextForAllegations);
+  if (allegationCheck.hasAllegation) {
+    reasons.push(
+      `High-impact allegation detected (${allegationCheck.matchedTerms.join(', ')}). Story requires human editorial review prior to publication.`
+    );
+  }
+
+  // 2. Source Permission Validation (Phase 4 Registry Check)
+  for (const src of evidence.sources) {
+    const perm = checkSourcePermission(src.url || src.domain);
+    if (perm.permissionStatus === 'blocked') {
+      sourcePermissionIssues.push(`Source ${perm.provider} is blocked by access controls or licensing terms.`);
+    } else if (perm.permissionStatus === 'pending_review') {
+      sourcePermissionIssues.push(`Source ${perm.provider} permissions are unverified/pending review.`);
+    }
+  }
+
+  // 3. Copied Passage Detection (Phase 3: Original Writing Requirement)
+  const copiedCheck = detectCopiedPassages(article.fullContent, evidence.sources);
+  if (copiedCheck.hasCopiedPassages) {
+    reasons.push(
+      `Copied passage warning: Detected verbatim text matching source (${copiedCheck.excerptMatches.join('; ')}). Text must be originally expressed.`
+    );
+  }
+
+  // 4. Evidence Sufficiency Check
   const accessibleSources = evidence.sources.filter(
     (s) => s.accessStatus === 'accessible_full' || s.accessStatus === 'accessible_excerpt'
   );
@@ -121,29 +247,32 @@ export function evaluatePublicationQuality(
     reasons.push('Deep-dive mode requested but fewer than 2 accessible sources corroborated the event.');
   }
 
-  // 2. Freshness & Stale Story Detection (Test Case 5)
+  // 5. Freshness & Stale Story Detection
   const freshness = checkFreshness(article.publishedAt, article.fullContent);
   if (freshness.isStale && freshness.reason) {
     reasons.push(freshness.reason);
   }
 
-  // 3. Claim Alignment & Grounding Check
+  // 6. Claim Alignment & Grounding Check
   const claimCheck = verifyClaimAlignment(article, evidence);
   if (!claimCheck.passed) {
     reasons.push(`${claimCheck.unsupportedClaims.length} claim(s) lacked direct grounding in evidence corpus.`);
   }
 
-  // 4. Citation and Link Validation
+  // 7. Citation and Link Validation
   for (const src of evidence.sources) {
     if (!src.url || !isSafeExternalUrl(src.url)) {
       reasons.push(`Unsafe or invalid citation URL detected: ${src.url}`);
     }
   }
 
-  // 5. Determine Enforced Publication Status
+  // 8. Determine Enforced Publication Status
   let status: PublicationStatus = 'published_full';
 
-  if (freshness.isStale) {
+  if (allegationCheck.hasAllegation) {
+    // High impact allegation -> MUST go to under_review
+    status = 'under_review';
+  } else if (freshness.isStale) {
     // Rapidly developing story with outdated information -> keep under review or limited
     status = 'under_review';
   } else if (contradictionFlags.length > 0 && accessibleSources.length < 2) {
@@ -169,6 +298,10 @@ export function evaluatePublicationQuality(
     freshnessPassed: !freshness.isStale,
     contradictionFlags,
     unsupportedClaims: claimCheck.unsupportedClaims,
+    highImpactAllegationsDetected: allegationCheck.hasAllegation,
+    matchedAllegationTerms: allegationCheck.matchedTerms,
+    copiedPassageWarnings: copiedCheck.excerptMatches,
+    sourcePermissionIssues,
   };
 }
 
@@ -205,6 +338,8 @@ export function enforcePublicationGate(
       ...article,
       publicationStatus: 'under_review',
       accessLabel: 'Editorial Review',
+      aiSummary: `[Under Editorial Review] This story contains sensitive allegations or unresolved details: ${evalResult.reasons[0] || 'Pending verification'}.`,
+      fullContent: `### Story Under Editorial Review\n\nThis article has been placed under editorial hold pending verification.\n\n• **Reason**: ${evalResult.reasons.join('; ')}\n• **Review Protocol**: High-impact allegations or uncorroborated single-source claims require human editorial review prior to publication.\n• **Current Status**: Restricted pending editorial sign-off.`,
       sourceTransparency: {
         ...article.sourceTransparency,
         evidenceLimitations: [

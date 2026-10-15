@@ -19,6 +19,8 @@ import { findRelatedCluster } from './index';
 import { queryGdeltArticles } from './gdeltClient';
 import { areArticlesRelated, extractKeywords, computeTokenSimilarity } from './clustering';
 import { CANONICAL_COUNTRIES } from '@/data/countries';
+import { FEATURES } from '@/config/features';
+import { checkSourcePermission } from './sourceRegistry';
 
 const KNOWN_PAYWALLED_DOMAINS = new Set([
   'wsj.com',
@@ -176,40 +178,14 @@ export function extractEntitiesAndFigures(
 }
 
 /**
- * Clean HTML to extract paragraph text
+ * Safely extracts open meta-description / og:description without scraping article body paragraphs.
  */
-function extractBodyParagraphs(html: string): { paragraphs: string[]; excerpt: string } {
-  const cleanHtml = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<header[\s\S]*?<\/header>/gi, '')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-    .replace(/<nav[\s\S]*?<\/nav>/gi, '');
-
-  const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-  let pMatch;
-  const paragraphs: string[] = [];
-  while ((pMatch = pRegex.exec(cleanHtml)) !== null) {
-    const pText = pMatch[1].replace(/<[^>]*>/g, '').trim();
-    if (
-      pText.length > 40 &&
-      !pText.toLowerCase().includes('subscribe') &&
-      !pText.toLowerCase().includes('sign up for') &&
-      !pText.toLowerCase().includes('cookie')
-    ) {
-      paragraphs.push(pText);
-    }
-  }
-
-  // Meta description excerpt
-  let excerpt = '';
-  const descMatch = html.match(/<meta\s+(?:name|property)=["'](?:og:description|description)["']\s+content=["']([^"']*)["']/i);
+function extractMetadataExcerpt(html: string): string {
+  const descMatch = html.match(/<meta\s+(?:name|property)=["'](?:og:description|description|twitter:description)["']\s+content=["']([^"']*)["']/i);
   if (descMatch && descMatch[1]) {
-    excerpt = descMatch[1].replace(/<[^>]*>/g, '').trim();
+    return descMatch[1].replace(/<[^>]*>/g, '').trim();
   }
-
-  return { paragraphs, excerpt };
+  return '';
 }
 
 /**
@@ -248,15 +224,16 @@ export async function safeFetchSource(url: string): Promise<{
     };
   }
 
-  // Known paywall check upfront
-  if (isKnownPaywalledDomain(domain)) {
-    console.log(`[ResearchEngine] Recognizing known paywalled publisher: ${domain}. Strictly respecting paywall controls.`);
+  // Check Source Registry permissions and known paywalls upfront
+  const sourcePerm = checkSourcePermission(domain);
+  if (sourcePerm.permissionStatus === 'blocked' || isKnownPaywalledDomain(domain)) {
+    console.log(`[ResearchEngine] Source ${domain} blocked or paywalled under permission registry. Strictly respecting access controls.`);
     return {
       success: true,
       status: 'paywalled_restricted',
       substantiveText: '',
       excerpt: '',
-      publisher: extractPublisherFromUrl(url),
+      publisher: sourcePerm.provider || extractPublisherFromUrl(url),
       domain,
     };
   }
@@ -306,13 +283,11 @@ export async function safeFetchSource(url: string): Promise<{
       };
     }
 
-    const { paragraphs, excerpt } = extractBodyParagraphs(html);
-    const substantiveText = paragraphs.slice(0, 10).join('\n\n');
+    // Safe metadata extraction (Zero full-text paragraph scraping)
+    const excerpt = extractMetadataExcerpt(html);
+    const substantiveText = excerpt;
 
-    let accessStatus: EvidenceAccessStatus = 'accessible_full';
-    if (substantiveText.length < 150) {
-      accessStatus = excerpt.length > 50 ? 'accessible_excerpt' : 'failed_unreachable';
-    }
+    const accessStatus: EvidenceAccessStatus = excerpt.length > 20 ? 'accessible_excerpt' : 'failed_unreachable';
 
     return {
       success: accessStatus !== 'failed_unreachable',
@@ -339,6 +314,13 @@ export async function safeFetchSource(url: string): Promise<{
  */
 async function searchOpenNewsRss(query: string): Promise<Array<{ title: string; url: string; publisher: string }>> {
   if (!query || query.length < 3) return [];
+
+  // Phase 2 Compliance: Check configurable Google News RSS switch
+  if (!FEATURES.enableGoogleNewsRss) {
+    console.log('[ResearchEngine] Google News RSS search is disabled by configuration switch / legal audit control.');
+    return [];
+  }
+
   try {
     const encoded = encodeURIComponent(query);
     const rssUrl = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
@@ -415,9 +397,7 @@ export async function conductMultiSourceResearch(params: {
     isSyndicatedOrReprint: false,
     excerpt: initialFetch.excerpt || summary,
     substantiveText: initialFetch.substantiveText,
-    supportedClaims: initialFetch.substantiveText
-      ? [initialFetch.substantiveText.slice(0, 160)]
-      : (summary ? [summary.slice(0, 160)] : []),
+    supportedClaims: headline ? [headline] : [],
   });
 
   // 2. Discover Candidate Corroboration Sources
@@ -425,10 +405,9 @@ export async function conductMultiSourceResearch(params: {
   const cleanTokens = extractKeywords(headline).slice(0, 5);
   const searchQuery = `${cleanTokens.join(' ')} ${country !== 'Global' && country !== 'International' ? country : ''}`.trim();
 
-  const [clusterData, gdeltArticles, openRssItems] = await Promise.allSettled([
+  const [clusterData, gdeltArticles] = await Promise.allSettled([
     findRelatedCluster(headline, country),
     queryGdeltArticles({ query: searchQuery, maxRecords: 6 }),
-    searchOpenNewsRss(searchQuery),
   ]);
 
   interface DiscoveredCandidate {
@@ -455,12 +434,6 @@ export async function conductMultiSourceResearch(params: {
     }
   }
 
-  // C. Discovered from open RSS search
-  if (openRssItems.status === 'fulfilled' && Array.isArray(openRssItems.value)) {
-    for (const r of openRssItems.value) {
-      candidates.push(r);
-    }
-  }
 
   // 3. Strict Event Verification Guard (Test Case 6: Reject unrelated events)
   const relevantCandidates: DiscoveredCandidate[] = [];
@@ -529,9 +502,7 @@ export async function conductMultiSourceResearch(params: {
           isSyndicatedOrReprint: isSyndicated,
           excerpt: fetched.excerpt,
           substantiveText: fetched.substantiveText,
-          supportedClaims: fetched.substantiveText
-            ? [fetched.substantiveText.slice(0, 160)]
-            : (fetched.excerpt ? [fetched.excerpt.slice(0, 160)] : []),
+          supportedClaims: cand.title ? [cand.title] : [],
         });
       }
     }

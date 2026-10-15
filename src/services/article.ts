@@ -14,6 +14,8 @@ import {
   SourceTransparencyReport,
   ResearchTelemetry,
 } from './newsEngine';
+import { FEATURES } from '@/config/features';
+import { isTakedownActive, getTakedownDetails, generateTombstoneArticle } from './newsEngine/takedownService';
 
 export interface ArticleDetails {
   id: string;
@@ -297,108 +299,21 @@ async function resolveGNewsUrl(gnewsUrl: string): Promise<string> {
       return gnewsUrl;
     }
 
-    console.log(`[ArticleService] Resolving GNews redirect URL: ${gnewsUrl}`);
-    
-    // Extract base64 GNews Article ID from path
-    const segments = url.pathname.split('/').filter(Boolean);
-    const gnArtId = segments[segments.length - 1];
-    if (!gnArtId) {
-      console.warn(`[ArticleService] Could not extract ID from path: ${url.pathname}`);
-      return gnewsUrl;
+    // Standard lawful HTTP redirect resolution (Zero private RPC / batchexecute reverse engineering)
+    try {
+      const headRes = await fetch(gnewsUrl, {
+        method: 'HEAD',
+        redirect: 'follow',
+        signal: AbortSignal.timeout(3000),
+      });
+      if (headRes.ok && headRes.url && !headRes.url.includes('news.google.com')) {
+        return headRes.url;
+      }
+    } catch {
+      // non-blocking fallback
     }
-
-    // Fetch intermediate HTML redirect page
-    const response = await fetch(gnewsUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      signal: AbortSignal.timeout(5000)
-    });
-
-    if (!response.ok) {
-      console.warn(`[ArticleService] Failed to fetch intermediate GNews page. Status: ${response.status}`);
-      return gnewsUrl;
-    }
-
-    const html = await response.text();
-    const sgMatch = html.match(/data-n-a-sg=["']([\s\S]*?)["']/);
-    const tsMatch = html.match(/data-n-a-ts=["']([\s\S]*?)["']/);
-    const idMatch = html.match(/data-n-a-id=["']([\s\S]*?)["']/);
-
-    const signature = sgMatch ? sgMatch[1] : null;
-    const timestamp = tsMatch ? tsMatch[1] : null;
-    const extractedId = idMatch ? idMatch[1] : gnArtId;
-
-    if (!signature || !timestamp) {
-      console.warn(`[ArticleService] Could not extract signature/timestamp from GNews redirect HTML.`);
-      return gnewsUrl;
-    }
-
-    // Construct batchexecute payload
-    const articlesReq = [
-      "Fbv4je",
-      JSON.stringify([
-        "garturlreq",
-        [
-          ["X", "X", ["X", "X"], null, null, 1, 1, "US:en", null, 1, null, null, null, null, null, 0, 1],
-          "X",
-          "X",
-          1,
-          [1, 1, 1],
-          1,
-          1,
-          null,
-          0,
-          0,
-          null,
-          0
-        ],
-        extractedId,
-        timestamp,
-        signature
-      ])
-    ];
-
-    const reqPayload = [[articlesReq]];
-    const bodyParams = new URLSearchParams();
-    bodyParams.append('f.req', JSON.stringify(reqPayload));
-
-    console.log(`[ArticleService] Querying batchexecute for direct publisher URL with ID: ${extractedId}`);
-    const batchRes = await fetch('https://news.google.com/_/DotsSplashUi/data/batchexecute', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      body: bodyParams.toString(),
-      signal: AbortSignal.timeout(5000)
-    });
-
-    if (!batchRes.ok) {
-      console.warn(`[ArticleService] batchexecute query failed. Status: ${batchRes.status}`);
-      return gnewsUrl;
-    }
-
-    const resText = await batchRes.text();
-    const cleanedText = resText.replace(/^\)\]\}'\s*/, '');
-    const parsedData = JSON.parse(cleanedText);
-    const innerDataStr = parsedData[0]?.[2];
-    if (!innerDataStr) {
-      console.warn(`[ArticleService] Empty inner data from batchexecute.`);
-      return gnewsUrl;
-    }
-
-    const innerData = JSON.parse(innerDataStr);
-    const resolvedUrl = innerData[1] || (Array.isArray(innerData[0]) ? innerData[0][1] : null);
-    if (!resolvedUrl) {
-      console.warn(`[ArticleService] Could not extract URL from inner data structure.`);
-      return gnewsUrl;
-    }
-
-    console.log(`[ArticleService] Successfully resolved direct URL: ${resolvedUrl}`);
-    return resolvedUrl;
-  } catch (err: any) {
-    console.error(`[ArticleService] Error in resolveGNewsUrl:`, err.message);
+    return gnewsUrl;
+  } catch {
     return gnewsUrl;
   }
 }
@@ -484,31 +399,10 @@ async function retrieveArticleContent(url: string): Promise<RetrievedContent> {
       }
     }
 
-    // 5. Extract article body (P tags)
-    const cleanHtml = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-      .replace(/<header[\s\S]*?<\/header>/gi, '')
-      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-      .replace(/<nav[\s\S]*?<\/nav>/gi, '');
-
-    const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-    let pMatch;
-    const paragraphs: string[] = [];
-    while ((pMatch = pRegex.exec(cleanHtml)) !== null) {
-      const pText = pMatch[1].replace(/<[^>]*>/g, '').trim();
-      const decodedP = decodeHtmlEntities(pText);
-      if (decodedP.length > 40 && !decodedP.toLowerCase().includes('subscribe') && !decodedP.toLowerCase().includes('cookie') && !/<[^>]+>/.test(decodedP)) {
-        paragraphs.push(decodedP);
-      }
-    }
-
-    const content = paragraphs.slice(0, 15).join('\n\n');
-
+    // 5. Safe metadata-only extraction (Zero full-text scraping of copyrighted articles)
     return {
-      success: content.length > 100 || excerpt.length > 50,
-      content,
+      success: excerpt.length > 20 || title.length > 10,
+      content: excerpt,
       excerpt,
       publisher,
       title,
@@ -745,6 +639,18 @@ export async function fetchOrGenerateArticleDetails(
 ): Promise<ArticleDetails> {
   const cleanTitle = cleanText(title);
   const cleanSummary = cleanText(summary);
+
+  // 0. Legal Takedown & Retraction Check (Phase 5 Compliance)
+  if (isTakedownActive(id) || isTakedownActive(url) || isTakedownActive(cleanTitle)) {
+    const takedown = getTakedownDetails(id) || getTakedownDetails(url) || getTakedownDetails(cleanTitle);
+    const tombstone = generateTombstoneArticle(
+      id,
+      cleanTitle,
+      url,
+      takedown?.reason || 'Retracted by legal or editorial notice.'
+    );
+    return tombstone;
+  }
 
   // 1. Generate unique and canonical topic cache keys
   const specificKey = `${id.trim()}||${url.trim()}||${publishedAt.trim()}`;
