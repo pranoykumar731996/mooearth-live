@@ -32,12 +32,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/war-room',
     '/tournament',
     '/challenges',
-    '/trending',
     '/play-earth',
-    '/world-news',
-    '/world-news-map',
-    '/live-world-news',
     '/weather',
+    '/world-weather',
+    '/weather-map',
     '/world-events',
     '/live-events',
     '/embed',
@@ -80,20 +78,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85
   }));
 
-  // 1f. Canonical City Weather Pages
-  const cityWeatherPages = getAllCities().map(city => ({
-    url: `${baseUrl}/weather/${city.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.85
-  }));
+  // 1f. Canonical City Weather Pages (exclude sovereign city-states like Singapore already present in countryWeatherPages)
+  const countrySlugs = new Set(getAllCountries().map(c => c.slug));
+  const cityWeatherPages = getAllCities()
+    .filter(city => !countrySlugs.has(city.slug))
+    .map(city => ({
+      url: `${baseUrl}/weather/${city.slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.85
+    }));
 
   // 2. Content Category Pages
   const contentPages = [
-    '/news',
     '/sports',
-    '/business',
-    '/technology',
   ].map(route => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
@@ -101,15 +99,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9
   }));
 
-  // 3. Dynamic Categories
-  const categories = [
-    'breaking', 'sports', 'football', 'technology', 'business', 'weather', 'entertainment'
-  ].map(cat => ({
-    url: `${baseUrl}/category/${cat}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.8
-  }));
 
   // 4. Canonical 195 Sovereign Countries Hubs
   const canonicalCountryPages = getAllCountries().map(country => ({
@@ -119,14 +108,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  // 5. Dynamic Articles & War Room Situation Pages
-  const articles = fallbackEvents.map(event => ({
-    url: `${baseUrl}/article/${event.id}`,
-    lastModified: new Date(event.publishedAt || new Date()),
-    changeFrequency: 'weekly' as const,
-    priority: 0.7
-  }));
-
+  // 5. War Room Situation Pages
   const warRoomPages = fallbackEvents.map(event => ({
     url: `${baseUrl}/war-room/${event.id}`,
     lastModified: new Date(event.publishedAt || new Date()),
@@ -157,7 +139,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const coreLocalizedRoutes = [
       '/world-map',
       '/weather',
-      '/world-news',
       '/world-events',
       '/games',
       '/geography-quiz',
@@ -206,7 +187,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.3
   }));
 
-  return [
+  const allPages = [
     ...corePages,
     ...continentPages,
     ...canonicalCityPages,
@@ -214,11 +195,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...countryWeatherPages,
     ...cityWeatherPages,
     ...contentPages,
-    ...categories,
     ...canonicalCountryPages,
     ...multilingualPages,
-    ...articles,
     ...warRoomPages,
     ...legalPages
   ];
+
+  // Guaranteed URL deduplication
+  return Array.from(new Map(allPages.map(page => [page.url, page])).values());
 }

@@ -4,7 +4,6 @@ import {
   CountryIntent,
 } from '../../src/lib/seo/countryIntentQualityGate';
 import { getCountryBySlug, getAllCountries } from '../../src/data/countries';
-import { fetchNewsForCountry } from '../../src/services/countryNewsService';
 import { fetchCountryWeather } from '../../src/services/weatherService';
 import { fetchQuizForCountry } from '../../src/services/countryQuizService';
 
@@ -198,24 +197,6 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 5: COUNTRY SEARCH INTENT EXPAN
   // =========================================================================
   test.describe('Real-World Service Integrations: News, Weather, Quiz', () => {
 
-    test('News Service: retrieves authentic wire dispatches with source attribution', async () => {
-      const sampleCountries = ['India', 'Japan', 'United States'];
-
-      for (const countryName of sampleCountries) {
-        const news = await fetchNewsForCountry(countryName);
-        expect(Array.isArray(news.articles)).toBe(true);
-        expect(typeof news.isTemporaryError).toBe('boolean');
-
-        for (const art of news.articles) {
-          expect(art.title).toBeTruthy();
-          expect(art.source).toBeTruthy();
-          expect(art.originalUrl).toBeTruthy();
-          expect(art.originalUrl).toMatch(/^https?:\/\//);
-          expect(art.location).toBeTruthy();
-          expect(art.publishedAt).toBeTruthy();
-        }
-      }
-    });
 
     test('Weather Service: queries Open-Meteo and never fabricates readings', async () => {
       const testCoordinates = [
@@ -283,7 +264,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 5: COUNTRY SEARCH INTENT EXPAN
       'italy',
     ];
 
-    const intents: CountryIntent[] = ['news', 'geography', 'weather', 'map', 'quiz'];
+    const intents: CountryIntent[] = ['geography', 'weather', 'map', 'quiz'];
 
     for (const slug of representativeSlugs) {
       for (const intent of intents) {
@@ -292,9 +273,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 5: COUNTRY SEARCH INTENT EXPAN
           expect(country).not.toBeNull();
 
           let mockPayload: any = country;
-          if (intent === 'news') {
-            mockPayload = await fetchNewsForCountry(country!.name);
-          } else if (intent === 'weather') {
+          if (intent === 'weather') {
             mockPayload = await fetchCountryWeather(country!.coordinates.lat, country!.coordinates.lng);
           } else if (intent === 'quiz') {
             mockPayload = fetchQuizForCountry(country!.name);
@@ -304,14 +283,6 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 5: COUNTRY SEARCH INTENT EXPAN
 
           if (intent === 'weather') {
             if (mockPayload.isTemporaryError || !mockPayload.observation) {
-              expect(gateResult.shouldIndex).toBe(false);
-              expect(gateResult.robotsDirective.index).toBe(false);
-            } else {
-              expect(gateResult.shouldIndex).toBe(true);
-              expect(gateResult.robotsDirective.index).toBe(true);
-            }
-          } else if (intent === 'news') {
-            if (mockPayload.isTemporaryError || !mockPayload.articles || mockPayload.articles.length === 0) {
               expect(gateResult.shouldIndex).toBe(false);
               expect(gateResult.robotsDirective.index).toBe(false);
             } else {

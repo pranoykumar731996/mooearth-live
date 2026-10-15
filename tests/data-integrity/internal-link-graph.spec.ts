@@ -410,7 +410,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 11: INTERNAL LINKING & KNOWLED
       expect(kg.continent.name).toBe('Asia');
 
       // 3. Subpage portals
-      expect(kg.intentSubpages.news.href).toBe('/countries/india/news');
+      expect(kg.intentSubpages.events.href).toBe('/countries/india');
       expect(kg.intentSubpages.geography.href).toBe('/countries/india/geography');
       expect(kg.intentSubpages.quiz.href).toBe('/countries/india/quiz');
       expect(kg.intentSubpages.weather.href).toBe('/countries/india/weather');
@@ -462,7 +462,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 11: INTERNAL LINKING & KNOWLED
       expect(kg.continent.slug).toBe('asia');
 
       // 3. Subpage portals
-      expect(kg.intentSubpages.news.href).toBe('/countries/japan/news');
+      expect(kg.intentSubpages.events.href).toBe('/countries/japan');
       expect(kg.intentSubpages.weather.href).toBe('/countries/japan/weather');
       expect(kg.intentSubpages.geography.href).toBe('/countries/japan/geography');
       expect(kg.intentSubpages.quiz.href).toBe('/countries/japan/quiz');

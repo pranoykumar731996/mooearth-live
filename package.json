@@ -26,8 +26,6 @@
     "test:security": "npx tsx scripts/test-anti-repeat.ts",
     "test:seo": "playwright test tests/seo-technical.spec.ts",
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",
-    "test:news-engine": "npx tsx scripts/test-news-engine.ts",
-    "test:legal-audit": "npx tsx scripts/test-legal-risk-remediation.ts",
     "test:planetary-engine": "npx tsx scripts/test-planetary-engine.ts",
     "test:planetary-briefing": "npx tsx scripts/test-planetary-briefing.ts",
     "test:weather": "npx tsx scripts/test-weather-suite.ts && npx tsx scripts/test-weather-layers-suite.ts",

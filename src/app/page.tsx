@@ -1027,7 +1027,7 @@ export default function HomePage({
         <p>
           Welcome to MooEarth Live, the interactive 3D globe and real-time world exploration platform.
           Whether you know us as MooEarth or Moo Earth, our mission is to bring our planet to life through
-          immersive 3D cartography, live international news, and engaging geography discovery.
+          immersive 3D cartography, live planetary telemetry, and engaging geography discovery.
         </p>
         <p>
           Explore continents and oceans on the 3D world globe, track real-time global events, monitor live weather,
@@ -1042,16 +1042,16 @@ export default function HomePage({
           <Link href="/geography">World Geography</Link>
           <Link href="/world-geography">World Geography Atlas</Link>
           <Link href="/explore">Explore Earth & World Map</Link>
-          <Link href="/news">Global News</Link>
+          <Link href="/world-events">World Events</Link>
           <Link href="/sports">World Sports</Link>
           <Link href="/weather">Global Weather</Link>
-          <Link href="/business">Business & Markets</Link>
-          <Link href="/technology">Technology Trends</Link>
+          <Link href="/live-events">Live Planetary Events</Link>
+          <Link href="/continents">Continents Atlas</Link>
           <Link href="/games">Play Earth Games</Link>
           <Link href="/daily">Daily Earth Challenge</Link>
           <Link href="/tournament">Global Nations Cup</Link>
           <Link href="/war-room">Situation War Room</Link>
-          <Link href="/trending">Trending Worldwide</Link>
+          <Link href="/challenges">Global Challenges</Link>
           <Link href="/about">About MooEarth</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/privacy">Privacy Policy</Link>

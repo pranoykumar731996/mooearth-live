@@ -33,7 +33,7 @@ export interface CountryKnowledgeGraph {
   continent: ContinentRecord;
   breadcrumbs: BreadcrumbItem[];
   intentSubpages: {
-    news: ContextualLinkItem;
+    events: ContextualLinkItem;
     geography: ContextualLinkItem;
     weather: ContextualLinkItem;
     quiz: ContextualLinkItem;
@@ -57,7 +57,7 @@ export interface CityKnowledgeGraph {
   sisterCities: CityRecord[];
   parentCountrySubpages: {
     hub: ContextualLinkItem;
-    news: ContextualLinkItem;
+    events: ContextualLinkItem;
     weather: ContextualLinkItem;
     geography: ContextualLinkItem;
     quiz: ContextualLinkItem;
@@ -91,12 +91,12 @@ export function getCountryKnowledgeGraph(country: CountryRecord): CountryKnowled
 
   // Specific 2-way intent subpages
   const intentSubpages = {
-    news: {
-      title: `${country.name} News`,
-      subtitle: 'Real-time wire dispatches and press coverage',
-      href: `/countries/${country.slug}/news`,
-      emoji: '📰',
-      badge: 'News Wire',
+    events: {
+      title: `${country.name} Planetary Events`,
+      subtitle: 'Real-time telemetry and natural phenomena',
+      href: `/countries/${country.slug}`,
+      emoji: '🌍',
+      badge: 'Planetary Telemetry',
     },
     geography: {
       title: `${country.name} Geography`,
@@ -155,7 +155,7 @@ export function getCountryKnowledgeGraph(country: CountryRecord): CountryKnowled
     { title: '3D Interactive Globe', href: '/globe', emoji: '🌍' },
     { title: `${continent.name} Continental Hub`, href: `/continents/${continent.slug}`, emoji: continent.emoji },
     { title: 'Global Weather Map', href: '/weather-map', emoji: '🌤️' },
-    { title: 'World News Map', href: '/world-news-map', emoji: '📰' },
+    { title: 'Major World Events', href: '/world-events', emoji: '🪐' },
     { title: 'Play Earth Games', href: '/games', emoji: '🎮' },
   ];
 
@@ -216,11 +216,11 @@ export function getCityKnowledgeGraph(city: CityRecord): CityKnowledgeGraph {
       href: `/countries/${countrySlug}`,
       emoji: parentCountry?.flag || '🏛️',
     },
-    news: {
-      title: `${countryName} National News`,
-      subtitle: 'Wire stories and press dispatches',
-      href: `/countries/${countrySlug}/news`,
-      emoji: '📰',
+    events: {
+      title: `${countryName} Natural Events`,
+      subtitle: 'Planetary events and environmental telemetry',
+      href: `/countries/${countrySlug}`,
+      emoji: '🪐',
     },
     weather: {
       title: `${countryName} National Weather`,

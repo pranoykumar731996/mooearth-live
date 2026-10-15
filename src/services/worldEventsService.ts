@@ -7,11 +7,27 @@
 // unnecessary external API queries per page view.
 
 import { WorldEvent, EventCategory } from '@/types';
-import { fetchLiveNews, searchLiveNews } from './news';
 import { fallbackEvents } from '@/data/events';
 import { COUNTRY_COORDINATES } from '@/lib/constants';
 import { getCountryByName, resolveCanonicalSlug, getAllCountries } from '@/data/countries';
-import { extractPublisher } from './worldNewsService';
+import { fetchLivePlanetaryEvents, planetaryEventToWorldEvent } from './planetaryEngine';
+
+export function extractPublisher(sourceOrTitle: string, originalUrl?: string): string {
+  if (sourceOrTitle && sourceOrTitle.includes(' - ')) {
+    const parts = sourceOrTitle.split(' - ');
+    const candidate = parts[parts.length - 1].trim();
+    if (candidate.length > 1 && !candidate.startsWith('http') && candidate.length < 60) {
+      return candidate;
+    }
+  }
+  if (originalUrl) {
+    try {
+      const parsed = new URL(originalUrl);
+      return parsed.hostname.replace(/^www\./, '');
+    } catch {}
+  }
+  return sourceOrTitle || 'MooEarth Planetary Telemetry';
+}
 
 export interface WorldMajorEvent {
   id: string;
@@ -120,7 +136,7 @@ function transformToMajorEvent(e: WorldEvent, index: number): WorldMajorEvent {
     title: e.title,
     summary: e.summary,
     context,
-    category: e.category || 'breaking',
+    category: e.category || 'science_nature',
     location: {
       city: e.city || countryObj?.capital || 'Capital Region',
       country: countryObj ? countryObj.name : e.country,
@@ -147,8 +163,8 @@ export async function fetchMajorWorldEvents(categoryFilter?: string): Promise<Wo
   }
 
   try {
-    const rawResult = await fetchLiveNews(false);
-    let rawEvents = rawResult.events;
+    const planetaryEvents = await fetchLivePlanetaryEvents(false);
+    let rawEvents: WorldEvent[] = planetaryEvents.map(planetaryEventToWorldEvent);
 
     if (!rawEvents || rawEvents.length === 0) {
       rawEvents = fallbackEvents;

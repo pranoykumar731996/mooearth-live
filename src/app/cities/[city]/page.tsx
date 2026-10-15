@@ -6,7 +6,7 @@ import { getAllCities, getCityBySlug, getNearbyCities } from '@/data/places';
 import { getCountryByName } from '@/data/countries';
 import { getCityKnowledgeGraph } from '@/lib/seo/knowledgeGraph';
 import { fetchCountryWeather } from '@/services/weatherService';
-import { fetchNewsForCity } from '@/services/cityNewsService';
+import { searchPlanetaryEvents, planetaryEventToWorldEvent } from '@/services/planetaryEngine';
 import { shouldIndexCityPage } from '@/lib/seo/cityQualityGate';
 import WebGLGlobeViewer from '@/components/Globe/WebGLGlobeViewer';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
@@ -90,9 +90,9 @@ export default async function CityPage({ params }: CityPageProps) {
   const weatherResult = await fetchCountryWeather(city.coordinates.lat, city.coordinates.lng);
   const { observation, isTemporaryError: isWeatherError } = weatherResult;
 
-  // Fetch verified news for this city
-  const newsResult = await fetchNewsForCity(city.name, city.country);
-  const { articles: newsArticles } = newsResult;
+  // Fetch live planetary and environmental events for this city
+  const rawCityEvents = await searchPlanetaryEvents(city.name);
+  const planetaryArticles = rawCityEvents.map(planetaryEventToWorldEvent);
 
   // Compute geodesic nearby places
   const nearbyPlaces = getNearbyCities(city.coordinates.lat, city.coordinates.lng, 4, city.id);
@@ -431,22 +431,22 @@ export default async function CityPage({ params }: CityPageProps) {
             </section>
           )}
 
-          {/* Relevant News Wire Dispatches */}
-          <section aria-label="City News Dispatches" className="space-y-4">
+          {/* Planetary & Environmental Observations */}
+          <section aria-label="City Planetary Observations" className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                  <span>📰</span> Relevant Wire Dispatches: {city.name}
+                  <span>🌍</span> Planetary & Environmental Telemetry: {city.name}
                 </h2>
                 <p className="text-xs text-white/60">
-                  Verified news stories directly covering events in {city.name} and {city.country}.
+                  Live geophysical observations, atmospheric metrics, and natural events around {city.name}.
                 </p>
               </div>
             </div>
 
-            {newsArticles.length > 0 ? (
+            {planetaryArticles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {newsArticles.slice(0, 4).map(art => (
+                {planetaryArticles.slice(0, 4).map(art => (
                   <article
                     key={art.id}
                     className="p-5 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-3"
@@ -469,14 +469,14 @@ export default async function CityPage({ params }: CityPageProps) {
                     </div>
 
                     <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                      <span className="text-white/40 font-mono text-[10px]">📍 {art.location}</span>
+                      <span className="text-white/40 font-mono text-[10px]">📍 {art.city || art.country}</span>
                       <a
-                        href={art.originalUrl}
+                        href={art.source}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-cyan-400 hover:text-cyan-300 font-semibold"
                       >
-                        Read Source &rarr;
+                        Scientific Source &rarr;
                       </a>
                     </div>
                   </article>
@@ -484,7 +484,7 @@ export default async function CityPage({ params }: CityPageProps) {
               </div>
             ) : (
               <div className="p-6 rounded-xl border border-white/5 bg-white/[0.01] text-center text-xs text-white/50">
-                No active wire dispatches logged for {city.name}. Browse <Link href={`/countries/${city.countrySlug}/news`} className="text-cyan-400 hover:underline">{city.country} National News Desk</Link>.
+                Atmospheric conditions and seismic activity around {city.name} remain stable. Browse live <Link href={`/weather?lat=${city.coordinates.lat}&lng=${city.coordinates.lng}`} className="text-cyan-400 hover:underline">{city.name} Weather Telemetry</Link>.
               </div>
             )}
           </section>

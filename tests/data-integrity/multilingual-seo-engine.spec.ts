@@ -14,7 +14,6 @@ import {
 import sitemap from '../../src/app/sitemap';
 import { generateMetadata as generateWorldMapMeta } from '../../src/app/[lang]/world-map/page';
 import { generateMetadata as generateWeatherMeta } from '../../src/app/[lang]/weather/page';
-import { generateMetadata as generateWorldNewsMeta } from '../../src/app/[lang]/world-news/page';
 import { generateMetadata as generateWorldEventsMeta } from '../../src/app/[lang]/world-events/page';
 import { generateMetadata as generateGamesMeta } from '../../src/app/[lang]/games/page';
 import { generateMetadata as generateGeoQuizMeta } from '../../src/app/[lang]/geography-quiz/page';
@@ -198,15 +197,6 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 10: MULTILINGUAL INTERNATIONAL
         expect(meta.title).toBeTruthy();
         expect(meta.description).toBeTruthy();
         expect(meta.alternates?.canonical).toBe(getCanonicalUrl('/weather', lang));
-      }
-    });
-
-    test('generateMetadata for /world-news creates valid localized metadata across all locales', async () => {
-      for (const lang of SUPPORTED_LOCALES) {
-        const meta = await generateWorldNewsMeta({ params: Promise.resolve({ lang }) });
-        expect(meta.title).toBeTruthy();
-        expect(meta.description).toBeTruthy();
-        expect(meta.alternates?.canonical).toBe(getCanonicalUrl('/world-news', lang));
       }
     });
 
