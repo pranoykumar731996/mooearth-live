@@ -1,4 +1,4 @@
-import { WorldEvent } from '@/types';
+import { WorldEvent, PlanetaryTelemetry } from '@/types';
 import { BoundedMap } from '@/lib/rate-limiter';
 import {
   resolveArticleAccess,
@@ -16,6 +16,7 @@ import {
 } from './newsEngine';
 import { FEATURES } from '@/config/features';
 import { isTakedownActive, getTakedownDetails, generateTombstoneArticle } from './newsEngine/takedownService';
+import { generatePlanetaryBriefing, getPlanetaryEventById, isPlanetaryCategory } from './planetaryEngine';
 
 export interface ArticleDetails {
   id: string;
@@ -641,7 +642,10 @@ export async function fetchOrGenerateArticleDetails(
   summary: string,
   country: string,
   category: string,
-  publishedAt: string
+  publishedAt: string,
+  lat?: number,
+  lng?: number,
+  telemetry?: PlanetaryTelemetry
 ): Promise<ArticleDetails> {
   const cleanTitle = cleanText(title);
   const cleanSummary = cleanText(summary);
@@ -698,6 +702,45 @@ export async function fetchOrGenerateArticleDetails(
         cacheHit: true,
       },
     };
+  }
+
+  // 1.5. Planetary & Earth Intelligence Event Route (Phase 3 Engine)
+  const isPlanetary = isPlanetaryCategory(category) ||
+    id.startsWith('usgs-') ||
+    id.startsWith('eonet-') ||
+    id.startsWith('noaa-') ||
+    id.startsWith('nasa-');
+
+  if (isPlanetary) {
+    let resolvedTelemetry = telemetry;
+    let resolvedLat = lat;
+    let resolvedLng = lng;
+
+    if (!resolvedTelemetry || resolvedLat === undefined || resolvedLng === undefined) {
+      const pe = await getPlanetaryEventById(id);
+      if (pe) {
+        resolvedTelemetry = resolvedTelemetry || pe.planetaryTelemetry;
+        if (resolvedLat === undefined) resolvedLat = pe.lat;
+        if (resolvedLng === undefined) resolvedLng = pe.lng;
+      }
+    }
+
+    const planetaryBriefing = await generatePlanetaryBriefing({
+      id,
+      title: cleanTitle,
+      summary: cleanSummary,
+      country,
+      category,
+      publishedAt,
+      sourceUrl: url,
+      lat: resolvedLat,
+      lng: resolvedLng,
+      telemetry: resolvedTelemetry,
+    });
+
+    articleCache.set(canonicalKey, planetaryBriefing);
+    articleCache.set(specificKey, planetaryBriefing);
+    return planetaryBriefing;
   }
 
   // 2. Check in-flight research map (deduplicate parallel clicks on the same story)

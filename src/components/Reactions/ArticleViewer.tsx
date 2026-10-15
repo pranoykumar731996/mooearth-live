@@ -519,6 +519,16 @@ export default function ArticleViewer({
       publishedAt: activeEvent.publishedAt || new Date().toISOString(),
     });
 
+    if (typeof activeEvent.lat === 'number') {
+      queryParams.set('lat', activeEvent.lat.toString());
+    }
+    if (typeof activeEvent.lng === 'number') {
+      queryParams.set('lng', activeEvent.lng.toString());
+    }
+    if (activeEvent.planetaryTelemetry) {
+      queryParams.set('telemetry', JSON.stringify(activeEvent.planetaryTelemetry));
+    }
+
     fetch(`/api/article?${queryParams.toString()}`)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load article details (HTTP ${res.status})`);

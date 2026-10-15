@@ -21,6 +21,20 @@ export async function GET(request: NextRequest) {
     const country = searchParams.get('country') || 'Global';
     const category = searchParams.get('category') || 'breaking';
     const publishedAt = searchParams.get('publishedAt') || new Date().toISOString();
+    const latParam = searchParams.get('lat');
+    const lngParam = searchParams.get('lng');
+    const lat = latParam ? parseFloat(latParam) : undefined;
+    const lng = lngParam ? parseFloat(lngParam) : undefined;
+
+    let telemetry = undefined;
+    const telemetryRaw = searchParams.get('telemetry');
+    if (telemetryRaw) {
+      try {
+        telemetry = JSON.parse(telemetryRaw);
+      } catch (e) {
+        // Ignore malformed JSON
+      }
+    }
 
     if (!title) {
       return NextResponse.json({ error: 'Missing title parameter' }, { status: 400 });
@@ -33,7 +47,10 @@ export async function GET(request: NextRequest) {
       summary,
       country,
       category,
-      publishedAt
+      publishedAt,
+      lat,
+      lng,
+      telemetry
     );
 
     return NextResponse.json({ article, debug: article.debug || {} });

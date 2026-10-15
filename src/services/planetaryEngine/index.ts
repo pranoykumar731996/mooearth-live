@@ -14,6 +14,7 @@ export * from './usgsClient';
 export * from './nasaEonetClient';
 export * from './noaaSpaceWeatherClient';
 export * from './nasaEarthObsClient';
+export * from './briefingGenerator';
 
 interface CachedPlanetaryStream {
   events: PlanetaryEvent[];
@@ -137,3 +138,27 @@ export function planetaryEventToWorldEvent(pe: PlanetaryEvent): WorldEvent {
     planetaryTelemetry: pe.planetaryTelemetry,
   };
 }
+
+/**
+ * Checks if a given category string is one of the planetary categories
+ */
+export function isPlanetaryCategory(category: string): boolean {
+  return [
+    'seismic',
+    'severe_weather',
+    'wildfires',
+    'space_weather',
+    'climate_oceans',
+    'science_nature'
+  ].includes(category);
+}
+
+/**
+ * Retrieves a planetary event by ID from the live or cached stream
+ */
+export async function getPlanetaryEventById(id: string): Promise<PlanetaryEvent | null> {
+  if (!id) return null;
+  const events = await fetchLivePlanetaryEvents();
+  return events.find((e) => e.id === id) || null;
+}
+
