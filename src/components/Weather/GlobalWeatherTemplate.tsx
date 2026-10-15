@@ -307,8 +307,8 @@ export default function GlobalWeatherTemplate({
                 <Link href={getHref('/weather/india')} className="hover:text-cyan-400 underline">India Weather</Link>
                 <Link href={getHref('/weather/brazil')} className="hover:text-cyan-400 underline">Brazil Weather</Link>
               </div>
-              <Link href={getHref('/world-news-map')} className="text-cyan-400 hover:text-cyan-300 font-medium">
-                View 3D World News Map →
+              <Link href={getHref('/world-map')} className="text-cyan-400 hover:text-cyan-300 font-medium">
+                View 3D Interactive World Map →
               </Link>
             </div>
           </section>

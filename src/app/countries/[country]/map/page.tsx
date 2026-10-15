@@ -200,9 +200,6 @@ export default async function CountryMapPage({ params }: CountryMapPageProps) {
             <Link href={`/countries/${country.slug}`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               Overview Atlas
             </Link>
-            <Link href={`/countries/${country.slug}/news`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
-              📰 News
-            </Link>
             <Link href={`/countries/${country.slug}/geography`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               🏔️ Geography
             </Link>
@@ -379,9 +376,6 @@ export default async function CountryMapPage({ params }: CountryMapPageProps) {
             <div className="flex flex-wrap gap-2 text-xs">
               <Link href={`/countries/${country.slug}`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
                 🏛️ Overview Atlas
-              </Link>
-              <Link href={`/countries/${country.slug}/news`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
-                📰 Live News Dispatches
               </Link>
               <Link href={`/countries/${country.slug}/geography`} className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-colors">
                 🏔️ Physical Geography

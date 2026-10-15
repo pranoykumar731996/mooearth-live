@@ -181,11 +181,11 @@ export default function ExplorePage() {
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '16px', opacity: 0.8 }}>Browse by Topic</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
               {[
-                { name: 'News', href: '/news', emoji: '📰' },
+                { name: 'World Events', href: '/world-events', emoji: '🪐' },
                 { name: 'Sports', href: '/sports', emoji: '🏅' },
-                { name: 'Technology', href: '/technology', emoji: '💻' },
-                { name: 'Business', href: '/business', emoji: '📈' },
-                { name: 'Weather', href: '/weather', emoji: '🌤️' },
+                { name: 'Weather Radar', href: '/weather', emoji: '🌤️' },
+                { name: '3D World Map', href: '/world-map', emoji: '🗺️' },
+                { name: 'Play Earth Games', href: '/games', emoji: '🎮' },
               ].map((topic) => (
                 <Link
                   key={topic.name}

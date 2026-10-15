@@ -81,12 +81,12 @@ export default function NotFound() {
           </Link>
 
           <Link
-            href="/news"
+            href="/world-events"
             className="p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-rose-500/40 transition-all group cursor-pointer"
           >
-            <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">📰</div>
-            <div className="text-xs font-bold text-white group-hover:text-rose-300">World News</div>
-            <div className="text-[10px] text-white/40">Global events feed</div>
+            <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">🪐</div>
+            <div className="text-xs font-bold text-white group-hover:text-rose-300">World Events</div>
+            <div className="text-[10px] text-white/40">Planetary telemetry</div>
           </Link>
         </div>
 

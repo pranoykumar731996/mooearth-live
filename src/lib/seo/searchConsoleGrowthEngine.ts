@@ -200,7 +200,7 @@ export function detectHighImpressionLowCtr(
       else if (page.startsWith('/cities/')) pageType = 'City Page';
       else if (page.startsWith('/continents/')) pageType = 'Continent Hub';
       else if (page.startsWith('/games') || page.includes('quiz')) pageType = 'Game / Quiz';
-      else if (page.startsWith('/news') || page.startsWith('/weather')) pageType = 'News / Weather';
+      else if (page.startsWith('/weather') || page.startsWith('/world-events')) pageType = 'Weather / Events';
 
       const topQuery = data.queries[0] || 'world map exploration';
 
@@ -608,8 +608,8 @@ export const DETERMINISTIC_QUERY_PATTERNS: SearchConsoleQueryRecord[] = [
     position: 9.3, // Ranking 5-20
   },
   {
-    query: 'world news on 3d globe',
-    page: '/world-news',
+    query: 'world events on 3d globe',
+    page: '/world-events',
     country: 'United States',
     device: 'desktop',
     impressions: 1400,

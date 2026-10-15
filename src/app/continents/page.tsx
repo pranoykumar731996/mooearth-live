@@ -139,7 +139,7 @@ export default function ContinentsIndexPage() {
             <span className="text-white font-semibold">Related Directories:</span>
             <Link href="/world-map" className="text-emerald-400 hover:underline">195 Sovereign Countries Map</Link>
             <Link href="/weather-map" className="text-emerald-400 hover:underline">Global 3D Weather Map</Link>
-            <Link href="/world-news-map" className="text-emerald-400 hover:underline">World News Map</Link>
+            <Link href="/games" className="text-emerald-400 hover:underline">Play Earth Games</Link>
             <Link href="/world-events" className="text-emerald-400 hover:underline">Major World Events</Link>
             <Link href="/daily" className="text-emerald-400 hover:underline">Daily Earth Challenge</Link>
           </section>

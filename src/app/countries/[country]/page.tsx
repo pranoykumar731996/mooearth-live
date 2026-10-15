@@ -209,9 +209,6 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             <span className="px-3 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
               Atlas Overview (Active)
             </span>
-            <Link href={`/countries/${country.slug}/news`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
-              📰 News
-            </Link>
             <Link href={`/countries/${country.slug}/geography`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               🏔️ Geography
             </Link>
@@ -433,21 +430,21 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             </div>
           </section>
 
-          {/* Latest Relevant Events / News */}
-          <section aria-label="Latest News and Events" className="space-y-4">
+          {/* Latest Relevant Events / Planetary Telemetry */}
+          <section aria-label="Latest Events and Planetary Telemetry" className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                  <span>📰</span> Latest News & Live Events in {country.name}
+                  <span>🪐</span> Latest Planetary &amp; Natural Events in {country.name}
                 </h2>
-                <p className="text-xs text-white/60">Real-time global news dispatches, cultural events, and technological breakthroughs.</p>
+                <p className="text-xs text-white/60">Real-time planetary telemetry, scientific observations, and geophysical events.</p>
               </div>
               <div className="flex items-center gap-3">
-                <Link href={`/countries/${country.slug}/news`} className="text-xs text-cyan-400 hover:underline shrink-0">
-                  {country.name} News Wire &rarr;
+                <Link href="/world-events" className="text-xs text-cyan-400 hover:underline shrink-0">
+                  Global World Events &rarr;
                 </Link>
-                <Link href="/news" className="text-xs text-cyan-400 hover:underline shrink-0">
-                  Global Wire &rarr;
+                <Link href="/live-events" className="text-xs text-cyan-400 hover:underline shrink-0">
+                  Live Feed &rarr;
                 </Link>
               </div>
             </div>
@@ -474,13 +471,13 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             ) : (
               <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.01] text-center space-y-2">
                 <p className="text-xs text-white/50">
-                  No breaking alerts currently logged for {country.name}. Connect with live global feeds or inspect neighboring regional news.
+                  No active geophysical alerts currently logged for {country.name}. Connect with live planetary telemetry across global monitoring stations.
                 </p>
                 <Link
-                  href={`/countries/${country.slug}/news`}
+                  href="/world-events"
                   className="inline-block text-xs text-cyan-400 hover:underline font-semibold"
                 >
-                  Explore {country.name} News Wire Dispatches &rarr;
+                  Explore Global Planetary Telemetry &rarr;
                 </Link>
               </div>
             )}
@@ -582,7 +579,7 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             <Link href="/continents" className="text-cyan-400 hover:underline">7 Continents Directory</Link>
             <Link href="/globe" className="text-cyan-400 hover:underline">3D Globe Explorer</Link>
             <Link href={`/countries/${country.slug}/geography`} className="text-cyan-400 hover:underline">{country.name} Geography</Link>
-            <Link href={`/countries/${country.slug}/news`} className="text-cyan-400 hover:underline">{country.name} News Wire</Link>
+            <Link href={`/countries/${country.slug}/map`} className="text-cyan-400 hover:underline">{country.name} 3D Map</Link>
             <Link href={`/weather/${country.slug}`} className="text-cyan-400 hover:underline">{country.name} Weather Station</Link>
             <Link href={`/games/geography/${country.slug}`} className="text-cyan-400 hover:underline">{country.name} Game</Link>
             <Link href="/games" className="text-cyan-400 hover:underline">Geography Games Hub</Link>

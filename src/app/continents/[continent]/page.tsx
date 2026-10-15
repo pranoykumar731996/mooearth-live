@@ -347,7 +347,7 @@ export default async function ContinentPage({ params }: ContinentPageProps) {
             <Link href="/continents" className="text-emerald-400 hover:underline">All Continents Directory</Link>
             <Link href="/geography" className="text-emerald-400 hover:underline">World Geography Hub</Link>
             <Link href="/weather-map" className="text-emerald-400 hover:underline">Global 3D Weather Map</Link>
-            <Link href="/world-news-map" className="text-emerald-400 hover:underline">World News Map</Link>
+            <Link href="/world-events" className="text-emerald-400 hover:underline">Major World Events</Link>
             <Link href="/games" className="text-emerald-400 hover:underline">Geography Games Hub</Link>
           </section>
         </main>

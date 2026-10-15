@@ -218,9 +218,6 @@ export default async function CityPage({ params }: CityPageProps) {
             <Link href={`/countries/${city.countrySlug}/weather`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               National Weather
             </Link>
-            <Link href={`/countries/${city.countrySlug}/news`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
-              National News
-            </Link>
             <Link href={`/countries/${city.countrySlug}/geography`} className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 transition-colors">
               National Geography
             </Link>
@@ -596,7 +593,7 @@ export default async function CityPage({ params }: CityPageProps) {
             <Link href="/continents" className="text-cyan-400 hover:underline">7 Continents Directory</Link>
             <Link href={`/countries/${city.countrySlug}/weather`} className="text-cyan-400 hover:underline">{city.country} Weather</Link>
             <Link href={`/weather/${city.slug}`} className="text-cyan-400 hover:underline">{city.name} Weather Station</Link>
-            <Link href={`/countries/${city.countrySlug}/news`} className="text-cyan-400 hover:underline">{city.country} News Desk</Link>
+            <Link href={`/countries/${city.countrySlug}/geography`} className="text-cyan-400 hover:underline">{city.country} Geography</Link>
             <Link href={`/countries/${city.countrySlug}/map`} className="text-cyan-400 hover:underline">{city.country} 3D Map</Link>
             <Link href={`/games/geography/${city.countrySlug}`} className="text-cyan-400 hover:underline">{city.country} Game</Link>
             <Link href="/world-map" className="text-cyan-400 hover:underline">Interactive World Map</Link>

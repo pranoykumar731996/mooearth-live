@@ -37,13 +37,13 @@ export default function OrganicTelemetryTracker() {
       else if (isYandex) searchEngine = 'yandex';
 
       // Determine page type
-      let pageType: 'home' | 'country' | 'city' | 'continent' | 'game' | 'news' | 'weather' | 'embed' | 'other' = 'other';
+      let pageType: 'home' | 'country' | 'city' | 'continent' | 'game' | 'events' | 'weather' | 'embed' | 'other' = 'other';
       if (pathname === '/') pageType = 'home';
       else if (pathname.startsWith('/countries/') || pathname.includes('/country/')) pageType = 'country';
       else if (pathname.startsWith('/cities/')) pageType = 'city';
       else if (pathname.startsWith('/continents/')) pageType = 'continent';
       else if (pathname.startsWith('/games') || pathname.includes('quiz') || pathname.startsWith('/daily') || pathname.startsWith('/play-earth')) pageType = 'game';
-      else if (pathname.startsWith('/news') || pathname.startsWith('/world-news') || pathname.startsWith('/article/')) pageType = 'news';
+      else if (pathname.startsWith('/world-events') || pathname.startsWith('/live-events')) pageType = 'events';
       else if (pathname.startsWith('/weather') || pathname.startsWith('/world-weather')) pageType = 'weather';
       else if (pathname.startsWith('/embed')) pageType = 'embed';
 

@@ -144,10 +144,10 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
                 🗺️ Country Profile
               </Link>
               <Link
-                href={`/countries/${countrySlug}/news`}
+                href={`/countries/${countrySlug}/map`}
                 className="px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors bg-white/5 hover:bg-white/10 text-white/80 border-white/10"
               >
-                📰 Country News
+                🗺️ 3D Map
               </Link>
               <Link
                 href={`/games/geography/${countrySlug}`}

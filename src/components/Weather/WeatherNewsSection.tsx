@@ -69,8 +69,8 @@ export default function WeatherNewsSection({
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 text-xs font-bold text-white/90">
-          <span>📰</span>
-          <span>Regional News & Earth Events</span>
+          <span>🪐</span>
+          <span>Regional Planetary &amp; Natural Events</span>
         </div>
         <span className="text-[10px] text-white/40 font-mono">
           {country || locationName}
@@ -79,7 +79,7 @@ export default function WeatherNewsSection({
 
       {/* Pipeline Independence Notice */}
       <p className="text-[10px] text-white/35 leading-tight mb-3">
-        Independent telemetry: Meteorological data and news articles originate from distinct automated data streams.
+        Independent telemetry: Meteorological observations and planetary events originate from distinct scientific automated streams.
       </p>
 
       {/* Loading Skeleton */}
@@ -94,20 +94,23 @@ export default function WeatherNewsSection({
       {!loading && news.length > 0 && (
         <div className="space-y-2">
           {news.map((item) => {
-            const articleUrl = `/news?country=${encodeURIComponent(item.country || '')}`;
+            const articleUrl = item.url || item.planetaryTelemetry?.externalDataUrl || '/world-events';
+            const isExternal = Boolean(item.url || item.planetaryTelemetry?.externalDataUrl);
             return (
               <a
                 key={item.id}
                 href={articleUrl}
+                target={isExternal ? '_blank' : undefined}
+                rel={isExternal ? 'noopener noreferrer' : undefined}
                 className="block p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-cyan-500/30 transition-all group"
               >
                 <div className="text-xs font-semibold text-white/90 group-hover:text-cyan-300 transition-colors line-clamp-2 leading-snug mb-1">
                   {item.title}
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-white/45">
-                  <span className="truncate max-w-[150px]">{item.source || 'Verified Source'}</span>
+                  <span className="truncate max-w-[150px]">{item.source || 'NASA / USGS Scientific Telemetry'}</span>
                   <span className="text-cyan-400/70 font-mono group-hover:text-cyan-300">
-                    Explore News →
+                    View Telemetry →
                   </span>
                 </div>
               </a>

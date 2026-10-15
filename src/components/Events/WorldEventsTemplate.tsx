@@ -153,10 +153,10 @@ export default function WorldEventsTemplate({
                 🔴 Live Events Desk
               </Link>
               <Link
-                href="/world-news-map"
+                href="/world-map"
                 className="px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors bg-white/5 hover:bg-white/10 text-white/70 border-white/10"
               >
-                🗺️ World News Map
+                🗺️ World Map Atlas
               </Link>
               <Link
                 href="/weather-map"
@@ -291,15 +291,15 @@ export default function WorldEventsTemplate({
             <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs text-white/60">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-semibold text-white">Explore Regional Hubs:</span>
-                <Link href={getHref('/world-news')} className="hover:text-cyan-400 underline">Global News Hub</Link>
+                <Link href={getHref('/world-map')} className="hover:text-cyan-400 underline">World Map Atlas</Link>
                 <Link href={getHref('/weather')} className="hover:text-cyan-400 underline">World Weather</Link>
-                <Link href={getHref('/world-news-map')} className="hover:text-cyan-400 underline">World News Map</Link>
+                <Link href={getHref('/weather-map')} className="hover:text-cyan-400 underline">Global Weather Map</Link>
                 <Link href={getHref('/countries/united-states')} className="hover:text-cyan-400 underline">United States</Link>
                 <Link href={getHref('/countries/japan')} className="hover:text-cyan-400 underline">Japan</Link>
                 <Link href={getHref('/countries/germany')} className="hover:text-cyan-400 underline">Germany</Link>
               </div>
-              <Link href={getHref('/live-world-news')} className="text-cyan-400 hover:text-cyan-300 font-medium">
-                View Live Breaking Wire →
+              <Link href={getHref('/live-events')} className="text-cyan-400 hover:text-cyan-300 font-medium">
+                View Live Planetary Feed →
               </Link>
             </div>
           </section>
