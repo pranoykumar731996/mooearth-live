@@ -15,11 +15,11 @@ test.describe('MooEarth Live - Backend REST APIs Integration Tests', () => {
   test('should POST /api/translate return correct localization translations or feature disabled error', async ({ request }) => {
     const response = await request.post('/api/translate', {
       data: {
-        articleId: 'test-article-id',
+        articleId: 'test-planetary-brief-id',
         targetLanguage: 'es',
-        title: 'MooEarth Live News',
-        summary: 'MooEarth is the premium interactive 3D globe.',
-        fullContent: 'MooEarth Live provides live updates, news summaries, and group standings for the World Cup.'
+        title: 'Planetary Seismic Telemetry',
+        summary: 'MooEarth Live is an interactive 3D globe platform.',
+        fullContent: 'MooEarth Live provides real-time planetary events and meteorological telemetry.'
       }
     });
     
@@ -34,12 +34,16 @@ test.describe('MooEarth Live - Backend REST APIs Integration Tests', () => {
     }
   });
 
-  test('should GET /api/article validate and summarize news contents', async ({ request }) => {
+  test('should GET /api/article validate and summarize planetary event contents', async ({ request }) => {
     const params = new URLSearchParams({
-      id: 'test-article-id',
-      url: 'https://news.google.com/rss/articles/CBMi',
-      title: 'Test Article Title',
-      summary: 'Test summary detail'
+      id: 'seismic-test-001',
+      url: 'https://earthquake.usgs.gov/earthquakes/eventpage/us7000m99z',
+      title: 'M 6.1 Earthquake - Near Coast of Honshu, Japan',
+      summary: 'A magnitude 6.1 seismic dislocation occurred at 24 km depth.',
+      country: 'Japan',
+      category: 'seismic',
+      lat: '35.689',
+      lng: '139.692'
     });
     
     const response = await request.get(`/api/article?${params.toString()}`);
@@ -48,6 +52,8 @@ test.describe('MooEarth Live - Backend REST APIs Integration Tests', () => {
     
     const data = await response.json();
     expect(data).toHaveProperty('article');
+    expect(data.article).toHaveProperty('keyFacts');
+    expect(data.article.category).toBe('seismic');
     expect(data).toHaveProperty('debug');
   });
 });

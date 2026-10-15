@@ -43,6 +43,16 @@ export interface TectonicContext {
   tsunamiRisk: string;
 }
 
+function isValidSourceUrl(url?: string): boolean {
+  if (!url) return true;
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Calculates earthquake energy in Joules using Gutenberg-Richter relation:
  * log10(E) = 4.8 + 1.5 * M
@@ -321,7 +331,7 @@ This event was detected, triangulated, and cataloged by the **${telemetry?.senso
         contentRetrieved: true,
         summaryGenerated: true,
         cacheHit: false,
-        validationPassed: true,
+        validationPassed: isValidSourceUrl(sourceUrl),
       }
     };
   }
@@ -375,7 +385,7 @@ Monitored in real time by the **${telemetry?.sensorSource || 'NOAA Space Weather
         contentRetrieved: true,
         summaryGenerated: true,
         cacheHit: false,
-        validationPassed: true,
+        validationPassed: isValidSourceUrl(sourceUrl),
       }
     };
   }
@@ -426,7 +436,7 @@ Data gathered via **NASA Earth Observing System (EONET / FIRMS)** and the Modera
         contentRetrieved: true,
         summaryGenerated: true,
         cacheHit: false,
-        validationPassed: true,
+        validationPassed: isValidSourceUrl(sourceUrl),
       }
     };
   }
@@ -472,7 +482,7 @@ Observation recorded by **${telemetry?.sensorSource || 'NASA Earth Observatory &
       contentRetrieved: true,
       summaryGenerated: true,
       cacheHit: false,
-      validationPassed: true,
+      validationPassed: isValidSourceUrl(sourceUrl),
     }
   };
 }
@@ -620,7 +630,7 @@ OUTPUT JSON FORMAT (Respond ONLY with valid JSON):
           contentRetrieved: true,
           summaryGenerated: true,
           cacheHit: false,
-          validationPassed: true,
+          validationPassed: isValidSourceUrl(sourceUrl),
         }
       };
     }

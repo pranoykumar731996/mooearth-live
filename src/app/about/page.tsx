@@ -3,13 +3,13 @@ import GlobalFooter from '@/components/Layout/GlobalFooter';
 
 export const metadata: Metadata = {
   title: 'About Us',
-  description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
+  description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time planetary telemetry.',
   alternates: {
     canonical: 'https://www.mooearth.live/about',
   },
   openGraph: {
     title: 'About Us | MooEarth Live',
-    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
+    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time planetary telemetry.',
     url: 'https://www.mooearth.live/about',
     type: 'website',
     siteName: 'MooEarth Live',
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'About Us | MooEarth Live',
-    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time news.',
+    description: 'Learn about MooEarth Live (also known as MooEarth or Moo Earth), the interactive 3D globe platform connecting people to world exploration, geography discovery, and real-time planetary telemetry.',
     images: ['https://www.mooearth.live/icons/icon-512.png'],
   },
 };
@@ -61,20 +61,20 @@ export default function About() {
               <h2 className="text-2xl font-semibold mt-8 mb-4">Connecting You to Every Country on Earth</h2>
               <p>MooEarth.Live is an interactive global platform designed to help people discover what&apos;s happening anywhere in the world.</p>
               <p>Our mission is simple:</p>
-              <p><strong>Touch any country on the globe or search for any nation, and instantly explore its latest news, important events, sports, technology, business, entertainment, weather, culture, and much more—all in one place.</strong></p>
+              <p><strong>Touch any country on the globe or search for any nation, and instantly explore its real-time planetary telemetry, meteorological patterns, sports, geography challenges, and cultural insights—all in one place.</strong></p>
               <p>We believe the world should be easier to explore.</p>
-              <p>Instead of searching across dozens of websites, MooEarth.Live brings global information together through an interactive 3D Earth experience.</p>
+              <p>Instead of searching across dozens of websites, MooEarth.Live brings global scientific and geographical information together through an interactive 3D Earth experience.</p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">Our Mission</h2>
-              <p>Our mission is to make every country on Earth instantly accessible through information.</p>
-              <p>Whether you want to follow global headlines, explore another nation&apos;s culture, stay informed about breaking events, or discover what&apos;s happening in real time, MooEarth.Live helps you experience the world through a single interactive platform.</p>
+              <p>Our mission is to make every country on Earth instantly accessible through spatial information and open planetary telemetry.</p>
+              <p>Whether you want to track global earthquakes and space weather, explore another nation&apos;s geography, monitor severe storms, or discover what&apos;s happening across planetary systems in real time, MooEarth.Live helps you experience the world through a single interactive platform.</p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">Why MooEarth.Live Exists</h2>
-              <p>Today, finding information about different countries often means switching between search engines, news websites, sports platforms, weather services, and social media.</p>
+              <p>Today, finding planetary and geographical information about different countries often means switching between disparate space agency dashboards, weather radars, sports databases, and static atlases.</p>
               <p>We wanted to build something different.</p>
               <p>A place where the Earth itself becomes your navigation.</p>
               <p>Simply rotate the globe, tap any country, or search for its name, and immediately discover what&apos;s happening there.</p>
@@ -97,16 +97,16 @@ export default function About() {
 
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">Our Vision</h2>
-              <p>We envision MooEarth.Live becoming the world&apos;s interactive information globe.</p>
-              <p>A platform where anyone can explore any country, understand what&apos;s happening there in real time, and experience global events from a local perspective.</p>
-              <p>Whether it&apos;s breaking news, international sports, technology, business, weather, or cultural moments, our goal is to make the entire world easier to discover.</p>
+              <p>We envision MooEarth.Live becoming the world&apos;s interactive planetary and geographic globe.</p>
+              <p>A platform where anyone can explore any country, understand what&apos;s happening there in real time, and experience global environmental phenomena from an intuitive perspective.</p>
+              <p>Whether it&apos;s seismic anomalies, severe weather fronts, international football, space weather disturbances, or geographical discovery, our goal is to make the entire world easier to understand.</p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">Our Commitment</h2>
               <p>We are committed to building a fast, reliable, mobile-friendly platform that makes exploring the world simple, engaging, and accessible for everyone.</p>
-              <p>Whether you&apos;re following today&apos;s headlines, discovering a new country, tracking a global sporting event, or staying informed about world affairs, MooEarth.Live is your window to the world.</p>
-              <p><strong>One Globe. Every Country. Every Story.</strong> it&apos;s what we made this pwa app for.</p>
+              <p>Whether you&apos;re monitoring planetary dynamics, exploring a new country, tracking an international match, or expanding your geographical knowledge, MooEarth.Live is your window to the world.</p>
+              <p><strong>One Globe. Every Country. Every Discovery.</strong> It&apos;s what we made this interactive platform for.</p>
             </section>
           </div>
         </div>

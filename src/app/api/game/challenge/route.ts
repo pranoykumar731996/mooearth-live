@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
+      sessionId: session.sessionId,
       challenge,
       session: {
         sessionId: session.sessionId,

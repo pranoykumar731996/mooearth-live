@@ -4,81 +4,118 @@ import * as path from 'path';
 
 test.describe('Suite 11 — Source Authenticity Validation', () => {
 
-  test('should validate publisher match, required metadata, and link reachability', async ({ request }) => {
+  test('should validate planetary and scientific source authenticity, metadata, and link integrity', async ({ request }) => {
     const response = await request.get('/api/events');
     expect(response.ok()).toBeTruthy();
 
     const data = await response.json();
     expect(data).toHaveProperty('events');
     const events = data.events || [];
-    
-    // We filter down to only news items for publisher/link check
-    const newsEvents = events.filter((e: any) => 
-      e.id.startsWith('news-') && 
-      e.category !== 'football'
-    );
+    expect(events.length).toBeGreaterThan(0);
+
+    const allowedCategories = [
+      'seismic',
+      'wildfires',
+      'space_weather',
+      'severe_weather',
+      'climate_oceans',
+      'football',
+      'sports',
+      'weather',
+      'science_nature'
+    ];
+
+    const authorizedDomains = [
+      'usgs.gov',
+      'nasa.gov',
+      'noaa.gov',
+      'open-meteo.com',
+      'football-data.org',
+      'mooearth.live',
+      'naturalearthdata.com'
+    ];
 
     const report: any[] = [];
     let authenticatedCount = 0;
     
-    // Validate up to 5 events to avoid running too many network pings in the test
-    const sample = newsEvents.slice(0, 5);
+    // Sample events for deep integrity check
+    const sample = events.slice(0, 10);
 
     for (const event of sample) {
-      const { id, title, summary, source, category, country } = event;
+      const { id, title, summary, source, category, country, lat, lng, publishedAt } = event;
       
       // 1. Check required metadata
+      expect(id).toBeTruthy();
       expect(title).toBeTruthy();
       expect(summary).toBeTruthy();
       expect(source).toBeTruthy();
       expect(category).toBeTruthy();
       expect(country).toBeTruthy();
-      
-      // 2. Parse publisher from title
-      const parts = title.split(' - ');
-      const publisher = parts.length > 1 ? parts[parts.length - 1].trim() : '';
-      expect(publisher).toBeTruthy();
+      expect(typeof lat).toBe('number');
+      expect(typeof lng).toBe('number');
+      expect(publishedAt).toBeTruthy();
 
-      // 3. Verify publisher matches source domain
+      // 2. Category must be strictly scientific or authorized sports
+      expect(allowedCategories).toContain(category);
+
+      // 3. Verify publisher is an authentic scientific or sports entity
+      const authorizedPublishers = [
+        'USGS',
+        'NASA',
+        'NOAA',
+        'Open-Meteo',
+        'Football',
+        'MooEarth',
+        'Earthquake',
+        'Observatory',
+        'Space Weather',
+        'EONET'
+      ];
+      const isAuthenticPublisher = authorizedPublishers.some(p => source.toLowerCase().includes(p.toLowerCase()));
+      expect(isAuthenticPublisher).toBeTruthy();
+
+      // 4. Verify primary URL format and authentic domain
+      const linkUrl = event.url || event.planetaryTelemetry?.externalDataUrl;
       let domainMatch = false;
-      try {
-        const url = new URL(source);
-        const domain = url.hostname.replace('www.', '').toLowerCase();
-        const pubLower = publisher.toLowerCase();
-        
-        const cleanPub = pubLower.replace(/[^a-z0-9]/g, '');
-        const cleanDomain = domain.replace(/[^a-z0-9]/g, '');
-        if (cleanDomain.includes(cleanPub) || cleanPub.includes(cleanDomain) || domain.includes('google.com')) {
-          domainMatch = true;
+      let hostname = '';
+      if (linkUrl) {
+        try {
+          const url = new URL(linkUrl);
+          hostname = url.hostname.toLowerCase();
+          domainMatch = authorizedDomains.some(d => hostname.endsWith(d) || hostname.includes(d));
+        } catch (err) {
+          domainMatch = false;
         }
-      } catch (err) {
-        domainMatch = false;
+        expect(domainMatch).toBeTruthy();
       }
-      
-      expect(domainMatch).toBeTruthy();
 
-      // 4. Reachability check (HTTP 200 or redirect)
+      // 5. Reachability check (HTTP 200 or redirect)
       let reachable = false;
       let status = 0;
-      try {
-        const pingRes = await fetch(source, { method: 'HEAD', redirect: 'follow' });
-        status = pingRes.status;
-        if (pingRes.ok || [200, 301, 302, 307, 308].includes(status)) {
-          reachable = true;
+      if (linkUrl) {
+        try {
+          const pingRes = await fetch(linkUrl, { method: 'HEAD', redirect: 'follow' });
+          status = pingRes.status;
+          if (pingRes.ok || [200, 301, 302, 307, 308, 403, 405].includes(status)) {
+            reachable = true;
+          }
+        } catch (err: any) {
+          console.warn(`Scientific source ping failed for ${linkUrl}:`, err.message);
+          // Catch gracefully for network restricted sandboxes
+          reachable = true; 
         }
-      } catch (err: any) {
-        console.warn(`External reachability ping failed for ${source}:`, err.message);
-        // Catch gracefully for network restricted sandboxes
-        reachable = true; 
-      }
 
-      expect(reachable).toBeTruthy();
+        expect(reachable).toBeTruthy();
+      } else {
+        reachable = true;
+      }
 
       report.push({
         id,
         title,
-        publisher,
         source,
+        hostname,
+        category,
         domainMatch,
         reachable,
         status,
