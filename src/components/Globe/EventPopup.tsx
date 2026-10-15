@@ -148,7 +148,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
             className="w-[90vw] max-w-[460px] rounded-3xl p-6 glass pointer-events-auto"
             style={{
               background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.85) 100%)',
-              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category].glowColor}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
+              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
               maxHeight: '70vh',
               display: 'flex',
               flexDirection: 'column',
@@ -209,14 +209,62 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                     <span className="font-medium text-white/70">{event.city}, {getLocalizedCountryName(event.country, locale)}</span>
                   </div>
 
-                  {/* AI Summary */}
+                  {/* Scientific Telemetry Box if available */}
+                  {event.planetaryTelemetry && (
+                    <div className="grid grid-cols-2 gap-2 my-2 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-xs">
+                      {typeof event.planetaryTelemetry.magnitude === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">
+                            {event.category === 'seismic' ? 'Richter Magnitude' : 'Intensity'}
+                          </span>
+                          <span className="font-black text-rose-400 text-sm">
+                            {event.category === 'seismic' ? `M ${event.planetaryTelemetry.magnitude.toFixed(1)}` : `${event.planetaryTelemetry.magnitude}`}
+                          </span>
+                        </div>
+                      )}
+                      {typeof event.planetaryTelemetry.depthKm === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Focal Depth</span>
+                          <span className="font-black text-cyan-300 text-sm">{event.planetaryTelemetry.depthKm.toFixed(1)} km</span>
+                        </div>
+                      )}
+                      {event.planetaryTelemetry.tsunamiWarning !== undefined && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Tsunami Status</span>
+                          <span className={`font-bold ${event.planetaryTelemetry.tsunamiWarning ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {event.planetaryTelemetry.tsunamiWarning ? '⚠️ Advisory Active' : '✅ No Alert'}
+                          </span>
+                        </div>
+                      )}
+                      {typeof event.planetaryTelemetry.kpIndex === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Planetary Kp Index</span>
+                          <span className="font-black text-purple-400 text-sm">Kp {event.planetaryTelemetry.kpIndex}</span>
+                        </div>
+                      )}
+                      {typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Sustained Winds</span>
+                          <span className="font-black text-blue-400 text-sm">{event.planetaryTelemetry.windSpeedKph} km/h</span>
+                        </div>
+                      )}
+                      {event.planetaryTelemetry.sensorSource && (
+                        <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-white/50">
+                          <span>Observation Network:</span>
+                          <span className="font-semibold text-white/70">{event.planetaryTelemetry.sensorSource}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Summary Briefing */}
                   <div className="rounded-2xl p-5 border border-white/5 relative overflow-hidden"
                     style={{ background: 'rgba(0,229,255,0.03)' }}
                   >
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-400 to-blue-600" />
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest">
-                        {t('articleViewer.aiSummaryBadge', 'AI Summary')}
+                        {event.planetaryTelemetry ? 'Scientific Briefing' : t('articleViewer.aiSummaryBadge', 'AI Summary')}
                       </span>
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                     </div>
@@ -233,7 +281,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
               <div className="flex items-center gap-3 shrink-0 pt-1">
                 <a
                   id="event-popup-source"
-                  href={event.source}
+                  href={event.url || (event.source.startsWith('http') ? event.source : 'https://earthquake.usgs.gov')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold

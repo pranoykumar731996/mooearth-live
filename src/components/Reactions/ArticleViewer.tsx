@@ -1042,6 +1042,58 @@ export default function ArticleViewer({
 
             {renderDebugPanel()}
 
+            {/* Scientific Telemetry Panel for Planetary Events */}
+            {activeEvent.planetaryTelemetry && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-xs">
+                {typeof activeEvent.planetaryTelemetry.magnitude === 'number' && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">Magnitude</span>
+                    <span className="text-base font-black text-rose-400 font-mono">
+                      M {activeEvent.planetaryTelemetry.magnitude.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+                {typeof activeEvent.planetaryTelemetry.depthKm === 'number' && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">Focal Depth</span>
+                    <span className="text-sm font-black text-amber-300 font-mono">
+                      {activeEvent.planetaryTelemetry.depthKm} km
+                    </span>
+                  </div>
+                )}
+                {activeEvent.planetaryTelemetry.tsunamiWarning !== undefined && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">Tsunami Status</span>
+                    <span className={`text-xs font-black font-mono ${activeEvent.planetaryTelemetry.tsunamiWarning ? 'text-amber-400 animate-pulse' : 'text-emerald-400'}`}>
+                      {activeEvent.planetaryTelemetry.tsunamiWarning ? '⚠️ Advisory Active' : '✅ No Alert'}
+                    </span>
+                  </div>
+                )}
+                {typeof activeEvent.planetaryTelemetry.windSpeedKph === 'number' && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">Sustained Winds</span>
+                    <span className="text-sm font-black text-cyan-400 font-mono">
+                      {activeEvent.planetaryTelemetry.windSpeedKph} km/h
+                    </span>
+                  </div>
+                )}
+                {typeof activeEvent.planetaryTelemetry.kpIndex === 'number' && (
+                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">Geomagnetic Kp</span>
+                    <span className="text-base font-black text-purple-400 font-mono">
+                      Kp {activeEvent.planetaryTelemetry.kpIndex}
+                    </span>
+                  </div>
+                )}
+                {activeEvent.planetaryTelemetry.sensorSource && (
+                  <div className="col-span-2 sm:col-span-4 pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-white/50">
+                    <span>Observation Network:</span>
+                    <span className="font-semibold text-white/70">{activeEvent.planetaryTelemetry.sensorSource}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Key Facts */}
             {articleDetails?.keyFacts && articleDetails.keyFacts.length > 0 && (
               <div

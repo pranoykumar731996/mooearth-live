@@ -640,12 +640,24 @@ export default function LiveFeed({
                           <p className="text-sm text-white/90 font-medium leading-relaxed mb-2 group-hover:text-white transition-colors line-clamp-2">
                             {event.title}
                           </p>
-                          <div className="flex items-center gap-1.5">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30" strokeWidth="2">
-                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                              <circle cx="12" cy="10" r="3" />
-                            </svg>
-                            <span className="text-xs text-white/40">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30 shrink-0" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                              <span className="text-xs text-white/40 truncate">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
+                            </div>
+                            {typeof event.planetaryTelemetry?.magnitude === 'number' && (
+                              <span className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 tabular-nums">
+                                {event.category === 'seismic' ? `M ${event.planetaryTelemetry.magnitude.toFixed(1)}` : `${event.planetaryTelemetry.magnitude}`}
+                              </span>
+                            )}
+                            {typeof event.planetaryTelemetry?.kpIndex === 'number' && (
+                              <span className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 tabular-nums">
+                                Kp {event.planetaryTelemetry.kpIndex}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -747,12 +759,24 @@ export default function LiveFeed({
                       <p className="text-[11px] text-white/50 leading-relaxed mt-1 line-clamp-2">
                         {event.summary}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30" strokeWidth="2">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span className="text-xs text-white/40">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
+                      <div className="flex items-center justify-between gap-1.5 mt-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/30 shrink-0" strokeWidth="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          <span className="text-xs text-white/40 truncate">{event.city ? `${event.city}, ` : ''}{getLocalizedCountryName(event.country, locale)}</span>
+                        </div>
+                        {typeof event.planetaryTelemetry?.magnitude === 'number' && (
+                          <span className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 tabular-nums">
+                            {event.category === 'seismic' ? `M ${event.planetaryTelemetry.magnitude.toFixed(1)}` : `${event.planetaryTelemetry.magnitude}`}
+                          </span>
+                        )}
+                        {typeof event.planetaryTelemetry?.kpIndex === 'number' && (
+                          <span className="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 tabular-nums">
+                            Kp {event.planetaryTelemetry.kpIndex}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );

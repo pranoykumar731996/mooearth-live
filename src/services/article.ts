@@ -68,7 +68,13 @@ export const CATEGORY_IMAGES: Record<string, string> = {
   technology: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800',
   weather: 'https://images.unsplash.com/photo-1592210454359-9043f067919b?q=80&w=800',
   business: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800',
-  entertainment: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800'
+  entertainment: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800',
+  seismic: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800',
+  severe_weather: 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?q=80&w=800',
+  wildfires: 'https://images.unsplash.com/photo-1518457607834-6e8d80c183c5?q=80&w=800',
+  space_weather: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=800',
+  climate_oceans: 'https://images.unsplash.com/photo-1498084393753-b411b2d26b34?q=80&w=800',
+  science_nature: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800'
 };
 
 const AUTHORS_LIST = [

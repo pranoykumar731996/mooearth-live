@@ -13,7 +13,7 @@ interface CategoryBadgeProps {
 }
 
 export default function CategoryBadge({ category, size = 'sm' }: CategoryBadgeProps) {
-  const config = CATEGORY_MAP[category];
+  const config = CATEGORY_MAP[category] || CATEGORY_MAP.seismic || { label: 'Event', emoji: '🌐', color: '#ef4444', glowColor: 'rgba(239,68,68,0.5)', bgColor: 'rgba(239,68,68,0.15)' };
   const isSmall = size === 'sm';
 
   return (

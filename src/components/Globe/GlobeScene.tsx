@@ -1566,7 +1566,7 @@ const GlobeScene = React.memo(function GlobeScene({
           startLng: events[i].lng,
           endLat: events[i + 1].lat,
           endLng: events[i + 1].lng,
-          color: CATEGORY_MAP[events[i].category].color,
+          color: CATEGORY_MAP[events[i].category]?.color || '#ef4444',
         });
       }
     }
@@ -1608,7 +1608,7 @@ const GlobeScene = React.memo(function GlobeScene({
         maxR: GLOBE_CONFIG.ringMaxRadius,
         propagationSpeed: GLOBE_CONFIG.ringPropagationSpeed,
         repeatPeriod: GLOBE_CONFIG.ringRepeatPeriod,
-        color: CATEGORY_MAP[e.category].glowColor,
+        color: CATEGORY_MAP[e.category]?.glowColor || 'rgba(0, 229, 255, 0.5)',
         event: e,
       }));
     }
@@ -1675,9 +1675,50 @@ const GlobeScene = React.memo(function GlobeScene({
         maxR: GLOBE_CONFIG.ringMaxRadius,
         propagationSpeed: GLOBE_CONFIG.ringPropagationSpeed,
         repeatPeriod: GLOBE_CONFIG.ringRepeatPeriod,
-        color: CATEGORY_MAP[e.category].glowColor,
+        color: CATEGORY_MAP[e.category]?.glowColor || 'rgba(0, 229, 255, 0.5)',
         event: e,
       });
+
+      // Earthquake Richter Shockwave
+      if (e.category === 'seismic') {
+        const mag = e.planetaryTelemetry?.magnitude || 4.5;
+        const maxR = Math.min(16, Math.max(7, mag * 2.0));
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR,
+          propagationSpeed: 2.2,
+          repeatPeriod: 2400,
+          color: mag >= 6.0 ? 'rgba(239, 68, 68, 0.9)' : 'rgba(249, 115, 22, 0.75)',
+          event: e,
+        });
+      }
+
+      // Wildfire Thermal Pulse
+      if (e.category === 'wildfires') {
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR: 9,
+          propagationSpeed: 1.2,
+          repeatPeriod: 2000,
+          color: 'rgba(249, 115, 22, 0.85)',
+          event: e,
+        });
+      }
+
+      // Space Weather / Aurora Glow
+      if (e.category === 'space_weather') {
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR: 14,
+          propagationSpeed: 1.5,
+          repeatPeriod: 2800,
+          color: 'rgba(168, 85, 247, 0.85)',
+          event: e,
+        });
+      }
 
       // Goal Shockwave
       if (e.footballData && e.footballData.goals && e.footballData.goals.length > 0) {
@@ -2040,7 +2081,7 @@ const GlobeScene = React.memo(function GlobeScene({
       }
 
       const event = d as WorldEvent & { color?: string };
-      const config = CATEGORY_MAP[event.category];
+      const config = CATEGORY_MAP[event.category] || CATEGORY_MAP.seismic || { emoji: '🌐', color: '#ef4444', glowColor: 'rgba(239, 68, 68, 0.5)', bgColor: 'rgba(239, 68, 68, 0.15)' };
 
       const el = document.createElement('div');
       el.className = 'globe-marker';

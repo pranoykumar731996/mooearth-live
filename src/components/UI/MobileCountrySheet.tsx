@@ -22,12 +22,12 @@ const PerspectiveLensModal = dynamic(() => import('@/components/UI/PerspectiveLe
 // Categories mapping helper
 const MOBILE_CATEGORIES: { id: string; label: string; emoji: string; categoryValue: EventCategory | 'play_earth' | 'discovery' }[] = [
   { id: 'discovery', label: 'Discovery', emoji: '🌍', categoryValue: 'discovery' },
-  { id: 'news', label: 'News', emoji: '📰', categoryValue: 'breaking' },
-  { id: 'sports', label: 'Sports', emoji: '⚽', categoryValue: 'sports' },
-  { id: 'tech', label: 'Technology', emoji: '💻', categoryValue: 'technology' },
+  { id: 'seismic', label: 'Seismic', emoji: '🌋', categoryValue: 'seismic' },
+  { id: 'wildfires', label: 'Wildfires', emoji: '🔥', categoryValue: 'wildfires' },
+  { id: 'storms', label: 'Storms', emoji: '🌪️', categoryValue: 'severe_weather' },
+  { id: 'space', label: 'Space', emoji: '🚀', categoryValue: 'space_weather' },
   { id: 'weather', label: 'Weather', emoji: '🌦', categoryValue: 'weather' },
-  { id: 'business', label: 'Business', emoji: '💼', categoryValue: 'business' },
-  { id: 'ent', label: 'Entertainment', emoji: '🎬', categoryValue: 'entertainment' },
+  { id: 'sports', label: 'Sports', emoji: '⚽', categoryValue: 'sports' },
   { id: 'play', label: 'Play Earth', emoji: '🎮', categoryValue: 'play_earth' },
 ];
 

@@ -38,12 +38,14 @@ export default function MobileCategoriesSheet({
 
   const categoryOptions: CategoryOption[] = [
     { id: null, name: t('categories.home', 'Home Feed'), desc: t('liveFeed.allLiveEvents', 'All live event updates globally.'), icon: '🏠' },
-    { id: 'breaking', name: t('categories.breaking', 'Breaking News'), desc: t('liveFeed.globalHeadlines', 'Global headlines and stories.'), icon: '📰' },
-    { id: 'football', name: t('categories.sports', 'Sports & Football'), desc: t('liveFeed.sportsUpdates', 'Global matches and sports updates.'), icon: '⚽' },
-    { id: 'technology', name: t('categories.technology', 'Technology'), desc: t('liveFeed.techDevelopments', 'AI, space, and tech developments.'), icon: '💻' },
+    { id: 'seismic', name: 'Earthquakes & Seismic', desc: 'Real-time USGS tectonic events and focal depths.', icon: '🌋' },
+    { id: 'severe_weather', name: 'Severe Storms', desc: 'Cyclones, typhoons, and atmospheric extremes.', icon: '🌪️' },
+    { id: 'wildfires', name: 'Wildfires & Thermal', desc: 'NASA EONET active forest blazes & thermal anomalies.', icon: '🔥' },
+    { id: 'space_weather', name: 'Space & Astronomy', desc: 'NOAA solar flares, Kp index, and auroral events.', icon: '🚀' },
+    { id: 'climate_oceans', name: 'Climate & Oceans', desc: 'Polar sea ice, ocean currents, and climate metrics.', icon: '🌊' },
+    { id: 'science_nature', name: 'Science & Discovery', desc: 'NASA & scientific observation releases.', icon: '🔬' },
     { id: 'weather', name: t('categories.weather', 'Weather Radar'), desc: t('liveFeed.weatherAlerts', 'Climate warnings and weather alerts.'), icon: '🌦️' },
-    { id: 'business', name: t('categories.business', 'Business'), desc: t('liveFeed.businessIndicators', 'GDP and tech funding indicators.'), icon: '📈' },
-    { id: 'entertainment', name: t('categories.entertainment', 'Entertainment'), desc: t('liveFeed.entertainmentBeats', 'Media, cinema, and cultural beats.'), icon: '🎬' },
+    { id: 'football', name: t('categories.sports', 'Sports & Football'), desc: t('liveFeed.sportsUpdates', 'Global matches and sports updates.'), icon: '⚽' },
   ];
   return (
     <AnimatePresence>
