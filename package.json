@@ -28,6 +28,7 @@
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",
     "test:news-engine": "npx tsx scripts/test-news-engine.ts",
     "test:legal-audit": "npx tsx scripts/test-legal-risk-remediation.ts",
+    "test:planetary-engine": "npx tsx scripts/test-planetary-engine.ts",
     "test:weather": "npx tsx scripts/test-weather-suite.ts && npx tsx scripts/test-weather-layers-suite.ts",
     "test:weather-layers": "npx tsx scripts/test-weather-layers-suite.ts",
     "test:city-map": "npx tsx scripts/test-explore-city-suite.ts",

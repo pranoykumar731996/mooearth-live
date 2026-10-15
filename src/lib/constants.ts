@@ -55,6 +55,48 @@ export const CATEGORY_MAP: Record<EventCategory, CategoryConfig> = {
     glowColor: 'rgba(168, 85, 247, 0.5)',
     bgColor: 'rgba(168, 85, 247, 0.15)',
   },
+  seismic: {
+    label: 'Seismic & Volcanic',
+    emoji: '🌋',
+    color: '#ef4444',
+    glowColor: 'rgba(239, 68, 68, 0.6)',
+    bgColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  severe_weather: {
+    label: 'Severe Storms',
+    emoji: '🌪️',
+    color: '#3b82f6',
+    glowColor: 'rgba(59, 130, 246, 0.6)',
+    bgColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  wildfires: {
+    label: 'Wildfires & Thermal',
+    emoji: '🔥',
+    color: '#f97316',
+    glowColor: 'rgba(249, 115, 22, 0.6)',
+    bgColor: 'rgba(249, 115, 22, 0.15)',
+  },
+  space_weather: {
+    label: 'Space & Astronomy',
+    emoji: '🚀',
+    color: '#a855f7',
+    glowColor: 'rgba(168, 85, 247, 0.6)',
+    bgColor: 'rgba(168, 85, 247, 0.15)',
+  },
+  climate_oceans: {
+    label: 'Climate & Oceans',
+    emoji: '🌊',
+    color: '#06b6d4',
+    glowColor: 'rgba(6, 182, 212, 0.6)',
+    bgColor: 'rgba(6, 182, 212, 0.15)',
+  },
+  science_nature: {
+    label: 'Science & Discovery',
+    emoji: '🔬',
+    color: '#10b981',
+    glowColor: 'rgba(168, 85, 247, 0.5)',
+    bgColor: 'rgba(16, 185, 129, 0.15)',
+  },
 };
 
 /** Globe rendering configuration */

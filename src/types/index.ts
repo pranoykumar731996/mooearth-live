@@ -10,7 +10,14 @@ export type EventCategory =
   | 'technology'
   | 'business'
   | 'weather'
-  | 'entertainment';
+  | 'entertainment'
+  // Planetary & Earth Science Categories (Option 3)
+  | 'seismic'
+  | 'severe_weather'
+  | 'wildfires'
+  | 'space_weather'
+  | 'climate_oceans'
+  | 'science_nature';
 
 export interface FootballMatchData {
   homeTeam: string;
@@ -22,6 +29,21 @@ export interface FootballMatchData {
   goals?: { team: 'home' | 'away'; player: string; time: number }[];
   cards?: { team: 'home' | 'away'; player: string; type: 'Yellow' | 'Red'; time: number }[];
   leagueId?: number;   // Competition ID for isolation
+}
+
+/** Scientific telemetry for natural/planetary events */
+export interface PlanetaryTelemetry {
+  magnitude?: number;
+  depthKm?: number;
+  intensity?: string;
+  tsunamiWarning?: boolean;
+  windSpeedKph?: number;
+  pressureHpa?: number;
+  fireRadiativePowerMw?: number;
+  kpIndex?: number;
+  eventStatus?: string;
+  sensorSource?: string;
+  externalDataUrl?: string;
 }
 
 /** A world event displayed on the globe */
@@ -38,6 +60,9 @@ export interface WorldEvent {
   publishedAt: string; // ISO 8601
   footballData?: FootballMatchData; // For V2 Football Engine
   stadium?: string; // Venue stadium name
+  planetaryTelemetry?: PlanetaryTelemetry; // For Planetary Engine
+  url?: string;
+  thumbnail?: string;
 }
 
 /** Visual configuration for a category */
