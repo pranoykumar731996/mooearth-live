@@ -289,6 +289,71 @@ async function runLegalComplianceTests() {
   assert(sanitizedUgc === '😄 Celebration', 'Arbitrary freeform UGC string sanitized to default preset');
   assert(!sanitizedUgc.includes('corrupt') && !sanitizedUgc.includes('criminals'), 'Defamatory words eradicated from reaction');
 
+  // ── TEST GROUP 8: Dynamic Source Suspension & Individual Dataset Audit ──
+  console.log('\n--- 8. Dynamic Source Suspension & Individual Dataset Audit ---');
+
+  const { suspendSource, isSourceSuspended, reinstateSource } = await import('../src/services/newsEngine/sourceRegistry');
+  
+  // Uncataloged government domain requires individual review (not blanket approved)
+  const uncatalogedGov = checkSourcePermission('https://cityofexample.gov/press-release');
+  assert(uncatalogedGov.permissionStatus === 'pending_review', 'Uncataloged .gov domain requires individual audit');
+  assert(uncatalogedGov.isCommercialUseAuthorized === false, 'Uncataloged .gov commercial use flagged false');
+
+  // Specific cataloged open weather API
+  const openMeteo = checkSourcePermission('https://open-meteo.com/en/docs');
+  assert(openMeteo.permissionStatus === 'approved', 'Open-Meteo weather API cataloged as approved');
+  assert(openMeteo.isCommercialUseAuthorized === true, 'Open-Meteo permitted for commercial weather display');
+
+  // Immediate runtime suspension
+  const testSuspendedDomain = 'compromised-wire-outlet.com';
+  assert(isSourceSuspended(testSuspendedDomain) === false, 'Source not suspended initially');
+  suspendSource(testSuspendedDomain, 'Compromised editorial credentials reported.');
+  assert(isSourceSuspended(testSuspendedDomain) === true, 'Source actively suspended after invocation');
+  
+  const suspendedPerm = checkSourcePermission(`https://${testSuspendedDomain}/feed`);
+  assert(suspendedPerm.permissionStatus === 'blocked', 'Suspended source returns blocked permission status');
+  assert(suspendedPerm.aiProcessingAllowed === false, 'Suspended source blocked from AI ingestion');
+
+  reinstateSource(testSuspendedDomain);
+  assert(isSourceSuspended(testSuspendedDomain) === false, 'Source successfully reinstated');
+
+  // ── TEST GROUP 9: Health Misinformation, Election Claims & Emergency Panic ──
+  console.log('\n--- 9. Health Misinformation, Election Claims & Emergency Panic ---');
+
+  // Health claim
+  const healthStory = detectHighImpactAllegations('Researchers claim a miracle cure and secret antidote was discovered.');
+  assert(healthStory.hasAllegation === true, 'Health misinformation claim detected');
+  assert(healthStory.matchedTerms.includes('miracle cure'), 'Matched miracle cure term');
+
+  // Election rigging claim
+  const electionStory = detectHighImpactAllegations('Opposition party alleges a stolen election and rampant ballot stuffing in capital.');
+  assert(electionStory.hasAllegation === true, 'Election integrity allegation detected');
+  assert(electionStory.matchedTerms.includes('stolen election'), 'Matched stolen election term');
+
+  // Emergency panic claim
+  const emergencyStory = detectHighImpactAllegations('Unverified reports of imminent missile strike and radiation leak near the border.');
+  assert(emergencyStory.hasAllegation === true, 'Emergency panic alert detected');
+  assert(emergencyStory.matchedTerms.includes('radiation leak'), 'Matched radiation leak term');
+
+  // ── TEST GROUP 10: Provenance Versioning & Public Complaints ──
+  console.log('\n--- 10. Provenance Versioning & Public Complaints Queue ---');
+
+  // Article provenance
+  assert(typeof detArticle.version === 'number' && detArticle.version >= 1, 'Article has integer version tracking');
+  assert(Array.isArray(detArticle.revisionHistory) && detArticle.revisionHistory.length > 0, 'Article has immutable revision history');
+
+  // Public complaints queue
+  const { recordPublicComplaint, listPublicComplaints } = await import('../src/services/newsEngine/takedownService');
+  const complaint = recordPublicComplaint({
+    target: 'https://example.com/disputed-article',
+    reason: 'Factual inaccuracy in paragraph 2 regarding corporate earnings.',
+    complainantName: 'John Doe',
+    complainantEmail: 'john@example.com',
+  });
+  assert(Boolean(complaint.id), 'Public complaint registered with ID');
+  assert(complaint.status === 'pending_editorial_review', 'Public complaint queued for editorial review (no automatic DoS)');
+  assert(listPublicComplaints().some(c => c.id === complaint.id), 'Complaint present in public complaints registry');
+
   // ── SUMMARY ────────────────────────────────────────────────
   console.log('\n======================================================');
   console.log(`⚖️  Test Results: ${passedTests} Passed, ${failedTests} Failed`);

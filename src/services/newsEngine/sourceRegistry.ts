@@ -238,7 +238,255 @@ export const SOURCE_PERMISSION_REGISTRY: Record<string, SourcePermissionRecord> 
     reviewDate: '2026-10-15',
     supportingEvidence: 'Proprietary financial terminal data and strict subscription paywall.',
   },
+
+  // ── Global Publisher Feeds (Audited Individually for RSS Metadata Only) ─────
+  'aljazeera.com': {
+    provider: 'Al Jazeera Media Network',
+    domain: 'aljazeera.com',
+    termsUrl: 'https://network.aljazeera.net/en/terms-and-conditions',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to Al Jazeera with direct canonical link.',
+    storageRequirement: 'Ephemeral metadata only.',
+    attributionRequirement: 'Al Jazeera citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Terms prohibit unauthorized commercial syndication and full-text AI reproduction.',
+  },
+  'france24.com': {
+    provider: 'France 24 (France Médias Monde)',
+    domain: 'france24.com',
+    termsUrl: 'https://www.france24.com/en/terms-use',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to France 24 with link.',
+    storageRequirement: 'Ephemeral metadata only.',
+    attributionRequirement: 'France 24 citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'French public broadcaster terms restrict commercial reproduction; metadata dispatch permitted.',
+  },
+  'dw.com': {
+    provider: 'Deutsche Welle (DW)',
+    domain: 'dw.com',
+    termsUrl: 'https://www.dw.com/en/terms-of-use/a-1721543',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to Deutsche Welle with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'DW attribution.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'German public broadcaster terms prohibit commercial exploitation without DW Content license.',
+  },
+  'npr.org': {
+    provider: 'National Public Radio (NPR)',
+    domain: 'npr.org',
+    termsUrl: 'https://www.npr.org/about-npr/179876898/terms-of-use',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to NPR with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'NPR attribution.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'NPR terms strictly govern use of NPR feeds and trademarks for commercial purposes.',
+  },
+  'thehindu.com': {
+    provider: 'The Hindu (THG Publishing)',
+    domain: 'thehindu.com',
+    termsUrl: 'https://www.thehindu.com/termsofuse/',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to The Hindu with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'The Hindu citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Indian publisher terms forbid reproduction, mirroring, or scraping without written license.',
+  },
+  'cbc.ca': {
+    provider: 'CBC/Radio-Canada',
+    domain: 'cbc.ca',
+    termsUrl: 'https://www.cbc.ca/aboutcbc/discover/termsofuse.html',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to CBC News with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'CBC News citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Canadian public broadcaster terms require permission for commercial use of feeds.',
+  },
+  'cnbc.com': {
+    provider: 'CNBC (NBCUniversal)',
+    domain: 'cnbc.com',
+    termsUrl: 'https://www.nbcuniversal.com/terms',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to CNBC with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'CNBC citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'NBCUniversal terms strictly forbid scraping, AI training, and unauthorized re-dissemination.',
+  },
+  'arstechnica.com': {
+    provider: 'Ars Technica (Condé Nast)',
+    domain: 'arstechnica.com',
+    termsUrl: 'https://www.condenast.com/user-agreement',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to Ars Technica with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'Ars Technica citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Condé Nast user agreement prohibits commercial scraping and unauthorized distribution.',
+  },
+  'theverge.com': {
+    provider: 'The Verge (Vox Media)',
+    domain: 'theverge.com',
+    termsUrl: 'https://www.voxmedia.com/terms-of-use',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to The Verge with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'The Verge citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Vox Media terms prohibit automated extraction and commercial aggregation.',
+  },
+  'phys.org': {
+    provider: 'Phys.org (Science X)',
+    domain: 'phys.org',
+    termsUrl: 'https://sciencex.com/help/terms/',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to Phys.org with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'Phys.org citation.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Science X terms permit personal RSS access; commercial full-text redistribution prohibited.',
+  },
+  'abc.net.au': {
+    provider: 'Australian Broadcasting Corporation (ABC)',
+    domain: 'abc.net.au',
+    termsUrl: 'https://about.abc.net.au/terms-of-use/',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to ABC News with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'ABC News Australia attribution.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Australian statutory corporation terms prohibit commercial use of feeds without ABC Commercial license.',
+  },
+  'elpais.com': {
+    provider: 'El País (PRISA Media)',
+    domain: 'elpais.com',
+    termsUrl: 'https://elpais.com/estaticos/aviso-legal/',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to El País with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'El País attribution.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Spanish press publisher protected under EU DSM Directive Article 15; scraping/TDM expressly opted out.',
+  },
+  'nhk.or.jp': {
+    provider: 'NHK (Japan Broadcasting Corporation)',
+    domain: 'nhk.or.jp',
+    termsUrl: 'https://www.nhk.or.jp/rules/',
+    permissionStatus: 'restricted',
+    authorizedUseCases: ['rss_headline_metadata_linking'],
+    isCommercialUseAuthorized: false,
+    displayRequirement: 'Attribution to NHK World with link.',
+    storageRequirement: 'Transient metadata only.',
+    attributionRequirement: 'NHK attribution.',
+    aiProcessingAllowed: false,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Japanese public broadcaster terms prohibit unauthorized reproduction and commercial distribution.',
+  },
+
+  // ── Open Meteorological & Scientific Data APIs ──────────────
+  'open-meteo.com': {
+    provider: 'Open-Meteo Weather API',
+    domain: 'open-meteo.com',
+    termsUrl: 'https://open-meteo.com/en/terms',
+    permissionStatus: 'approved',
+    authorizedUseCases: ['weather_forecast_telemetry', 'historical_weather', 'climate_layers'],
+    isCommercialUseAuthorized: true,
+    displayRequirement: 'Attribution to Open-Meteo as weather provider.',
+    storageRequirement: 'Caching of numerical forecasts permitted under Open Data terms.',
+    attributionRequirement: 'Open-Meteo Weather API attribution.',
+    aiProcessingAllowed: true,
+    reviewDate: '2026-10-15',
+    supportingEvidence: 'Open weather data platform utilizing public meteorological models (NOAA GFS, ECMWF, DWD ICON, JMA GSM) under open attribution license.',
+  },
 };
+
+// ── In-Memory Dynamic Suspension Registry ────────────────────
+// Enables instant runtime suspension of any domain/source by editorial or legal desk
+const suspendedSourcesMap = new Map<string, { reason: string; timestamp: string }>();
+
+/**
+ * Immediately suspends a news source or provider domain
+ */
+export function suspendSource(domainOrUrl: string, reason: string): boolean {
+  const domain = normalizeDomain(domainOrUrl);
+  if (!domain) return false;
+  suspendedSourcesMap.set(domain, { reason, timestamp: new Date().toISOString() });
+  console.log(`[SourceRegistry] Source suspended immediately: ${domain}. Reason: ${reason}`);
+  return true;
+}
+
+/**
+ * Checks if a domain is actively suspended
+ */
+export function isSourceSuspended(domainOrUrl: string): boolean {
+  const domain = normalizeDomain(domainOrUrl);
+  if (!domain) return false;
+  if (suspendedSourcesMap.has(domain)) return true;
+  for (const key of suspendedSourcesMap.keys()) {
+    if (domain === key || domain.endsWith(`.${key}`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Reinstates a previously suspended source
+ */
+export function reinstateSource(domainOrUrl: string): boolean {
+  const domain = normalizeDomain(domainOrUrl);
+  if (!domain) return false;
+  return suspendedSourcesMap.delete(domain);
+}
+
+/**
+ * Lists all actively suspended sources
+ */
+export function listSuspendedSources(): Array<{ domain: string; reason: string; timestamp: string }> {
+  return Array.from(suspendedSourcesMap.entries()).map(([domain, data]) => ({
+    domain,
+    reason: data.reason,
+    timestamp: data.timestamp,
+  }));
+}
 
 /**
  * Normalizes host/domain from a URL or raw domain string
@@ -257,8 +505,10 @@ export function normalizeDomain(domainOrUrl: string): string {
 
 /**
  * Checks the permission status and legal restrictions for a source domain.
- * STRICT RULE: Unknown or unverified domains default to 'pending_review'
- * with commercial use disabled.
+ * STRICT COMPLIANCE RULE:
+ * 1. Suspended sources are immediately blocked.
+ * 2. Unregistered or ambiguous domains default to 'pending_review' with commercial/AI disabled.
+ * 3. Official government domains are NOT assumed unrestricted; uncataloged official sites require review.
  */
 export function checkSourcePermission(domainOrUrl: string): SourcePermissionRecord {
   const domain = normalizeDomain(domainOrUrl);
@@ -280,38 +530,43 @@ export function checkSourcePermission(domainOrUrl: string): SourcePermissionReco
     };
   }
 
-  // Check exact domain match
+  // 1. Check immediate runtime suspension
+  if (isSourceSuspended(domain)) {
+    const suspendedData = suspendedSourcesMap.get(domain);
+    return {
+      provider: domain,
+      domain,
+      termsUrl: `https://${domain}`,
+      permissionStatus: 'blocked',
+      authorizedUseCases: [],
+      isCommercialUseAuthorized: false,
+      displayRequirement: 'Access suspended by editorial or legal desk.',
+      storageRequirement: 'Zero storage.',
+      attributionRequirement: 'N/A',
+      aiProcessingAllowed: false,
+      reviewDate: new Date().toISOString().split('T')[0],
+      supportingEvidence: `Source suspended: ${suspendedData?.reason || 'Administrative action'}`,
+    };
+  }
+
+  // 2. Check exact domain match in curated registry
   if (SOURCE_PERMISSION_REGISTRY[domain]) {
     return SOURCE_PERMISSION_REGISTRY[domain];
   }
 
-  // Check parent domain match (e.g. news.bbc.co.uk -> bbc.co.uk)
+  // 3. Check parent domain match (e.g. news.bbc.co.uk -> bbc.co.uk, feeds.a.dj.com -> wsj.com)
   for (const [key, record] of Object.entries(SOURCE_PERMISSION_REGISTRY)) {
     if (domain === key || domain.endsWith(`.${key}`)) {
       return record;
     }
   }
 
-  // Check for public government / primary domains (.gov, .mil, un.org, etc.)
-  if (domain.endsWith('.gov') || domain.endsWith('.mil')) {
-    return {
-      provider: `Official Government Service (${domain})`,
-      domain,
-      termsUrl: `https://${domain}`,
-      permissionStatus: 'approved',
-      authorizedUseCases: ['public_records', 'official_announcements'],
-      isCommercialUseAuthorized: true,
-      displayRequirement: 'Attribution to official government dispatch.',
-      storageRequirement: 'Facts and metadata permitted.',
-      attributionRequirement: `Attribution to ${domain}.`,
-      aiProcessingAllowed: true,
-      reviewDate: new Date().toISOString().split('T')[0],
-      supportingEvidence: 'Official government domain recognized as public record.',
-    };
-  }
+  // 4. Specific known government subdomains handled under parent agencies
+  if (domain.endsWith('.usgs.gov')) return SOURCE_PERMISSION_REGISTRY['usgs.gov'];
+  if (domain.endsWith('.noaa.gov')) return SOURCE_PERMISSION_REGISTRY['noaa.gov'];
 
-  // DEFAULT SAFE HARBOR: Unknown domains are NEVER automatically approved.
-  // Must be marked as pending_review with commercial use false.
+  // 5. DEFAULT SAFE HARBOR: Unknown or uncataloged domains (including generic .gov/.mil)
+  // are NEVER automatically assumed unrestricted. Must be reviewed individually.
   return {
     provider: domain,
     domain,
@@ -324,7 +579,9 @@ export function checkSourcePermission(domainOrUrl: string): SourcePermissionReco
     attributionRequirement: `Explicit attribution to ${domain}.`,
     aiProcessingAllowed: false,
     reviewDate: new Date().toISOString().split('T')[0],
-    supportingEvidence: 'Unregistered domain; permission unverified. Automatically routed to review under Phase 4 compliance protocol.',
+    supportingEvidence: domain.endsWith('.gov') || domain.endsWith('.mil')
+      ? 'Uncataloged government body. Individual datasets, agency images, and contractor works must be audited individually rather than presumed unrestricted.'
+      : 'Unregistered domain; permission unverified. Automatically routed to review under Phase 4 compliance protocol.',
   };
 }
 

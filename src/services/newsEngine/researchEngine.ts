@@ -309,59 +309,6 @@ export async function safeFetchSource(url: string): Promise<{
   }
 }
 
-/**
- * Searches Google News RSS Search for permitted open-web corroboration
- */
-async function searchOpenNewsRss(query: string): Promise<Array<{ title: string; url: string; publisher: string }>> {
-  if (!query || query.length < 3) return [];
-
-  // Phase 2 Compliance: Check configurable Google News RSS switch
-  if (!FEATURES.enableGoogleNewsRss) {
-    console.log('[ResearchEngine] Google News RSS search is disabled by configuration switch / legal audit control.');
-    return [];
-  }
-
-  try {
-    const encoded = encodeURIComponent(query);
-    const rssUrl = `https://news.google.com/rss/search?q=${encoded}&hl=en-US&gl=US&ceid=US:en`;
-    const res = await fetch(rssUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MooEarthLive/2.0',
-      },
-      signal: AbortSignal.timeout(3500),
-    });
-
-    if (!res.ok) return [];
-
-    const xml = await res.text();
-    const items: Array<{ title: string; url: string; publisher: string }> = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-    let match;
-
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 6) {
-      const block = match[1];
-      const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/i);
-      const linkMatch = block.match(/<link>([\s\S]*?)<\/link>/i);
-      const sourceMatch = block.match(/<source[^>]*>([\s\S]*?)<\/source>/i);
-
-      if (titleMatch && linkMatch) {
-        const rawTitle = titleMatch[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
-        const link = linkMatch[1].trim();
-        const pub = sourceMatch ? sourceMatch[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim() : extractPublisherFromUrl(link);
-        
-        items.push({
-          title: rawTitle,
-          url: link,
-          publisher: pub,
-        });
-      }
-    }
-
-    return items;
-  } catch {
-    return [];
-  }
-}
 
 /**
  * Main Multi-Source Research Orchestrator

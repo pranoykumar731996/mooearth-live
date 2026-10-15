@@ -159,3 +159,46 @@ export function generateTombstoneArticle(
 export function listAllTakedowns(): TakedownRecord[] {
   return Array.from(takedownRegistry.values());
 }
+
+export interface PublicComplaintRecord {
+  id: string;
+  target: string;
+  reason: string;
+  complainantName?: string;
+  complainantEmail?: string;
+  timestamp: string;
+  status: 'pending_editorial_review' | 'resolved' | 'dismissed';
+}
+
+const publicComplaintsRegistry = new Map<string, PublicComplaintRecord>();
+
+/**
+ * Registers an unauthenticated public correction/copyright complaint for human review
+ */
+export function recordPublicComplaint(params: {
+  target: string;
+  reason: string;
+  complainantName?: string;
+  complainantEmail?: string;
+}): PublicComplaintRecord {
+  const id = `cpl-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const record: PublicComplaintRecord = {
+    id,
+    target: params.target,
+    reason: params.reason,
+    complainantName: params.complainantName,
+    complainantEmail: params.complainantEmail,
+    timestamp: new Date().toISOString(),
+    status: 'pending_editorial_review',
+  };
+  publicComplaintsRegistry.set(id, record);
+  console.log(`[TakedownService] Registered PUBLIC COMPLAINT ${id} for target: "${params.target}"`);
+  return record;
+}
+
+/**
+ * List all submitted public complaints
+ */
+export function listPublicComplaints(): PublicComplaintRecord[] {
+  return Array.from(publicComplaintsRegistry.values());
+}

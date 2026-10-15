@@ -16,6 +16,7 @@ import {
   PublicationStatus,
 } from './evidenceTypes';
 import { CATEGORY_IMAGES, isValidPublisherOrAuthor } from '../article';
+import { isSourceApprovedForAi } from './sourceRegistry';
 
 function parseJsonFromText(text: string): any {
   try {
@@ -170,6 +171,15 @@ export function generateDeterministicArticle(
     accessLevel: depthMode === 'deep_dive' ? 'full' : (depthMode === 'multi_source' ? 'synthesis' : 'dispatch'),
     accessLabel: depthMode === 'deep_dive' ? 'Deep-Dive Report' : (depthMode === 'multi_source' ? 'Multi-Source Synthesis' : 'Briefing Dispatch'),
     relatedSources: sources.map(s => ({ publisher: s.publisher, url: s.url, title: s.title })),
+    version: 1,
+    revisionHistory: [
+      {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        action: 'initial_publication',
+        reason: 'Synthesized from verified multi-source evidence',
+      },
+    ],
   };
 }
 
@@ -213,15 +223,19 @@ ${JSON.stringify({
   entities: evidence.entities,
   figuresAndDates: evidence.figuresAndDates,
   contradictions: evidence.contradictions,
-  sources: evidence.sources.map(s => ({
-    publisher: s.publisher,
-    title: s.title,
-    accessStatus: s.accessStatus,
-    isPrimary: s.isPrimaryOrOfficial,
-    isSyndicated: s.isSyndicatedOrReprint,
-    excerpt: s.excerpt,
-    contentSample: s.substantiveText ? s.substantiveText.slice(0, 600) : ''
-  })),
+  sources: evidence.sources.map(s => {
+    const isApprovedForAi = isSourceApprovedForAi(s.domain || s.url);
+    return {
+      publisher: s.publisher,
+      title: s.title,
+      accessStatus: s.accessStatus,
+      isPrimary: s.isPrimaryOrOfficial,
+      isSyndicated: s.isSyndicatedOrReprint,
+      // Strict AI compliance: Withhold publisher excerpts from third-party LLMs if source is not approved for AI
+      excerpt: isApprovedForAi ? s.excerpt : '[Excerpt withheld: Non-licensed commercial source - factual metadata only]',
+      contentSample: isApprovedForAi && s.substantiveText ? s.substantiveText.slice(0, 600) : ''
+    };
+  }),
   limitations: evidence.evidenceLimitations,
   repetitionAnalysis: evidence.corroboration.repetitionAnalysis
 }, null, 2)}
@@ -390,5 +404,14 @@ OUTPUT JSON FORMAT:
     accessLevel: evidence.depthMode === 'deep_dive' ? 'full' : (evidence.depthMode === 'multi_source' ? 'synthesis' : 'dispatch'),
     accessLabel: evidence.depthMode === 'deep_dive' ? 'Deep-Dive Report' : (evidence.depthMode === 'multi_source' ? 'Multi-Source Synthesis' : 'Briefing Dispatch'),
     relatedSources: evidence.sources.map(s => ({ publisher: s.publisher, url: s.url, title: s.title })),
+    version: 1,
+    revisionHistory: [
+      {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        action: 'ai_synthesis_publication',
+        reason: `Synthesized via ${provider} (${modelUsed}) from verified multi-source evidence`,
+      },
+    ],
   };
 }

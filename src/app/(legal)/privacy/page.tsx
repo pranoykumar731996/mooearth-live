@@ -83,16 +83,43 @@ export default function PrivacyPolicy() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">7. Data Security & Retention</h2>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">7. Data Security, Retention & Deletion</h2>
           <p>
-            We employ encrypted transit (HTTPS/TLS) and secure Firebase Cloud Firestore rules. You may delete your account, saved places, and discovery history at any time with one click from your Profile Dashboard.
+            We employ encrypted transit (HTTPS/TLS) and secure Firebase Cloud Firestore rules. You may delete your account, saved places, and discovery history at any time with one click from your Profile Dashboard. Inactive guest telemetry expires automatically within 90 days.
           </p>
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">8. Contact Us</h2>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">8. AI Providers & Synthetic Data Disclosure</h2>
           <p>
-            If you have questions about this policy or wish to exercise your data sovereignty rights under GDPR or CCPA/CPRA, please contact us at privacy@mooearth.live.
+            MooEarth.Live utilizes enterprise AI APIs (such as Google Gemini and OpenAI) strictly to process open, non-personal factual news metadata and generate original natural language syntheses.
+          </p>
+          <ul className="list-disc pl-6 space-y-2 mt-2">
+            <li><strong>Zero User Training:</strong> We never transmit your personal profile data, bookmarks, search queries, or private identifiers to third-party AI providers for model training.</li>
+            <li><strong>Factual Grounding:</strong> AI prompts receive only verified factual entity records and timestamps, never personal information.</li>
+            <li><strong>Human Oversight:</strong> High-impact allegations, medical claims, and electoral stories are routed to human editorial review.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">9. Indian Compliance & Grievance Redressal (DPDPA 2023 & IT Rules 2021)</h2>
+          <p>
+            In accordance with India's <strong>Digital Personal Data Protection Act, 2023 (DPDPA)</strong> and Rule 3(2) of the <strong>Information Technology (Intermediary Guidelines and Digital Media Ethics Code) Rules, 2021</strong>, MooEarth.Live has designated a Grievance Redressal Officer:
+          </p>
+          <div className="mt-3 p-4 bg-white/5 border border-white/10 rounded-xl space-y-1 text-xs">
+            <p className="font-semibold text-white">Grievance Officer: Legal & Standards Desk</p>
+            <p>Platform: MooEarth.Live (Operated by Pranoy Kumar)</p>
+            <p>Designation: Grievance & Data Protection Officer</p>
+            <p>Email: <a href="mailto:grievance@mooearth.live" className="text-cyan-400 hover:underline">grievance@mooearth.live</a></p>
+            <p>Acknowledgment: Within 24–36 hours of receipt of complaint</p>
+            <p>Disposal/Resolution Timeline: Within 15 business days as stipulated under applicable Indian law</p>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-white mt-8 mb-3">10. Contact Us</h2>
+          <p>
+            If you have questions about this policy or wish to exercise your data sovereignty rights under GDPR, CCPA/CPRA, or DPDPA 2023, please contact our Data Protection Desk at <a href="mailto:privacy@mooearth.live" className="text-cyan-400 hover:underline">privacy@mooearth.live</a>.
           </p>
         </section>
       </div>

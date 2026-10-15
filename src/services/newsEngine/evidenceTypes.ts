@@ -142,12 +142,19 @@ export interface EvidenceBasedArticle {
   sourceTransparency: SourceTransparencyReport;
   telemetry: ResearchTelemetry;
 
-  // Metadata
+  // Metadata & Provenance
   author?: string;
   image?: string;
   accessLevel: 'full' | 'synthesis' | 'dispatch';
   accessLabel: string;
   relatedSources?: Array<{ publisher: string; url: string; title: string }>;
   topicKeywords?: string[];
+  version?: number;
+  revisionHistory?: Array<{
+    version: number;
+    timestamp: string;
+    action: string;
+    reason?: string;
+  }>;
   debug?: Record<string, any>;
 }

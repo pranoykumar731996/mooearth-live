@@ -36,12 +36,22 @@ export interface QualityGateEvaluation {
  * Stories containing these terms MUST NOT be auto-published without human review.
  */
 const HIGH_IMPACT_ALLEGATION_PATTERNS = [
+  // Criminal / Defamatory Allegations
   /\b(arrested|indicted|charged with|pleaded guilty|convicted of|subpoenaed|grand jury)\b/i,
   /\b(embezzlement|fraud|money laundering|bribery|kickback|ponzi|extortion)\b/i,
   /\b(war crimes|human rights abuses|genocide|treason|espionage|sanctions violation)\b/i,
   /\b(insolvency|bankruptcy fraud|defaulting on debt|illicit trading)\b/i,
   /\b(sexual assault|sexual harassment|sexual misconduct|rape|battery)\b/i,
   /\b(assassinated|murdered|manslaughter|homicide)\b/i,
+
+  // Health / Medical Misinformation & Biological Panic
+  /\b(miracle cure|unproven treatment|secret antidote|vaccine causes|bioweapon leak|engineered pathogen)\b/i,
+
+  // Election Claims / Democratic Process Interference
+  /\b(stolen election|rigged election|ballot stuffing|voter fraud|election overthrown|coup d'état)\b/i,
+
+  // Unverified Catastrophic Emergency / Radiation / Mass Panic Alerts
+  /\b(nuclear strike|radiation leak|dirty bomb|chemical attack|catastrophic meltdown|imminent missile)\b/i,
 ];
 
 export function detectHighImpactAllegations(text: string): {
@@ -199,8 +209,8 @@ export function evaluatePublicationQuality(
     };
   }
 
-  // 1. High-Impact Allegation Check (Defamation & Crime Risk Guard)
-  const combinedTextForAllegations = `${article.title} ${article.aiSummary} ${(article.newlyReportedFacts || []).join(' ')}`;
+  // 1. High-Impact Allegation Check (Defamation, Crime, Health, Election, Emergency Guard)
+  const combinedTextForAllegations = `${article.title} ${article.aiSummary} ${article.fullContent || ''} ${(article.newlyReportedFacts || []).join(' ')}`;
   const allegationCheck = detectHighImpactAllegations(combinedTextForAllegations);
   if (allegationCheck.hasAllegation) {
     reasons.push(
