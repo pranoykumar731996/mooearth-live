@@ -83,15 +83,15 @@ export default function About() {
             <section>
               <h2 className="text-2xl font-semibold mt-8 mb-4">What You Can Explore</h2>
               <ul className="list-none space-y-4">
-                <li><strong>🌍 Interactive 3D Globe:</strong> Navigate the world naturally by selecting any country directly on an interactive Earth.</li>
-                <li><strong>📰 Global News:</strong> Read the latest news from countries around the world.</li>
-                <li><strong>⚽ Sports:</strong> Follow international sporting events, scores, and sports news from around the world.</li>
-                <li><strong>🌦 Weather:</strong> View weather information for countries and regions.</li>
-                <li><strong>💼 Business:</strong> Discover business and economic developments from around the world.</li>
-                <li><strong>💻 Technology:</strong> Stay updated on innovation, startups, AI, and technology news.</li>
-                <li><strong>🎬 Entertainment:</strong> Explore entertainment stories from different countries.</li>
-                <li><strong>🔍 Country Discovery:</strong> Learn about nations through their latest developments, headlines, and events.</li>
-                <li><strong>🤖 AI-Powered Insights:</strong> Receive quick summaries and organized information to help you understand important stories faster.</li>
+                <li><strong>🌍 Interactive 3D Globe:</strong> Navigate the world seamlessly with cinematic atmosphere shaders, night-time city lights, and high-resolution topological bump mapping.</li>
+                <li><strong>🌋 Planetary & Seismic Telemetry:</strong> Track global earthquakes in real time with Richter-scaled shockwaves, focal depth layers, and tectonic fault boundary analysis powered by the USGS.</li>
+                <li><strong>🌪️ Severe Storms & Atmospheric Dynamics:</strong> Monitor cyclonic systems, pressure gradients, and extreme meteorological anomalies.</li>
+                <li><strong>🚀 Space Weather & Aurora Forecasts:</strong> Real-time solar storm alerts, geomagnetic disturbance indices (Kp 0&ndash;9), and auroral visibility predictions from NOAA SWPC.</li>
+                <li><strong>🔥 Wildfire & Thermal Tracking:</strong> View active thermal anomalies and Fire Radiative Power (MW) across global biomes via NASA MODIS and VIIRS satellite sensors.</li>
+                <li><strong>🌤️ Meteorological Intelligence:</strong> Access global weather forecasts, precipitation vectors, and air quality indices powered by Open-Meteo.</li>
+                <li><strong>⚽ Football & Stadium Visualizations:</strong> Follow international match fixtures, live match states, and 3D stadium locations.</li>
+                <li><strong>🎮 Geography & Discovery Games:</strong> Test your knowledge with Flag Quiz, Country Quiz, Capital Quiz, and daily multiplayer challenges.</li>
+                <li><strong>🔬 Objective Scientific Briefings:</strong> Access deep, scientifically grounded briefings backed by direct sensor telemetry from international scientific agencies.</li>
               </ul>
             </section>
 

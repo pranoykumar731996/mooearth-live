@@ -36,20 +36,20 @@ export default function Disclaimer() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">3. External Links and News Aggregation</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">3. External Scientific Repositories and Attribution</h2>
           <p>
-            The site may contain links to other websites or content belonging to or originating from third parties. MooEarth.Live features a news aggregator that links to external sports publishers.
+            The site contains references and outbound links to official scientific repositories (including the USGS, NASA, NOAA, and Open-Meteo). MooEarth.Live provides direct links to primary observational data so users can review authoritative raw measurements.
           </p>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>We do not warrant, endorse, guarantee, or assume responsibility for the accuracy or reliability of any information offered by third-party websites linked through our platform.</li>
-            <li>News articles, opinions, and analyses belong solely to their original authors and publishers.</li>
+          <ul className="list-disc pl-6 space-y-2 mt-2">
+            <li>We do not warrant or assume legal responsibility for service interruptions or sensor calibration adjustments conducted by primary scientific agencies.</li>
+            <li>All agency logos, mission trademarks, and dataset identifiers belong to their respective governmental or institutional organizations.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">4. AI-Generated Summaries</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">4. Scientific Briefings and AI Assistance</h2>
           <p>
-            Some content on MooEarth.Live, including match recaps and news summaries, may be generated or assisted by Artificial Intelligence (AI). While we strive to configure these models for accuracy, AI can occasionally produce incorrect, misleading, or hallucinated information. Users are encouraged to verify critical facts directly with official sports federations or original news sources. Please read our <Link href="/ai-transparency">AI Transparency Policy</Link> for more details.
+            Some content on MooEarth.Live, including geophysical and atmospheric event briefings, may be synthesized or assisted by automated algorithms and Artificial Intelligence (AI) models operating strictly on official sensor telemetry. While designed for physical accuracy and objective scientific rigor, these briefings are intended for educational and situational awareness purposes only. For official civil protection directives or emergency warnings, always consult national disaster response agencies (e.g., USGS, NOAA, FEMA). Please read our <Link href="/ai-transparency">AI Transparency Policy</Link> for more details.
           </p>
         </section>
 
