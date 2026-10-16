@@ -98,6 +98,19 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
 
   const primarySource = event.sources?.[0]?.url || event.link;
 
+  // Extract historical track coordinates for moving storms (cyclones, hurricanes)
+  let trackPoints: { lat: number; lng: number; date?: string; windSpeedKph?: number }[] | undefined;
+  if (Array.isArray(event.geometry) && event.geometry.length > 1) {
+    trackPoints = event.geometry
+      .filter(g => Array.isArray(g.coordinates) && typeof g.coordinates[0] === 'number' && typeof g.coordinates[1] === 'number')
+      .map(g => ({
+        lng: g.coordinates[0] as number,
+        lat: g.coordinates[1] as number,
+        date: g.date,
+        windSpeedKph: g.magnitudeUnit === 'kts' && typeof g.magnitudeValue === 'number' ? Math.round(g.magnitudeValue * 1.852) : undefined,
+      }));
+  }
+
   return {
     id: `eonet-${event.id}`,
     title: `${event.title}`,
@@ -118,6 +131,7 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
       eventStatus: 'active',
       sensorSource: 'NASA Earth Science Division / EONET',
       externalDataUrl: primarySource,
+      trackPoints: trackPoints && trackPoints.length > 1 ? trackPoints : undefined,
     },
   };
 }

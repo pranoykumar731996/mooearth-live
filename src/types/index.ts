@@ -26,6 +26,15 @@ export interface FootballMatchData {
   leagueId?: number;   // Competition ID for isolation
 }
 
+/** Historical coordinate observations for moving events like cyclones */
+export interface EventTrackPoint {
+  lat: number;
+  lng: number;
+  date?: string;
+  windSpeedKph?: number;
+  pressureHpa?: number;
+}
+
 /** Scientific telemetry for natural/planetary events */
 export interface PlanetaryTelemetry {
   magnitude?: number;
@@ -39,6 +48,7 @@ export interface PlanetaryTelemetry {
   eventStatus?: string;
   sensorSource?: string;
   externalDataUrl?: string;
+  trackPoints?: EventTrackPoint[];
 }
 
 /** A world event displayed on the globe */

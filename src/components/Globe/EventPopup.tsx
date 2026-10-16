@@ -13,6 +13,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
+import { getCycloneCategoryLabel } from '@/components/Globe/WeatherLayers';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -259,10 +260,24 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                         </div>
                       )}
                       {typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
-                        <div className="flex flex-col">
-                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Sustained Winds</span>
-                          <span className="font-black text-blue-400 text-sm">{event.planetaryTelemetry.windSpeedKph} km/h</span>
-                        </div>
+                        <>
+                          <div className="flex flex-col">
+                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Sustained Winds</span>
+                            <span className="font-black text-cyan-300 text-sm">
+                              {event.planetaryTelemetry.windSpeedKph} km/h{' '}
+                              <span className="text-white/40 text-[10px] font-normal">
+                                ({Math.round(event.planetaryTelemetry.windSpeedKph / 1.852)} kts)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Storm Category</span>
+                            <span className="font-extrabold text-amber-300 text-xs flex items-center gap-1">
+                              <span>🌀</span>
+                              <span>{getCycloneCategoryLabel(event.planetaryTelemetry.windSpeedKph)}</span>
+                            </span>
+                          </div>
+                        </>
                       )}
                       {event.planetaryTelemetry.sensorSource && (
                         <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-white/50">

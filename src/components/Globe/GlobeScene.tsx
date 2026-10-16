@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -225,6 +225,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const windParticleSystemRef = useRef<WindParticleSystem | null>(null);
   const temperatureLayerRef = useRef<TemperatureHeatmapLayer | null>(null);
   const precipitationLayerRef = useRef<PrecipitationLayer | null>(null);
+  const cycloneVortexLayerRef = useRef<CycloneVortexLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -898,6 +899,11 @@ const GlobeScene = React.memo(function GlobeScene({
         windParticleSystemRef.current.update();
       }
 
+      // 7. Real Animated Cyclone & Hurricane Vortices (Phase 1 Atmospheric Dynamics)
+      if (cycloneVortexLayerRef.current) {
+        cycloneVortexLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1009,14 +1015,44 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, globeView, weatherLayerMode, weatherTimelineIndex, weatherGridData, isMobile]);
 
+  // ── 3D Cyclone Vortex Layer (Phase 1 Atmospheric Dynamics) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!cycloneVortexLayerRef.current) {
+      cycloneVortexLayerRef.current = new CycloneVortexLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = cycloneVortexLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Pass live events to update real storm vortices & tracks
+    cycloneVortexLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (cycloneVortexLayerRef.current) {
+        const m = cycloneVortexLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        cycloneVortexLayerRef.current.dispose();
+        cycloneVortexLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        windParticleSystemRef.current?.setReducedMotion(true);
-      } else {
-        windParticleSystemRef.current?.setReducedMotion(prefersReducedMotion());
-      }
+      const isReduced = document.hidden || prefersReducedMotion();
+      windParticleSystemRef.current?.setReducedMotion(isReduced);
+      cycloneVortexLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);

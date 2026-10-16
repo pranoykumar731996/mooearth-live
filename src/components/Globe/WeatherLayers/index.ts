@@ -10,3 +10,6 @@ export type { TemperatureLayerOptions } from './TemperatureHeatmapLayer';
 
 export { PrecipitationLayer, getPrecipitationColorRgb } from './PrecipitationLayer';
 export type { PrecipitationLayerOptions } from './PrecipitationLayer';
+
+export { CycloneVortexLayer, getSaffirSimpsonColor, getCycloneCategoryLabel } from './CycloneVortexLayer';
+export type { CycloneVortexLayerOptions } from './CycloneVortexLayer';
