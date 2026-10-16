@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
+import PageCloseBar from '@/components/Layout/PageCloseBar';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -45,12 +46,13 @@ export default function About() {
   };
 
   return (
-    <div className="h-screen overflow-y-auto scrollbar-thin bg-[var(--background)] pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="h-screen overflow-y-auto scrollbar-thin bg-[var(--background)] pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+      <PageCloseBar />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutJsonLd) }}
       />
-      <div className="max-w-4xl mx-auto bg-[var(--surface-color)]/30 border border-white/5 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden">
+      <div className="max-w-4xl mx-auto bg-[var(--surface-color)]/30 border border-white/5 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden mt-4">
         <div className="p-8 sm:p-12 md:p-16 text-[var(--foreground)] prose prose-invert prose-emerald max-w-none prose-headings:text-emerald-400">
           <h1 className="text-3xl md:text-5xl font-bold mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
             About MooEarth Live

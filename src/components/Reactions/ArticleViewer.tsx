@@ -280,6 +280,29 @@ export default function ArticleViewer({
     });
   }, [articleBookmarkId, activeEvent]);
 
+  // Keyboard Escape listener and browser back listener to close article reader
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const handlePopState = () => {
+      onClose();
+    };
+    try {
+      window.history.pushState({ articleReaderOpen: true }, '');
+    } catch {}
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onClose]);
+
   // Article Comprehension Quiz state
   const [quizActive, setQuizActive] = useState(false);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -974,6 +997,19 @@ export default function ArticleViewer({
               <span>{getFlagEmoji(activeEvent.country)}</span>
               <span>{activeEvent.country}</span>
             </span>
+
+            {/* Crossbar Close Button */}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-white/50 hover:text-white transition-all cursor-pointer border border-white/5 shrink-0"
+              aria-label="Close article reader"
+              title="Close reader"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -1330,117 +1366,162 @@ export default function ArticleViewer({
             )}
           </AnimatePresence>
 
-          {/* Top Navbar */}
-          <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between shrink-0 bg-black/40 z-20">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
-              <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/5 text-white">
-                <span>{getFlagEmoji(activeEvent.country)}</span>
-                <span>{activeEvent.country}</span>
-              </span>
-              <span className="text-white/20">|</span>
-              <span
-                className="flex items-center gap-1 px-2 py-0.5 rounded font-extrabold"
-                style={{ color: categoryConfig.color, backgroundColor: categoryConfig.bgColor }}
-              >
-                <span>{categoryConfig.emoji}</span>
-                <span>{categoryConfig.label}</span>
-              </span>
+          {/* Top Navbar — Responsive Mobile & Desktop Layout */}
+          <div className="px-3.5 py-3 sm:px-6 sm:py-4 border-b border-white/[0.08] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shrink-0 bg-black/60 backdrop-blur-md z-20">
+            {/* Row 1: Back Button, Country & Category Info on Left + Close Crossbar on Right */}
+            <div className="flex items-center justify-between gap-2 w-full sm:w-auto min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {/* Back to previous page button */}
+                <button
+                  onClick={onBack || onClose}
+                  className="h-8.5 px-2.5 sm:px-3 flex items-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/15 active:bg-white/25 border border-white/10 text-white/80 hover:text-white transition-all cursor-pointer text-xs font-bold shrink-0"
+                  title="Back to previous page"
+                  aria-label="Back to previous page"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
+                  </svg>
+                  <span className="hidden xs:inline">Back</span>
+                </button>
+
+                {/* Country Pill */}
+                <span className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-xl border border-white/10 text-white text-xs font-bold truncate shrink-0 max-w-[130px] sm:max-w-none">
+                  <span>{getFlagEmoji(activeEvent.country)}</span>
+                  <span className="truncate">{activeEvent.country}</span>
+                </span>
+
+                <span className="text-white/20 hidden xs:inline shrink-0">|</span>
+
+                {/* Category Pill */}
+                <span
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl font-extrabold text-xs truncate shrink-0 max-w-[130px] sm:max-w-none"
+                  style={{ color: categoryConfig.color, backgroundColor: categoryConfig.bgColor }}
+                >
+                  <span>{categoryConfig.emoji}</span>
+                  <span className="truncate">{categoryConfig.label}</span>
+                </span>
+              </div>
+
+              {/* Close Button on Mobile (Guaranteed always visible and accessible right here) */}
+              <div className="sm:hidden shrink-0">
+                <button
+                  onClick={onClose}
+                  id="article-viewer-close-btn-mobile"
+                  className="min-w-[38px] min-h-[38px] w-9 h-9 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/80 hover:text-white transition-all cursor-pointer border border-white/15 shrink-0 shadow-md"
+                  aria-label="Close article reader"
+                  title="Close article reader (Esc)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Translate Dropdown */}
-              {FEATURES.enableTranslation && (
-                <div className="relative">
-                  <button
-                    onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
-                    className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
-                      targetLanguage !== 'en'
-                        ? 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                        : 'bg-white/5 text-white/70 border-white/5 hover:text-white hover:bg-white/10'
-                    }`}
-                    title="Translate Article"
-                  >
-                    <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Read In My Language'}</span>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {isLangDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        className="absolute top-full mt-2 right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 w-48 overflow-y-auto scrollbar-thin shadow-2xl"
-                        style={{
-                          background: 'rgba(10, 10, 20, 0.98)',
-                          backdropFilter: 'blur(10px)'
-                        }}
-                      >
-                        <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
-                          Select Language
-                        </div>
-                        {SUPPORTED_LANGUAGES.map((lang) => (
-                          <button
-                            key={lang.code}
-                            onClick={() => handleTranslate(lang.code)}
-                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                              targetLanguage === lang.code
-                                ? 'bg-indigo-600/30 text-indigo-300'
-                                : 'text-white/70 hover:bg-white/5 hover:text-white'
-                            }`}
-                          >
-                            <span>{lang.nativeName}</span>
-                            <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
+            {/* Row 2 on Mobile (Action controls bar) / Right side on Desktop */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 w-full sm:w-auto pt-1.5 sm:pt-0 border-t border-white/[0.05] sm:border-t-0 overflow-x-auto scrollbar-none">
+              <div className="flex items-center gap-2">
+                {/* Translate Dropdown */}
+                {FEATURES.enableTranslation && (
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                      className={`h-9 px-3 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold shrink-0 ${
+                        targetLanguage !== 'en'
+                          ? 'bg-emerald-600/95 hover:bg-emerald-600 text-white border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                          : 'bg-white/5 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+                      }`}
+                      title="Translate Article"
+                    >
+                      <span>🌐 {isTranslating ? 'Translating...' : targetLanguage !== 'en' ? `${SUPPORTED_LANGUAGES.find(l => l.code === targetLanguage)?.name}` : 'Translate'}</span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isLangDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                          className="absolute top-full mt-2 left-0 sm:left-auto sm:right-0 z-50 rounded-2xl border border-white/10 p-2 text-left max-h-60 w-48 overflow-y-auto scrollbar-thin shadow-2xl"
+                          style={{
+                            background: 'rgba(10, 10, 20, 0.98)',
+                            backdropFilter: 'blur(10px)'
+                          }}
+                        >
+                          <div className="text-[9px] font-black text-white/40 uppercase tracking-widest px-2.5 py-1 mb-1 border-b border-white/5">
+                            Select Language
+                          </div>
+                          {SUPPORTED_LANGUAGES.map((lang) => (
+                            <button
+                              key={lang.code}
+                              onClick={() => handleTranslate(lang.code)}
+                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                targetLanguage === lang.code
+                                  ? 'bg-indigo-600/30 text-indigo-300'
+                                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                              }`}
+                            >
+                              <span>{lang.nativeName}</span>
+                              <span className="text-[10px] text-white/45 font-medium">{lang.name}</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
-              {/* Bookmark Article Button */}
-              <button
-                onClick={handleToggleArticleBookmark}
-                id="article-bookmark-btn"
-                className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
-                  isArticleSaved
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
-                    : 'bg-white/5 text-white/60 border-white/5 hover:text-white hover:bg-white/10'
-                }`}
-                title={isArticleSaved ? 'Saved in bookmarks (Click to remove)' : 'Save story to bookmarks'}
-                aria-label={isArticleSaved ? 'Remove bookmark' : 'Bookmark story'}
-              >
-                <span className={`text-sm ${isArticleSaved ? 'text-amber-400' : 'text-white/60'}`}>
-                  {isArticleSaved ? '★' : '☆'}
-                </span>
-                <span className="opacity-90">{isArticleSaved ? (dict.articleViewer?.saved || 'Saved') : (dict.articleViewer?.bookmark || 'Bookmark')}</span>
-              </button>
+                {/* Bookmark Article Button */}
+                <button
+                  onClick={handleToggleArticleBookmark}
+                  id="article-bookmark-btn"
+                  className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold shrink-0 ${
+                    isArticleSaved
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                      : 'bg-white/5 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={isArticleSaved ? 'Saved in bookmarks (Click to remove)' : 'Save story to bookmarks'}
+                  aria-label={isArticleSaved ? 'Remove bookmark' : 'Bookmark story'}
+                >
+                  <span className={`text-sm ${isArticleSaved ? 'text-amber-400' : 'text-white/60'}`}>
+                    {isArticleSaved ? '★' : '☆'}
+                  </span>
+                  <span className="opacity-90">{isArticleSaved ? (dict.articleViewer?.saved || 'Saved') : (dict.articleViewer?.bookmark || 'Bookmark')}</span>
+                </button>
 
-              {/* Reading Mode Button */}
-              <button
-                onClick={() => setReadingMode(!readingMode)}
-                className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold ${
-                  readingMode
-                    ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-                    : 'bg-white/5 text-white/50 border-white/5 hover:text-white hover:bg-white/10'
-                }`}
-                title="Toggle Reading Mode (AA)"
-              >
-                <span>AA</span>
-                <span className="opacity-60">{readingMode ? (dict.articleViewer?.readerMode || 'Reader On') : (dict.articleViewer?.standardMode || 'Standard')}</span>
-              </button>
+                {/* Reading Mode Button: AA Standard / Reader */}
+                <button
+                  onClick={() => setReadingMode(!readingMode)}
+                  className={`h-9 px-3.5 flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer border text-xs font-bold shrink-0 ${
+                    readingMode
+                      ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                      : 'bg-white/5 text-white/70 border-white/10 hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Toggle Reading Mode (AA)"
+                  aria-label="Toggle Reading Mode"
+                >
+                  <span className="font-serif font-black">AA</span>
+                  <span className="opacity-80">{readingMode ? (dict.articleViewer?.readerMode || 'Reader On') : (dict.articleViewer?.standardMode || 'Standard')}</span>
+                </button>
+              </div>
 
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all cursor-pointer border border-white/5"
-                aria-label="Close article reader"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+              {/* Close Button on Desktop */}
+              <div className="hidden sm:block shrink-0">
+                <button
+                  onClick={onClose}
+                  id="article-viewer-close-btn-desktop"
+                  className="min-w-[38px] min-h-[38px] w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/75 hover:text-white transition-all cursor-pointer border border-white/15 shrink-0 shadow-md"
+                  aria-label="Close article reader"
+                  title="Close article reader (Esc)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 

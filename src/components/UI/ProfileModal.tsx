@@ -222,6 +222,16 @@ export default function ProfileModal({
     }
   }, [isOpen, currentUser]);
 
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // 3. Fetch Global Rank
   useEffect(() => {
     if (!isOpen || !gameState || gameState.xp === 0 || !currentUser) {
@@ -391,13 +401,19 @@ export default function ProfileModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md p-3 sm:p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 bg-black/75 backdrop-blur-md cursor-pointer z-0"
+        onClick={onClose}
+      />
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', damping: 25, stiffness: 320 }}
-        className="w-full max-w-[560px] rounded-3xl glass border border-white/10 relative overflow-hidden flex flex-col max-h-[90vh] shadow-2xl"
+        className="w-full max-w-[560px] rounded-3xl glass border border-white/10 relative overflow-hidden flex flex-col max-h-[90vh] shadow-2xl pointer-events-auto z-10"
         style={{
           background: 'linear-gradient(135deg, rgba(14, 18, 32, 0.98) 0%, rgba(6, 9, 20, 0.98) 100%)',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 45px rgba(0, 229, 255, 0.12)',
@@ -451,7 +467,8 @@ export default function ProfileModal({
           <button
             onClick={onClose}
             aria-label="Close Profile Dashboard"
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+            title="Close Profile (Esc)"
+            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/15 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-md"
           >
             ✕
           </button>

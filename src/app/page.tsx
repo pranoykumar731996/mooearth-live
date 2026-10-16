@@ -787,6 +787,8 @@ export default function HomePage({
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handlePopState = () => {
+      setActiveArticle(null);
+      setSelectedEvent(null);
       const { country: urlCountry, city: urlCity, lat: urlLat, lng: urlLng } = parseLocationFromUrl(window.location.search);
       if (urlCountry) {
         const canon = resolveCanonicalLocation({ country: urlCountry });
@@ -1684,18 +1686,16 @@ export default function HomePage({
       )}
 
       {/* FULL ARTICLE READER SYSTEM */}
-      {(!isMobile || !selectedCountry) && (
-        <ArticleViewer
-          event={activeArticle}
-          allEvents={filteredEvents}
-          onClose={() => setActiveArticle(null)}
-          onStartQuiz={(country) => {
-            setActiveArticle(null);
-            setSelectedCountry(country);
-            setIsPlayEarthActive(true);
-          }}
-        />
-      )}
+      <ArticleViewer
+        event={activeArticle}
+        allEvents={filteredEvents}
+        onClose={() => setActiveArticle(null)}
+        onStartQuiz={(country) => {
+          setActiveArticle(null);
+          setSelectedCountry(country);
+          setIsPlayEarthActive(true);
+        }}
+      />
 
       {/* PLAY EARTH GAME MODE OVERLAY */}
       <PlayEarthOverlay

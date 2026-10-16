@@ -135,17 +135,32 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
       }
     } catch {}
   };
+  // Keyboard Escape listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <AnimatePresence>
       {event && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer z-0"
+            onClick={onClose}
+          />
+
           <motion.div
             id="event-popup"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="w-[90vw] max-w-[460px] rounded-3xl p-6 glass pointer-events-auto"
+            className="w-[90vw] max-w-[460px] rounded-3xl p-6 glass pointer-events-auto relative z-10"
             style={{
               background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.85) 100%)',
               boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
@@ -158,13 +173,14 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
             <button
               id="event-popup-close"
               onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full
+              className="absolute top-4 right-4 w-9 h-9 rounded-full
                          flex items-center justify-center
-                         bg-white/5 hover:bg-white/10 text-white/60 hover:text-white
-                         transition-all duration-200 cursor-pointer z-[60]"
+                         bg-white/10 hover:bg-white/20 text-white/70 hover:text-white
+                         transition-all duration-200 cursor-pointer z-[60] border border-white/10"
               aria-label="Close popup"
+              title="Close popup (Esc)"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>

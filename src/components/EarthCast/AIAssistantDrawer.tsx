@@ -97,41 +97,60 @@ export default function AIAssistantDrawer({
     { label: '📰 Brazil news', text: 'Is there any news about Brazil?' },
   ];
 
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ x: 420, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 420, opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed right-6 top-[100px] bottom-24 w-[360px] z-50 rounded-3xl glass border border-white/10 flex flex-col overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.6)] pointer-events-auto"
-        >
-          {/* Header */}
-          <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between shrink-0 bg-black/20">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-sm shadow-[0_0_15px_rgba(0,229,255,0.3)]">
-                🤖
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white tracking-wide uppercase">AI Assistant</h3>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-[9px] text-white/40 uppercase tracking-widest font-semibold">Online</span>
+        <>
+          {/* Mobile backdrop */}
+          <div
+            className="sm:hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-40 cursor-pointer"
+            onClick={onClose}
+          />
+
+          <motion.div
+            initial={{ x: 420, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 420, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-3 sm:right-6 top-[80px] sm:top-[100px] bottom-20 sm:bottom-24 w-[calc(100vw-24px)] sm:w-[360px] max-w-[380px] z-50 rounded-3xl glass border border-white/10 flex flex-col overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.6)] pointer-events-auto"
+          >
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between shrink-0 bg-black/20">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-sm shadow-[0_0_15px_rgba(0,229,255,0.3)]">
+                  🤖
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white tracking-wide uppercase">AI Assistant</h3>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    <span className="text-[9px] text-white/40 uppercase tracking-widest font-semibold">Online</span>
+                  </div>
                 </div>
               </div>
+              
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/10 shadow-sm"
+                title="Close AI Assistant (Esc)"
+                aria-label="Close AI Assistant"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             </div>
-            
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
 
           {/* Messages List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
@@ -199,7 +218,8 @@ export default function AIAssistantDrawer({
             </button>
           </div>
         </motion.div>
-      )}
-    </AnimatePresence>
-  );
+      </>
+    )}
+  </AnimatePresence>
+);
 }

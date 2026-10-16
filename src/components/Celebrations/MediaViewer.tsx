@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -27,6 +27,17 @@ interface MediaViewerProps {
 export default function MediaViewer({ celebration, onClose, onReportSuccess }: MediaViewerProps) {
   const [isReporting, setIsReporting] = useState(false);
   const [reported, setReported] = useState(false);
+
+  useEffect(() => {
+    if (!celebration) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [celebration, onClose]);
 
   if (!celebration) return null;
 
@@ -76,13 +87,17 @@ export default function MediaViewer({ celebration, onClose, onReportSuccess }: M
   });
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-[92vw] max-w-[500px] rounded-3xl p-6 glass border border-white/10 relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        className="w-[92vw] max-w-[500px] rounded-3xl p-6 glass border border-white/10 relative overflow-hidden cursor-default"
         style={{
           background: 'linear-gradient(135deg, rgba(12,12,22,0.96) 0%, rgba(5,5,12,0.96) 100%)',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 50px rgba(0, 229, 255, 0.15)'
@@ -91,9 +106,10 @@ export default function MediaViewer({ celebration, onClose, onReportSuccess }: M
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors z-10"
+          aria-label="Close media viewer"
+          className="absolute top-4 right-4 w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all z-20 cursor-pointer shadow-md"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>

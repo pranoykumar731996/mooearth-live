@@ -133,16 +133,32 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
     fetchLeaderboard();
   }, [isOpen, activeTab, filterType, activeMetric, selectedCountry]);
 
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Backdrop overlay */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-md cursor-pointer z-0"
+        onClick={onClose}
+      />
+
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-[90vw] max-w-[440px] rounded-3xl p-6 glass border border-white/10 relative overflow-hidden flex flex-col max-h-[80vh]"
+        className="w-[90vw] max-w-[440px] rounded-3xl p-6 glass border border-white/10 relative overflow-hidden flex flex-col max-h-[80vh] z-10 pointer-events-auto"
         style={{
           background: 'linear-gradient(135deg, rgba(15,15,25,0.95) 0%, rgba(5,5,15,0.95) 100%)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 229, 255, 0.1)'
@@ -151,9 +167,11 @@ export default function LeaderboardModal({ isOpen, onClose, selectedCountry }: L
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
+          className="absolute top-4 right-4 w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white/70 hover:text-white transition-all cursor-pointer z-20 border border-white/10 shadow-md"
+          title="Close Leaderboards (Esc)"
+          aria-label="Close leaderboards"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>

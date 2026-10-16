@@ -10,7 +10,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ContinentRecord, getCountriesForContinent } from '@/data/continents';
@@ -37,6 +37,15 @@ export default function ContinentExplorerPanel({
   onFocusContinent,
   isMobile = false,
 }: ContinentExplorerPanelProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
   // Member sovereign countries in this continent
   const memberCountries = useMemo(() => {
     return getCountriesForContinent(continent.slug);
@@ -108,7 +117,7 @@ export default function ContinentExplorerPanel({
         <button
           onClick={onClose}
           aria-label="Close Continent Explorer"
-          className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-sm"
         >
           ✕
         </button>
