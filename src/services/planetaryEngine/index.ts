@@ -8,12 +8,14 @@ import { fetchUsgsEarthquakes } from './usgsClient';
 import { fetchNasaEonetEvents } from './nasaEonetClient';
 import { fetchNoaaSpaceWeather } from './noaaSpaceWeatherClient';
 import { fetchNasaEarthObservatory } from './nasaEarthObsClient';
+import { fetchNoaaSevereStorms, fetchRainViewerRadarMetadata } from './noaaSevereStormsClient';
 
 export * from './types';
 export * from './usgsClient';
 export * from './nasaEonetClient';
 export * from './noaaSpaceWeatherClient';
 export * from './nasaEarthObsClient';
+export * from './noaaSevereStormsClient';
 export * from './briefingGenerator';
 
 interface CachedPlanetaryStream {
@@ -40,6 +42,7 @@ export async function fetchLivePlanetaryEvents(refresh = false): Promise<Planeta
     fetchNasaEonetEvents(8000),
     fetchNoaaSpaceWeather(6000),
     fetchNasaEarthObservatory(7000),
+    fetchNoaaSevereStorms(7000),
   ]);
 
   const allEvents: PlanetaryEvent[] = [];

@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -227,6 +227,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const precipitationLayerRef = useRef<PrecipitationLayer | null>(null);
   const cycloneVortexLayerRef = useRef<CycloneVortexLayer | null>(null);
   const seismicShockwaveLayerRef = useRef<SeismicShockwaveLayer | null>(null);
+  const lightningNetworkLayerRef = useRef<LightningNetworkLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -910,6 +911,11 @@ const GlobeScene = React.memo(function GlobeScene({
         seismicShockwaveLayerRef.current.update(time, 0.016);
       }
 
+      // 9. Real Animated Lightning Network Flash Engine (Phase 3 Severe Convective Storms)
+      if (lightningNetworkLayerRef.current) {
+        lightningNetworkLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1085,6 +1091,38 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Lightning Network & Severe Convective Layer (Phase 3 Severe Storms) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!lightningNetworkLayerRef.current) {
+      lightningNetworkLayerRef.current = new LightningNetworkLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = lightningNetworkLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Feed active severe storm events for real-time lightning discharge
+    lightningNetworkLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (lightningNetworkLayerRef.current) {
+        const m = lightningNetworkLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        lightningNetworkLayerRef.current.dispose();
+        lightningNetworkLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1092,6 +1130,7 @@ const GlobeScene = React.memo(function GlobeScene({
       windParticleSystemRef.current?.setReducedMotion(isReduced);
       cycloneVortexLayerRef.current?.setReducedMotion(isReduced);
       seismicShockwaveLayerRef.current?.setReducedMotion(isReduced);
+      lightningNetworkLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1792,6 +1831,21 @@ const GlobeScene = React.memo(function GlobeScene({
             event: e,
           });
         }
+      }
+
+      // Severe Thunderstorm & Lightning Flash Pulse (Phase 3 Atmospheric Convection)
+      if (e.category === 'severe_weather') {
+        const rate = e.planetaryTelemetry?.lightningStrikeRatePerMin || 30;
+        const isIntense = rate >= 50;
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR: isIntense ? 16 : 10,
+          propagationSpeed: isMobile ? 3.5 : 4.8,
+          repeatPeriod: isIntense ? 1200 : 1800,
+          color: 'rgba(56, 189, 248, 0.95)',
+          event: e,
+        });
       }
 
       // Wildfire Thermal Pulse

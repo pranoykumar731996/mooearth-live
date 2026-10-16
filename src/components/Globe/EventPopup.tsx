@@ -268,16 +268,27 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                         </div>
                       )}
                       {typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
-                        <>
-                          <div className="flex flex-col">
-                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Sustained Winds</span>
-                            <span className="font-black text-cyan-300 text-sm">
-                              {event.planetaryTelemetry.windSpeedKph} km/h{' '}
-                              <span className="text-white/40 text-[10px] font-normal">
-                                ({Math.round(event.planetaryTelemetry.windSpeedKph / 1.852)} kts)
-                              </span>
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">
+                            {event.planetaryTelemetry.stormWarningType ? 'Peak Wind Gusts' : 'Sustained Winds'}
+                          </span>
+                          <span className="font-black text-cyan-300 text-sm">
+                            {event.planetaryTelemetry.windSpeedKph} km/h{' '}
+                            <span className="text-white/40 text-[10px] font-normal">
+                              ({Math.round(event.planetaryTelemetry.windSpeedKph / 1.852)} kts)
                             </span>
-                          </div>
+                          </span>
+                        </div>
+                      )}
+                      {event.planetaryTelemetry.stormWarningType ? (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Warning Type</span>
+                          <span className="font-extrabold text-amber-300 text-xs flex items-center gap-1">
+                            <span>{event.planetaryTelemetry.stormWarningType === 'tornado' ? '🌪️ Tornado Warning' : '⛈️ Severe Thunderstorm'}</span>
+                          </span>
+                        </div>
+                      ) : (
+                        typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
                           <div className="flex flex-col">
                             <span className="text-white/40 uppercase tracking-wider text-[10px]">Storm Category</span>
                             <span className="font-extrabold text-amber-300 text-xs flex items-center gap-1">
@@ -285,7 +296,35 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               <span>{getCycloneCategoryLabel(event.planetaryTelemetry.windSpeedKph)}</span>
                             </span>
                           </div>
-                        </>
+                        )
+                      )}
+                      {typeof event.planetaryTelemetry.lightningStrikeRatePerMin === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Lightning Activity</span>
+                          <span className="font-black text-amber-400 text-sm flex items-center gap-1">
+                            <span>⚡</span>
+                            <span>{event.planetaryTelemetry.lightningStrikeRatePerMin} / min</span>
+                          </span>
+                          {typeof event.planetaryTelemetry.peakCurrentKa === 'number' && (
+                            <span className="text-[10px] text-amber-200/70 font-medium">
+                              Peak {event.planetaryTelemetry.peakCurrentKa > 0 ? `+${event.planetaryTelemetry.peakCurrentKa}` : event.planetaryTelemetry.peakCurrentKa} kA
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {typeof event.planetaryTelemetry.radarReflectivityDbz === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Doppler Echo</span>
+                          <span className="font-black text-rose-400 text-sm flex items-center gap-1">
+                            <span>📡</span>
+                            <span>{event.planetaryTelemetry.radarReflectivityDbz} dBZ</span>
+                          </span>
+                          {typeof event.planetaryTelemetry.hailSizeMm === 'number' && (
+                            <span className="text-[10px] text-cyan-200/70 font-medium">
+                              Hail: {event.planetaryTelemetry.hailSizeMm} mm
+                            </span>
+                          )}
+                        </div>
                       )}
                       {event.planetaryTelemetry.sensorSource && (
                         <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-white/50">

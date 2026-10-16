@@ -49,6 +49,11 @@ export interface PlanetaryTelemetry {
   sensorSource?: string;
   externalDataUrl?: string;
   trackPoints?: EventTrackPoint[];
+  lightningStrikeRatePerMin?: number;
+  peakCurrentKa?: number;
+  radarReflectivityDbz?: number;
+  hailSizeMm?: number;
+  stormWarningType?: 'severe_thunderstorm' | 'tornado' | 'tropical_cyclone';
 }
 
 /** A world event displayed on the globe */
