@@ -28,7 +28,7 @@ export default function AITransparency() {
           <ul className="list-disc pl-6 space-y-2 mt-4">
             <li><strong>Geophysical & Planetary Event Briefings:</strong> Objective, evidence-grounded scientific explanations of real-time earthquakes, space weather events, and thermal anomalies synthesized directly from official sensor telemetry (USGS, NOAA, NASA).</li>
             <li><strong>Match Summaries & Sports Recaps:</strong> Brief text summaries explaining the outcome or key events of football matches.</li>
-            <li><strong>Translation Assistance:</strong> Helping to translate global scientific context and headlines into your preferred language.</li>
+            <li><strong>Translation Assistance:</strong> Helping to translate global scientific context and planetary dispatches into your preferred language.</li>
             <li><strong>Chat & Discovery Assistants:</strong> Interactive features designed to help you navigate geospatial layers, climate anomalies, and country geography.</li>
           </ul>
           <p className="mt-4">
@@ -43,14 +43,14 @@ export default function AITransparency() {
           </p>
           <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg">
             <p className="font-semibold text-amber-500 mb-2">Important Disclaimer:</p>
-            <p>AI-generated summaries may contain inaccuracies regarding event details, names, or historical context. They should <strong>never</strong> replace official announcements from primary sources, official governing bodies, or credited news publishers.</p>
+            <p>AI-generated summaries may contain inaccuracies regarding event details, names, or historical context. They should <strong>never</strong> replace official announcements from primary sources, official governing bodies, or credited scientific publishers.</p>
           </div>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">4. User Verification</h2>
           <p>
-            We strongly encourage all users to verify important information. If an AI summary mentions a controversial red card, a record-breaking goal, or a tournament advancement scenario, please cross-reference this information with official news sources or the original publishers linked in our news feed.
+            We strongly encourage all users to verify important information. If an AI summary mentions a controversial match event, seismic event, or tournament advancement scenario, please cross-reference this information with official primary agency releases or event pages.
           </p>
         </section>
 

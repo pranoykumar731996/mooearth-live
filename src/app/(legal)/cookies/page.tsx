@@ -29,7 +29,7 @@ export default function CookiePolicy() {
             <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5">
               <h3 className="font-bold text-white text-base">A. Strictly Necessary (Always Active)</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Required for core website functionality, security tokens, session state, and remembering your consent preferences. Disabling these via browser flags will prevent the 3D globe and interactive news readers from operating normally.
+                Required for core website functionality, security tokens, session state, and remembering your consent preferences. Disabling these via browser flags will prevent the 3D globe and interactive event viewers from operating normally.
               </p>
             </div>
 
@@ -43,7 +43,7 @@ export default function CookiePolicy() {
             <div className="p-4 rounded-xl bg-slate-900/60 border border-white/5">
               <h3 className="font-bold text-white text-base">C. Advertising & Partner Intelligence (Optional)</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Used to deliver non-intrusive, privacy-compliant advertisements on news reports to fund our servers. Advertising tracking scripts remain blocked until you grant explicit consent.
+                Used to deliver non-intrusive, privacy-compliant advertisements to fund our planetary intelligence infrastructure. Advertising tracking scripts remain blocked until you grant explicit consent.
               </p>
             </div>
           </div>

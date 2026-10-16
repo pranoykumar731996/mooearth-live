@@ -18,7 +18,7 @@ export default function SecurityPolicy() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">1. Our Commitment to Security</h2>
           <p>
-            At MooEarth.Live, the security of our platform and the protection of user data is a top priority. We utilize industry-standard practices and infrastructure to ensure that your experience checking live scores, news, and interacting with our 3D globe remains secure.
+            At MooEarth.Live, the security of our platform and the protection of user data is a top priority. We utilize industry-standard practices and infrastructure to ensure that your experience checking live scores, environmental telemetry, and interacting with our 3D globe remains secure.
           </p>
         </section>
 

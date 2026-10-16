@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Disclaimer | MooEarth.Live',
-  description: 'Legal disclaimer regarding sports data, news aggregation, and service availability on MooEarth.Live.',
+  description: 'Legal disclaimer regarding sports data, planetary telemetry, and service availability on MooEarth.Live.',
   alternates: {
     canonical: 'https://www.mooearth.live/disclaimer'
   }

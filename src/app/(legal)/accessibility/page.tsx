@@ -28,7 +28,7 @@ export default function AccessibilityStatement() {
           <p>We have implemented several features to ensure our site is as accessible as possible:</p>
           <ul className="list-disc pl-6 space-y-4 mt-4">
             <li>
-              <strong>Keyboard Navigation:</strong> Core features, including news feeds and standard menus, can be navigated using a keyboard. We have implemented focus rings to indicate the current active element.
+              <strong>Keyboard Navigation:</strong> Core features, including planetary event streams, weather maps, and standard menus, can be navigated using a keyboard. We have implemented focus rings to indicate the current active element.
             </li>
             <li>
               <strong>Screen Reader Compatibility:</strong> We use semantic HTML5 elements, ARIA (Accessible Rich Internet Applications) labels on interactive buttons (such as search and modals), and proper heading structures to assist screen readers.

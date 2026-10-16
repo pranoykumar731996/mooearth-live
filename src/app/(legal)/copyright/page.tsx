@@ -26,12 +26,12 @@ export default function CopyrightPolicy() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">2. Third-Party Trademarks and Content</h2>
           <p>
-            MooEarth.Live is an informational platform covering global news, sports, geography, and current affairs. 
+            MooEarth.Live is an informational platform covering global planetary telemetry, open scientific observations, sports, and geography discovery. 
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li>National team names, league identifiers, and team logos are registered trademarks of their respective owners and organizations.</li>
-            <li>News articles, images within aggregated news feeds, and specific content snippets are the property of their original publishers or data providers.</li>
-            <li>Our use of these trademarks and data is purely nominative and descriptive, intended solely to inform users about global news and sporting events. MooEarth.Live claims no official affiliation with, nor endorsement by, any third-party entity unless explicitly stated.</li>
+            <li>Scientific event telemetry, public domain space imagery, and specific data feeds are the property of their respective primary agencies or data providers.</li>
+            <li>Our use of these trademarks and data is purely nominative and descriptive, intended solely to inform users about global planetary phenomena and sporting events. MooEarth.Live claims no official affiliation with, nor endorsement by, any third-party entity unless explicitly stated.</li>
           </ul>
         </section>
 

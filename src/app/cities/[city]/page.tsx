@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
   const gateResult = shouldIndexCityPage(decoded);
 
   const title = `${city.name}, ${city.country} — Weather, Map, Geography & City Guide | MooEarth Live`;
-  const description = `Explore ${city.name} (${city.state ? `${city.state}, ` : ''}${city.country}). Live meteorological telemetry, 3D interactive globe, coordinates (${city.coordinates.lat.toFixed(2)}°, ${city.coordinates.lng.toFixed(2)}°), verified wire news, and nearby destinations.`;
+  const description = `Explore ${city.name} (${city.state ? `${city.state}, ` : ''}${city.country}). Live meteorological telemetry, 3D interactive globe, coordinates (${city.coordinates.lat.toFixed(2)}°, ${city.coordinates.lng.toFixed(2)}°), planetary environmental telemetry, and nearby destinations.`;
   const canonicalUrl = `https://www.mooearth.live/cities/${city.slug}`;
 
   return {
@@ -194,7 +194,7 @@ export default async function CityPage({ params }: CityPageProps) {
               </h1>
             </div>
             <p className="text-sm text-white/60 max-w-md">
-              Detailed geographic and meteorological profile for {city.name}. Real-time satellite observations, interactive 3D globe coordinates, verified news dispatches, and nearby places.
+              Detailed geographic and meteorological profile for {city.name}. Real-time satellite observations, interactive 3D globe coordinates, live planetary events, and nearby places.
             </p>
           </div>
         </header>

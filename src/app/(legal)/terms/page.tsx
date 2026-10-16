@@ -33,7 +33,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">2. Description of Service</h2>
           <p>
-            MooEarth.Live provides users with access to a rich collection of resources, including live football scores, standings, fixtures, match statistics, a 3D interactive globe for spatial data visualization, and AI-generated news summaries (the "Service"). You understand and agree that the Service is provided "AS-IS" and that MooEarth.Live assumes no responsibility for the timeliness, deletion, mis-delivery or failure to store any user communications or personalization settings.
+            MooEarth.Live provides users with access to a rich collection of resources, including live football scores, standings, fixtures, match statistics, a 3D interactive globe for spatial data visualization, planetary telemetry, and AI-generated event briefings (the &quot;Service&quot;). You understand and agree that the Service is provided &quot;AS-IS&quot; and that MooEarth.Live assumes no responsibility for the timeliness, deletion, mis-delivery or failure to store any user communications or personalization settings.
           </p>
         </section>
 
@@ -49,30 +49,30 @@ export default function TermsOfService() {
           <p>You agree to not use the Service to:</p>
           <ul className="list-disc pl-6 space-y-2">
             <li>Interfere with or disrupt the Service or servers or networks connected to the Service.</li>
-            <li>Attempt to scrape, mass-download, or reverse engineer the sports data, 3D globe models, or AI summaries provided on the platform.</li>
+            <li>Attempt to scrape, mass-download, or reverse engineer the sports data, planetary telemetry, 3D globe models, or AI summaries provided on the platform.</li>
             <li>Impersonate any person or entity, or falsely state or otherwise misrepresent your affiliation with a person or entity.</li>
             <li>Violate any applicable local, state, national or international law.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Sports Data and News Disclaimer</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Sports Data and Planetary Telemetry Disclaimer</h2>
           <p>
-            The live scores, statistics, and fixtures provided on MooEarth.Live are sourced from third-party APIs. While we strive for real-time accuracy, <strong>data may be subject to delays or inaccuracies</strong>. We are not liable for any decisions, financial or otherwise, made based on the sports data provided on this platform. News articles are aggregated from third-party publishers, and their content remains the responsibility of the original publishers.
+            The live scores, statistics, and fixtures provided on MooEarth.Live are sourced from third-party APIs, and environmental telemetry is sourced from official scientific organizations. While we strive for real-time accuracy, <strong>data may be subject to delays or sensor calibrations</strong>. We are not liable for any decisions made based on sports data or telemetry provided on this platform.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">6. AI-Assisted Content</h2>
           <p>
-            Certain features, such as match summaries or translated news snippets, may be generated using Artificial Intelligence (AI). AI-generated content is provided for convenience and may contain errors or hallucinations. Users should always refer to official sporting bodies for verified information.
+            Certain features, such as match summaries or translated planetary event briefings, may be generated using Artificial Intelligence (AI). AI-generated content is provided for convenience and may contain errors or hallucinations. Users should always refer to official sporting bodies or scientific agencies for verified information.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">7. Intellectual Property</h2>
           <p>
-            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party logos, competition names, and aggregated news content remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
+            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party logos, competition names, and scientific datasets remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
           </p>
         </section>
 

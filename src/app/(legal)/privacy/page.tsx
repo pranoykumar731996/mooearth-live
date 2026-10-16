@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
             Welcome to MooEarth.Live. We respect your privacy and are committed to protecting your personal data. This Privacy Policy will inform you as to how we look after your personal data when you visit our Progressive Web App (PWA) and tell you about your privacy rights and how the law protects you.
           </p>
           <p className="mt-2">
-            MooEarth.Live is an interactive platform providing sovereign 3D globe exploration, verified real-time world news, meteorological intelligence, geography challenges, and AI-assisted summaries.
+            MooEarth.Live is an interactive platform providing sovereign 3D globe exploration, real-time planetary telemetry, meteorological intelligence, geography challenges, and AI-assisted summaries.
           </p>
         </section>
 
@@ -38,7 +38,7 @@ export default function PrivacyPolicy() {
           <p>We believe in strict data minimization. We collect only what is necessary to deliver planetary intelligence:</p>
           <ul className="list-disc pl-6 space-y-2 mt-2">
             <li><strong>Identity & Profile Data:</strong> If you voluntarily create an account, we record your chosen username, avatar emoji, and sovereign country preference. Continuous GPS location and real identities are never required.</li>
-            <li><strong>Saved Places & Bookmarks:</strong> Curated countries, cities, and news stories you explicitly save to your personal profile or local storage.</li>
+            <li><strong>Saved Places & Bookmarks:</strong> Curated countries, cities, and planetary events you explicitly save to your personal profile or local storage.</li>
             <li><strong>Technical & Session Telemetry:</strong> Anonymized session IDs, device type (desktop/mobile/tablet), traffic referrer, and non-sensitive interactions (e.g. globe rotation counts, language chosen). Continuous GPS coordinates and device location history are <strong>never</strong> recorded.</li>
           </ul>
         </section>
@@ -56,7 +56,7 @@ export default function PrivacyPolicy() {
           <h2 className="text-xl font-semibold text-white mt-8 mb-3">4. How We Use Your Personal Data</h2>
           <p>We use your personal data strictly to:</p>
           <ul className="list-disc pl-6 space-y-2 mt-2">
-            <li>Deliver and maintain our 3D globe, climate layers, and world news syntheses.</li>
+            <li>Deliver and maintain our 3D globe, climate layers, and planetary event syntheses.</li>
             <li>Synchronize your private saved bookmarks across your authenticated devices.</li>
             <li>Validate demand for potential community features (MooEarth Plus waitlist).</li>
             <li>Monitor server performance, crash events, and infrastructure health.</li>
@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
           <ul className="list-disc pl-6 space-y-2 mt-2">
             <li>We <strong>never</strong> sell your personal information or browsing history.</li>
             <li>Private profile details, bookmarks, and discovery history are never shared with ad providers.</li>
-            <li>Advertising systems cannot alter news rankings, AI summaries, or country profiles.</li>
+            <li>Advertising systems cannot alter event rankings, AI summaries, or country profiles.</li>
           </ul>
         </section>
 
@@ -92,12 +92,12 @@ export default function PrivacyPolicy() {
         <section>
           <h2 className="text-xl font-semibold text-white mt-8 mb-3">8. AI Providers & Synthetic Data Disclosure</h2>
           <p>
-            MooEarth.Live utilizes enterprise AI APIs (such as Google Gemini and OpenAI) strictly to process open, non-personal factual news metadata and generate original natural language syntheses.
+            MooEarth.Live utilizes enterprise AI APIs (such as Google Gemini and OpenAI) strictly to process open, non-personal factual planetary metadata and generate original natural language syntheses.
           </p>
           <ul className="list-disc pl-6 space-y-2 mt-2">
             <li><strong>Zero User Training:</strong> We never transmit your personal profile data, bookmarks, search queries, or private identifiers to third-party AI providers for model training.</li>
             <li><strong>Factual Grounding:</strong> AI prompts receive only verified factual entity records and timestamps, never personal information.</li>
-            <li><strong>Human Oversight:</strong> High-impact allegations, medical claims, and electoral stories are routed to human editorial review.</li>
+            <li><strong>Human Oversight:</strong> High-impact anomalous telemetry is verified against primary scientific repositories.</li>
           </ul>
         </section>
 
