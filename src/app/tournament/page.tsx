@@ -40,7 +40,7 @@ export default function TournamentPage() {
     '@context': 'https://schema.org',
     '@type': 'VideoGame',
     name: 'MooEarth Global Nations Cup',
-    description: 'Weekly high-stakes geography and world news tournament.',
+    description: 'Weekly high-stakes geography and planetary exploration tournament.',
     genre: ['Trivia', 'Tournament', 'Geography', 'Multiplayer'],
     applicationCategory: 'GameApplication',
     url: 'https://www.mooearth.live/tournament',

@@ -10,7 +10,7 @@ export const BRANDING = {
   domain: 'www.mooearth.live',
   url: 'https://www.mooearth.live',
   title: 'MooEarth Live — Interactive 3D Globe & World Explorer',
-  description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring global news, geography challenges, live weather, and country insights across Earth.',
+  description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring planetary event streams, geography challenges, live weather, and country insights across Earth.',
   tagline: 'WATCH THE WORLD REACT',
   themeColor: '#000000',
   backgroundColor: '#000000',

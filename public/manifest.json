@@ -1,13 +1,13 @@
 {
   "name": "mooearth",
   "short_name": "mooearth",
-  "description": "An immersive emotional globe visualizing global news, live sports reactions, celebrations, and world energy.",
+  "description": "An immersive emotional globe visualizing planetary events, live sports reactions, celebrations, and world energy.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "orientation": "any",
-  "categories": ["news", "education"],
+  "categories": ["education", "geography"],
   "icons": [
     {
       "src": "/icons/icon-192.svg",

@@ -53,14 +53,14 @@ function generateProceduralArticleQuestions(
     country: country || 'Global',
     category: 'current-affairs',
     difficulty: 'easy',
-    question: `In which nation or global region is this news story primarily centered?`,
+    question: `In which nation or global region is this event primarily centered?`,
     choices: q1Choices,
     correctIndex: q1Choices.indexOf(country),
-    funFact: `The reported events took place in or significantly impact ${country}.`,
+    funFact: `The observed event took place in or significantly impacts ${country}.`,
   });
 
   // Question 2: Source verification
-  if (source && source !== 'Unknown' && source !== 'Global News') {
+  if (source && source !== 'Unknown' && source !== 'Global Events' && source !== 'Global News') {
     const decoySources = shuffle([
       'Reuters Newsdesk', 'Associated Press wire', 'Global Times', 'Al Jazeera International', 'BBC World'
     ]).filter(s => !s.toLowerCase().includes(source.toLowerCase())).slice(0, 3);
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       title,
       summary = '',
       country = 'Global',
-      source = 'Global News',
+      source = 'Global Events',
       url = '',
     } = body as {
       title: string;

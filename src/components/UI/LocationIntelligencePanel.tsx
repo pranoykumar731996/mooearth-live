@@ -696,7 +696,7 @@ export default function LocationIntelligencePanel({
             {/* News State Handling */}
             {isNewsLoading ? (
               <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-cyan-400/70 font-mono animate-pulse">
-                Scanning multi-source global news wire...
+                Scanning planetary event telemetry feeds...
               </div>
             ) : newsError ? (
               <div className="p-3 rounded-xl bg-red-950/20 border border-red-500/30 text-center space-y-2">

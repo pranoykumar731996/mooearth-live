@@ -148,7 +148,7 @@ export default function InteractiveGlobeSimulatorPage() {
                 </div>
                 <h3 className="text-sm font-bold text-white mb-1">Discovery Pulse</h3>
                 <p className="text-xs text-white/60 leading-relaxed">
-                  Color-coded event arcs and real-time pulse beacons visualizing breaking global news, athletic celebrations, and human emotional telemetry.
+                  Color-coded event arcs and real-time pulse beacons visualizing planetary event epicenters, athletic celebrations, and human emotional telemetry.
                 </p>
               </div>
             </div>

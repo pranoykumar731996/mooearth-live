@@ -3,7 +3,7 @@ import PartyArenaClient from '@/components/Party/PartyArenaClient';
 import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Classroom & Party Trivia Arena — Live Multiplayer Quiz | MooEarth Live';
-const description = 'Host and join live multiplayer geography and world news trivia battles. Perfect for classrooms, parties, and live streamers. Free in your browser on MooEarth Live.';
+const description = 'Host and join live multiplayer geography and planetary discovery trivia battles. Perfect for classrooms, parties, and live streamers. Free in your browser on MooEarth Live.';
 
 export const metadata: Metadata = {
   title,

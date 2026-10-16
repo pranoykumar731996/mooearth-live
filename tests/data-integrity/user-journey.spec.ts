@@ -316,26 +316,15 @@ test.describe('Suite 13 — User Journey Data Consistency', () => {
     expect(await countrySuggestion.isVisible()).toBeTruthy();
   });
 
-  test('should verify Perspective Lens is available for whitelisted country', async ({ page }) => {
+  test('should verify country details and navigation are available', async ({ page }) => {
     await page.goto('/', { timeout: 60000, waitUntil: 'domcontentloaded' });
     await dismissSplash(page);
 
-    // Open India dashboard (India is whitelisted for Perspective Lens)
+    // Open India dashboard
     await searchAndSelectCountry(page, 'India');
 
-    // Scroll down in the dashboard to find the Perspective Lens section
-    const dashboardContent = page.locator('.overflow-y-auto').first();
-    if (await dashboardContent.isVisible().catch(() => false)) {
-      await dashboardContent.evaluate(el => el.scrollTop = el.scrollHeight);
-      await page.waitForTimeout(500);
-    }
-
-    // Check for the Perspective Lens promo card
-    const perspectiveLabel = page.locator('text=Perspective Lens').first();
-    await expect(perspectiveLabel).toBeVisible({ timeout: 10000 });
-
-    // Check for the Compare button
-    const compareBtn = page.locator('text=Compare Local vs Global News').first();
-    await expect(compareBtn).toBeVisible({ timeout: 10000 });
+    // Verify country heading is displayed
+    const countryHeading = page.locator('text=India').first();
+    await expect(countryHeading).toBeVisible({ timeout: 10000 });
   });
 });

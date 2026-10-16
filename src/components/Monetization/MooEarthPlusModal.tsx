@@ -16,7 +16,7 @@ const PLUS_BENEFITS = [
     id: 'ad_free',
     emoji: '🛡️',
     title: 'Ad-Free Planetary Exploration',
-    description: 'Completely distraction-free browsing across global news, 3D atlas, and climate layers.'
+    description: 'Completely distraction-free browsing across planetary telemetry, 3D atlas, and climate layers.'
   },
   {
     id: 'saved_collections',
@@ -137,7 +137,7 @@ export const MooEarthPlusModal: React.FC<MooEarthPlusModalProps> = ({
           MooEarth Plus
         </h2>
         <p className="text-xs md:text-sm text-slate-400 mt-1 leading-relaxed">
-          Core globe exploration and world news will <strong className="text-slate-200">always remain free</strong>. We are exploring a community-supported tier to fund independent servers and advanced features.
+          Core globe exploration and planetary telemetry will <strong className="text-slate-200">always remain free</strong>. We are exploring a community-supported tier to fund independent servers and advanced features.
         </p>
 
         {/* Validation notice */}

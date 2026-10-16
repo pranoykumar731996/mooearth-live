@@ -506,7 +506,7 @@ async function runAudit() {
     if (item.contentLength < 800) {
       emptyContentCount++;
     }
-    if (item.title.toLowerCase().includes('not found') || item.title.toLowerCase().includes('404')) {
+    if (item.title && (item.title.toLowerCase().includes('not found') || item.title.toLowerCase().includes('404'))) {
       soft404Count++;
     }
   }

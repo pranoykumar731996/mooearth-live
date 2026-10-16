@@ -410,7 +410,7 @@ export default function HomePage({
       console.log('[page.tsx] Browser Notification permission:', perm);
       if (perm === 'granted') {
         sendLocalNotification('Welcome to MooEarth Live! 🌍', {
-          body: 'Stay tuned for live global news alerts and trending country highlights.',
+          body: 'Stay tuned for live planetary telemetry alerts and trending country highlights.',
         });
       }
     });
@@ -1066,7 +1066,7 @@ export default function HomePage({
             '@type': 'WebPage',
             name: 'MooEarth Live — Interactive 3D Globe & World Explorer',
             url: 'https://www.mooearth.live',
-            description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring global news, geography challenges, live weather, and country insights across Earth.',
+            description: 'Explore our living planet with MooEarth Live. An interactive 3D globe and real-time world explorer featuring planetary event streams, geography challenges, live weather, and country insights across Earth.',
             isPartOf: {
               '@type': 'WebSite',
               name: 'MooEarth Live',

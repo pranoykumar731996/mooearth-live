@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: LocalizedDailyPageProps): Pro
           url: 'https://www.mooearth.live/globe-preview.png',
           width: 1200,
           height: 630,
-          alt: `${title} — World News & Geography Trivia`,
+          alt: `${title} — Planetary Telemetry & Geography Trivia`,
         },
       ],
     },

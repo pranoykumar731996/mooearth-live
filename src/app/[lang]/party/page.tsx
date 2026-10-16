@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: LocalizedPartyPageProps): Pro
   }
 
   const title = 'Classroom & Party Trivia Arena — Live Multiplayer Quiz | MooEarth Live';
-  const description = 'Host and join live multiplayer geography and world news trivia battles. Perfect for classrooms, parties, and live streamers. Free in your browser on MooEarth Live.';
+  const description = 'Host and join live multiplayer geography and planetary discovery trivia battles. Perfect for classrooms, parties, and live streamers. Free in your browser on MooEarth Live.';
   const canonicalUrl = `https://www.mooearth.live/${lang}/party`;
 
   return {

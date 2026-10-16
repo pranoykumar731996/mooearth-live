@@ -60,7 +60,7 @@ export interface ProfileModalProps {
 type ProfileTab = 'overview' | 'saved' | 'preferences' | 'collections' | 'history' | 'account';
 
 const AVAILABLE_TOPICS = [
-  { id: 'breaking', label: 'World News', emoji: '🌍' },
+  { id: 'breaking', label: 'Planetary Events', emoji: '🌍' },
   { id: 'technology', label: 'Technology', emoji: '💻' },
   { id: 'business', label: 'Business & Finance', emoji: '📈' },
   { id: 'science', label: 'Science & Environment', emoji: '🔬' },

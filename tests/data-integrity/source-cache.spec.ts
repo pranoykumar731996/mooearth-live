@@ -7,8 +7,8 @@ test.describe('Suite 8 & 9 — Source Verification & Cache Validation', () => {
     const params = new URLSearchParams({
       id: 'source-verify-001',
       url: testUrl,
-      title: 'BBC World News Report',
-      summary: 'Latest world news coverage from BBC.',
+      title: 'BBC Planetary Telemetry Report',
+      summary: 'Latest planetary telemetry coverage from BBC.',
       country: 'United Kingdom',
       category: 'breaking',
       publishedAt: new Date().toISOString(),
@@ -71,7 +71,7 @@ test.describe('Suite 8 & 9 — Source Verification & Cache Validation', () => {
     const params1 = new URLSearchParams({
       id: `cache-a-${suffix}`,
       url: 'https://www.cnn.com/world',
-      title: 'CNN World News Report A',
+      title: 'CNN Planetary Telemetry Report A',
       summary: 'Summary for article A.',
       country: 'United States',
       category: 'breaking',
@@ -81,7 +81,7 @@ test.describe('Suite 8 & 9 — Source Verification & Cache Validation', () => {
     const params2 = new URLSearchParams({
       id: `cache-b-${suffix}`,
       url: 'https://www.cnn.com/world',
-      title: 'CNN World News Report B',
+      title: 'CNN Planetary Telemetry Report B',
       summary: 'Summary for article B — different article.',
       country: 'United States',
       category: 'breaking',

@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: WarRoomEventPageProps): Promi
     : 'War Room: Live Planetary Situation | MooEarth Live';
   const description = event
     ? `Live 3D tactical coverage of ${event.title} in ${event.city}, ${event.country}. Real-time telemetry, viewer reactions, and situation timeline.`
-    : 'Real-time 3D planetary tracking of breaking global news and geopolitical hotspots.';
+    : 'Real-time 3D planetary tracking of global event epicenters and environmental hotspots.';
 
   return {
     title,

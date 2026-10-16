@@ -11,7 +11,7 @@ interface PartyRoomPageProps {
 export async function generateMetadata({ params }: PartyRoomPageProps): Promise<Metadata> {
   const { roomCode } = await params;
   const title = `Join Tournament Room #${roomCode} | MooEarth Live Party Arena`;
-  const description = `You've been invited to battle in room #${roomCode} on MooEarth Live. Test your geography and world news trivia in 3D.`;
+  const description = `You've been invited to battle in room #${roomCode} on MooEarth Live. Test your geography and planetary discovery trivia in 3D.`;
 
   return {
     title,

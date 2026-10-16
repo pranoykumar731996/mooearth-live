@@ -46,15 +46,15 @@ export const DICTIONARIES: Record<SupportedLocale, TranslationDictionary> = {
     hero: {
       title: 'MooEarth Live',
       subtitle: 'The Living 3D Emotional Globe',
-      tagline: 'Track breaking world news, live events, and test your global knowledge in real-time 3D.',
+      tagline: 'Track live planetary telemetry, global events, and test your world knowledge in real-time 3D.',
       liveBadge: 'LIVE ORBIT',
       exploreBtn: 'Explore Globe',
       dailyBtn: 'Daily Challenge',
       partyBtn: 'Host Party / Class',
     },
     countryHub: {
-      titleTemplate: (country: string) => `${country} News, Sports, Weather & Live 3D Globe | MooEarth Live`,
-      descriptionTemplate: (country: string) => `Explore ${country}'s latest news, sports, weather, live updates, and country insights on MooEarth Live's interactive 3D globe.`,
+      titleTemplate: (country: string) => `${country} Telemetry, Sports, Weather & Live 3D Globe | MooEarth Live`,
+      descriptionTemplate: (country: string) => `Explore ${country}'s latest planetary telemetry, sports, weather, live updates, and country insights on MooEarth Live's interactive 3D globe.`,
       capitalLabel: 'Capital',
       populationLabel: 'Population',
       regionLabel: 'Region',
@@ -68,7 +68,7 @@ export const DICTIONARIES: Record<SupportedLocale, TranslationDictionary> = {
     },
     daily: {
       title: 'Daily Earth Challenge',
-      subtitle: '5 synchronized questions on world news, geography, and culture updated daily at 00:00 UTC.',
+      subtitle: '5 synchronized questions on planetary science, geography, and culture updated daily at 00:00 UTC.',
       dailyBadge: 'DAILY RITUAL',
       startBtn: "Start Today's Run",
       questionCounter: (current: number, total: number) => `Question ${current} of ${total}`,

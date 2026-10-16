@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     'daily earth challenge',
     'interactive globe',
     'explore earth',
-    'world news',
+    'planetary events',
     'world map',
     'live events',
   ],

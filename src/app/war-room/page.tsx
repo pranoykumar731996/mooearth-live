@@ -38,10 +38,10 @@ export const metadata: Metadata = {
 export default function WarRoomPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'NewsMediaOrganization',
+    '@type': 'Organization',
     name: 'MooEarth Live War Room',
     url: 'https://www.mooearth.live/war-room',
-    description: 'Real-time 3D planetary tracking of breaking global news and geopolitical hotspots.',
+    description: 'Real-time 3D planetary tracking of global event epicenters and environmental hotspots.',
   };
 
   return (

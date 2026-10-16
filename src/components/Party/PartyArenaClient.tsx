@@ -315,7 +315,7 @@ export default function PartyArenaClient({ initialRoomCode }: PartyArenaProps) {
                 Earth Trivia Arena
               </h1>
               <p className="text-slate-400 text-sm">
-                Compete live in 3D geography and world news with friends, students, or livestream audiences.
+                Compete live in 3D geography and planetary discovery trivia with friends, students, or livestream audiences.
               </p>
             </div>
 
