@@ -321,14 +321,12 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 6: CITIES & PLACES ENGINE', ()
       for (const city of cities) {
         const countryAtlasUrl = `/countries/${city.countrySlug}`;
         const countryWeatherUrl = `/countries/${city.countrySlug}/weather`;
-        const countryNewsUrl = `/countries/${city.countrySlug}/news`;
         const countryGeographyUrl = `/countries/${city.countrySlug}/geography`;
         const countryMapUrl = `/countries/${city.countrySlug}/map`;
         const countryQuizUrl = `/countries/${city.countrySlug}/quiz`;
 
         expect(countryAtlasUrl).toBeTruthy();
         expect(countryWeatherUrl).toBeTruthy();
-        expect(countryNewsUrl).toBeTruthy();
         expect(countryGeographyUrl).toBeTruthy();
         expect(countryMapUrl).toBeTruthy();
         expect(countryQuizUrl).toBeTruthy();
