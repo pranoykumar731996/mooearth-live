@@ -1,8 +1,8 @@
 // ============================================================
-// MooEarth.Live — Personalized News & Discovery Ranking Service
+// MooEarth.Live — Personalized Event & Discovery Ranking Service
 // ============================================================
 // Transparent preference-based ranking and filtering:
-// - Ranks stories by user-selected countries and topics
+// - Ranks events by user-selected countries and topics
 // - Preserves original sources, timestamps, and real coordinates
 // - Safe fallback to global feed if personal filter returns empty
 // - Never fabricates content or hallucinates publisher data
@@ -81,7 +81,7 @@ export function rankPersonalizedEvents(
         (fav) =>
           fav === eventCatLower ||
           (fav === 'sports' && eventCatLower === 'football') ||
-          (fav === 'news' && eventCatLower === 'breaking')
+          (fav === 'events' && (eventCatLower === 'science_nature' || eventCatLower === 'seismic'))
       );
       if (isTopicMatch) {
         score += 8;
@@ -117,7 +117,7 @@ export function rankPersonalizedEvents(
         isPersonalized: false,
         matchedCount: 0,
         fallbackTriggered: true,
-        reason: 'No stories matched your selected interests. Displaying global live feed.',
+        reason: 'No events matched your selected interests. Displaying global live feed.',
       };
     }
   }

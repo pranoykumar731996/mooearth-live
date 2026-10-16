@@ -44,7 +44,7 @@ export async function generateEventSummary(event: WorldEvent): Promise<string> {
         messages: [
           {
             role: 'system',
-            content: 'You are an elite news summarizer. Summarize the following event in 3 to 5 factual, concise lines. Be extremely direct. No unnecessary wording. Output must be readable in under 10 seconds. Do not use bullet points, just a short paragraph.',
+            content: 'You are an elite planetary and science event briefing summarizer. Summarize the following event in 3 to 5 factual, concise lines. Be extremely direct. No unnecessary wording. Output must be readable in under 10 seconds. Do not use bullet points, just a short paragraph.',
           },
           {
             role: 'user',

@@ -43,8 +43,7 @@ const EXCLUDE_FILES = ['data-integrity-scanner.js'];
 
 // Known acceptable files (fallback data that is acceptable with justification)
 const ACCEPTABLE_FILES = {
-  'src/data/events.ts': 'Fallback demo events used when Google News RSS is unavailable — acceptable as degraded mode',
-  'src/services/news.ts': 'References to generateLocalFallbackEvents — returns empty array, no fake data generated',
+  'src/data/events.ts': 'Fallback baseline planetary events used when live telemetry feeds are temporarily unreachable — acceptable as degraded mode',
   'src/app/admin/health/page.tsx': 'Health dashboard page — references "mock data" in UI labels for detection display',
   'src/app/admin/analytics/page.tsx': 'Analytics dashboard — simulation mode label for admin-only display',
 };

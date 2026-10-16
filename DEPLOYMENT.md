@@ -6,10 +6,9 @@ MooEarth Live is a modern Next.js application designed to run seamlessly on Edge
 
 Before deploying to **any** platform, you MUST add the following environment variables to your deployment provider's dashboard (e.g., Vercel Project Settings, Netlify Environment Variables).
 
-The application relies on 12 critical environment variables:
+The application relies on 11 critical environment variables:
 
 ### External APIs
-*   `NEWS_API_KEY` - Your News API Key
 *   `OPENAI_API_KEY` - OpenAI API Key for AI operations
 *   `GEMINI_API_KEY` - Google Gemini API Key
 *   `GROQ_API_KEY` - Groq API Key

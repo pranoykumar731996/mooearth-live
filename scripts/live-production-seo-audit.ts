@@ -218,8 +218,8 @@ async function runAudit() {
         categoryCounts.cities++;
       } else if (path.includes('/games') || path.includes('-quiz')) {
         categoryCounts.games++;
-      } else if (path.includes('/news')) {
-        categoryCounts.news++;
+      } else if (path.includes('/events') || path.includes('/earthcast')) {
+        categoryCounts.events++;
       } else if (path.includes('/weather')) {
         categoryCounts.weather++;
       } else if (path.includes('/continents')) {
@@ -266,7 +266,7 @@ async function runAudit() {
     '/countries/france',
     '/cities/tokyo',
     '/cities/mumbai',
-    '/world-news',
+    '/world-events',
     '/weather',
     '/games',
     '/es/country/spain',
@@ -378,9 +378,9 @@ async function runAudit() {
     '/countries/india', '/countries/japan', '/countries/brazil', '/countries/france',
     '/countries/germany', '/countries/united-states', '/countries/australia', '/countries/canada',
     '/countries/egypt', '/countries/south-africa',
-    // 5 Country/News Pages
-    '/countries/india/news', '/countries/japan/news', '/countries/brazil/news',
-    '/countries/france/news', '/countries/germany/news',
+    // 5 Country/Game Pages
+    '/games/geography/india', '/games/geography/japan', '/games/geography/brazil',
+    '/games/geography/france', '/games/geography/germany',
     // 5 Country/Geography Pages
     '/countries/india/geography', '/countries/japan/geography', '/countries/brazil/geography',
     '/countries/france/geography', '/countries/germany/geography',
@@ -397,12 +397,12 @@ async function runAudit() {
     '/cities/mumbai', '/cities/tokyo', '/cities/new-delhi', '/cities/paris', '/cities/london',
     // 5 Game Pages
     '/games', '/country-quiz', '/flag-quiz', '/geography-quiz', '/capital-quiz',
-    // 5 News Pages
-    '/news', '/world-news', '/live-world-news', '/live-events', '/trending',
+    // 5 Planetary & Discovery Hubs
+    '/world-events', '/live-events', '/challenges', '/play-earth', '/daily',
     // 5 Weather Pages
     '/weather', '/world-weather', '/weather-map', '/weather/india', '/weather/japan',
     // 5 Localized Pages
-    '/es', '/es/country/spain', '/fr/weather', '/ja/games', '/ar/world-news',
+    '/es', '/es/country/spain', '/fr/weather', '/ja/games', '/ar/world-events',
   ];
 
   for (const path of representativeUrls) {
