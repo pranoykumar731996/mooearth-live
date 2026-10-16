@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -226,6 +226,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const temperatureLayerRef = useRef<TemperatureHeatmapLayer | null>(null);
   const precipitationLayerRef = useRef<PrecipitationLayer | null>(null);
   const cycloneVortexLayerRef = useRef<CycloneVortexLayer | null>(null);
+  const seismicShockwaveLayerRef = useRef<SeismicShockwaveLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -904,6 +905,11 @@ const GlobeScene = React.memo(function GlobeScene({
         cycloneVortexLayerRef.current.update(time, 0.016);
       }
 
+      // 8. Real Animated Earthquake Seismic Pillars & Hypocenters (Phase 2 Geophysics)
+      if (seismicShockwaveLayerRef.current) {
+        seismicShockwaveLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1047,12 +1053,45 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Seismic Shockwave & Hypocenter Layer (Phase 2 Geophysics) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!seismicShockwaveLayerRef.current) {
+      seismicShockwaveLayerRef.current = new SeismicShockwaveLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = seismicShockwaveLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Feed active USGS earthquake events
+    seismicShockwaveLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (seismicShockwaveLayerRef.current) {
+        const m = seismicShockwaveLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        seismicShockwaveLayerRef.current.dispose();
+        seismicShockwaveLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
       const isReduced = document.hidden || prefersReducedMotion();
       windParticleSystemRef.current?.setReducedMotion(isReduced);
       cycloneVortexLayerRef.current?.setReducedMotion(isReduced);
+      seismicShockwaveLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1712,19 +1751,47 @@ const GlobeScene = React.memo(function GlobeScene({
         event: e,
       });
 
-      // Earthquake Richter Shockwave
+      // Earthquake Dual P-Wave & S-Wave Seismic Wavefront (Phase 2 Geophysics)
       if (e.category === 'seismic') {
         const mag = e.planetaryTelemetry?.magnitude || 4.5;
-        const maxR = Math.min(16, Math.max(7, mag * 2.0));
+        const isMajor = mag >= 6.0;
+
+        // 1. Primary P-Wave (Compressional, fast 8 km/s, expansive Ice Cyan ring)
+        const pWaveMaxR = Math.min(22, Math.max(8, mag * 2.6));
         rings.push({
           lat: e.lat,
           lng: e.lng,
-          maxR,
-          propagationSpeed: 2.2,
-          repeatPeriod: 2400,
-          color: mag >= 6.0 ? 'rgba(239, 68, 68, 0.9)' : 'rgba(249, 115, 22, 0.75)',
+          maxR: pWaveMaxR,
+          propagationSpeed: isMobile ? 3.0 : 3.8,
+          repeatPeriod: isMajor ? 1800 : 2400,
+          color: 'rgba(0, 229, 255, 0.85)',
           event: e,
         });
+
+        // 2. Secondary S-Wave (Shear / Destructive, slower 4.5 km/s, intense Red/Amber core)
+        const sWaveMaxR = Math.min(14, Math.max(5, mag * 1.8));
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR: sWaveMaxR,
+          propagationSpeed: isMobile ? 1.8 : 2.2,
+          repeatPeriod: isMajor ? 2000 : 2800,
+          color: isMajor ? 'rgba(239, 68, 68, 0.95)' : 'rgba(249, 115, 22, 0.85)',
+          event: e,
+        });
+
+        // 3. Tsunami Radial Wavefront (if oceanic quake with tsunami advisory active)
+        if (e.planetaryTelemetry?.tsunamiWarning) {
+          rings.push({
+            lat: e.lat,
+            lng: e.lng,
+            maxR: 30,
+            propagationSpeed: 1.4,
+            repeatPeriod: 3200,
+            color: 'rgba(37, 99, 235, 0.95)',
+            event: e,
+          });
+        }
       }
 
       // Wildfire Thermal Pulse

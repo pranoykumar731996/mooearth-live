@@ -13,7 +13,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
-import { getCycloneCategoryLabel } from '@/components/Globe/WeatherLayers';
+import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel } from '@/components/Globe/WeatherLayers';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -237,19 +237,27 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                           <span className="font-black text-rose-400 text-sm">
                             {event.category === 'seismic' ? `M ${event.planetaryTelemetry.magnitude.toFixed(1)}` : `${event.planetaryTelemetry.magnitude}`}
                           </span>
+                          {event.category === 'seismic' && (
+                            <span className="text-[10px] text-rose-300/80 font-medium leading-tight mt-0.5">
+                              {getRichterCategoryLabel(event.planetaryTelemetry.magnitude)}
+                            </span>
+                          )}
                         </div>
                       )}
                       {typeof event.planetaryTelemetry.depthKm === 'number' && (
                         <div className="flex flex-col">
                           <span className="text-white/40 uppercase tracking-wider text-[10px]">Focal Depth</span>
                           <span className="font-black text-cyan-300 text-sm">{event.planetaryTelemetry.depthKm.toFixed(1)} km</span>
+                          <span className="text-[10px] text-cyan-200/70 font-medium leading-tight mt-0.5">
+                            {getFocalDepthLabel(event.planetaryTelemetry.depthKm)}
+                          </span>
                         </div>
                       )}
                       {event.planetaryTelemetry.tsunamiWarning !== undefined && (
                         <div className="flex flex-col">
                           <span className="text-white/40 uppercase tracking-wider text-[10px]">Tsunami Status</span>
-                          <span className={`font-bold ${event.planetaryTelemetry.tsunamiWarning ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            {event.planetaryTelemetry.tsunamiWarning ? '⚠️ Advisory Active' : '✅ No Alert'}
+                          <span className={`font-bold text-xs mt-0.5 flex items-center gap-1 ${event.planetaryTelemetry.tsunamiWarning ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {event.planetaryTelemetry.tsunamiWarning ? '⚠️ NOAA Advisory Active' : '✅ No Alert'}
                           </span>
                         </div>
                       )}

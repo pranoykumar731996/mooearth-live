@@ -13,3 +13,7 @@ export type { PrecipitationLayerOptions } from './PrecipitationLayer';
 
 export { CycloneVortexLayer, getSaffirSimpsonColor, getCycloneCategoryLabel } from './CycloneVortexLayer';
 export type { CycloneVortexLayerOptions } from './CycloneVortexLayer';
+
+export { SeismicShockwaveLayer, getFocalDepthColor, getFocalDepthLabel, getRichterCategoryLabel } from './SeismicShockwaveLayer';
+export type { SeismicShockwaveLayerOptions } from './SeismicShockwaveLayer';
+
