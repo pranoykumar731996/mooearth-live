@@ -14,7 +14,6 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import WeatherSearch from './WeatherSearch';
 import WeatherLayerSelector from './WeatherLayerSelector';
-import WindyLayerDock from './WindyLayerDock';
 import WindyTimeScrubber from './WindyTimeScrubber';
 import WindyLegendBar from './WindyLegendBar';
 import WindyMapControls from './WindyMapControls';
@@ -671,18 +670,13 @@ export default function WeatherDashboard() {
               </div>
             )}
 
-            {/* Windy Right-Side Floating Layer Dock */}
-            <WindyLayerDock
-              activeLayer={weather.activeLayer}
-              onSelectLayer={weather.setActiveLayer}
-            />
-
-            {/* Windy Map Controls & 3D/2D Toggle */}
+            {/* Windy Map Controls & 3D/2D Toggle (Offset to avoid overlapping side panel) */}
             <WindyMapControls
               viewMode={viewMode}
               onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
+              className={hasData ? 'lg:right-[396px]' : ''}
               onGeolocate={(c) => {
                 weather.fetchWeatherForLocation({
                   name: 'My Location',
@@ -694,11 +688,12 @@ export default function WeatherDashboard() {
               }}
             />
 
-            {/* Windy Meteorological Dynamic Scale Legend */}
+            {/* Windy Meteorological Dynamic Scale Legend (Offset to avoid overlapping side panel) */}
             <WindyLegendBar
               activeLayer={weather.activeLayer}
               spectralMode={spectralMode}
               units={weather.units}
+              className={hasData ? 'lg:right-[396px]' : ''}
             />
 
             {/* Windy Cinematic Bottom Time Scrubber & Player Bar */}
@@ -717,6 +712,7 @@ export default function WeatherDashboard() {
               isPlaying={isTimelinePlaying}
               onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
               timestamps={gridData?.timestamps}
+              className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
             />
 
             {/* Mobile "Open Weather Sheet" floating CTA */}

@@ -85,7 +85,7 @@ export default function WindyTimeScrubber({
 
   return (
     <div
-      className={`fixed bottom-3 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-3xl z-40 select-none pointer-events-auto ${className}`}
+      className={`fixed bottom-3 left-4 right-4 md:left-1/2 md:right-auto md:w-full md:-translate-x-1/2 md:max-w-3xl z-40 select-none pointer-events-auto ${className}`}
     >
       <div className="rounded-2xl bg-[#060816]/92 backdrop-blur-2xl border border-white/10 shadow-[0_16px_50px_rgba(0,0,0,0.8)] p-2.5 flex flex-col gap-2">
         {/* Top Row: Play/Pause Button + Scrubber Rail */}
