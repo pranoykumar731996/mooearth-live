@@ -262,13 +262,19 @@ export interface MarineResponse {
 
 export type WeatherLayerMode =
   | 'overview'
+  | 'satellite'
+  | 'radar'
   | 'wind'
-  | 'temperature'
   | 'precipitation'
+  | 'temperature'
+  | 'hurricane'
+  | 'clouds'
+  | 'marine'
   | 'air-quality'
   | 'flood'
-  | 'marine'
   | 'elevation';
+
+export type SatelliteSpectralMode = 'visible' | 'blue' | 'infra';
 
 export interface WeatherLayerConfig {
   id: WeatherLayerMode;
@@ -280,13 +286,17 @@ export interface WeatherLayerConfig {
 }
 
 export const WEATHER_LAYERS: WeatherLayerConfig[] = [
-  { id: 'overview', name: 'Overview', icon: '🌤️', description: 'Current conditions & forecast', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'satellite', name: 'Satellite', icon: '🛰️', description: 'Geostationary cloud cover & IR', requiresCoordinates: false, refreshIntervalMs: 600_000 },
+  { id: 'radar', name: 'Weather radar', icon: '📡', description: 'Global composite Doppler radar', requiresCoordinates: false, refreshIntervalMs: 300_000 },
   { id: 'wind', name: 'Wind', icon: '💨', description: 'Wind speed, direction & gusts', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'precipitation', name: 'Rain, thunder', icon: '⛈️', description: 'Rainfall, snow & lightning', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'temperature', name: 'Temperature', icon: '🌡️', description: 'Temperature & feels-like', requiresCoordinates: true, refreshIntervalMs: 600_000 },
-  { id: 'precipitation', name: 'Rain & Precipitation', icon: '🌧️', description: 'Rainfall, snow & probability', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'hurricane', name: 'Hurricane tracker', icon: '🌀', description: 'Active tropical cyclones & tracks', requiresCoordinates: false, refreshIntervalMs: 600_000 },
+  { id: 'clouds', name: 'Clouds', icon: '☁️', description: 'Cloud cover fraction & base', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'marine', name: 'Waves & Currents', icon: '🌊', description: 'Wave height, swell & ocean gyres', requiresCoordinates: true, refreshIntervalMs: 1_800_000 },
+  { id: 'overview', name: 'Overview', icon: '🌤️', description: 'Current conditions & forecast', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'air-quality', name: 'Air Quality', icon: '🫁', description: 'PM2.5, PM10, AQI & pollutants', requiresCoordinates: true, refreshIntervalMs: 1_800_000 },
   { id: 'flood', name: 'Flood Risk', icon: '🌊', description: 'River discharge forecasts', requiresCoordinates: true, refreshIntervalMs: 3_600_000 },
-  { id: 'marine', name: 'Marine', icon: '⚓', description: 'Wave height, period & direction', requiresCoordinates: true, refreshIntervalMs: 1_800_000 },
   { id: 'elevation', name: 'Elevation', icon: '⛰️', description: 'Terrain altitude above sea level', requiresCoordinates: true, refreshIntervalMs: 86_400_000 },
 ];
 

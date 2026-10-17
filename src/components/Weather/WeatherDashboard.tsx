@@ -14,12 +14,16 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import WeatherSearch from './WeatherSearch';
 import WeatherLayerSelector from './WeatherLayerSelector';
+import WindyLayerDock from './WindyLayerDock';
+import WindyTimeScrubber from './WindyTimeScrubber';
+import WindyLegendBar from './WindyLegendBar';
+import WindyMapControls from './WindyMapControls';
 import WeatherPanel from './WeatherPanel';
 import WindParticleOverlay from './WindParticleOverlay';
 import WeatherTimeline from './WeatherTimeline';
 import WeatherLegend from './WeatherLegend';
 import { useWeatherData } from '@/hooks/useWeatherData';
-import type { GeocodingResult, UnitPreferences, ForecastResponse } from '@/services/weather/types';
+import type { GeocodingResult, UnitPreferences, ForecastResponse, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
@@ -103,6 +107,10 @@ export default function WeatherDashboard() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
+  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('infra');
+  const [overlayRadar, setOverlayRadar] = useState(false);
+  const [showPressureIsobars, setShowPressureIsobars] = useState(false);
+  const [particlesEnabled, setParticlesEnabled] = useState(true);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [gridData, setGridData] = useState<GlobalWeatherGridResponse | null>(null);
   const [isGridLoading, setIsGridLoading] = useState(true);
@@ -550,6 +558,10 @@ export default function WeatherDashboard() {
                 weatherTimelineIndex={timelineIndex}
                 weatherGridData={gridData}
                 weatherUnits={weatherUnitsObj}
+                satelliteSpectralMode={spectralMode}
+                overlayRadar={overlayRadar}
+                showPressureIsobars={showPressureIsobars}
+                particlesEnabled={particlesEnabled}
                 onGlobeClick={handleGlobeClick}
                 onInitGlobeApi={handleInitGlobeApi}
               />
@@ -633,30 +645,53 @@ export default function WeatherDashboard() {
               </div>
             )}
 
-            {/* Active Layer Legend (floating top-right) */}
-            <div className="absolute top-4 right-4 z-20 pointer-events-auto max-w-[280px]">
-              <WeatherLegend
-                activeLayer={weather.activeLayer}
-                units={weather.units}
-                timestamp={gridData?.timestamps?.[timelineIndex] || currentForecast?.hourly?.time?.[timelineIndex]}
-                isLoading={isGridLoading}
-              />
-            </div>
+            {/* Windy Right-Side Floating Layer Dock */}
+            <WindyLayerDock
+              activeLayer={weather.activeLayer}
+              onSelectLayer={weather.setActiveLayer}
+            />
 
-            {/* Forecast Timeline (floating along bottom of globe) */}
-            {currentForecast?.hourly && (
-              <div className="absolute bottom-4 left-4 right-4 lg:right-[396px] z-20 pointer-events-auto max-w-2xl mx-auto">
-                <WeatherTimeline
-                  hourly={currentForecast.hourly}
-                  selectedIndex={timelineIndex}
-                  onSelectIndex={setTimelineIndex}
-                  timezone={currentForecast.timezone || 'UTC'}
-                  isPlaying={isTimelinePlaying}
-                  onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
-                  units={weather.units}
-                />
-              </div>
-            )}
+            {/* Windy Map Controls & 3D/2D Toggle */}
+            <WindyMapControls
+              viewMode={viewMode}
+              onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onGeolocate={(c) => {
+                weather.fetchWeatherForLocation({
+                  name: 'My Location',
+                  latitude: c.lat,
+                  longitude: c.lng,
+                  timezone: 'auto',
+                  source: 'search',
+                });
+              }}
+            />
+
+            {/* Windy Meteorological Dynamic Scale Legend */}
+            <WindyLegendBar
+              activeLayer={weather.activeLayer}
+              spectralMode={spectralMode}
+              units={weather.units}
+            />
+
+            {/* Windy Cinematic Bottom Time Scrubber & Player Bar */}
+            <WindyTimeScrubber
+              activeLayer={weather.activeLayer}
+              spectralMode={spectralMode}
+              onSelectSpectralMode={setSpectralMode}
+              overlayRadar={overlayRadar}
+              onToggleOverlayRadar={setOverlayRadar}
+              showPressureIsobars={showPressureIsobars}
+              onTogglePressureIsobars={setShowPressureIsobars}
+              particlesEnabled={particlesEnabled}
+              onToggleParticles={setParticlesEnabled}
+              timelineIndex={timelineIndex}
+              onSelectIndex={setTimelineIndex}
+              isPlaying={isTimelinePlaying}
+              onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
+              timestamps={gridData?.timestamps}
+            />
 
             {/* Mobile "Open Weather Sheet" floating CTA */}
             {hasData && !isPanelOpen && (

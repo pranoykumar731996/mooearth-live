@@ -18,8 +18,8 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer } from './WeatherLayers';
-import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer } from './WeatherLayers';
+import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
 const prefersReducedMotion = () =>
@@ -56,6 +56,10 @@ interface GlobeSceneProps {
   weatherTimelineIndex?: number;
   weatherGridData?: GlobalWeatherGridResponse | null;
   weatherUnits?: UnitPreferences;
+  satelliteSpectralMode?: SatelliteSpectralMode;
+  overlayRadar?: boolean;
+  showPressureIsobars?: boolean;
+  particlesEnabled?: boolean;
   isDashboardOpen?: boolean;
   isFocusMode?: boolean;
   isStopTheEarthSpinning?: boolean;
@@ -202,6 +206,10 @@ const GlobeScene = React.memo(function GlobeScene({
   weatherTimelineIndex = 0,
   weatherGridData = null,
   weatherUnits,
+  satelliteSpectralMode = 'infra',
+  overlayRadar = false,
+  showPressureIsobars = false,
+  particlesEnabled = true,
   isDashboardOpen = false,
   isFocusMode = false,
   isStopTheEarthSpinning = false,
@@ -231,6 +239,8 @@ const GlobeScene = React.memo(function GlobeScene({
   const wildfireThermalLayerRef = useRef<WildfireThermalLayer | null>(null);
   const auroralOvalLayerRef = useRef<AuroralOvalLayer | null>(null);
   const oceanCurrentsLayerRef = useRef<OceanCurrentsLayer | null>(null);
+  const geostationarySatelliteLayerRef = useRef<GeostationarySatelliteLayer | null>(null);
+  const atmosphericPressureLayerRef = useRef<AtmosphericPressureLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -930,8 +940,18 @@ const GlobeScene = React.memo(function GlobeScene({
       }
 
       // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
-      if (oceanCurrentsLayerRef.current) {
+      if (oceanCurrentsLayerRef.current && particlesEnabled) {
         oceanCurrentsLayerRef.current.update(time, 0.016);
+      }
+
+      // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Windy Satellite)
+      if (geostationarySatelliteLayerRef.current) {
+        geostationarySatelliteLayerRef.current.update(time, 0.016);
+      }
+
+      // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Windy Isobars)
+      if (atmosphericPressureLayerRef.current) {
+        atmosphericPressureLayerRef.current.update(time, 0.016);
       }
 
       animFrameId = requestAnimationFrame(tick);
@@ -1237,6 +1257,93 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Geostationary Satellite Cloud Cover Layer (Windy Satellite Visible / Blue / Infra) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const isSatOrWeather = globeView === 'satellite' || globeView === 'weather' || weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds';
+
+    if (isSatOrWeather) {
+      const radius = globe.getGlobeRadius();
+
+      if (!geostationarySatelliteLayerRef.current) {
+        geostationarySatelliteLayerRef.current = new GeostationarySatelliteLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+          initialMode: satelliteSpectralMode,
+          overlayRadar,
+        });
+        const mesh = geostationarySatelliteLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Update parameters
+      geostationarySatelliteLayerRef.current.setSpectralMode(satelliteSpectralMode);
+      geostationarySatelliteLayerRef.current.setOverlayRadar(overlayRadar);
+      geostationarySatelliteLayerRef.current.setTimeOffsetHours(weatherTimelineIndex);
+      geostationarySatelliteLayerRef.current.setEvents(events || []);
+    } else if (geostationarySatelliteLayerRef.current) {
+      const m = geostationarySatelliteLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      geostationarySatelliteLayerRef.current.dispose();
+      geostationarySatelliteLayerRef.current = null;
+    }
+
+    return () => {
+      if (globeView !== 'satellite' && globeView !== 'weather') {
+        if (geostationarySatelliteLayerRef.current) {
+          const m = geostationarySatelliteLayerRef.current.getMesh();
+          if (m) scene.remove(m);
+          geostationarySatelliteLayerRef.current.dispose();
+          geostationarySatelliteLayerRef.current = null;
+        }
+      }
+    };
+  }, [globeRef, introDone, globeView, weatherLayerMode, satelliteSpectralMode, overlayRadar, weatherTimelineIndex, events, isMobile]);
+
+  // ── 3D Mean Sea Level Pressure (MSLP) Isobars & High/Low Layer (Windy Isobars) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const shouldShow = showPressureIsobars && (globeView === 'weather' || globeView === 'satellite' || weatherLayerMode !== undefined);
+
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!atmosphericPressureLayerRef.current) {
+        atmosphericPressureLayerRef.current = new AtmosphericPressureLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+          visible: true,
+        });
+        const mesh = atmosphericPressureLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      atmosphericPressureLayerRef.current.setVisible(true);
+      atmosphericPressureLayerRef.current.setEvents(events || []);
+    } else if (atmosphericPressureLayerRef.current) {
+      atmosphericPressureLayerRef.current.setVisible(false);
+    }
+
+    return () => {
+      if (!showPressureIsobars && atmosphericPressureLayerRef.current) {
+        const m = atmosphericPressureLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        atmosphericPressureLayerRef.current.dispose();
+        atmosphericPressureLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, showPressureIsobars, globeView, weatherLayerMode, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1248,6 +1355,8 @@ const GlobeScene = React.memo(function GlobeScene({
       wildfireThermalLayerRef.current?.setReducedMotion(isReduced);
       auroralOvalLayerRef.current?.setReducedMotion(isReduced);
       oceanCurrentsLayerRef.current?.setReducedMotion(isReduced);
+      geostationarySatelliteLayerRef.current?.setReducedMotion(isReduced);
+      atmosphericPressureLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);

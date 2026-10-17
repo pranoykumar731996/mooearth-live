@@ -28,3 +28,9 @@ export type { AuroralOvalLayerOptions } from './AuroralOvalLayer';
 
 export { OceanCurrentsLayer, getOceanCurrentColor, getSstAnomalyColor } from './OceanCurrentsLayer';
 export type { OceanCurrentsLayerOptions } from './OceanCurrentsLayer';
+
+export { GeostationarySatelliteLayer } from './GeostationarySatelliteLayer';
+export type { GeostationarySatelliteLayerOptions } from './GeostationarySatelliteLayer';
+
+export { AtmosphericPressureLayer } from './AtmosphericPressureLayer';
+export type { AtmosphericPressureLayerOptions } from './AtmosphericPressureLayer';
