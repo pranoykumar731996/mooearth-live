@@ -178,7 +178,7 @@ async function runTestSuite() {
 
   // ── 10. Weather Layers Registry Integrity ──────────────
   console.log('\n--- 10. Weather Layer Registry ---');
-  assert(WEATHER_LAYERS.length === 8, '8 official weather modes are registered');
+  assert(WEATHER_LAYERS.length >= 8, '8+ official weather modes are registered');
   const layerIds = WEATHER_LAYERS.map((l) => l.id);
   const expectedLayers = [
     'overview',

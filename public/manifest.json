@@ -1,13 +1,13 @@
 {
-  "name": "mooearth",
-  "short_name": "mooearth",
-  "description": "An immersive emotional globe visualizing planetary events, live sports reactions, celebrations, and world energy.",
+  "name": "MooEarth Live — Weather Radar & Games",
+  "short_name": "MooEarth",
+  "description": "Interactive 3D weather radar, satellite imagery, global storm tracking, and planetary geography games.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#020208",
+  "theme_color": "#020208",
   "orientation": "any",
-  "categories": ["education", "geography"],
+  "categories": ["weather", "education", "games"],
   "icons": [
     {
       "src": "/icons/icon-192.svg",

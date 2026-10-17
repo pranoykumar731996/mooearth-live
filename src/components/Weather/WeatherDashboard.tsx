@@ -138,10 +138,19 @@ export default function WeatherDashboard() {
     [router, viewMode]
   );
 
-  // Return to Earth URL preserving selected location / coordinates
-  const returnHomeUrl = weather.selectedLocation
-    ? `/?lat=${weather.selectedLocation.latitude.toFixed(4)}&lng=${weather.selectedLocation.longitude.toFixed(4)}&city=${encodeURIComponent(weather.selectedLocation.name || '')}&country=${encodeURIComponent(weather.selectedLocation.country || '')}`
-    : '/';
+  // Daily streak for Games Hub badge
+  const [dailyStreak, setDailyStreak] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const streakVal = parseInt(localStorage.getItem('mooearth_daily_streak') || '0', 10);
+        setDailyStreak(streakVal);
+      } catch {
+        // Fallback
+      }
+    }
+  }, []);
 
   // Helper: get flyTo duration respecting reduced-motion
   const getFlyDuration = useCallback((ms: number) => (prefersReducedMotion() ? 0 : ms), []);
@@ -499,16 +508,32 @@ export default function WeatherDashboard() {
                 </button>
               </div>
             )}
-            <Link
-              href={returnHomeUrl}
-              className="min-h-[44px] px-2.5 sm:px-3 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border border-cyan-400/40 text-cyan-200 hover:text-white flex items-center gap-1.5 font-bold text-xs shadow-[0_0_12px_rgba(0,229,255,0.2)] transition-all cursor-pointer active:scale-95 shrink-0"
-              title="Return to MooEarth 3D Interactive World"
-              aria-label="Return to Earth"
-            >
-              <span className="text-sm">🌍</span>
-              <span className="font-extrabold tracking-wide hidden xs:inline">Return to Earth</span>
-              <span className="font-extrabold tracking-wide xs:hidden">Earth</span>
-            </Link>
+            {/* Two Primary Destinations Navigation */}
+            <div role="navigation" aria-label="Primary destinations" className="flex items-center p-0.5 sm:p-1 rounded-xl bg-[#090d20]/80 border border-white/10 backdrop-blur-md shrink-0">
+              <Link
+                href="/"
+                className="h-8 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 font-black text-xs tracking-wider bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 shadow-[0_0_15px_rgba(0,229,255,0.5)] transition-all cursor-pointer"
+                title="MooEarth Weather Radar (Homepage)"
+                aria-label="Weather Radar"
+              >
+                <span>🌦️</span>
+                <span className="hidden xs:inline">RADAR</span>
+              </Link>
+              <Link
+                href="/games"
+                className="h-8 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 font-extrabold text-xs tracking-wider text-white/70 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                title="MooEarth Games Hub"
+                aria-label="Games Hub"
+              >
+                <span>🎮</span>
+                <span className="hidden xs:inline">GAMES</span>
+                {dailyStreak > 0 && (
+                  <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 hidden sm:inline">
+                    🔥{dailyStreak}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
         </div>
       </header>

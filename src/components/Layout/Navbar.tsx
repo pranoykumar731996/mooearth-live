@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { WorldEvent, EventCategory } from '@/types';
 import SearchBar from '@/components/Search/SearchBar';
 import InstallButton from '@/components/UI/InstallButton';
@@ -65,10 +66,23 @@ export default function Navbar({
   onTogglePlayEarth,
   showDebugConsole = false,
   onToggleDebug,
-  isWeatherActive = false,
+  isWeatherActive: propWeatherActive = false,
   onToggleWeather,
 }: NavbarProps) {
   const { t } = useTranslation();
+  const pathname = usePathname();
+  const isGamesActive = Boolean(
+    pathname?.startsWith('/games') ||
+    pathname?.startsWith('/daily') ||
+    pathname?.startsWith('/party') ||
+    pathname?.startsWith('/tournament') ||
+    pathname?.includes('quiz') ||
+    pathname?.startsWith('/challenge') ||
+    pathname?.startsWith('/play-earth') ||
+    isPlayEarthActive
+  );
+  const isWeatherNavActive = !isGamesActive;
+
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -322,16 +336,35 @@ export default function Navbar({
               </svg>
             </button>
 
-            {/* Direct Weather Radar Navigation (Mobile - Fix 4) */}
-            <Link
-              href={weatherUrl}
-              className="h-9 px-2 xs:px-2.5 rounded-xl flex items-center gap-1 font-bold text-[10px] tracking-wider border border-cyan-400/40 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-200 active:scale-95 transition-all shadow-[0_0_12px_rgba(0,229,255,0.2)] shrink-0"
-              title="Open Weather Radar & Forecast"
-              aria-label="Open Weather Radar & Forecast"
-            >
-              <span className="text-xs">🌦️</span>
-              <span className="font-extrabold text-[9px] tracking-wider">RADAR</span>
-            </Link>
+            {/* Two Primary Mobile Navigation Destinations */}
+            <div className="flex items-center p-0.5 rounded-xl bg-[#090d20]/80 border border-white/10 backdrop-blur-md shrink-0">
+              <Link
+                href="/"
+                className={`h-8 px-2 rounded-lg flex items-center gap-1 font-extrabold text-[10px] tracking-wider transition-all ${
+                  isWeatherNavActive
+                    ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.6)] font-black'
+                    : 'text-white/60 hover:text-white'
+                }`}
+                title="Weather Radar"
+                aria-label="Weather Radar"
+              >
+                <span>🌦️</span>
+                <span>RADAR</span>
+              </Link>
+              <Link
+                href="/games"
+                className={`h-8 px-2 rounded-lg flex items-center gap-1 font-extrabold text-[10px] tracking-wider transition-all ${
+                  isGamesActive
+                    ? 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.6)] font-black'
+                    : 'text-white/60 hover:text-white'
+                }`}
+                title="Games Hub"
+                aria-label="Games Hub"
+              >
+                <span>🎮</span>
+                <span>GAMES</span>
+              </Link>
+            </div>
 
             {/* Language Selector (Mobile - Never overlaps search) */}
             <div className="shrink-0">
@@ -382,30 +415,43 @@ export default function Navbar({
                   </button>
                 </div>
 
-                {/* Play Earth Mode */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onTogglePlayEarth();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer border ${
-                    isPlayEarthActive
-                      ? 'bg-emerald-400 text-slate-950 border-emerald-300 font-black shadow-[0_0_15px_rgba(52,211,153,0.6)]'
-                      : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/20'
+                {/* Primary Destination 1: Weather Radar */}
+                <Link
+                  href="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all border ${
+                    isWeatherNavActive
+                      ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
                   }`}
                 >
                   <span className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    <span>🎮 {t('navbar.playEarth', 'Play Earth')}</span>
+                    <span>🌦️</span>
+                    <span>Weather Radar</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300">
+                    LIVE
+                  </span>
+                </Link>
+
+                {/* Primary Destination 2: Games Hub */}
+                <Link
+                  href="/games"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all border ${
+                    isGamesActive
+                      ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>🎮</span>
+                    <span>Games Hub</span>
                   </span>
                   <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
                     11+ MODES
                   </span>
-                </button>
+                </Link>
 
                 {/* Daily Challenge */}
                 <Link
@@ -528,69 +574,43 @@ export default function Navbar({
         )}
 
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={onTogglePlayEarth}
-            title={isPlayEarthActive ? t('playEarthOverlay.exitMode', 'Exit Play Earth Mode') : `${t('navbar.playEarth', 'Play Earth')} — ${t('navbar.modesBadge', '11+ MODES')}!`}
-            className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider border transition-all duration-300 pointer-events-auto cursor-pointer group ${
-              isPlayEarthActive
-                ? 'bg-emerald-400 text-slate-950 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.8)] animate-pulse'
-                : 'bg-gradient-to-r from-emerald-500/20 via-teal-500/25 to-cyan-500/20 border-emerald-400/50 text-emerald-300 hover:border-emerald-300 hover:shadow-[0_0_22px_rgba(16,185,129,0.5)] shadow-[0_0_14px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/20'
-            }`}
-          >
-            {/* Blinking green live beacon */}
-            <span className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_#10b981] absolute top-1 right-1" />
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping absolute top-1 right-1" />
-            <span className="text-base group-hover:scale-110 transition-transform">🎮</span>
-            <span className="font-black text-emerald-200">{t('navbar.playEarth', 'PLAY EARTH')}</span>
-            <span className="hidden md:inline-block px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-widest animate-pulse">
-              {t('navbar.modesBadge', '11+ MODES')}
-            </span>
-          </button>
-
-          {/* Daily Challenge Button (Desktop) */}
-          <Link
-            href="/daily"
-            title={dailyCompleted ? "Today's Daily Challenge Completed! View Results" : "Play Today's Daily Earth Challenge!"}
-            className={`relative h-9 px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wider border transition-all pointer-events-auto cursor-pointer group ${
-              dailyCompleted
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400'
-                : 'border-amber-500/40 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 text-amber-300 hover:border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-            }`}
-          >
-            <span className="text-sm">{dailyCompleted ? '✅' : '📅'}</span>
-            <span className="font-extrabold text-[11px]">{dailyCompleted ? 'DAILY DONE' : 'DAILY'}</span>
-            {dailyStreak > 0 && (
-              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                🔥{dailyStreak}
-              </span>
-            )}
-          </Link>
-
-          {/* Weather Intelligence Platform Direct Navigation (Desktop - Fix 4) */}
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          {/* Exactly Two Primary Navigation Destinations */}
+          <div role="navigation" aria-label="Primary destinations" className="flex items-center p-1 rounded-2xl bg-[#090d20]/80 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+            {/* Destination 1: Weather Radar (/) */}
             <Link
-              href={weatherUrl}
-              title="Open MooEarth Weather Intelligence Radar Platform"
-              className="relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-bold tracking-wider border border-cyan-400/40 bg-gradient-to-r from-cyan-500/15 via-blue-500/20 to-cyan-500/15 text-cyan-200 hover:text-white hover:border-cyan-300 hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all pointer-events-auto cursor-pointer group"
+              href="/"
+              title="MooEarth Weather Radar — Global Weather Intelligence & Live Radar"
+              className={`relative h-9 px-4 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
+                isWeatherNavActive
+                  ? 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 shadow-[0_0_20px_rgba(0,229,255,0.6)] font-black'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
             >
-              <span className="text-base group-hover:scale-110 transition-transform">🌦️</span>
-              <span className="font-extrabold text-cyan-200">WEATHER RADAR</span>
+              <span className="text-base">🌦️</span>
+              <span>WEATHER RADAR</span>
+              {isWeatherNavActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />
+              )}
             </Link>
 
-            {onToggleWeather && (
-              <button
-                type="button"
-                onClick={onToggleWeather}
-                title={isWeatherActive ? "Turn Off 3D Globe Weather Overlay" : "Turn On 3D Globe Weather Overlay"}
-                className={`h-9 px-2.5 rounded-xl flex items-center justify-center text-[10px] font-mono font-bold transition-all border cursor-pointer ${
-                  isWeatherActive
-                    ? 'bg-cyan-400 text-slate-950 border-cyan-300 font-black shadow-[0_0_12px_rgba(0,229,255,0.6)]'
-                    : 'bg-white/5 border-white/10 text-white/50 hover:text-cyan-300 hover:border-cyan-500/40'
-                }`}
-              >
-                {isWeatherActive ? 'GLOBE: ON' : 'GLOBE LAYER'}
-              </button>
-            )}
+            {/* Destination 2: Games (/games) */}
+            <Link
+              href="/games"
+              title="MooEarth Games Hub — Quizzes, Daily Challenge, Multiplayer & Discovery"
+              className={`relative h-9 px-4 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
+                isGamesActive
+                  ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.6)] font-black'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="text-base">🎮</span>
+              <span>GAMES</span>
+              {dailyStreak > 0 && (
+                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                  🔥{dailyStreak}
+                </span>
+              )}
+            </Link>
           </div>
 
           {/* Phase 3: Cinematic Mode Toggle */}

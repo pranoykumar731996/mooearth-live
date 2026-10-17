@@ -63,12 +63,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/world-weather',
-        destination: '/weather',
+        destination: '/',
         permanent: true,
       },
       {
         source: '/weather-map',
-        destination: '/weather',
+        destination: '/',
         permanent: true,
       },
     ];
