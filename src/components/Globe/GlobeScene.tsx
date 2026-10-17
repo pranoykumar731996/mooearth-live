@@ -1947,12 +1947,6 @@ const GlobeScene = React.memo(function GlobeScene({
     return data;
   }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView]);
 
-  // Connection arcs — deleted to eliminate cluttering line overlay
-  const arcsData = useMemo<EventArc[]>(() => [], []);
-
-  // Ring data — deleted concentric pulse rings / circle lines so other features are visible clearly
-  const ringsData = useMemo(() => [], []);
-
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
      
@@ -1989,7 +1983,7 @@ const GlobeScene = React.memo(function GlobeScene({
           align-items: center;
           cursor: pointer;
           pointer-events: auto;
-          transform: translateY(-16px);
+          transform: translateY(-14px);
           transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           user-select: none;
         `;
@@ -2000,38 +1994,15 @@ const GlobeScene = React.memo(function GlobeScene({
             align-items: center;
             justify-content: center;
           ">
-            <!-- Outer pulsing glow ring -->
+            <!-- Sleek pin dot -->
             <div style="
-              position: absolute;
-              width: ${isSelected ? '44px' : '36px'}; height: ${isSelected ? '44px' : '36px'};
+              width: ${isSelected ? '14px' : '10px'}; height: ${isSelected ? '14px' : '10px'};
               border-radius: 50%;
-              border: 2px solid ${isSelected ? 'rgba(0, 255, 196, 0.9)' : 'rgba(0, 229, 255, 0.6)'};
-              animation: weather-pin-pulse 2s ease-in-out infinite;
-            "></div>
-            <!-- Second pulsing ring (offset) -->
-            <div style="
-              position: absolute;
-              width: ${isSelected ? '44px' : '36px'}; height: ${isSelected ? '44px' : '36px'};
-              border-radius: 50%;
-              border: 1.5px solid ${isSelected ? 'rgba(16, 185, 129, 0.5)' : 'rgba(6, 182, 212, 0.4)'};
-              animation: weather-pin-pulse 2s ease-in-out infinite;
-              animation-delay: 0.7s;
-            "></div>
-            <!-- Inner glowing pin core -->
-            <div style="
-              width: ${isSelected ? '22px' : '18px'}; height: ${isSelected ? '22px' : '18px'};
-              border-radius: 50%;
-              background: radial-gradient(circle, ${isSelected ? 'rgba(0, 255, 196, 0.95)' : 'rgba(0, 229, 255, 0.95)'} 0%, rgba(6, 182, 212, 0.6) 50%, transparent 100%);
-              border: 2px solid ${isSelected ? '#00ffc4' : '#00e5ff'};
-              box-shadow: 0 0 ${isSelected ? '20px rgba(0, 255, 196, 0.9)' : '16px rgba(0, 229, 255, 0.8)'}, inset 0 0 4px rgba(255,255,255,0.4);
+              background: ${isSelected ? '#00ffc4' : '#00e5ff'};
+              box-shadow: 0 0 ${isSelected ? '12px rgba(0, 255, 196, 0.9)' : '8px rgba(0, 229, 255, 0.7)'};
+              border: 1.5px solid #ffffff;
               z-index: 2;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 10px;
-            ">
-              ${isSelected ? '🏙️' : ''}
-            </div>
+            "></div>
           </div>
           <!-- Vertical pin tail line -->
           <div style="
@@ -2826,26 +2797,10 @@ const GlobeScene = React.memo(function GlobeScene({
               : (isMobile ? 0.2 : GLOBE_CONFIG.atmosphereAltitude)
           }
 
-          // Connection Arcs
-          arcsData={arcsData}
-          arcColor="color"
-          arcDashLength={GLOBE_CONFIG.arcDashLength}
-          arcDashGap={GLOBE_CONFIG.arcDashGap}
-          arcDashInitialGap={GLOBE_CONFIG.arcDashInitialGap}
-          arcDashAnimateTime={GLOBE_CONFIG.arcDashAnimateTime}
-          arcAltitude={GLOBE_CONFIG.arcAltitude}
-
           // HTML markers
           htmlElementsData={combinedHtmlData}
           htmlElement={htmlMarkerRenderer}
           htmlAltitude={GLOBE_CONFIG.markerAltitude}
-
-          // Rings
-          ringsData={ringsData}
-          ringColor="color"
-          ringMaxRadius="maxR"
-          ringPropagationSpeed="propagationSpeed"
-          ringRepeatPeriod="repeatPeriod"
 
           // Polygons (Countries)
           polygonsData={countries}
