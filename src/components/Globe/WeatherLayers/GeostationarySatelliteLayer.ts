@@ -45,7 +45,7 @@ export class GeostationarySatelliteLayer {
     this.radius = options.radius ?? 100;
     this.isMobile = options.isMobile ?? false;
     this.reducedMotion = options.reducedMotion ?? false;
-    this.spectralMode = options.initialMode ?? 'infra';
+    this.spectralMode = options.initialMode ?? 'visible';
     this.overlayRadar = options.overlayRadar ?? false;
 
     this.rootGroup = new THREE.Group();
@@ -209,42 +209,46 @@ export class GeostationarySatelliteLayer {
         }
 
         // Authentic Windy Infrared Cloud-Top Brightness Temperature Color Ramp (Kelvin scale)
-        // 240K -> 230K -> 220K -> 210K -> 200K
+        // Cloud-free sky is 100% transparent. Only cold storm cloud decks show thermal colors.
         vec4 getInfraredColor(float density, float altitude) {
-          float kelvin = mix(275.0, 195.0, clamp(density * 0.7 + altitude * 0.5, 0.0, 1.0));
+          if (density < 0.10) {
+            return vec4(0.0, 0.0, 0.0, 0.0);
+          }
+
+          float kelvin = mix(265.0, 195.0, clamp((density - 0.10) / 0.90 * 0.7 + altitude * 0.3, 0.0, 1.0));
 
           vec3 col;
           float alpha;
 
           if (kelvin > 255.0) {
-            // Warm sea surface / cloud-free troposphere: translucent dark navy
-            col = vec3(0.015, 0.03, 0.08);
-            alpha = smoothstep(270.0, 255.0, kelvin) * 0.25;
+            // Low warm clouds: soft translucent mist
+            col = vec3(0.85, 0.90, 0.95);
+            alpha = smoothstep(265.0, 255.0, kelvin) * 0.35;
           } else if (kelvin > 240.0) {
-            // Low / mid-level clouds: deep azure to electric cyan
+            // Mid-level clouds: deep azure to electric cyan
             float t = (255.0 - kelvin) / 15.0;
-            col = mix(vec3(0.02, 0.25, 0.65), vec3(0.05, 0.75, 0.95), t);
-            alpha = mix(0.35, 0.75, t);
+            col = mix(vec3(0.05, 0.45, 0.85), vec3(0.05, 0.75, 0.95), t);
+            alpha = mix(0.40, 0.70, t);
           } else if (kelvin > 225.0) {
-            // Mid-high tropospheric clouds: cyan to mint-emerald
+            // High-level clouds: cyan to mint-emerald
             float t = (240.0 - kelvin) / 15.0;
             col = mix(vec3(0.05, 0.75, 0.95), vec3(0.12, 0.92, 0.45), t);
-            alpha = mix(0.75, 0.88, t);
+            alpha = mix(0.70, 0.85, t);
           } else if (kelvin > 212.0) {
             // Severe storm anvil: bright amber to orange
             float t = (225.0 - kelvin) / 13.0;
             col = mix(vec3(0.12, 0.92, 0.45), vec3(0.98, 0.76, 0.08), t);
-            alpha = 0.92;
+            alpha = 0.90;
           } else if (kelvin > 200.0) {
-            // Severe overshooting convective tops & cyclone eyewall: crimson to magenta
+            // Overshooting storm tops & cyclone eyewall: crimson to magenta
             float t = (212.0 - kelvin) / 12.0;
             col = mix(vec3(0.98, 0.76, 0.08), vec3(0.94, 0.12, 0.45), t);
-            alpha = 0.96;
+            alpha = 0.94;
           } else {
             // Ultra-cold tropopause storm towers (< 200K): intense violet / white core
             float t = (200.0 - kelvin) / 10.0;
             col = mix(vec3(0.94, 0.12, 0.45), vec3(0.98, 0.90, 1.0), t);
-            alpha = 0.98;
+            alpha = 0.96;
           }
 
           return vec4(col, alpha);
@@ -252,16 +256,22 @@ export class GeostationarySatelliteLayer {
 
         // Visible (Daylight Natural True Color) mode
         vec4 getVisibleColor(float density, float altitude) {
+          if (density < 0.08) {
+            return vec4(0.0, 0.0, 0.0, 0.0);
+          }
           float cloudShade = mix(0.85, 1.0, altitude);
           vec3 cloudCol = vec3(0.96, 0.98, 1.0) * cloudShade;
-          float alpha = smoothstep(0.08, 0.85, density * 1.15) * 0.92;
+          float alpha = smoothstep(0.08, 0.85, density * 1.15) * 0.85;
           return vec4(cloudCol, alpha);
         }
 
         // Blue (Moisture Band) mode
         vec4 getBlueColor(float density, float altitude) {
+          if (density < 0.08) {
+            return vec4(0.0, 0.0, 0.0, 0.0);
+          }
           vec3 moistureCol = mix(vec3(0.05, 0.35, 0.85), vec3(0.45, 0.85, 1.0), density);
-          float alpha = smoothstep(0.05, 0.75, density) * 0.88;
+          float alpha = smoothstep(0.08, 0.75, density) * 0.80;
           return vec4(moistureCol, alpha);
         }
 
@@ -277,17 +287,18 @@ export class GeostationarySatelliteLayer {
           float baseCloud = 0.0;
           if (uTextureReady > 0.5) {
             vec4 texColor = texture2D(uCloudTexture, advectedUv);
-            baseCloud = max(texColor.r, max(texColor.g, texColor.b));
-            if (texColor.a > 0.0) baseCloud = max(baseCloud, texColor.a);
+            float lum = max(texColor.r, max(texColor.g, texColor.b));
+            // Transparent background or dark clear sky has zero cloud
+            baseCloud = lum * (texColor.a > 0.01 ? texColor.a : 0.0);
           } else {
             // High-fidelity procedural fallback
-            baseCloud = fbm(advectedUv * 16.0);
+            baseCloud = smoothstep(0.42, 0.82, fbm(advectedUv * 16.0));
           }
 
-          // Add subtle dynamic turbulence
+          // Dynamic turbulence
           float microNoise = fbm(advectedUv * 36.0 + uTime * 0.02);
-          float cloudDensity = clamp(baseCloud * 1.25 + (microNoise - 0.5) * 0.35, 0.0, 1.0);
-          float altitude = clamp(baseCloud * 0.8 + microNoise * 0.4, 0.0, 1.0);
+          float cloudDensity = clamp(baseCloud * 1.15 + (microNoise - 0.5) * 0.25, 0.0, 1.0);
+          float altitude = clamp(baseCloud * 0.8 + microNoise * 0.3, 0.0, 1.0);
 
           // Real cyclone vortex spirals (Coriolis twist)
           float lat = (0.5 - uv.y) * 180.0;

@@ -208,7 +208,7 @@ const GlobeScene = React.memo(function GlobeScene({
   weatherTimelineIndex = 0,
   weatherGridData = null,
   weatherUnits,
-  satelliteSpectralMode = 'infra',
+  satelliteSpectralMode = 'visible',
   overlayRadar = false,
   showPressureIsobars = false,
   particlesEnabled = true,
@@ -763,19 +763,19 @@ const GlobeScene = React.memo(function GlobeScene({
     // Enhance lighting for crystal-clear globe visibility
     let directionalLight = scene.children.find((obj3d: any) => obj3d.type === 'DirectionalLight');
     if (directionalLight) {
-      directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather') ? 4.0 : 3.5;
+      directionalLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather' || globeView === 'satellite') ? 4.0 : 3.5;
       directionalLight.position.set(1, 1, 1);
     } else {
-      directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
+      directionalLight = new THREE.DirectionalLight(0xffffff, (globeView === 'satellite') ? 4.0 : 3.5);
       directionalLight.position.set(1, 1, 1);
       scene.add(directionalLight);
     }
     
     let ambientLight = scene.children.find((obj3d: any) => obj3d.type === 'AmbientLight');
     if (ambientLight) {
-      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather') ? 1.6 : 0.8;
+      ambientLight.intensity = (globeView === 'discovery' || isPlayEarthActive || globeView === 'weather' || globeView === 'satellite') ? 1.6 : 0.8;
     } else {
-      ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      ambientLight = new THREE.AmbientLight(0xffffff, (globeView === 'satellite') ? 1.6 : 0.8);
       scene.add(ambientLight);
     }
 
@@ -1218,7 +1218,9 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const isSatOrWeather = globeView === 'satellite' || globeView === 'weather' || weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds';
+    // Only activate in Weather mode when satellite/radar/clouds layer is explicitly chosen
+    const isSatOrWeather = globeView === 'weather' && 
+      (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds');
 
     if (isSatOrWeather) {
       const radius = globe.getGlobeRadius();
@@ -1248,7 +1250,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return () => {
-      if (globeView !== 'satellite' && globeView !== 'weather') {
+      if (globeView !== 'weather') {
         if (geostationarySatelliteLayerRef.current) {
           const m = geostationarySatelliteLayerRef.current.getMesh();
           if (m) scene.remove(m);
@@ -2239,8 +2241,9 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     if (globeView === 'satellite') {
-      if (isSelected) return 'rgba(255, 255, 255, 0.15)';
-      return 'rgba(0, 0, 0, 0.01)'; // Fully transparent flat cap
+      if (isSelected) return 'rgba(255, 255, 255, 0.20)';
+      if (hoveredPolygon && hoveredPolygon.properties.NAME === name) return 'rgba(255, 255, 255, 0.08)';
+      return 'rgba(0, 0, 0, 0)'; // 100% crystal-clear transparent flat cap so daytime satellite surface is completely visible
     }
 
     if (globeView === 'weather') {
