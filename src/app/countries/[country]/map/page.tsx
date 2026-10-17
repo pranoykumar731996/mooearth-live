@@ -233,7 +233,7 @@ export default async function CountryMapPage({ params }: CountryMapPageProps) {
               <WebGLGlobeViewer
                 height="620px"
                 selectedCountry={country.name}
-                initialView="standard"
+                initialView="satellite"
               />
             </div>
           </section>

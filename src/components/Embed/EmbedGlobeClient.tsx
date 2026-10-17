@@ -46,7 +46,7 @@ export default function EmbedGlobeClient() {
   // Parse embed query parameters
   const countryParam = searchParams.get('country') || null;
   const categoryParam = (searchParams.get('category') as EventCategory) || null;
-  const viewParam = (searchParams.get('view') as any) || 'standard';
+  const viewParam = (searchParams.get('view') as any) || 'satellite';
   const initialThemeParam = (searchParams.get('theme') as 'dark' | 'light') || 'dark';
 
   const [currentTheme, setCurrentTheme] = useState<'dark' | 'light'>(

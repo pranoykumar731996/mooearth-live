@@ -162,7 +162,7 @@ export default function HomePage({
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [leftPanelTab, setLeftPanelTab] = useState<'explore' | 'views'>('explore');
-  const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
+  const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('satellite');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive || false);
   const [isPlayEarthBannerDismissed, setIsPlayEarthBannerDismissed] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
@@ -1185,7 +1185,7 @@ export default function HomePage({
           onTogglePlayEarth={() => {
             const nextActive = !isPlayEarthActive;
             setIsPlayEarthActive(nextActive);
-            setGlobeView(nextActive ? 'discovery' : 'standard');
+            setGlobeView(nextActive ? 'discovery' : 'satellite');
             if (nextActive) {
               handleSelectCountry(null);
             }
@@ -1199,7 +1199,7 @@ export default function HomePage({
           isWeatherActive={globeView === 'weather'}
           onToggleWeather={() => {
             const nextWeather = globeView !== 'weather';
-            setGlobeView(nextWeather ? 'weather' : 'standard');
+            setGlobeView(nextWeather ? 'weather' : 'satellite');
             if (nextWeather && isPlayEarthActive) {
               setIsPlayEarthActive(false);
             }
@@ -1411,10 +1411,10 @@ export default function HomePage({
                 </div>
                 <div className="space-y-3 pb-4">
                   {[
+                    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
                     { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active news category glows.') },
                     { id: 'night', name: `🌃 ${t('explorePanel.nightLights', 'Night Lights')}`, desc: t('explorePanel.nightLightsDesc', 'Realistic city lights map showing raw night-side electricity.') },
                     { id: 'weather', name: `🌦 ${t('explorePanel.weatherRadar', 'Weather Radar')}`, desc: t('explorePanel.weatherRadarDesc', 'Day satellite base, rotating clouds, and temperature heatmaps.') },
-                    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
                     { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', 'Earth Discovery')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Holographic grid blueprint with quiz question counters.') },
                   ].map((v) => (
                     <motion.div
@@ -1516,7 +1516,7 @@ export default function HomePage({
       <WeatherFloatingHUD
         isActive={globeView === 'weather'}
         onToggleWeather={() => {
-          setGlobeView('standard');
+          setGlobeView('satellite');
           playHoverBlip();
         }}
         selectedCityName={selectedLocation?.name || (selectedCountry ? `${selectedCountry}` : 'Global Atmosphere')}
@@ -1559,7 +1559,7 @@ export default function HomePage({
           <button
             onClick={() => {
               const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'standard');
+              setGlobeView(next ? 'weather' : 'satellite');
               playHoverBlip();
             }}
             className={`h-10 px-4 rounded-full flex items-center gap-2.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-lg transition-all duration-300 cursor-pointer ${
@@ -2139,9 +2139,9 @@ export default function HomePage({
           <button
             onClick={() => {
               const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'standard');
+              setGlobeView(next ? 'weather' : 'satellite');
               playHoverBlip();
-              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Standard View Restored');
+              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Satellite View Restored');
             }}
             className={`h-9.5 px-3 rounded-full flex items-center gap-1.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-xl transition-all duration-300 cursor-pointer active:scale-95 ${
               globeView === 'weather'
@@ -2179,9 +2179,9 @@ export default function HomePage({
           <button
             onClick={() => {
               const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'standard');
+              setGlobeView(next ? 'weather' : 'satellite');
               playHoverBlip();
-              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Standard View Restored');
+              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Satellite View Restored');
             }}
             className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer relative ${
               globeView === 'weather'
@@ -2201,7 +2201,7 @@ export default function HomePage({
             onClick={() => {
               const nextActive = !isPlayEarthActive;
               setIsPlayEarthActive(nextActive);
-              setGlobeView(nextActive ? 'discovery' : 'standard');
+              setGlobeView(nextActive ? 'discovery' : 'satellite');
               if (nextActive) handleSelectCountry(null);
               playHoverBlip();
             }}

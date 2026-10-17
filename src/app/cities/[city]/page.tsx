@@ -302,7 +302,7 @@ export default async function CityPage({ params }: CityPageProps) {
               <WebGLGlobeViewer
                 height="560px"
                 selectedCountry={city.country}
-                initialView="standard"
+                initialView="satellite"
               />
             </div>
           </section>

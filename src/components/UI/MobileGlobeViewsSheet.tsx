@@ -31,10 +31,10 @@ export default function MobileGlobeViewsSheet({
   const { t } = useTranslation();
 
   const viewOptions: GlobeViewOption[] = [
+    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
     { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active news category glows.') },
     { id: 'night', name: `🌃 ${t('explorePanel.nightLights', 'Night Lights')}`, desc: t('explorePanel.nightLightsDesc', 'Realistic city lights map showing raw night-side electricity.') },
     { id: 'weather', name: `🌦 ${t('explorePanel.weatherRadar', 'Weather Radar')}`, desc: t('explorePanel.weatherRadarDesc', 'Day satellite base, rotating clouds, and temperature heatmaps.') },
-    { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
     { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', 'Earth Discovery')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Holographic grid blueprint with quiz question counters.') },
   ];
 

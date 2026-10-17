@@ -278,7 +278,7 @@ export default async function CountryHubPage({ params }: CountryPageProps) {
             <WebGLGlobeViewer
               height="580px"
               selectedCountry={country.name}
-              initialView="standard"
+              initialView="satellite"
             />
           </section>
 

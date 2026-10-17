@@ -104,7 +104,7 @@ export default function InteractiveGlobeSimulatorPage() {
               </span>
               <span>Hardware-accelerated WebGL shader pipeline &bull; 60 FPS target</span>
             </div>
-            <WebGLGlobeViewer height="640px" initialView="night" />
+            <WebGLGlobeViewer height="640px" initialView="satellite" />
           </section>
 
           {/* Simulator Layer Architecture Features */}

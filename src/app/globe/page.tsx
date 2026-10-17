@@ -113,7 +113,7 @@ export default function GlobeHubPage() {
               </span>
               <span>Drag to rotate &bull; Scroll to zoom &bull; Click country to target</span>
             </div>
-            <WebGLGlobeViewer height="600px" initialView="standard" />
+            <WebGLGlobeViewer height="600px" initialView="satellite" />
           </section>
 
           {/* Section 2: Explanation of 3D Earth Exploration */}

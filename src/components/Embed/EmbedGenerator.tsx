@@ -29,7 +29,7 @@ const POPULAR_COUNTRIES: CountryOption[] = [
 
 export default function EmbedGenerator() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [view, setView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('standard');
+  const [view, setView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('satellite');
   const [country, setCountry] = useState<string>('');
   const [category, setCategory] = useState<string>('');
   const [height, setHeight] = useState<number>(550);
@@ -41,7 +41,7 @@ export default function EmbedGenerator() {
   // Build the widget URL query
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
-    if (view !== 'standard') params.set('view', view);
+    if (view !== 'satellite') params.set('view', view);
     if (theme !== 'dark') params.set('theme', theme);
     if (country) params.set('country', country);
     if (category) params.set('category', category);
@@ -184,10 +184,10 @@ export default function EmbedGenerator() {
             </label>
             <div className="grid grid-cols-3 gap-2">
               {[
+                { id: 'satellite', label: 'Satellite', icon: '🛰️' },
                 { id: 'standard', label: 'Standard', icon: '🌍' },
                 { id: 'night', label: 'Night Lights', icon: '🌃' },
                 { id: 'weather', label: 'Weather', icon: '🌤️' },
-                { id: 'satellite', label: 'Satellite', icon: '🛰️' },
                 { id: 'discovery', label: 'Discovery', icon: '🗺️' },
               ].map(opt => (
                 <button

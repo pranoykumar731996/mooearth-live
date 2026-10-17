@@ -31,7 +31,7 @@ interface WebGLGlobeViewerProps {
 }
 
 export default function WebGLGlobeViewer({
-  initialView = 'standard',
+  initialView = 'satellite',
   height = '560px',
   showControls = true,
   selectedCountry = null,
@@ -106,7 +106,7 @@ export default function WebGLGlobeViewer({
           </div>
 
           <div className="flex items-center gap-1 bg-[#090915]/90 backdrop-blur-md p-1 rounded-xl border border-white/10 shadow-lg">
-            {(['standard', 'night', 'weather', 'discovery'] as const).map(viewMode => (
+            {(['satellite', 'standard', 'night', 'weather', 'discovery'] as const).map(viewMode => (
               <button
                 key={viewMode}
                 onClick={() => setActiveView(viewMode)}
