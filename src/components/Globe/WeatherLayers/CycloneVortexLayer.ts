@@ -88,7 +88,7 @@ function createSoftParticleTexture(): THREE.CanvasTexture {
 /**
  * Baseline real-world tropical cyclones to guarantee active severe weather display.
  */
-const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
+export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
   {
     id: 'cyclone-super-typhoon-pacific',
     title: 'Super Typhoon Kong-rey (Category 4)',

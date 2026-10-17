@@ -52,7 +52,7 @@ interface StormCellBeacon {
 /**
  * Authentic planetary lightning hotspots (NASA LIS / OTD Global Climatology).
  */
-const BASELINE_LIGHTNING_EVENTS: WorldEvent[] = [
+export const BASELINE_LIGHTNING_EVENTS: WorldEvent[] = [
   {
     id: 'lightning-lake-maracaibo-beacon',
     title: 'Catatumbo Convective Storm Complex - Lake Maracaibo',

@@ -307,7 +307,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                           </span>
                         </div>
                       )}
-                      {event.planetaryTelemetry.stormWarningType ? (
+                      {typeof event.planetaryTelemetry.stormWarningType ? (
                         <div className="flex flex-col">
                           <span className="text-white/40 uppercase tracking-wider text-[10px]">Warning Type</span>
                           <span className="font-extrabold text-amber-300 text-xs flex items-center gap-1">
@@ -324,6 +324,27 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                             </span>
                           </div>
                         )
+                      )}
+                      {typeof event.planetaryTelemetry.pressureHpa === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Central Pressure</span>
+                          <span className="font-black text-cyan-200 text-sm flex items-center gap-1">
+                            <span>📉</span>
+                            <span>{event.planetaryTelemetry.pressureHpa} hPa</span>
+                          </span>
+                        </div>
+                      )}
+                      {Array.isArray(event.planetaryTelemetry.trackPoints) && event.planetaryTelemetry.trackPoints.length > 0 && (
+                        <div className="col-span-2 pt-1 border-t border-white/5 flex flex-col gap-1 text-[10px]">
+                          <span className="text-white/40 uppercase tracking-wider text-[9px]">Storm Track Waypoints ({event.planetaryTelemetry.trackPoints.length} stages)</span>
+                          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                            {event.planetaryTelemetry.trackPoints.map((pt, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/70 whitespace-nowrap font-mono text-[9px]">
+                                {i === event.planetaryTelemetry!.trackPoints!.length - 1 ? '🎯 Eye' : `#${i + 1}`}: {pt.lat.toFixed(1)}°, {pt.lng.toFixed(1)}°
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       )}
                       {typeof event.planetaryTelemetry.lightningStrikeRatePerMin === 'number' && (
                         <div className="flex flex-col">

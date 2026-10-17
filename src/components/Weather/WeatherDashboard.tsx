@@ -8,7 +8,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -21,6 +21,8 @@ import WeatherPanel from './WeatherPanel';
 import WindParticleOverlay from './WindParticleOverlay';
 import WeatherTimeline from './WeatherTimeline';
 import WeatherLegend from './WeatherLegend';
+import EventPopup from '@/components/Globe/EventPopup';
+import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import type { GeocodingResult, UnitPreferences, ForecastResponse, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
@@ -115,6 +117,26 @@ export default function WeatherDashboard() {
   const [isGridLoading, setIsGridLoading] = useState(true);
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
+  const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
+
+  // Active cyclones list for quick-tracking
+  const activeCyclones = useMemo(() => {
+    const fromEvents = events.filter((e) => {
+      if (e.category === 'severe_weather') return true;
+      const t = (e.title || '').toLowerCase();
+      return t.includes('hurricane') || t.includes('cyclone') || t.includes('typhoon') || t.includes('tropical storm');
+    });
+    return fromEvents.length > 0 ? fromEvents : BASELINE_CYCLONE_EVENTS;
+  }, [events]);
+
+  // Active thunderstorms list for quick-tracking
+  const activeThunderstorms = useMemo(() => {
+    const fromEvents = events.filter((e) => {
+      const t = (e.title || '').toLowerCase();
+      return t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective');
+    });
+    return fromEvents.length > 0 ? fromEvents : BASELINE_LIGHTNING_EVENTS;
+  }, [events]);
 
   // Helper: push location and view mode into URL query params for shareable links
   const updateUrlParams = useCallback(
@@ -557,8 +579,8 @@ export default function WeatherDashboard() {
               <GlobeScene
                 events={events}
                 allEvents={events}
-                selectedEvent={null}
-                onSelectEvent={() => {}}
+                selectedEvent={selectedDisasterEvent}
+                onSelectEvent={setSelectedDisasterEvent}
                 selectedCountry={weather.selectedLocation?.country}
                 onSelectCountry={handleCountrySelect}
                 selectedLocation={
@@ -667,6 +689,51 @@ export default function WeatherDashboard() {
                   <span>🗺️</span>
                   <span className="hidden sm:inline">Explore City</span>
                 </button>
+              </div>
+            )}
+
+            {/* Quick-Track Disaster Bar for Hurricane Tracker and Thunderstorms */}
+            {(weather.activeLayer === 'hurricane' || weather.activeLayer === 'precipitation') && (
+              <div className="absolute top-16 sm:top-4 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 z-20 pointer-events-auto sm:w-auto max-w-xl">
+                <div className="rounded-2xl bg-[#060818]/92 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] p-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                  <div className="text-[11px] font-mono font-bold shrink-0 flex items-center gap-1 px-2 py-1 rounded-xl bg-white/5 border border-white/10 text-white/80">
+                    <span>{weather.activeLayer === 'hurricane' ? '🌀' : '⚡'}</span>
+                    <span className="hidden xs:inline">{weather.activeLayer === 'hurricane' ? 'Cyclones' : 'Thunderstorms'}:</span>
+                  </div>
+                  {(weather.activeLayer === 'hurricane' ? activeCyclones : activeThunderstorms).map((storm) => {
+                    const isSelected = selectedDisasterEvent?.id === storm.id;
+                    return (
+                      <button
+                        key={storm.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDisasterEvent(storm);
+                          setViewMode('globe');
+                          globeApiRef.current?.flyTo({ lat: storm.lat, lng: storm.lng, altitude: 1.2 }, 1400);
+                        }}
+                        className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
+                            : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
+                        }`}
+                        title={`Click to view detailed disaster dossier for ${storm.title}`}
+                      >
+                        <span>{weather.activeLayer === 'hurricane' ? '🌀' : '⚡'}</span>
+                        <span className="whitespace-nowrap font-medium text-[11px]">{storm.title.split('(')[0].trim()}</span>
+                        {storm.planetaryTelemetry?.windSpeedKph && (
+                          <span className="text-[9px] font-mono font-bold text-rose-300 px-1 py-0.2 rounded bg-rose-500/20">
+                            {storm.planetaryTelemetry.windSpeedKph} km/h
+                          </span>
+                        )}
+                        {storm.planetaryTelemetry?.lightningStrikeRatePerMin && (
+                          <span className="text-[9px] font-mono font-bold text-amber-300 px-1 py-0.2 rounded bg-amber-500/20">
+                            {storm.planetaryTelemetry.lightningStrikeRatePerMin}/min
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -859,6 +926,12 @@ export default function WeatherDashboard() {
             </div>
           </div>
         )}
+
+        {/* Interactive Disaster Telemetry Dossier Modal (Hurricanes, Cyclones, Thunderstorms) */}
+        <EventPopup
+          event={selectedDisasterEvent}
+          onClose={() => setSelectedDisasterEvent(null)}
+        />
       </main>
     </div>
   );

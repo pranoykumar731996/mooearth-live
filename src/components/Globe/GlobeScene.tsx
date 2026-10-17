@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, getCycloneCategoryLabel } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -1845,8 +1845,47 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
+    // Populate active tropical cyclone & hurricane disaster markers
+    if (globeView === 'weather' || weatherLayerMode === 'hurricane' || weatherLayerMode === 'wind') {
+      const cycloneList = events.filter((e) => {
+        if (e.category === 'severe_weather') return true;
+        const t = (e.title || '').toLowerCase();
+        return t.includes('hurricane') || t.includes('cyclone') || t.includes('typhoon') || t.includes('tropical storm');
+      });
+      const activeCyclones = cycloneList.length > 0 ? cycloneList : BASELINE_CYCLONE_EVENTS;
+      activeCyclones.forEach((storm) => {
+        data.push({
+          id: `cyclone-disaster-${storm.id}`,
+          title: storm.title,
+          lat: storm.lat,
+          lng: storm.lng,
+          isCycloneDisaster: true,
+          event: storm,
+        });
+      });
+    }
+
+    // Populate active severe thunderstorm & lightning convective complex disaster markers
+    if (globeView === 'weather' || weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar') {
+      const lightningList = events.filter((e) => {
+        const t = (e.title || '').toLowerCase();
+        return t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective');
+      });
+      const activeLightning = lightningList.length > 0 ? lightningList : BASELINE_LIGHTNING_EVENTS;
+      activeLightning.forEach((storm) => {
+        data.push({
+          id: `lightning-disaster-${storm.id}`,
+          title: storm.title,
+          lat: storm.lat,
+          lng: storm.lng,
+          isThunderstormDisaster: true,
+          event: storm,
+        });
+      });
+    }
+
     return data;
-  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView]);
+  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView, weatherLayerMode]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -1983,6 +2022,189 @@ const GlobeScene = React.memo(function GlobeScene({
           `;
           document.head.appendChild(style);
         }
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        return el;
+      }
+
+      // ── Dedicated Tropical Cyclone & Hurricane Disaster Marker ────
+      if (d.isCycloneDisaster) {
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          return htmlMarkersCacheRef.current.get(markerId)!;
+        }
+
+        const storm = d.event as WorldEvent;
+        const windSpeed = storm.planetaryTelemetry?.windSpeedKph || 120;
+        const catLabel = getCycloneCategoryLabel(windSpeed);
+
+        const el = document.createElement('div');
+        el.className = 'cyclone-disaster-marker group';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          pointer-events: auto;
+          user-select: none;
+          transform: translateY(-50%);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+
+        el.innerHTML = `
+          <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+            <!-- Outer rotating Coriolis storm eye ring -->
+            <div style="
+              position: absolute; inset: -4px;
+              border-radius: 50%;
+              border: 2px dashed rgba(244, 63, 94, 0.85);
+              animation: spin 5s linear infinite;
+            "></div>
+            <!-- Inner glowing eye badge -->
+            <div style="
+              width: 32px; height: 32px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(13, 17, 38, 0.95) 0%, rgba(225, 29, 72, 0.85) 100%);
+              border: 2px solid #ffffff;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 16px;
+              box-shadow: 0 0 20px rgba(244, 63, 94, 0.9), inset 0 0 8px rgba(255, 255, 255, 0.6);
+            ">
+              🌀
+            </div>
+          </div>
+          <!-- Storm label badge -->
+          <div style="
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(8, 10, 26, 0.92);
+            border: 1px solid rgba(244, 63, 94, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${storm.title}</span>
+            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(244, 63, 94, 0.3); color: #fda4af;">${catLabel}</span>
+          </div>
+        `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(storm);
+        });
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        return el;
+      }
+
+      // ── Dedicated Severe Thunderstorm & Lightning Hotspot Marker ──
+      if (d.isThunderstormDisaster) {
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          return htmlMarkersCacheRef.current.get(markerId)!;
+        }
+
+        const storm = d.event as WorldEvent;
+        const strikeRate = storm.planetaryTelemetry?.lightningStrikeRatePerMin || 90;
+
+        const el = document.createElement('div');
+        el.className = 'thunderstorm-disaster-marker group';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          pointer-events: auto;
+          user-select: none;
+          transform: translateY(-50%);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
+
+        el.innerHTML = `
+          <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <!-- Electric pulsing halo -->
+            <div style="
+              position: absolute; inset: -3px;
+              border-radius: 50%;
+              border: 2px solid rgba(250, 204, 21, 0.85);
+              animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <!-- Inner core electrical badge -->
+            <div style="
+              width: 28px; height: 28px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(13, 17, 38, 0.95) 0%, rgba(202, 138, 4, 0.85) 100%);
+              border: 2px solid #fef08a;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              box-shadow: 0 0 20px rgba(250, 204, 21, 0.9), inset 0 0 8px rgba(254, 240, 138, 0.6);
+            ">
+              ⚡
+            </div>
+          </div>
+          <!-- Storm label badge -->
+          <div style="
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(8, 10, 26, 0.92);
+            border: 1px solid rgba(250, 204, 21, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${storm.title}</span>
+            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(250, 204, 21, 0.3); color: #fef08a;">${strikeRate}/min</span>
+          </div>
+        `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(storm);
+        });
 
         htmlMarkersCacheRef.current.set(markerId, el);
         return el;

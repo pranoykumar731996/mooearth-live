@@ -11,13 +11,13 @@ export type { TemperatureLayerOptions } from './TemperatureHeatmapLayer';
 export { PrecipitationLayer, getPrecipitationColorRgb } from './PrecipitationLayer';
 export type { PrecipitationLayerOptions } from './PrecipitationLayer';
 
-export { CycloneVortexLayer, getSaffirSimpsonColor, getCycloneCategoryLabel } from './CycloneVortexLayer';
+export { CycloneVortexLayer, getSaffirSimpsonColor, getCycloneCategoryLabel, BASELINE_CYCLONE_EVENTS } from './CycloneVortexLayer';
 export type { CycloneVortexLayerOptions } from './CycloneVortexLayer';
 
 export { SeismicShockwaveLayer, getFocalDepthColor, getFocalDepthLabel, getRichterCategoryLabel } from './SeismicShockwaveLayer';
 export type { SeismicShockwaveLayerOptions } from './SeismicShockwaveLayer';
 
-export { LightningNetworkLayer } from './LightningNetworkLayer';
+export { LightningNetworkLayer, BASELINE_LIGHTNING_EVENTS } from './LightningNetworkLayer';
 export type { LightningNetworkLayerOptions } from './LightningNetworkLayer';
 
 export { WildfireThermalLayer, getWildfireIntensityColor, getWildfireIntensityLabel } from './WildfireThermalLayer';
