@@ -26,6 +26,5 @@ export type { WildfireThermalLayerOptions } from './WildfireThermalLayer';
 export { AuroralOvalLayer, getKpStormScaleLabel, getAuroraGlowColor } from './AuroralOvalLayer';
 export type { AuroralOvalLayerOptions } from './AuroralOvalLayer';
 
-
-
-
+export { OceanCurrentsLayer, getOceanCurrentColor, getSstAnomalyColor } from './OceanCurrentsLayer';
+export type { OceanCurrentsLayerOptions } from './OceanCurrentsLayer';

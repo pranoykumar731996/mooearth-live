@@ -60,6 +60,12 @@ export interface PlanetaryTelemetry {
   radarReflectivityDbz?: number;
   hailSizeMm?: number;
   stormWarningType?: 'severe_thunderstorm' | 'tornado' | 'tropical_cyclone';
+  oceanCurrentSpeedMs?: number;
+  oceanCurrentDirectionDeg?: number;
+  seaSurfaceTempC?: number;
+  seaSurfaceTempAnomalyC?: number;
+  significantWaveHeightM?: number;
+  oceanCurrentName?: string;
 }
 
 /** A world event displayed on the globe */

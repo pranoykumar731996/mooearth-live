@@ -14,6 +14,7 @@ import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
 import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from '@/components/Globe/WeatherLayers';
+import { getSstAnomalyLabel, getOceanCurrentSpeedLabel } from '@/services/planetaryEngine';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -390,6 +391,60 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               <span className="text-white/40 uppercase tracking-wider text-[10px]">Detection Quality</span>
                               <span className="font-bold text-emerald-400 text-xs mt-0.5">
                                 ✅ {event.planetaryTelemetry.fireConfidencePercent}% Sat Conf
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {typeof event.planetaryTelemetry.oceanCurrentSpeedMs === 'number' && (
+                        <>
+                          <div className="flex flex-col">
+                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Ocean Current Flow</span>
+                            <span className="font-black text-cyan-300 text-sm flex items-center gap-1">
+                              <span>🌊</span>
+                              <span>{event.planetaryTelemetry.oceanCurrentSpeedMs.toFixed(2)} m/s</span>
+                            </span>
+                            <span className="text-[10px] text-cyan-200/70 font-medium">
+                              ({(event.planetaryTelemetry.oceanCurrentSpeedMs * 1.94384).toFixed(1)} kts · {getOceanCurrentSpeedLabel(event.planetaryTelemetry.oceanCurrentSpeedMs)})
+                            </span>
+                          </div>
+                          {typeof event.planetaryTelemetry.oceanCurrentDirectionDeg === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Flow Bearing</span>
+                              <span className="font-black text-emerald-400 text-sm flex items-center gap-1">
+                                <span>🧭</span>
+                                <span>{event.planetaryTelemetry.oceanCurrentDirectionDeg}°</span>
+                              </span>
+                            </div>
+                          )}
+                          {typeof event.planetaryTelemetry.seaSurfaceTempC === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Sea Surface Temp (SST)</span>
+                              <span className="font-black text-rose-300 text-sm flex items-center gap-1">
+                                <span>🌡️</span>
+                                <span>{event.planetaryTelemetry.seaSurfaceTempC.toFixed(1)}°C</span>
+                              </span>
+                              {typeof event.planetaryTelemetry.seaSurfaceTempAnomalyC === 'number' && (
+                                <span className={`text-[10px] font-bold ${event.planetaryTelemetry.seaSurfaceTempAnomalyC >= 1.5 ? 'text-rose-400' : event.planetaryTelemetry.seaSurfaceTempAnomalyC <= -0.8 ? 'text-cyan-300' : 'text-emerald-300'}`}>
+                                  {event.planetaryTelemetry.seaSurfaceTempAnomalyC > 0 ? `+${event.planetaryTelemetry.seaSurfaceTempAnomalyC.toFixed(2)}` : event.planetaryTelemetry.seaSurfaceTempAnomalyC.toFixed(2)}°C Anomaly
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {typeof event.planetaryTelemetry.significantWaveHeightM === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Significant Wave Height</span>
+                              <span className="font-black text-cyan-200 text-sm flex items-center gap-1">
+                                <span>📏</span>
+                                <span>{event.planetaryTelemetry.significantWaveHeightM.toFixed(1)} m</span>
+                              </span>
+                            </div>
+                          )}
+                          {typeof event.planetaryTelemetry.seaSurfaceTempAnomalyC === 'number' && (
+                            <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px]">
+                              <span className="text-white/50">Marine Climatology:</span>
+                              <span className="font-semibold text-rose-300 flex items-center gap-1">
+                                {getSstAnomalyLabel(event.planetaryTelemetry.seaSurfaceTempAnomalyC)}
                               </span>
                             </div>
                           )}

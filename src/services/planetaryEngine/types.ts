@@ -103,6 +103,6 @@ export interface NoaaSwpcKpRecord {
 /** Unified Planetary Event extending WorldEvent */
 export interface PlanetaryEvent extends WorldEvent {
   planetaryTelemetry: PlanetaryTelemetry;
-  dataOrigin: 'usgs' | 'nasa_eonet' | 'noaa_swpc' | 'nasa_earth_obs' | 'noaa_severe';
+  dataOrigin: 'usgs' | 'nasa_eonet' | 'noaa_swpc' | 'nasa_earth_obs' | 'noaa_severe' | 'noaa_ocean';
 }
 

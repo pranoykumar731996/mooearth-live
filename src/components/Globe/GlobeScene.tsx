@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -230,6 +230,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const lightningNetworkLayerRef = useRef<LightningNetworkLayer | null>(null);
   const wildfireThermalLayerRef = useRef<WildfireThermalLayer | null>(null);
   const auroralOvalLayerRef = useRef<AuroralOvalLayer | null>(null);
+  const oceanCurrentsLayerRef = useRef<OceanCurrentsLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -928,6 +929,11 @@ const GlobeScene = React.memo(function GlobeScene({
         auroralOvalLayerRef.current.update(time, 0.016);
       }
 
+      // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
+      if (oceanCurrentsLayerRef.current) {
+        oceanCurrentsLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1199,6 +1205,38 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Ocean Current Streamlines & Marine Heatwave Layer (Phase 6 Marine Physics) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!oceanCurrentsLayerRef.current) {
+      oceanCurrentsLayerRef.current = new OceanCurrentsLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = oceanCurrentsLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Feed active marine & ocean gyre events for real-time drift & SST anomalies
+    oceanCurrentsLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (oceanCurrentsLayerRef.current) {
+        const m = oceanCurrentsLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        oceanCurrentsLayerRef.current.dispose();
+        oceanCurrentsLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1209,6 +1247,7 @@ const GlobeScene = React.memo(function GlobeScene({
       lightningNetworkLayerRef.current?.setReducedMotion(isReduced);
       wildfireThermalLayerRef.current?.setReducedMotion(isReduced);
       auroralOvalLayerRef.current?.setReducedMotion(isReduced);
+      oceanCurrentsLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1954,6 +1993,23 @@ const GlobeScene = React.memo(function GlobeScene({
           propagationSpeed: isMobile ? 1.8 : 2.5,
           repeatPeriod: isStorm ? 1600 : 2400,
           color: isStorm ? 'rgba(236, 72, 153, 0.95)' : 'rgba(168, 85, 247, 0.85)',
+          event: e,
+        });
+      }
+
+      // Ocean Current Streamline & Sea Surface Temperature Wavefront (Phase 6 Marine Physics)
+      if (e.category === 'climate_oceans') {
+        const sstAnomaly = e.planetaryTelemetry?.seaSurfaceTempAnomalyC || 0;
+        const isHeatwave = sstAnomaly >= 1.5;
+        const speed = e.planetaryTelemetry?.oceanCurrentSpeedMs || 1.0;
+        const maxR = Math.min(22, Math.max(8, 8 + speed * 4.5));
+        rings.push({
+          lat: e.lat,
+          lng: e.lng,
+          maxR,
+          propagationSpeed: isMobile ? 1.2 : 1.6,
+          repeatPeriod: isHeatwave ? 1800 : 2600,
+          color: isHeatwave ? 'rgba(244, 63, 94, 0.95)' : 'rgba(6, 182, 212, 0.85)',
           event: e,
         });
       }
