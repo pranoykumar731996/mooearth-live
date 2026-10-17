@@ -43,9 +43,7 @@ const CityExplorerPanel = dynamic(() => import('@/components/UI/CityExplorerPane
 const LocationIntelligencePanel = dynamic(() => import('@/components/UI/LocationIntelligencePanel'));
 import { parseLocationFromUrl, resolveCanonicalLocation } from '@/services/locationIntelligence';
 const ContinentExplorerPanel = dynamic(() => import('@/components/UI/ContinentExplorerPanel'));
-const WeatherFloatingHUD = dynamic(() => import('@/components/UI/WeatherFloatingHUD'));
 const ExploreEarthDirectory = dynamic(() => import('@/components/UI/ExploreEarthDirectory'));
-const WindParticleOverlay = dynamic(() => import('@/components/Weather/WindParticleOverlay'), { ssr: false });
 const DailyChallengeRetentionCard = dynamic(() => import('@/components/Daily/DailyChallengeRetentionCard'), { ssr: false });
 const GlobeCollectionTour = dynamic(() => import('@/components/Collections/GlobeCollectionTour'), { ssr: false });
 import { DiscoveryCollection } from '@/types/collections';
@@ -162,7 +160,7 @@ export default function PlayEarthClient({
   const [isAiDashboardOpen, setIsAiDashboardOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [leftPanelTab, setLeftPanelTab] = useState<'explore' | 'views'>('explore');
-  const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('satellite');
+  const [globeView, setGlobeView] = useState<'standard' | 'night' | 'weather' | 'satellite' | 'discovery'>('discovery');
   const [isPlayEarthActive, setIsPlayEarthActive] = useState(initialPlayEarthActive);
   const [isPlayEarthBannerDismissed, setIsPlayEarthBannerDismissed] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(!!initialCountry);
@@ -1185,7 +1183,7 @@ export default function PlayEarthClient({
           onTogglePlayEarth={() => {
             const nextActive = !isPlayEarthActive;
             setIsPlayEarthActive(nextActive);
-            setGlobeView(nextActive ? 'discovery' : 'satellite');
+            setGlobeView(nextActive ? 'discovery' : 'standard');
             if (nextActive) {
               handleSelectCountry(null);
             }
@@ -1196,15 +1194,7 @@ export default function PlayEarthClient({
             setShowDebugConsole(prev => !prev);
             playHoverBlip();
           }}
-          isWeatherActive={globeView === 'weather'}
-          onToggleWeather={() => {
-            const nextWeather = globeView !== 'weather';
-            setGlobeView(nextWeather ? 'weather' : 'satellite');
-            if (nextWeather && isPlayEarthActive) {
-              setIsPlayEarthActive(false);
-            }
-            playHoverBlip();
-          }}
+          isWeatherActive={false}
         />
       </div>
 
@@ -1411,11 +1401,10 @@ export default function PlayEarthClient({
                 </div>
                 <div className="space-y-3 pb-4">
                   {[
+                    { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', '3D Earth Game Globe')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Real 3D Earth globe with interactive country boundaries and quiz targets.') },
                     { id: 'satellite', name: `🛰 ${t('explorePanel.satelliteView', 'Satellite View')}`, desc: t('explorePanel.satelliteViewDesc', 'Pure satellite imagery with ultra-thin border mappings.') },
-                    { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active news category glows.') },
+                    { id: 'standard', name: `🌍 ${t('explorePanel.standardView', 'Standard View')}`, desc: t('explorePanel.standardViewDesc', 'Default night lights map with active country glows.') },
                     { id: 'night', name: `🌃 ${t('explorePanel.nightLights', 'Night Lights')}`, desc: t('explorePanel.nightLightsDesc', 'Realistic city lights map showing raw night-side electricity.') },
-                    { id: 'weather', name: `🌦 ${t('explorePanel.weatherRadar', 'Weather Radar')}`, desc: t('explorePanel.weatherRadarDesc', 'Day satellite base, rotating clouds, and temperature heatmaps.') },
-                    { id: 'discovery', name: `🎮 ${t('explorePanel.earthDiscovery', 'Earth Discovery')}`, desc: t('explorePanel.earthDiscoveryDesc', 'Holographic grid blueprint with quiz question counters.') },
                   ].map((v) => (
                     <motion.div
                       key={v.id}
@@ -1498,90 +1487,8 @@ export default function PlayEarthClient({
             onStopTheEarthCoordCaptured={(coord) => setStopTheEarthCapturedCoord(coord)}
             onInitGlobeApi={(api) => { globeApiRef.current = api; }}
           />
-
-          {/* Real-time Atmospheric Jet Streams & Wind Particle Overlay (pointer-events-none) */}
-          {globeView === 'weather' && !isFullScreenGlobe && (
-            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-              <WindParticleOverlay
-                windSpeed={24}
-                windDirection={65}
-                isActive={true}
-              />
-            </div>
-          )}
         </div>
       </div>
-
-      {/* 3D Earth Weather Floating Telemetry HUD */}
-      <WeatherFloatingHUD
-        isActive={globeView === 'weather'}
-        onToggleWeather={() => {
-          setGlobeView('satellite');
-          playHoverBlip();
-        }}
-        selectedCityName={selectedLocation?.name || (selectedCountry ? `${selectedCountry}` : 'Global Atmosphere')}
-        selectedCountryName={selectedLocation?.country || selectedCountry || 'Planet Earth'}
-        coordinates={
-          selectedLocation
-            ? { lat: selectedLocation.lat, lng: selectedLocation.lng }
-            : selectedCountry && COUNTRY_COORDINATES[selectedCountry]
-            ? { lat: COUNTRY_COORDINATES[selectedCountry].lat, lng: COUNTRY_COORDINATES[selectedCountry].lng }
-            : { lat: 20.0, lng: 0.0 }
-        }
-        onSelectCoordinates={({ lat, lng, name, country }) => {
-          if (globeApiRef.current) {
-            globeApiRef.current.flyTo({ lat, lng, altitude: 1.25 });
-          }
-          if (name) {
-            const matchLoc: LocationRecord = locations.find(l => l.name.toLowerCase() === name.toLowerCase()) || {
-              id: `station-${name.toLowerCase().replace(/\s+/g, '-')}`,
-              name,
-              country: country || 'Global',
-              countryCode: '',
-              type: 'city',
-              lat,
-              lng,
-              population: 0,
-              timezone: 'UTC',
-              adminLevel: 2,
-            };
-            setSelectedLocation(matchLoc);
-            setSelectedCountry(country || null);
-          }
-          playHoverBlip();
-        }}
-        isMobile={isMobile}
-      />
-
-      {/* Viewport Floating "Turn on Weather" Quick Toggle Button (Desktop & Tablet) */}
-      {!isMobile && !isFullScreenGlobe && !isPlayEarthActive && (
-        <div className="fixed bottom-6 left-28 z-30 pointer-events-auto">
-          <button
-            onClick={() => {
-              const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'satellite');
-              playHoverBlip();
-            }}
-            className={`h-10 px-4 rounded-full flex items-center gap-2.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-lg transition-all duration-300 cursor-pointer ${
-              globeView === 'weather'
-                ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 border-cyan-300 shadow-[0_0_25px_rgba(0,229,255,0.7)] scale-105'
-                : 'bg-[#060a16]/90 text-cyan-300 border-cyan-500/40 hover:border-cyan-400 hover:shadow-[0_0_22px_rgba(0,229,255,0.4)] hover:scale-102'
-            }`}
-            title={globeView === 'weather' ? "Turn Off Weather Layer" : "Turn On Atmospheric Radar & Live Weather Layer"}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
-              }`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
-              }`} />
-            </span>
-            <span className="text-base">{globeView === 'weather' ? '🌦️' : '🌤️'}</span>
-            <span>{globeView === 'weather' ? 'WEATHER: ON (RADAR ACTIVE)' : 'TURN ON WEATHER'}</span>
-          </button>
-        </div>
-      )}
 
       {/* GOAL CELEBRATION OVERLAY */}
       {!isFocusMode && <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />}
@@ -2127,45 +2034,6 @@ export default function PlayEarthClient({
 
 
 
-      {/* Mobile Floating Weather Quick Action Pill (Thumb Zone) */}
-      {isMobile && !isPlayEarthActive && (
-        <div 
-          className="fixed z-30 pointer-events-auto transition-all duration-300"
-          style={{
-            left: '12px',
-            bottom: isFullScreenGlobe ? '20px' : `calc(${mobileSheet.sheetHeightPercent}vh + 14px)`,
-          }}
-        >
-          <button
-            onClick={() => {
-              const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'satellite');
-              playHoverBlip();
-              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Satellite View Restored');
-            }}
-            className={`h-9.5 px-3 rounded-full flex items-center gap-1.5 text-xs font-black tracking-wider border backdrop-blur-xl shadow-xl transition-all duration-300 cursor-pointer active:scale-95 ${
-              globeView === 'weather'
-                ? 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 border-cyan-300 shadow-[0_0_25px_rgba(0,229,255,0.8)] scale-105'
-                : 'bg-[#060a16]/92 text-cyan-300 border-cyan-400/50 shadow-[0_0_20px_rgba(0,229,255,0.35)] hover:border-cyan-300'
-            }`}
-            title={globeView === 'weather' ? "Turn Off Weather Layer" : "Turn On Atmospheric Radar & Live Weather Layer"}
-          >
-            <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
-              }`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                globeView === 'weather' ? 'bg-slate-950' : 'bg-cyan-400'
-              }`} />
-            </span>
-            <span className="text-sm">{globeView === 'weather' ? '🌦️' : '🌤️'}</span>
-            <span className="font-black text-[11px] tracking-wide">
-              {globeView === 'weather' ? 'RADAR: ON' : 'WEATHER'}
-            </span>
-          </button>
-        </div>
-      )}
-
       {/* Mobile-Only Compact Floating Action Dock (Guaranteed full coverage, no clipping or panel collision) */}
       {isMobile && (
         <div 
@@ -2175,27 +2043,6 @@ export default function PlayEarthClient({
               : 'top-20 bg-[#060a16]/85 rounded-full flex flex-col gap-2 items-center max-h-[calc(100vh-140px)] overflow-y-auto scrollbar-none z-40'
           }`}
         >
-          {/* Quick Weather Toggle (Mobile) */}
-          <button
-            onClick={() => {
-              const next = globeView !== 'weather';
-              setGlobeView(next ? 'weather' : 'satellite');
-              playHoverBlip();
-              showToast(next ? '🌦️ Live Weather Radar Activated' : 'Satellite View Restored');
-            }}
-            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer relative ${
-              globeView === 'weather'
-                ? 'bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-950 border border-cyan-300 shadow-[0_0_20px_rgba(0,229,255,0.8)] scale-105'
-                : 'bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 hover:text-white shadow-[0_0_12px_rgba(0,229,255,0.25)]'
-            }`}
-            title="Toggle Live Weather Radar"
-          >
-            {globeView === 'weather' && (
-              <span className="w-2 h-2 bg-slate-950 rounded-full animate-ping absolute top-0.5 right-0.5" />
-            )}
-            <span className="text-lg">🌦️</span>
-          </button>
-
           {/* Mobile Play Earth Floating Trigger (Eye-Stopper Thumb Zone) */}
           <button
             onClick={() => {

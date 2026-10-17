@@ -912,48 +912,51 @@ const GlobeScene = React.memo(function GlobeScene({
       }
 
       // 6. Real Animated Wind Particles Update (Phase 2 Weather Intelligence)
-      if (windParticleSystemRef.current) {
-        windParticleSystemRef.current.update();
-      }
+      // Skip all weather and planetary layers when in game mode (only real 3D globe)
+      if (!isPlayEarthActive) {
+        if (windParticleSystemRef.current) {
+          windParticleSystemRef.current.update();
+        }
 
-      // 7. Real Animated Cyclone & Hurricane Vortices (Phase 1 Atmospheric Dynamics)
-      if (cycloneVortexLayerRef.current) {
-        cycloneVortexLayerRef.current.update(time, 0.016);
-      }
+        // 7. Real Animated Cyclone & Hurricane Vortices (Phase 1 Atmospheric Dynamics)
+        if (cycloneVortexLayerRef.current) {
+          cycloneVortexLayerRef.current.update(time, 0.016);
+        }
 
-      // 8. Real Animated Earthquake Seismic Pillars & Hypocenters (Phase 2 Geophysics)
-      if (seismicShockwaveLayerRef.current) {
-        seismicShockwaveLayerRef.current.update(time, 0.016);
-      }
+        // 8. Real Animated Earthquake Seismic Pillars & Hypocenters (Phase 2 Geophysics)
+        if (seismicShockwaveLayerRef.current) {
+          seismicShockwaveLayerRef.current.update(time, 0.016);
+        }
 
-      // 9. Real Animated Lightning Network Flash Engine (Phase 3 Severe Convective Storms)
-      if (lightningNetworkLayerRef.current) {
-        lightningNetworkLayerRef.current.update(time, 0.016);
-      }
+        // 9. Real Animated Lightning Network Flash Engine (Phase 3 Severe Convective Storms)
+        if (lightningNetworkLayerRef.current) {
+          lightningNetworkLayerRef.current.update(time, 0.016);
+        }
 
-      // 10. Real Animated Wildfire Convective Plumes & Smoke Embers (Phase 4 Thermal Physics)
-      if (wildfireThermalLayerRef.current) {
-        wildfireThermalLayerRef.current.update(time, 0.016);
-      }
+        // 10. Real Animated Wildfire Convective Plumes & Smoke Embers (Phase 4 Thermal Physics)
+        if (wildfireThermalLayerRef.current) {
+          wildfireThermalLayerRef.current.update(time, 0.016);
+        }
 
-      // 11. Real Animated Auroral Oval Curtains & Ionospheric Waves (Phase 5 Space Weather)
-      if (auroralOvalLayerRef.current) {
-        auroralOvalLayerRef.current.update(time, 0.016);
-      }
+        // 11. Real Animated Auroral Oval Curtains & Ionospheric Waves (Phase 5 Space Weather)
+        if (auroralOvalLayerRef.current) {
+          auroralOvalLayerRef.current.update(time, 0.016);
+        }
 
-      // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
-      if (oceanCurrentsLayerRef.current) {
-        oceanCurrentsLayerRef.current.update(time, 0.016);
-      }
+        // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
+        if (oceanCurrentsLayerRef.current) {
+          oceanCurrentsLayerRef.current.update(time, 0.016);
+        }
 
-      // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Windy Satellite)
-      if (geostationarySatelliteLayerRef.current) {
-        geostationarySatelliteLayerRef.current.update(time, 0.016);
-      }
+        // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Windy Satellite)
+        if (geostationarySatelliteLayerRef.current) {
+          geostationarySatelliteLayerRef.current.update(time, 0.016);
+        }
 
-      // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Windy Isobars)
-      if (atmosphericPressureLayerRef.current) {
-        atmosphericPressureLayerRef.current.update(time, 0.016);
+        // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Windy Isobars)
+        if (atmosphericPressureLayerRef.current) {
+          atmosphericPressureLayerRef.current.update(time, 0.016);
+        }
       }
 
       animFrameId = requestAnimationFrame(tick);
@@ -1080,6 +1083,47 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
+    // In game mode: strictly suppress all weather & planetary disaster layers (only real 3D Earth globe)
+    if (isPlayEarthActive) {
+      if (cycloneVortexLayerRef.current) {
+        const m = cycloneVortexLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        cycloneVortexLayerRef.current.dispose();
+        cycloneVortexLayerRef.current = null;
+      }
+      if (seismicShockwaveLayerRef.current) {
+        const m = seismicShockwaveLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        seismicShockwaveLayerRef.current.dispose();
+        seismicShockwaveLayerRef.current = null;
+      }
+      if (lightningNetworkLayerRef.current) {
+        const m = lightningNetworkLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        lightningNetworkLayerRef.current.dispose();
+        lightningNetworkLayerRef.current = null;
+      }
+      if (wildfireThermalLayerRef.current) {
+        const m = wildfireThermalLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        wildfireThermalLayerRef.current.dispose();
+        wildfireThermalLayerRef.current = null;
+      }
+      if (auroralOvalLayerRef.current) {
+        const m = auroralOvalLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        auroralOvalLayerRef.current.dispose();
+        auroralOvalLayerRef.current = null;
+      }
+      if (oceanCurrentsLayerRef.current) {
+        const m = oceanCurrentsLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        oceanCurrentsLayerRef.current.dispose();
+        oceanCurrentsLayerRef.current = null;
+      }
+      return;
+    }
+
     const radius = globe.getGlobeRadius();
     const reducedMotion = prefersReducedMotion();
 
@@ -1187,7 +1231,7 @@ const GlobeScene = React.memo(function GlobeScene({
         oceanCurrentsLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, isMobile]);
+  }, [globeRef, introDone, isMobile, isPlayEarthActive]);
 
   // ── Sync Planetary Telemetry Data into Phases 1–6 Layers ──
   useEffect(() => {
@@ -1218,8 +1262,8 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    // Only activate in Weather mode when satellite/radar/clouds layer is explicitly chosen
-    const isSatOrWeather = globeView === 'weather' && 
+    // Only activate in Weather mode when satellite/radar/clouds layer is explicitly chosen (suppressed in game mode)
+    const isSatOrWeather = !isPlayEarthActive && globeView === 'weather' && 
       (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds');
 
     if (isSatOrWeather) {
@@ -1250,7 +1294,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return () => {
-      if (globeView !== 'weather') {
+      if (globeView !== 'weather' || isPlayEarthActive) {
         if (geostationarySatelliteLayerRef.current) {
           const m = geostationarySatelliteLayerRef.current.getMesh();
           if (m) scene.remove(m);
@@ -1259,7 +1303,7 @@ const GlobeScene = React.memo(function GlobeScene({
         }
       }
     };
-  }, [globeRef, introDone, globeView, weatherLayerMode, satelliteSpectralMode, overlayRadar, weatherTimelineIndex, events, isMobile]);
+  }, [globeRef, introDone, globeView, weatherLayerMode, satelliteSpectralMode, overlayRadar, weatherTimelineIndex, events, isMobile, isPlayEarthActive]);
 
   // ── 3D Mean Sea Level Pressure (MSLP) Isobars & High/Low Layer (Windy Isobars) ──
   useEffect(() => {
@@ -1268,7 +1312,7 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const shouldShow = showPressureIsobars && (globeView === 'weather' || globeView === 'satellite' || weatherLayerMode !== undefined);
+    const shouldShow = !isPlayEarthActive && showPressureIsobars && (globeView === 'weather' || globeView === 'satellite' || weatherLayerMode !== undefined);
 
     if (shouldShow) {
       const radius = globe.getGlobeRadius();
@@ -1291,14 +1335,14 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return () => {
-      if (!showPressureIsobars && atmosphericPressureLayerRef.current) {
+      if ((!showPressureIsobars || isPlayEarthActive) && atmosphericPressureLayerRef.current) {
         const m = atmosphericPressureLayerRef.current.getMesh();
         if (m) scene.remove(m);
         atmosphericPressureLayerRef.current.dispose();
         atmosphericPressureLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, showPressureIsobars, globeView, weatherLayerMode, events, isMobile]);
+  }, [globeRef, introDone, showPressureIsobars, globeView, weatherLayerMode, events, isMobile, isPlayEarthActive]);
 
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
