@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import HomePage from '../page';
+import PlayEarthClient from './PlayEarthClient';
 import { generateHreflangs } from '@/lib/i18n';
 
 const pageTitle = 'Interactive 3D Globe & Trivia Explorer';
@@ -83,7 +83,7 @@ export default function PlayEarthShortcutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
-      <HomePage initialPlayEarthActive={true} />
+      <PlayEarthClient initialPlayEarthActive={true} />
     </>
   );
 }
