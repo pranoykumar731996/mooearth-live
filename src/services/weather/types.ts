@@ -269,6 +269,7 @@ export type WeatherLayerMode =
   | 'temperature'
   | 'hurricane'
   | 'clouds'
+  | 'waves'
   | 'marine'
   | 'air-quality'
   | 'flood'

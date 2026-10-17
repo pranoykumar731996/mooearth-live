@@ -1072,20 +1072,29 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    const shouldShow = globeView === 'weather' || activeCategory === 'weather';
 
-    if (!cycloneVortexLayerRef.current) {
-      cycloneVortexLayerRef.current = new CycloneVortexLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = cycloneVortexLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!cycloneVortexLayerRef.current) {
+        cycloneVortexLayerRef.current = new CycloneVortexLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = cycloneVortexLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Pass live events to update real storm vortices & tracks
+      cycloneVortexLayerRef.current.setEvents(events || []);
+    } else if (cycloneVortexLayerRef.current) {
+      const m = cycloneVortexLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      cycloneVortexLayerRef.current.dispose();
+      cycloneVortexLayerRef.current = null;
     }
-
-    // Pass live events to update real storm vortices & tracks
-    cycloneVortexLayerRef.current.setEvents(events || []);
 
     return () => {
       if (cycloneVortexLayerRef.current) {
@@ -1095,7 +1104,7 @@ const GlobeScene = React.memo(function GlobeScene({
         cycloneVortexLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, activeCategory, events, isMobile]);
 
   // ── 3D Seismic Shockwave & Hypocenter Layer (Phase 2 Geophysics) ──
   useEffect(() => {
@@ -1104,20 +1113,29 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    const shouldShow = globeView === 'weather' || activeCategory === 'seismic';
 
-    if (!seismicShockwaveLayerRef.current) {
-      seismicShockwaveLayerRef.current = new SeismicShockwaveLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = seismicShockwaveLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!seismicShockwaveLayerRef.current) {
+        seismicShockwaveLayerRef.current = new SeismicShockwaveLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = seismicShockwaveLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Feed active USGS earthquake events
+      seismicShockwaveLayerRef.current.setEvents(events || []);
+    } else if (seismicShockwaveLayerRef.current) {
+      const m = seismicShockwaveLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      seismicShockwaveLayerRef.current.dispose();
+      seismicShockwaveLayerRef.current = null;
     }
-
-    // Feed active USGS earthquake events
-    seismicShockwaveLayerRef.current.setEvents(events || []);
 
     return () => {
       if (seismicShockwaveLayerRef.current) {
@@ -1127,7 +1145,7 @@ const GlobeScene = React.memo(function GlobeScene({
         seismicShockwaveLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, activeCategory, events, isMobile]);
 
   // ── 3D Lightning Network & Severe Convective Layer (Phase 3 Severe Storms) ──
   useEffect(() => {
@@ -1136,20 +1154,29 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    const shouldShow = globeView === 'weather' || activeCategory === 'severe_weather';
 
-    if (!lightningNetworkLayerRef.current) {
-      lightningNetworkLayerRef.current = new LightningNetworkLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = lightningNetworkLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!lightningNetworkLayerRef.current) {
+        lightningNetworkLayerRef.current = new LightningNetworkLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = lightningNetworkLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Feed active severe storm events for real-time lightning discharge
+      lightningNetworkLayerRef.current.setEvents(events || []);
+    } else if (lightningNetworkLayerRef.current) {
+      const m = lightningNetworkLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      lightningNetworkLayerRef.current.dispose();
+      lightningNetworkLayerRef.current = null;
     }
-
-    // Feed active severe storm events for real-time lightning discharge
-    lightningNetworkLayerRef.current.setEvents(events || []);
 
     return () => {
       if (lightningNetworkLayerRef.current) {
@@ -1159,7 +1186,7 @@ const GlobeScene = React.memo(function GlobeScene({
         lightningNetworkLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, activeCategory, events, isMobile]);
 
   // ── 3D Wildfire Thermal Plume & Smoke Layer (Phase 4 Thermal Physics) ──
   useEffect(() => {
@@ -1168,20 +1195,29 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    const shouldShow = globeView === 'weather' || activeCategory === 'wildfires';
 
-    if (!wildfireThermalLayerRef.current) {
-      wildfireThermalLayerRef.current = new WildfireThermalLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = wildfireThermalLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!wildfireThermalLayerRef.current) {
+        wildfireThermalLayerRef.current = new WildfireThermalLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = wildfireThermalLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Feed active wildfire events for thermal updrafts & smoke billowing
+      wildfireThermalLayerRef.current.setEvents(events || []);
+    } else if (wildfireThermalLayerRef.current) {
+      const m = wildfireThermalLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      wildfireThermalLayerRef.current.dispose();
+      wildfireThermalLayerRef.current = null;
     }
-
-    // Feed active wildfire events for thermal updrafts & smoke billowing
-    wildfireThermalLayerRef.current.setEvents(events || []);
 
     return () => {
       if (wildfireThermalLayerRef.current) {
@@ -1191,7 +1227,7 @@ const GlobeScene = React.memo(function GlobeScene({
         wildfireThermalLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, activeCategory, events, isMobile]);
 
   // ── 3D Auroral Oval & Solar Wind Layer (Phase 5 Space Weather) ──
   useEffect(() => {
@@ -1200,20 +1236,29 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    const shouldShow = globeView === 'weather' || globeView === 'night' || activeCategory === 'space_weather';
 
-    if (!auroralOvalLayerRef.current) {
-      auroralOvalLayerRef.current = new AuroralOvalLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = auroralOvalLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!auroralOvalLayerRef.current) {
+        auroralOvalLayerRef.current = new AuroralOvalLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = auroralOvalLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Feed active space weather events for real-time planetary Kp scaling
+      auroralOvalLayerRef.current.setEvents(events || []);
+    } else if (auroralOvalLayerRef.current) {
+      const m = auroralOvalLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      auroralOvalLayerRef.current.dispose();
+      auroralOvalLayerRef.current = null;
     }
-
-    // Feed active space weather events for real-time planetary Kp scaling
-    auroralOvalLayerRef.current.setEvents(events || []);
 
     return () => {
       if (auroralOvalLayerRef.current) {
@@ -1223,7 +1268,7 @@ const GlobeScene = React.memo(function GlobeScene({
         auroralOvalLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, activeCategory, events, isMobile]);
 
   // ── 3D Ocean Current Streamlines & Marine Heatwave Layer (Phase 6 Marine Physics) ──
   useEffect(() => {
@@ -1232,20 +1277,30 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const radius = globe.getGlobeRadius();
+    // Only display in ocean/marine weather mode — keep standard/night globe completely free of oceanic streamline lines
+    const shouldShow = globeView === 'weather' && (weatherLayerMode === 'waves' || (weatherLayerMode as any) === 'currents');
 
-    if (!oceanCurrentsLayerRef.current) {
-      oceanCurrentsLayerRef.current = new OceanCurrentsLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = oceanCurrentsLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
+    if (shouldShow) {
+      const radius = globe.getGlobeRadius();
+
+      if (!oceanCurrentsLayerRef.current) {
+        oceanCurrentsLayerRef.current = new OceanCurrentsLayer({
+          radius,
+          isMobile,
+          reducedMotion: prefersReducedMotion(),
+        });
+        const mesh = oceanCurrentsLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+
+      // Feed active marine & ocean gyre events for real-time drift & SST anomalies
+      oceanCurrentsLayerRef.current.setEvents(events || []);
+    } else if (oceanCurrentsLayerRef.current) {
+      const m = oceanCurrentsLayerRef.current.getMesh();
+      if (m) scene.remove(m);
+      oceanCurrentsLayerRef.current.dispose();
+      oceanCurrentsLayerRef.current = null;
     }
-
-    // Feed active marine & ocean gyre events for real-time drift & SST anomalies
-    oceanCurrentsLayerRef.current.setEvents(events || []);
 
     return () => {
       if (oceanCurrentsLayerRef.current) {
@@ -1255,7 +1310,7 @@ const GlobeScene = React.memo(function GlobeScene({
         oceanCurrentsLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, globeView, weatherLayerMode, events, isMobile]);
 
   // ── 3D Geostationary Satellite Cloud Cover Layer (Windy Satellite Visible / Blue / Infra) ──
   useEffect(() => {
@@ -1892,304 +1947,11 @@ const GlobeScene = React.memo(function GlobeScene({
     return data;
   }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView]);
 
-  // Connection arcs — pair adjacent events
-  const arcsData = useMemo<EventArc[]>(() => {
-    const arcs: EventArc[] = [];
-    const maxArcs = isMobile ? 2 : events.length; // Limit arcs on mobile to save performance
-    for (let i = 0; i < events.length && arcs.length < maxArcs; i += 2) {
-      if (i + 1 < events.length) {
-        arcs.push({
-          startLat: events[i].lat,
-          startLng: events[i].lng,
-          endLat: events[i + 1].lat,
-          endLng: events[i + 1].lng,
-          color: CATEGORY_MAP[events[i].category]?.color || '#ef4444',
-        });
-      }
-    }
-    return arcs;
-  }, [events, isMobile]);
+  // Connection arcs — deleted to eliminate cluttering line overlay
+  const arcsData = useMemo<EventArc[]>(() => [], []);
 
-  // Ring data (Goal Shockwaves + Default Pulse + Celebration Mega-Rings + Weather Radar Rings)
-  const ringsData = useMemo(() => {
-    // Failsafe Mode (Rule 11) - disable expensive ring overlays
-    if (failsafeActive) {
-      return [];
-    }
-
-    if (isMobile) {
-      // On mobile, keep rings strictly minimal to prevent high geometry & draw call overhead
-      if (isStopTheEarthActive && stopTheEarthTargetCoord) {
-        return [{
-          lat: stopTheEarthTargetCoord.lat,
-          lng: stopTheEarthTargetCoord.lng,
-          maxR: 12,
-          propagationSpeed: 2.0,
-          repeatPeriod: 1400,
-          color: 'rgba(6, 182, 212, 0.95)',
-        }];
-      }
-      if (celebration?.active) {
-        return [{
-          lat: celebration.lat,
-          lng: celebration.lng,
-          maxR: 18,
-          propagationSpeed: 3.0,
-          repeatPeriod: 2400,
-          color: celebration.colors.glow,
-        }];
-      }
-      return events.slice(0, 2).map(e => ({
-        lat: e.lat,
-        lng: e.lng,
-        maxR: GLOBE_CONFIG.ringMaxRadius,
-        propagationSpeed: GLOBE_CONFIG.ringPropagationSpeed,
-        repeatPeriod: GLOBE_CONFIG.ringRepeatPeriod,
-        color: CATEGORY_MAP[e.category]?.glowColor || 'rgba(0, 229, 255, 0.5)',
-        event: e,
-      }));
-    }
-
-    const rings: any[] = [];
-    
-    // In weather view, render custom cyan/green storm radar rings at weather event coordinates
-    if (globeView === 'weather') {
-      const weatherEvents = events.filter(e => e.category === 'weather');
-      const activeWeatherEvents = isMobile ? weatherEvents.slice(-2) : weatherEvents;
-      activeWeatherEvents.forEach(e => {
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: 9,
-          propagationSpeed: 1.4,
-          repeatPeriod: 1800,
-          color: 'rgba(0, 229, 255, 0.55)', // Cyan radar ring
-          event: e,
-        });
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: 5,
-          propagationSpeed: 0.9,
-          repeatPeriod: 1800,
-          color: 'rgba(16, 185, 129, 0.35)', // Inner green radar ring
-          event: e,
-        });
-      });
-
-      // Selected weather city location — pulsing cyan radar ring
-      const selLoc = selectedLocation as any;
-      if (selLoc && selLoc.type === 'city') {
-        rings.push({
-          lat: selLoc.lat,
-          lng: selLoc.lng,
-          maxR: 7,
-          propagationSpeed: 1.8,
-          repeatPeriod: 2200,
-          color: 'rgba(0, 229, 255, 0.7)',
-        });
-        rings.push({
-          lat: selLoc.lat,
-          lng: selLoc.lng,
-          maxR: 4,
-          propagationSpeed: 1.0,
-          repeatPeriod: 2200,
-          color: 'rgba(6, 182, 212, 0.4)',
-        });
-      }
-
-      return rings;
-    }
-
-    // Only render rings for the 3 most recent events on mobile to avoid CPU/GPU overhead
-    const activeEvents = isMobile ? events.slice(-3) : events;
-    
-    activeEvents.forEach(e => {
-      // Default ambient pulse
-      rings.push({
-        lat: e.lat,
-        lng: e.lng,
-        maxR: GLOBE_CONFIG.ringMaxRadius,
-        propagationSpeed: GLOBE_CONFIG.ringPropagationSpeed,
-        repeatPeriod: GLOBE_CONFIG.ringRepeatPeriod,
-        color: CATEGORY_MAP[e.category]?.glowColor || 'rgba(0, 229, 255, 0.5)',
-        event: e,
-      });
-
-      // Earthquake Dual P-Wave & S-Wave Seismic Wavefront (Phase 2 Geophysics)
-      if (e.category === 'seismic') {
-        const mag = e.planetaryTelemetry?.magnitude || 4.5;
-        const isMajor = mag >= 6.0;
-
-        // 1. Primary P-Wave (Compressional, fast 8 km/s, expansive Ice Cyan ring)
-        const pWaveMaxR = Math.min(22, Math.max(8, mag * 2.6));
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: pWaveMaxR,
-          propagationSpeed: isMobile ? 3.0 : 3.8,
-          repeatPeriod: isMajor ? 1800 : 2400,
-          color: 'rgba(0, 229, 255, 0.85)',
-          event: e,
-        });
-
-        // 2. Secondary S-Wave (Shear / Destructive, slower 4.5 km/s, intense Red/Amber core)
-        const sWaveMaxR = Math.min(14, Math.max(5, mag * 1.8));
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: sWaveMaxR,
-          propagationSpeed: isMobile ? 1.8 : 2.2,
-          repeatPeriod: isMajor ? 2000 : 2800,
-          color: isMajor ? 'rgba(239, 68, 68, 0.95)' : 'rgba(249, 115, 22, 0.85)',
-          event: e,
-        });
-
-        // 3. Tsunami Radial Wavefront (if oceanic quake with tsunami advisory active)
-        if (e.planetaryTelemetry?.tsunamiWarning) {
-          rings.push({
-            lat: e.lat,
-            lng: e.lng,
-            maxR: 30,
-            propagationSpeed: 1.4,
-            repeatPeriod: 3200,
-            color: 'rgba(37, 99, 235, 0.95)',
-            event: e,
-          });
-        }
-      }
-
-      // Severe Thunderstorm & Lightning Flash Pulse (Phase 3 Atmospheric Convection)
-      if (e.category === 'severe_weather') {
-        const rate = e.planetaryTelemetry?.lightningStrikeRatePerMin || 30;
-        const isIntense = rate >= 50;
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: isIntense ? 16 : 10,
-          propagationSpeed: isMobile ? 3.5 : 4.8,
-          repeatPeriod: isIntense ? 1200 : 1800,
-          color: 'rgba(56, 189, 248, 0.95)',
-          event: e,
-        });
-      }
-
-      // Wildfire Thermal Radiation Wavefront (Phase 4 Thermal Physics)
-      if (e.category === 'wildfires') {
-        const frp = e.planetaryTelemetry?.fireRadiativePowerMw || 100;
-        const isMegaFire = frp >= 300;
-        const maxR = Math.min(18, Math.max(7, Math.log10(Math.max(10, frp)) * 5.5));
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR,
-          propagationSpeed: isMobile ? 1.4 : 1.8,
-          repeatPeriod: isMegaFire ? 1600 : 2200,
-          color: isMegaFire ? 'rgba(239, 68, 68, 0.95)' : 'rgba(249, 115, 22, 0.85)',
-          event: e,
-        });
-      }
-
-      // Space Weather Solar Flare & Geomagnetic Shockwave (Phase 5 Space Physics)
-      if (e.category === 'space_weather') {
-        const kp = e.planetaryTelemetry?.kpIndex || 3;
-        const isStorm = kp >= 5;
-        const maxR = Math.min(24, Math.max(10, 10 + kp * 1.5));
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR,
-          propagationSpeed: isMobile ? 1.8 : 2.5,
-          repeatPeriod: isStorm ? 1600 : 2400,
-          color: isStorm ? 'rgba(236, 72, 153, 0.95)' : 'rgba(168, 85, 247, 0.85)',
-          event: e,
-        });
-      }
-
-      // Ocean Current Streamline & Sea Surface Temperature Wavefront (Phase 6 Marine Physics)
-      if (e.category === 'climate_oceans') {
-        const sstAnomaly = e.planetaryTelemetry?.seaSurfaceTempAnomalyC || 0;
-        const isHeatwave = sstAnomaly >= 1.5;
-        const speed = e.planetaryTelemetry?.oceanCurrentSpeedMs || 1.0;
-        const maxR = Math.min(22, Math.max(8, 8 + speed * 4.5));
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR,
-          propagationSpeed: isMobile ? 1.2 : 1.6,
-          repeatPeriod: isHeatwave ? 1800 : 2600,
-          color: isHeatwave ? 'rgba(244, 63, 94, 0.95)' : 'rgba(6, 182, 212, 0.85)',
-          event: e,
-        });
-      }
-
-      // Goal Shockwave
-      if (e.footballData && e.footballData.goals && e.footballData.goals.length > 0) {
-        rings.push({
-          lat: e.lat,
-          lng: e.lng,
-          maxR: 12,
-          propagationSpeed: 2,
-          repeatPeriod: 4000,
-          color: 'rgba(255, 215, 0, 0.8)',
-          event: e,
-         });
-      }
-    });
-
-    // CELEBRATION MEGA-RINGS — massive expanding shockwave from the scoring country (Phase 2)
-    if (celebration?.active) {
-      // Ring 1: Outer mega shockwave
-      rings.push({
-        lat: celebration.lat,
-        lng: celebration.lng,
-        maxR: 28,             // Phase 2: Spread across the Earth
-        propagationSpeed: 4.5, // Very high speed
-        repeatPeriod: 2200,
-        color: celebration.colors.glow,
-      });
-      // Ring 2: Mid shockwave
-      rings.push({
-        lat: celebration.lat,
-        lng: celebration.lng,
-        maxR: 18,
-        propagationSpeed: 3.0,
-        repeatPeriod: 2800,
-        color: `${celebration.colors.primary}aa`,
-      });
-      // Ring 3: Inner pulse
-      rings.push({
-        lat: celebration.lat,
-        lng: celebration.lng,
-        maxR: 10,
-        propagationSpeed: 1.8,
-        repeatPeriod: 3500,
-        color: `${celebration.colors.secondary || '#ffffff'}80`,
-      });
-    }
-
-    // Stop The Earth Target Radar Pulse Rings
-    if (isStopTheEarthActive && stopTheEarthTargetCoord) {
-      rings.push({
-        lat: stopTheEarthTargetCoord.lat,
-        lng: stopTheEarthTargetCoord.lng,
-        maxR: 16,
-        propagationSpeed: 2.6,
-        repeatPeriod: 1400,
-        color: 'rgba(6, 182, 212, 0.95)',
-      });
-      rings.push({
-        lat: stopTheEarthTargetCoord.lat,
-        lng: stopTheEarthTargetCoord.lng,
-        maxR: 8,
-        propagationSpeed: 1.6,
-        repeatPeriod: 1400,
-        color: 'rgba(250, 204, 21, 0.9)',
-      });
-    }
-
-    return rings;
-  }, [events, celebration, isMobile, globeView, failsafeActive, isStopTheEarthActive, stopTheEarthTargetCoord, selectedLocation]);
+  // Ring data — deleted concentric pulse rings / circle lines so other features are visible clearly
+  const ringsData = useMemo(() => [], []);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -2811,15 +2573,11 @@ const GlobeScene = React.memo(function GlobeScene({
       return 'rgba(0, 229, 255, 0.7)'; // Clear bright cyan borders
     }
 
-    if (globeView === 'night') {
-      return 'rgba(0, 100, 255, 0.15)'; // Darker blue borders
-    }
-
-    if (globeView === 'satellite') {
-      return 'rgba(255, 255, 255, 0.15)'; // Thin white borders
+    if (globeView === 'satellite' || globeView === 'night' || globeView === 'standard') {
+      return 'rgba(255, 255, 255, 0.04)'; // Clean seamless surface without harsh white border lining
     }
     
-    return 'rgba(255, 255, 255, 0.2)'; // Brighter normal borders
+    return 'rgba(255, 255, 255, 0.05)'; // Clean minimal borders so globe features are clearly visible
   }, [selectedCountry, hoveredPolygon, adjustOpacity, globeView, failsafeActive, selectedContinent, continentCountriesMap]);
 
   // Unified pointer handler for STOP THE EARTH using Three.js Raycaster
