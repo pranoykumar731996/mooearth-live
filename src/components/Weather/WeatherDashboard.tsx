@@ -532,6 +532,7 @@ export default function WeatherDashboard() {
             <div className="absolute inset-0 w-full h-full">
               <GlobeScene
                 events={events}
+                allEvents={events}
                 selectedEvent={null}
                 onSelectEvent={() => {}}
                 selectedCountry={weather.selectedLocation?.country}

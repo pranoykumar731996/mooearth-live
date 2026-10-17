@@ -8,9 +8,9 @@
 // - Kp-driven geomagnetic equatorward expansion (Kp 1 -> Kp 9 storm scaling)
 // - Double-emission spectral gradients:
 //   * Lower curtain: Atomic oxygen 557.7 nm electric emerald green (0x10b981 / 0x34d399)
-//   * Upper crown: Ionized molecular nitrogen / high-altitude oxygen 630 nm violet/magenta (0xa855f7)
+//   * Upper crown: Ionized molecular nitrogen 630 nm violet/magenta (0xec4899 / 0xa855f7)
 // - Dynamic 60 FPS undulating curtain wave harmonics
-// - Strict WebGL memory management with complete disposal on unmount.
+// - Elevated high-altitude ionosphere geometry ensuring stunning visibility from space.
 
 import * as THREE from 'three';
 import type { WorldEvent } from '@/types';
@@ -60,7 +60,7 @@ export class AuroralOvalLayer {
   private isMobile: boolean;
   private reducedMotion: boolean;
   private rootGroup: THREE.Group;
-  private kpIndex: number = 3;
+  private kpIndex: number = 4.8; // Baseline active geomagnetic field
   private curtains: AuroralCurtainInstance[] = [];
 
   constructor(options: AuroralOvalLayerOptions = {}) {
@@ -78,7 +78,7 @@ export class AuroralOvalLayer {
    * Initializes the Northern (Borealis) and Southern (Australis) auroral ribbons.
    */
   private initCurtains(): void {
-    const segments = this.isMobile ? 48 : 80;
+    const segments = this.isMobile ? 54 : 96;
 
     // Northern Geomagnetic Dipole (~81.5°N, -83.0°W)
     const northCurtain = this.createCurtain(81.5, -83.0, true, segments);
@@ -119,7 +119,7 @@ export class AuroralOvalLayer {
     const material = new THREE.MeshBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.92,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
       depthWrite: false,
@@ -134,7 +134,7 @@ export class AuroralOvalLayer {
       poleLat,
       poleLng,
       isNorth,
-      baseRadiusDeg: 16.0,
+      baseRadiusDeg: 17.5,
       segments,
     };
 
@@ -151,11 +151,11 @@ export class AuroralOvalLayer {
     const positions = posAttr.array as Float32Array;
     const colors = colAttr.array as Float32Array;
 
-    // Equatorward expansion: base 16° expands up to 36° during G5 storms (Kp 9)
-    const ovalRadiusDeg = curtain.baseRadiusDeg + Math.min(this.kpIndex, 9) * 2.2;
+    // Equatorward expansion: base 17.5° expands up to 38° during G5 storms (Kp 9)
+    const ovalRadiusDeg = curtain.baseRadiusDeg + Math.min(this.kpIndex, 9) * 2.4;
 
-    // Colors: Green for lower boundary, Violet for upper crown
-    const isStorm = this.kpIndex >= 6;
+    // Colors: Green for lower boundary, Violet/Magenta for upper crown
+    const isStorm = this.kpIndex >= 5.5;
     const lowerColor = new THREE.Color(0x34d399); // Oxygen 557.7 nm emerald
     const upperColor = isStorm ? new THREE.Color(0xec4899) : new THREE.Color(0xa855f7); // Nitrogen violet/magenta
 
@@ -168,15 +168,16 @@ export class AuroralOvalLayer {
     const tangentU = new THREE.Vector3().crossVectors(poleNormal, arbitrary).normalize();
     const tangentV = new THREE.Vector3().crossVectors(poleNormal, tangentU).normalize();
 
-    const lowerAlt = this.radius * 1.018; // ~120 km ionosphere
-    const upperAlt = this.radius * 1.036; // ~300 km crown
+    // High-altitude ionospheric curtain bounds (floating high above cloud deck)
+    const lowerAlt = this.radius * 1.026; // ~150 km ionosphere
+    const upperAlt = this.radius * 1.058; // ~380 km crown
 
     for (let i = 0; i <= curtain.segments; i++) {
       const angle = (i / curtain.segments) * Math.PI * 2;
 
-      // Undulating wave harmonics simulating auroral curtains
-      const wave1 = Math.sin(angle * 5.0 - timeSec * 1.8) * 0.8;
-      const wave2 = Math.sin(angle * 9.0 + timeSec * 2.4) * 0.4;
+      // Undulating wave harmonics simulating dynamic auroral curtains
+      const wave1 = Math.sin(angle * 5.0 - timeSec * 1.8) * 1.1;
+      const wave2 = Math.sin(angle * 9.0 + timeSec * 2.4) * 0.6;
       const totalWave = wave1 + wave2;
 
       const currentRadiusDeg = ovalRadiusDeg + totalWave;
@@ -204,7 +205,7 @@ export class AuroralOvalLayer {
       colors[i * 6 + 2] = lowerColor.b;
 
       // Upper curtain vertex (violet/magenta crown with wave lift)
-      const lift = 1.0 + totalWave * 0.05;
+      const lift = 1.0 + totalWave * 0.06;
       const upperPos = localDir.clone().multiplyScalar(upperAlt * lift);
       positions[i * 6 + 3] = upperPos.x;
       positions[i * 6 + 1 + 3] = upperPos.y;
@@ -226,7 +227,7 @@ export class AuroralOvalLayer {
     const spaceEvents = events.filter((e) => e.category === 'space_weather');
     for (const event of spaceEvents) {
       if (typeof event.planetaryTelemetry?.kpIndex === 'number') {
-        this.kpIndex = event.planetaryTelemetry.kpIndex;
+        this.kpIndex = Math.max(3.5, event.planetaryTelemetry.kpIndex);
         break;
       }
     }
@@ -235,15 +236,15 @@ export class AuroralOvalLayer {
   /**
    * 60 FPS animation update loop.
    */
-  public update(time: number, delta: number): void {
+  public update(time: number, delta: number = 0.016): void {
     if (this.reducedMotion) return;
 
     const timeSec = time * 0.001;
 
     for (const curtain of this.curtains) {
       this.updateCurtainGeometry(curtain, timeSec);
-      // Subtle breathing opacity modulation
-      const pulse = 0.75 + Math.sin(timeSec * 2.0) * 0.15;
+      // Breathing opacity modulation
+      const pulse = 0.82 + Math.sin(timeSec * 2.2) * 0.16;
       curtain.material.opacity = pulse;
     }
   }

@@ -1471,6 +1471,7 @@ export default function HomePage({
         >
           <GlobeScene
             events={filteredEvents}
+            allEvents={liveEvents}
             selectedEvent={selectedEvent}
             onSelectEvent={handleSelectEvent}
             selectedCountry={selectedCountry}

@@ -34,6 +34,7 @@ const Globe = dynamic(() => import('react-globe.gl'), {
 
 interface GlobeSceneProps {
   events: WorldEvent[];
+  allEvents?: WorldEvent[]; // Full unfiltered planetary events feed
   selectedEvent: WorldEvent | null;
   onSelectEvent: (event: WorldEvent | null) => void;
   selectedCountry?: string | null;
@@ -184,6 +185,7 @@ const getCountryLatitude = (feat: any) => {
 
 const GlobeScene = React.memo(function GlobeScene({
   events,
+  allEvents,
   selectedEvent,
   onSelectEvent,
   selectedCountry,
@@ -940,7 +942,7 @@ const GlobeScene = React.memo(function GlobeScene({
       }
 
       // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
-      if (oceanCurrentsLayerRef.current && particlesEnabled) {
+      if (oceanCurrentsLayerRef.current) {
         oceanCurrentsLayerRef.current.update(time, 0.016);
       }
 
@@ -1065,7 +1067,13 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, globeView, weatherLayerMode, weatherTimelineIndex, weatherGridData, isMobile]);
 
-  // ── 3D Cyclone Vortex Layer (Phase 1 Atmospheric Dynamics) ──
+  // Priority telemetry feed for 3D planetary phenomena: prefer unfiltered allEvents, fallback to events
+  const planetaryFeed = useMemo(() => {
+    if (allEvents && allEvents.length > 0) return allEvents;
+    return events || [];
+  }, [allEvents, events]);
+
+  // ── 3D Planetary Geophysics & Weather Layers (Phases 1–6 Mount Lifecycle) ──
   useEffect(() => {
     if (!globeRef.current || !introDone) return;
     const globe = globeRef.current;
@@ -1073,19 +1081,73 @@ const GlobeScene = React.memo(function GlobeScene({
     if (!scene) return;
 
     const radius = globe.getGlobeRadius();
+    const reducedMotion = prefersReducedMotion();
 
+    // 1. Cyclone Vortex Layer (Phase 1 Atmospheric Dynamics)
     if (!cycloneVortexLayerRef.current) {
       cycloneVortexLayerRef.current = new CycloneVortexLayer({
         radius,
         isMobile,
-        reducedMotion: prefersReducedMotion(),
+        reducedMotion,
       });
       const mesh = cycloneVortexLayerRef.current.getMesh();
       if (mesh) scene.add(mesh);
     }
 
-    // Pass live events to update real storm vortices & tracks
-    cycloneVortexLayerRef.current.setEvents(events || []);
+    // 2. Seismic Shockwave & Hypocenter Layer (Phase 2 Geophysics)
+    if (!seismicShockwaveLayerRef.current) {
+      seismicShockwaveLayerRef.current = new SeismicShockwaveLayer({
+        radius,
+        isMobile,
+        reducedMotion,
+      });
+      const mesh = seismicShockwaveLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // 3. Lightning Network & Severe Convective Layer (Phase 3 Severe Storms)
+    if (!lightningNetworkLayerRef.current) {
+      lightningNetworkLayerRef.current = new LightningNetworkLayer({
+        radius,
+        isMobile,
+        reducedMotion,
+      });
+      const mesh = lightningNetworkLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // 4. Wildfire Thermal Plume & Smoke Layer (Phase 4 Thermal Physics)
+    if (!wildfireThermalLayerRef.current) {
+      wildfireThermalLayerRef.current = new WildfireThermalLayer({
+        radius,
+        isMobile,
+        reducedMotion,
+      });
+      const mesh = wildfireThermalLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // 5. Auroral Oval & Solar Wind Layer (Phase 5 Space Weather)
+    if (!auroralOvalLayerRef.current) {
+      auroralOvalLayerRef.current = new AuroralOvalLayer({
+        radius,
+        isMobile,
+        reducedMotion,
+      });
+      const mesh = auroralOvalLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // 6. Ocean Current Streamlines & Marine Heatwave Layer (Phase 6 Marine Physics)
+    if (!oceanCurrentsLayerRef.current) {
+      oceanCurrentsLayerRef.current = new OceanCurrentsLayer({
+        radius,
+        isMobile,
+        reducedMotion,
+      });
+      const mesh = oceanCurrentsLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
 
     return () => {
       if (cycloneVortexLayerRef.current) {
@@ -1094,160 +1156,30 @@ const GlobeScene = React.memo(function GlobeScene({
         cycloneVortexLayerRef.current.dispose();
         cycloneVortexLayerRef.current = null;
       }
-    };
-  }, [globeRef, introDone, events, isMobile]);
-
-  // ── 3D Seismic Shockwave & Hypocenter Layer (Phase 2 Geophysics) ──
-  useEffect(() => {
-    if (!globeRef.current || !introDone) return;
-    const globe = globeRef.current;
-    const scene = globe.scene();
-    if (!scene) return;
-
-    const radius = globe.getGlobeRadius();
-
-    if (!seismicShockwaveLayerRef.current) {
-      seismicShockwaveLayerRef.current = new SeismicShockwaveLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = seismicShockwaveLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
-    }
-
-    // Feed active USGS earthquake events
-    seismicShockwaveLayerRef.current.setEvents(events || []);
-
-    return () => {
       if (seismicShockwaveLayerRef.current) {
         const m = seismicShockwaveLayerRef.current.getMesh();
         if (m) scene.remove(m);
         seismicShockwaveLayerRef.current.dispose();
         seismicShockwaveLayerRef.current = null;
       }
-    };
-  }, [globeRef, introDone, events, isMobile]);
-
-  // ── 3D Lightning Network & Severe Convective Layer (Phase 3 Severe Storms) ──
-  useEffect(() => {
-    if (!globeRef.current || !introDone) return;
-    const globe = globeRef.current;
-    const scene = globe.scene();
-    if (!scene) return;
-
-    const radius = globe.getGlobeRadius();
-
-    if (!lightningNetworkLayerRef.current) {
-      lightningNetworkLayerRef.current = new LightningNetworkLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = lightningNetworkLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
-    }
-
-    // Feed active severe storm events for real-time lightning discharge
-    lightningNetworkLayerRef.current.setEvents(events || []);
-
-    return () => {
       if (lightningNetworkLayerRef.current) {
         const m = lightningNetworkLayerRef.current.getMesh();
         if (m) scene.remove(m);
         lightningNetworkLayerRef.current.dispose();
         lightningNetworkLayerRef.current = null;
       }
-    };
-  }, [globeRef, introDone, events, isMobile]);
-
-  // ── 3D Wildfire Thermal Plume & Smoke Layer (Phase 4 Thermal Physics) ──
-  useEffect(() => {
-    if (!globeRef.current || !introDone) return;
-    const globe = globeRef.current;
-    const scene = globe.scene();
-    if (!scene) return;
-
-    const radius = globe.getGlobeRadius();
-
-    if (!wildfireThermalLayerRef.current) {
-      wildfireThermalLayerRef.current = new WildfireThermalLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = wildfireThermalLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
-    }
-
-    // Feed active wildfire events for thermal updrafts & smoke billowing
-    wildfireThermalLayerRef.current.setEvents(events || []);
-
-    return () => {
       if (wildfireThermalLayerRef.current) {
         const m = wildfireThermalLayerRef.current.getMesh();
         if (m) scene.remove(m);
         wildfireThermalLayerRef.current.dispose();
         wildfireThermalLayerRef.current = null;
       }
-    };
-  }, [globeRef, introDone, events, isMobile]);
-
-  // ── 3D Auroral Oval & Solar Wind Layer (Phase 5 Space Weather) ──
-  useEffect(() => {
-    if (!globeRef.current || !introDone) return;
-    const globe = globeRef.current;
-    const scene = globe.scene();
-    if (!scene) return;
-
-    const radius = globe.getGlobeRadius();
-
-    if (!auroralOvalLayerRef.current) {
-      auroralOvalLayerRef.current = new AuroralOvalLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = auroralOvalLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
-    }
-
-    // Feed active space weather events for real-time planetary Kp scaling
-    auroralOvalLayerRef.current.setEvents(events || []);
-
-    return () => {
       if (auroralOvalLayerRef.current) {
         const m = auroralOvalLayerRef.current.getMesh();
         if (m) scene.remove(m);
         auroralOvalLayerRef.current.dispose();
         auroralOvalLayerRef.current = null;
       }
-    };
-  }, [globeRef, introDone, events, isMobile]);
-
-  // ── 3D Ocean Current Streamlines & Marine Heatwave Layer (Phase 6 Marine Physics) ──
-  useEffect(() => {
-    if (!globeRef.current || !introDone) return;
-    const globe = globeRef.current;
-    const scene = globe.scene();
-    if (!scene) return;
-
-    const radius = globe.getGlobeRadius();
-
-    if (!oceanCurrentsLayerRef.current) {
-      oceanCurrentsLayerRef.current = new OceanCurrentsLayer({
-        radius,
-        isMobile,
-        reducedMotion: prefersReducedMotion(),
-      });
-      const mesh = oceanCurrentsLayerRef.current.getMesh();
-      if (mesh) scene.add(mesh);
-    }
-
-    // Feed active marine & ocean gyre events for real-time drift & SST anomalies
-    oceanCurrentsLayerRef.current.setEvents(events || []);
-
-    return () => {
       if (oceanCurrentsLayerRef.current) {
         const m = oceanCurrentsLayerRef.current.getMesh();
         if (m) scene.remove(m);
@@ -1255,7 +1187,29 @@ const GlobeScene = React.memo(function GlobeScene({
         oceanCurrentsLayerRef.current = null;
       }
     };
-  }, [globeRef, introDone, events, isMobile]);
+  }, [globeRef, introDone, isMobile]);
+
+  // ── Sync Planetary Telemetry Data into Phases 1–6 Layers ──
+  useEffect(() => {
+    if (cycloneVortexLayerRef.current) {
+      cycloneVortexLayerRef.current.setEvents(planetaryFeed);
+    }
+    if (seismicShockwaveLayerRef.current) {
+      seismicShockwaveLayerRef.current.setEvents(planetaryFeed);
+    }
+    if (lightningNetworkLayerRef.current) {
+      lightningNetworkLayerRef.current.setEvents(planetaryFeed);
+    }
+    if (wildfireThermalLayerRef.current) {
+      wildfireThermalLayerRef.current.setEvents(planetaryFeed);
+    }
+    if (auroralOvalLayerRef.current) {
+      auroralOvalLayerRef.current.setEvents(planetaryFeed);
+    }
+    if (oceanCurrentsLayerRef.current) {
+      oceanCurrentsLayerRef.current.setEvents(planetaryFeed);
+    }
+  }, [planetaryFeed]);
 
   // ── 3D Geostationary Satellite Cloud Cover Layer (Windy Satellite Visible / Blue / Infra) ──
   useEffect(() => {

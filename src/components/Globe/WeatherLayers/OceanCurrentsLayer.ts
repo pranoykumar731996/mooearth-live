@@ -309,7 +309,7 @@ export class OceanCurrentsLayer {
    * Constructs smooth 3D Catmull-Rom spherical splines for each oceanic path.
    */
   private buildSplines(): void {
-    const sphereRadius = this.radius * 1.0022; // Slightly above sphere to prevent z-fighting
+    const sphereRadius = this.radius * 1.0055; // Elevated to float cleanly above ocean/terrain textures
 
     for (const def of GLOBAL_GYRE_PATHS) {
       const controlPoints: THREE.Vector3[] = [];
@@ -371,9 +371,9 @@ export class OceanCurrentsLayer {
         segmentsList.push(p1.x, p1.y, p1.z);
         segmentsList.push(p2.x, p2.y, p2.z);
 
-        // Alpha blended via vertex colors
-        colorsList.push(baseColor.r * 0.45, baseColor.g * 0.45, baseColor.b * 0.45);
-        colorsList.push(baseColor.r * 0.45, baseColor.g * 0.45, baseColor.b * 0.45);
+        // Alpha blended via vertex colors with rich saturation
+        colorsList.push(baseColor.r * 0.85, baseColor.g * 0.85, baseColor.b * 0.85);
+        colorsList.push(baseColor.r * 0.85, baseColor.g * 0.85, baseColor.b * 0.85);
       }
     }
 
@@ -384,7 +384,7 @@ export class OceanCurrentsLayer {
     const material = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.65,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -398,7 +398,7 @@ export class OceanCurrentsLayer {
    * Initializes moving streamline vector streaks flowing along the gyres.
    */
   private initStreaks(): void {
-    const streaksPerSpline = this.isMobile ? 3 : 6;
+    const streaksPerSpline = this.isMobile ? 5 : 10;
     const segmentsPerStreak = 4; // Multi-segment tail for smooth comet vectors
 
     this.streaks = [];
@@ -415,7 +415,7 @@ export class OceanCurrentsLayer {
           splineIndex: sIdx,
           progress: initialProgress % 1.0,
           speed: speed * (0.85 + Math.random() * 0.3),
-          lengthFraction: 0.035 + Math.random() * 0.02,
+          lengthFraction: 0.055 + Math.random() * 0.035,
           color: streakColor,
         });
       }
@@ -433,7 +433,7 @@ export class OceanCurrentsLayer {
     const material = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.98,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
@@ -447,7 +447,7 @@ export class OceanCurrentsLayer {
    * Initializes oceanographic mesoscale eddies & upwelling vortex rings.
    */
   private initEddyVortices(): void {
-    const sphereRadius = this.radius * 1.0026;
+    const sphereRadius = this.radius * 1.0058;
 
     const vortexSites = [
       { name: 'Agulhas Ring Retroflection', lat: -38.5, lng: 18.5, radiusKm: 2.2, spin: -1.2, color: 0xf43f5e },
@@ -564,7 +564,7 @@ export class OceanCurrentsLayer {
     if (this.reducedMotion) return;
 
     const clampedDelta = Math.min(delta, 0.05); // Prevent huge jumps on tab resume
-    const sphereRadius = this.radius * 1.0022;
+    const sphereRadius = this.radius * 1.0055;
     const segmentsPerStreak = 4;
 
     let vIdx = 0;
