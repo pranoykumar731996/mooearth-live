@@ -2,12 +2,13 @@
 // MooEarth Live — PWA Service Worker
 // ============================================================
 
-const CACHE_NAME = 'mooearth-live-v11';
+const CACHE_NAME = 'mooearth-live-v12';
 
 // Assets to precache immediately on install
 const PRECACHE_ASSETS = [
   '/',
   '/games',
+  '/play-earth',
   '/manifest.json',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg',
