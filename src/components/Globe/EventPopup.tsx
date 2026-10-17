@@ -13,7 +13,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
-import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel } from '@/components/Globe/WeatherLayers';
+import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel, getWildfireIntensityLabel } from '@/components/Globe/WeatherLayers';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -325,6 +325,49 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                             </span>
                           )}
                         </div>
+                      )}
+                      {typeof event.planetaryTelemetry.fireRadiativePowerMw === 'number' && (
+                        <>
+                          <div className="flex flex-col">
+                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Radiative Power (FRP)</span>
+                            <span className="font-black text-amber-400 text-sm flex items-center gap-1">
+                              <span>🔥</span>
+                              <span>{event.planetaryTelemetry.fireRadiativePowerMw} MW</span>
+                            </span>
+                            <span className="text-[10px] text-amber-200/70 font-medium">
+                              {getWildfireIntensityLabel(event.planetaryTelemetry.fireRadiativePowerMw)}
+                            </span>
+                          </div>
+                          {typeof event.planetaryTelemetry.brightnessTempKelvin === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Thermal Sensor Peak</span>
+                              <span className="font-black text-rose-400 text-sm flex items-center gap-1">
+                                <span>🌡️</span>
+                                <span>{event.planetaryTelemetry.brightnessTempKelvin} K</span>
+                              </span>
+                              <span className="text-[10px] text-rose-200/70 font-medium">
+                                ({Math.round(event.planetaryTelemetry.brightnessTempKelvin - 273.15)}°C Infrared)
+                              </span>
+                            </div>
+                          )}
+                          {typeof event.planetaryTelemetry.burnAreaHectares === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Estimated Burn Area</span>
+                              <span className="font-black text-orange-300 text-sm flex items-center gap-1">
+                                <span>📍</span>
+                                <span>{event.planetaryTelemetry.burnAreaHectares.toLocaleString()} ha</span>
+                              </span>
+                            </div>
+                          )}
+                          {typeof event.planetaryTelemetry.fireConfidencePercent === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Detection Quality</span>
+                              <span className="font-bold text-emerald-400 text-xs mt-0.5">
+                                ✅ {event.planetaryTelemetry.fireConfidencePercent}% Sat Conf
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
                       {event.planetaryTelemetry.sensorSource && (
                         <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px] text-white/50">

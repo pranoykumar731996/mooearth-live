@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -228,6 +228,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const cycloneVortexLayerRef = useRef<CycloneVortexLayer | null>(null);
   const seismicShockwaveLayerRef = useRef<SeismicShockwaveLayer | null>(null);
   const lightningNetworkLayerRef = useRef<LightningNetworkLayer | null>(null);
+  const wildfireThermalLayerRef = useRef<WildfireThermalLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -916,6 +917,11 @@ const GlobeScene = React.memo(function GlobeScene({
         lightningNetworkLayerRef.current.update(time, 0.016);
       }
 
+      // 10. Real Animated Wildfire Convective Plumes & Smoke Embers (Phase 4 Thermal Physics)
+      if (wildfireThermalLayerRef.current) {
+        wildfireThermalLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1123,6 +1129,38 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Wildfire Thermal Plume & Smoke Layer (Phase 4 Thermal Physics) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!wildfireThermalLayerRef.current) {
+      wildfireThermalLayerRef.current = new WildfireThermalLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = wildfireThermalLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Feed active wildfire events for thermal updrafts & smoke billowing
+    wildfireThermalLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (wildfireThermalLayerRef.current) {
+        const m = wildfireThermalLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        wildfireThermalLayerRef.current.dispose();
+        wildfireThermalLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1131,6 +1169,7 @@ const GlobeScene = React.memo(function GlobeScene({
       cycloneVortexLayerRef.current?.setReducedMotion(isReduced);
       seismicShockwaveLayerRef.current?.setReducedMotion(isReduced);
       lightningNetworkLayerRef.current?.setReducedMotion(isReduced);
+      wildfireThermalLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1848,15 +1887,18 @@ const GlobeScene = React.memo(function GlobeScene({
         });
       }
 
-      // Wildfire Thermal Pulse
+      // Wildfire Thermal Radiation Wavefront (Phase 4 Thermal Physics)
       if (e.category === 'wildfires') {
+        const frp = e.planetaryTelemetry?.fireRadiativePowerMw || 100;
+        const isMegaFire = frp >= 300;
+        const maxR = Math.min(18, Math.max(7, Math.log10(Math.max(10, frp)) * 5.5));
         rings.push({
           lat: e.lat,
           lng: e.lng,
-          maxR: 9,
-          propagationSpeed: 1.2,
-          repeatPeriod: 2000,
-          color: 'rgba(249, 115, 22, 0.85)',
+          maxR,
+          propagationSpeed: isMobile ? 1.4 : 1.8,
+          repeatPeriod: isMegaFire ? 1600 : 2200,
+          color: isMegaFire ? 'rgba(239, 68, 68, 0.95)' : 'rgba(249, 115, 22, 0.85)',
           event: e,
         });
       }

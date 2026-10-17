@@ -44,6 +44,9 @@ export interface PlanetaryTelemetry {
   windSpeedKph?: number;
   pressureHpa?: number;
   fireRadiativePowerMw?: number;
+  brightnessTempKelvin?: number;
+  fireConfidencePercent?: number;
+  burnAreaHectares?: number;
   kpIndex?: number;
   eventStatus?: string;
   sensorSource?: string;

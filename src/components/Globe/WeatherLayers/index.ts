@@ -20,4 +20,8 @@ export type { SeismicShockwaveLayerOptions } from './SeismicShockwaveLayer';
 export { LightningNetworkLayer } from './LightningNetworkLayer';
 export type { LightningNetworkLayerOptions } from './LightningNetworkLayer';
 
+export { WildfireThermalLayer, getWildfireIntensityColor, getWildfireIntensityLabel } from './WildfireThermalLayer';
+export type { WildfireThermalLayerOptions } from './WildfireThermalLayer';
+
+
 
