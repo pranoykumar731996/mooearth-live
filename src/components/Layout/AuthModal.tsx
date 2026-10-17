@@ -74,6 +74,16 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
     console.log('[AuthModal] Diagnostic: Modal isOpen changed to:', isOpen);
   }, [isOpen]);
 
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLoading, onClose]);
+
   if (!isOpen) return null;
 
   // Handle email/password sign-in or sign-up
@@ -318,16 +328,6 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModal
       console.log('[AuthModal] Diagnostic: Google Sign-in flow finalized. isLoading set to false.');
     }
   };
-
-  // Keyboard Escape listener
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isLoading) onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isLoading, onClose]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
