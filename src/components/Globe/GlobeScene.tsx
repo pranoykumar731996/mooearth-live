@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -229,6 +229,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const seismicShockwaveLayerRef = useRef<SeismicShockwaveLayer | null>(null);
   const lightningNetworkLayerRef = useRef<LightningNetworkLayer | null>(null);
   const wildfireThermalLayerRef = useRef<WildfireThermalLayer | null>(null);
+  const auroralOvalLayerRef = useRef<AuroralOvalLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -922,6 +923,11 @@ const GlobeScene = React.memo(function GlobeScene({
         wildfireThermalLayerRef.current.update(time, 0.016);
       }
 
+      // 11. Real Animated Auroral Oval Curtains & Ionospheric Waves (Phase 5 Space Weather)
+      if (auroralOvalLayerRef.current) {
+        auroralOvalLayerRef.current.update(time, 0.016);
+      }
+
       animFrameId = requestAnimationFrame(tick);
     };
 
@@ -1161,6 +1167,38 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, events, isMobile]);
 
+  // ── 3D Auroral Oval & Solar Wind Layer (Phase 5 Space Weather) ──
+  useEffect(() => {
+    if (!globeRef.current || !introDone) return;
+    const globe = globeRef.current;
+    const scene = globe.scene();
+    if (!scene) return;
+
+    const radius = globe.getGlobeRadius();
+
+    if (!auroralOvalLayerRef.current) {
+      auroralOvalLayerRef.current = new AuroralOvalLayer({
+        radius,
+        isMobile,
+        reducedMotion: prefersReducedMotion(),
+      });
+      const mesh = auroralOvalLayerRef.current.getMesh();
+      if (mesh) scene.add(mesh);
+    }
+
+    // Feed active space weather events for real-time planetary Kp scaling
+    auroralOvalLayerRef.current.setEvents(events || []);
+
+    return () => {
+      if (auroralOvalLayerRef.current) {
+        const m = auroralOvalLayerRef.current.getMesh();
+        if (m) scene.remove(m);
+        auroralOvalLayerRef.current.dispose();
+        auroralOvalLayerRef.current = null;
+      }
+    };
+  }, [globeRef, introDone, events, isMobile]);
+
   // Page visibility listener — reduce simulation overhead when hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1170,6 +1208,7 @@ const GlobeScene = React.memo(function GlobeScene({
       seismicShockwaveLayerRef.current?.setReducedMotion(isReduced);
       lightningNetworkLayerRef.current?.setReducedMotion(isReduced);
       wildfireThermalLayerRef.current?.setReducedMotion(isReduced);
+      auroralOvalLayerRef.current?.setReducedMotion(isReduced);
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -1903,15 +1942,18 @@ const GlobeScene = React.memo(function GlobeScene({
         });
       }
 
-      // Space Weather / Aurora Glow
+      // Space Weather Solar Flare & Geomagnetic Shockwave (Phase 5 Space Physics)
       if (e.category === 'space_weather') {
+        const kp = e.planetaryTelemetry?.kpIndex || 3;
+        const isStorm = kp >= 5;
+        const maxR = Math.min(24, Math.max(10, 10 + kp * 1.5));
         rings.push({
           lat: e.lat,
           lng: e.lng,
-          maxR: 14,
-          propagationSpeed: 1.5,
-          repeatPeriod: 2800,
-          color: 'rgba(168, 85, 247, 0.85)',
+          maxR,
+          propagationSpeed: isMobile ? 1.8 : 2.5,
+          repeatPeriod: isStorm ? 1600 : 2400,
+          color: isStorm ? 'rgba(236, 72, 153, 0.95)' : 'rgba(168, 85, 247, 0.85)',
           event: e,
         });
       }

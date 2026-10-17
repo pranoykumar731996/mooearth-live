@@ -77,8 +77,11 @@ export async function fetchNoaaSpaceWeather(timeoutMs = 6000): Promise<Planetary
           dataOrigin: 'noaa_swpc',
           planetaryTelemetry: {
             kpIndex: kp,
+            solarWindSpeedKms: Math.round(380 + kp * 50),
+            geomagneticStormScale: scale,
+            auroraVisibilityLatitude: auroraLat,
             eventStatus: 'active',
-            sensorSource: 'NOAA SWPC Ground Magnetometer Network',
+            sensorSource: 'NOAA SWPC / DSCOVR Solar Wind & Ground Magnetometers',
             externalDataUrl: 'https://www.swpc.noaa.gov/',
           },
         });

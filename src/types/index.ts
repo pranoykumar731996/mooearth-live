@@ -48,6 +48,9 @@ export interface PlanetaryTelemetry {
   fireConfidencePercent?: number;
   burnAreaHectares?: number;
   kpIndex?: number;
+  solarWindSpeedKms?: number;
+  geomagneticStormScale?: string;
+  auroraVisibilityLatitude?: string;
   eventStatus?: string;
   sensorSource?: string;
   externalDataUrl?: string;

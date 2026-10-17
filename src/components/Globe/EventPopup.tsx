@@ -13,7 +13,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
-import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel, getWildfireIntensityLabel } from '@/components/Globe/WeatherLayers';
+import { getCycloneCategoryLabel, getRichterCategoryLabel, getFocalDepthLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from '@/components/Globe/WeatherLayers';
 import {
   SavedPlace,
   isPlaceSavedLocal,
@@ -262,10 +262,36 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                         </div>
                       )}
                       {typeof event.planetaryTelemetry.kpIndex === 'number' && (
-                        <div className="flex flex-col">
-                          <span className="text-white/40 uppercase tracking-wider text-[10px]">Planetary Kp Index</span>
-                          <span className="font-black text-purple-400 text-sm">Kp {event.planetaryTelemetry.kpIndex}</span>
-                        </div>
+                        <>
+                          <div className="flex flex-col">
+                            <span className="text-white/40 uppercase tracking-wider text-[10px]">Planetary Kp Index</span>
+                            <span className="font-black text-purple-400 text-sm flex items-center gap-1">
+                              <span>🌌</span>
+                              <span>Kp {event.planetaryTelemetry.kpIndex}</span>
+                            </span>
+                            <span className="text-[10px] text-purple-200/70 font-medium">
+                              {getKpStormScaleLabel(event.planetaryTelemetry.kpIndex)}
+                            </span>
+                          </div>
+                          {typeof event.planetaryTelemetry.solarWindSpeedKms === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Solar Wind Velocity</span>
+                              <span className="font-black text-cyan-300 text-sm flex items-center gap-1">
+                                <span>💨</span>
+                                <span>{event.planetaryTelemetry.solarWindSpeedKms} km/s</span>
+                              </span>
+                            </div>
+                          )}
+                          {event.planetaryTelemetry.auroraVisibilityLatitude && (
+                            <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px]">
+                              <span className="text-white/50">Aurora Extent:</span>
+                              <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                                <span>🟢</span>
+                                <span>{event.planetaryTelemetry.auroraVisibilityLatitude}</span>
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
                       {typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
                         <div className="flex flex-col">

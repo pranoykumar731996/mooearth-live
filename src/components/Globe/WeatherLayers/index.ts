@@ -23,5 +23,9 @@ export type { LightningNetworkLayerOptions } from './LightningNetworkLayer';
 export { WildfireThermalLayer, getWildfireIntensityColor, getWildfireIntensityLabel } from './WildfireThermalLayer';
 export type { WildfireThermalLayerOptions } from './WildfireThermalLayer';
 
+export { AuroralOvalLayer, getKpStormScaleLabel, getAuroraGlowColor } from './AuroralOvalLayer';
+export type { AuroralOvalLayerOptions } from './AuroralOvalLayer';
+
+
 
 
