@@ -318,7 +318,7 @@ export default function Navbar({
       <div className="flex items-center shrink-0">
         {/* Mobile-Only Header Icon Bar (Responsive, non-clipped, accessible dropdown) */}
         {!isMobileSearchActive && (
-          <div ref={mobileMenuRef} className="relative flex sm:hidden items-center gap-1.5 xs:gap-2">
+          <div ref={mobileMenuRef} className="relative flex sm:hidden items-center gap-1.5 sm:gap-2">
             {/* Search Icon (Mobile) */}
             <button
               type="button"

@@ -32,7 +32,7 @@ import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService
 import { getActiveTropicalCyclonesAsEvents } from '@/services/weather/cycloneTrackingService';
 import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
-import type { GeocodingResult, UnitPreferences, ForecastResponse, SatelliteSpectralMode } from '@/services/weather/types';
+import { WEATHER_LAYERS, type WeatherLayerMode, type GeocodingResult, type UnitPreferences, type ForecastResponse, type SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
@@ -280,6 +280,23 @@ export default function WeatherDashboard() {
     }
   }, [weather.selectedLocation, updateUrlParams, getFlyDuration]);
 
+  // Action: Switch to Weather Radar layer and return to 3D Earth globe if in city-map
+  const handleSwitchToRadar = useCallback(() => {
+    if (viewMode === 'city-map') {
+      setViewMode('globe');
+      if (weather.selectedLocation) {
+        updateUrlParams(
+          weather.selectedLocation.latitude,
+          weather.selectedLocation.longitude,
+          weather.selectedLocation.name,
+          weather.selectedLocation.country,
+          'globe'
+        );
+      }
+    }
+    weather.setActiveLayer('radar');
+  }, [viewMode, weather, updateUrlParams]);
+
   // Fetch live global events for radar/atmosphere integration
   useEffect(() => {
     fetch('/api/events')
@@ -352,10 +369,15 @@ export default function WeatherDashboard() {
     };
   }, [weather.activeLayer, overlayRadar]);
 
-  // Restore location from URL query params on mount (shareable links)
+  // Restore location and active layer from URL query params on mount (shareable links)
   useEffect(() => {
     if (initialUrlRestoredRef.current) return;
     initialUrlRestoredRef.current = true;
+
+    const layerParam = searchParams.get('layer');
+    if (layerParam && WEATHER_LAYERS.some((l) => l.id === layerParam)) {
+      weather.setActiveLayer(layerParam as WeatherLayerMode);
+    }
 
     const lat = parseFloat(searchParams.get('lat') || '');
     const lng = parseFloat(searchParams.get('lng') || '');
@@ -630,28 +652,50 @@ export default function WeatherDashboard() {
                 </button>
               </div>
             )}
-            {/* Two Primary Destinations Navigation */}
-            <div role="navigation" aria-label="Primary destinations" className="flex items-center p-0.5 sm:p-1 rounded-xl bg-[#090d20]/80 border border-white/10 backdrop-blur-md shrink-0">
-              <Link
-                href="/"
-                className="h-8 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 font-black text-xs tracking-wider bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 shadow-[0_0_15px_rgba(0,229,255,0.5)] transition-all cursor-pointer"
-                title="MooEarth Weather Radar (Homepage)"
+            {/* Two Primary Destinations Navigation: Weather Radar & Games Hub */}
+            <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
+              {/* Destination 1: Weather Radar */}
+              <button
+                type="button"
+                data-testid="header-weather-radar-btn"
+                onClick={handleSwitchToRadar}
+                className={`h-8 sm:h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
+                  weather.activeLayer === 'radar' && viewMode === 'globe'
+                    ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,255,0.6)]'
+                    : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-400/30 hover:border-cyan-400/60'
+                }`}
+                title="View Live Doppler Weather Radar (NOAA NEXRAD)"
                 aria-label="Weather Radar"
+                aria-pressed={weather.activeLayer === 'radar' && viewMode === 'globe'}
               >
-                <span>🌦️</span>
-                <span className="hidden xs:inline">RADAR</span>
-              </Link>
+                <span className="text-sm">📡</span>
+                <span className="font-bold whitespace-nowrap">
+                  <span className="hidden sm:inline">Weather </span>Radar
+                </span>
+                {weather.activeLayer === 'radar' && viewMode === 'globe' && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping shrink-0" />
+                )}
+              </button>
+
+              {/* Destination 2: Games Hub */}
               <Link
                 href="/games"
-                className="h-8 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 font-extrabold text-xs tracking-wider text-white/70 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-                title="MooEarth Games Hub"
+                data-testid="header-games-hub-btn"
+                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/50 hover:border-purple-300 shadow-[0_0_18px_rgba(147,51,234,0.45)] hover:shadow-[0_0_22px_rgba(147,51,234,0.7)] transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95"
+                title="Play Earth Games — Geography Quiz, Flag Quizzes & World Challenges"
                 aria-label="Games Hub"
               >
-                <span>🎮</span>
-                <span className="hidden xs:inline">GAMES</span>
-                {dailyStreak > 0 && (
-                  <span className="px-1 py-0.2 rounded text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 hidden sm:inline">
+                <span className="text-sm">🎮</span>
+                <span className="font-black whitespace-nowrap">
+                  Games<span className="hidden sm:inline"> Hub</span>
+                </span>
+                {dailyStreak > 0 ? (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 flex items-center gap-0.5">
                     🔥{dailyStreak}
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden md:inline tracking-wider">
+                    PLAY
                   </span>
                 )}
               </Link>
@@ -827,7 +871,7 @@ export default function WeatherDashboard() {
                   <div className="flex items-center gap-1 overflow-x-auto scrollbar-none px-1 pt-0.5">
                     <span className="text-[10px] font-mono font-bold text-white/50 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
                       <span>🚨</span>
-                      <span className="hidden xs:inline">Hazards:</span>
+                      <span className="hidden sm:inline">Hazards:</span>
                     </span>
                     {[
                       { id: 'all', label: 'All', icon: '🌐' },

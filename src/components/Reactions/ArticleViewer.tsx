@@ -1382,7 +1382,7 @@ export default function ArticleViewer({
                     <line x1="19" y1="12" x2="5" y2="12" />
                     <polyline points="12 19 5 12 12 5" />
                   </svg>
-                  <span className="hidden xs:inline">Back</span>
+                  <span className="hidden sm:inline">Back</span>
                 </button>
 
                 {/* Country Pill */}
@@ -1391,7 +1391,7 @@ export default function ArticleViewer({
                   <span className="truncate">{activeEvent.country}</span>
                 </span>
 
-                <span className="text-white/20 hidden xs:inline shrink-0">|</span>
+                <span className="text-white/20 hidden sm:inline shrink-0">|</span>
 
                 {/* Category Pill */}
                 <span

@@ -219,30 +219,30 @@ export default function GamesHubClient({ initialQuestions }: GamesHubClientProps
 
           {/* Exactly Two Primary Destinations Navigation */}
           <nav role="navigation" aria-label="Primary destinations" className="flex items-center p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            {/* Destination 1: Weather Radar (/) */}
+            {/* Destination 1: Weather Radar (/?layer=radar) */}
             <Link
-              href="/"
-              className="h-9 px-3 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-black tracking-wider text-white/70 hover:text-white hover:bg-white/5 transition-all duration-300 cursor-pointer"
-              title="MooEarth Weather Radar (Homepage)"
+              href="/?layer=radar"
+              className="h-9 px-2.5 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-bold tracking-wider text-cyan-300 hover:text-white hover:bg-white/5 transition-all duration-300 cursor-pointer"
+              title="MooEarth Live Weather Radar"
               aria-label="Weather Radar"
             >
-              <span className="text-base">🌦️</span>
-              <span className="hidden xs:inline">WEATHER RADAR</span>
-              <span className="xs:hidden">RADAR</span>
+              <span className="text-base">📡</span>
+              <span className="hidden sm:inline">WEATHER RADAR</span>
+              <span className="sm:hidden">RADAR</span>
             </Link>
 
             {/* Destination 2: Games (/games) - ACTIVE */}
             <Link
               href="/games"
-              className="h-9 px-3 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-black tracking-wider bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.6)] font-black transition-all duration-300 cursor-pointer"
+              className="h-9 px-2.5 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-black tracking-wider bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.6)] border border-purple-400/50 transition-all duration-300 cursor-pointer"
               title="MooEarth Earth Games Hub"
               aria-label="Games Hub"
             >
               <span className="text-base">🎮</span>
-              <span className="hidden xs:inline">GAMES</span>
-              <span className="xs:hidden">GAMES</span>
+              <span className="hidden sm:inline">GAMES HUB</span>
+              <span className="sm:hidden">GAMES</span>
               {dailyStreak > 0 && (
-                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/20 text-amber-950 border border-amber-400/40">
+                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50">
                   🔥{dailyStreak}
                 </span>
               )}

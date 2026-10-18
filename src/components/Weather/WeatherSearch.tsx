@@ -254,7 +254,7 @@ export default function WeatherSearch({
                       </span>
                     ) : null}
                     {result.timezone && (
-                      <span className="text-[10px] text-white/25 hidden xs:inline">
+                      <span className="text-[10px] text-white/25 hidden sm:inline">
                         · {result.timezone}
                       </span>
                     )}

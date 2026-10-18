@@ -3191,7 +3191,7 @@ export default function PlayEarthOverlay({
                   title="Minimize card to peek and interact with full 3D globe"
                 >
                   <span>👁️</span>
-                  <span className="hidden xs:inline">Peek Globe</span>
+                  <span className="hidden sm:inline">Peek Globe</span>
                 </button>
                 <button
                   onClick={handleBackToModes}
