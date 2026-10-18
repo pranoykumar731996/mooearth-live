@@ -30,7 +30,7 @@ import {
 } from '@/services/weather/radarAdapter';
 import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService';
 import { getActiveTropicalCyclonesAsEvents } from '@/services/weather/cycloneTrackingService';
-import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS } from '@/components/Globe/WeatherLayers';
+import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import type { GeocodingResult, UnitPreferences, ForecastResponse, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
@@ -142,6 +142,65 @@ export default function WeatherDashboard() {
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_LIGHTNING_EVENTS;
   }, [events]);
+
+  // Active earthquakes list for quick-tracking (USGS standards)
+  const activeEarthquakes = useMemo(() => {
+    const fromEvents = events.filter((e) => {
+      if (e.category === 'seismic') return true;
+      const t = (e.title || '').toLowerCase();
+      return t.includes('earthquake') || t.includes('richter') || t.includes('magnitude');
+    });
+    return fromEvents.length > 0 ? fromEvents : BASELINE_SEISMIC_EVENTS;
+  }, [events]);
+
+  // Active wildfires list for quick-tracking (NASA FIRMS / VIIRS)
+  const activeWildfires = useMemo(() => {
+    const fromEvents = events.filter((e) => {
+      if (e.category === 'wildfires') return true;
+      const t = (e.title || '').toLowerCase();
+      return t.includes('wildfire') || t.includes('bushfire') || t.includes('forest fire');
+    });
+    return fromEvents.length > 0 ? fromEvents : BASELINE_WILDFIRE_EVENTS;
+  }, [events]);
+
+  // Active space weather list for quick-tracking (NOAA SWPC)
+  const activeSpaceWeather = useMemo(() => {
+    const fromEvents = events.filter((e) => {
+      if (e.category === 'space_weather') return true;
+      const t = (e.title || '').toLowerCase();
+      return t.includes('geomagnetic') || t.includes('aurora') || t.includes('solar storm');
+    });
+    return fromEvents.length > 0 ? fromEvents : BASELINE_SPACE_WEATHER_EVENTS;
+  }, [events]);
+
+  // Multi-hazard filter tab state: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'
+  const [disasterCategoryFilter, setDisasterCategoryFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
+
+  // Unified multi-hazard disaster feed based on active filter
+  const displayedDisasters = useMemo(() => {
+    switch (disasterCategoryFilter) {
+      case 'cyclones':
+        return activeCyclones;
+      case 'seismic':
+        return activeEarthquakes;
+      case 'wildfires':
+        return activeWildfires;
+      case 'thunderstorms':
+        return activeThunderstorms;
+      case 'space_weather':
+        return activeSpaceWeather;
+      case 'all':
+      default: {
+        return [
+          ...activeCyclones.slice(0, 2),
+          ...activeEarthquakes.slice(0, 2),
+          ...activeWildfires.slice(0, 2),
+          ...activeThunderstorms.slice(0, 2),
+          ...activeSpaceWeather.slice(0, 1),
+        ];
+      }
+    }
+  }, [disasterCategoryFilter, activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather]);
 
   // Genuine satellite metadata & observation timestamp (NASA GIBS / NOAA GOES)
   const satelliteMeta = useMemo(() => {
@@ -760,47 +819,107 @@ export default function WeatherDashboard() {
                 </div>
               )}
 
-            {/* Quick-Track Disaster Bar for Hurricane Tracker and Thunderstorms */}
-            {(weather.activeLayer === 'hurricane' || weather.activeLayer === 'precipitation') && (
-              <div className="absolute top-16 sm:top-4 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 z-20 pointer-events-auto sm:w-auto max-w-xl">
-                <div className="rounded-2xl bg-[#060818]/92 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] p-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-                  <div className="text-[11px] font-mono font-bold shrink-0 flex items-center gap-1 px-2 py-1 rounded-xl bg-white/5 border border-white/10 text-white/80">
-                    <span>{weather.activeLayer === 'hurricane' ? '🌀' : '⚡'}</span>
-                    <span className="hidden xs:inline">{weather.activeLayer === 'hurricane' ? 'Cyclones' : 'Thunderstorms'}:</span>
+            {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar */}
+            {displayedDisasters.length > 0 && (
+              <div className="absolute top-16 sm:top-4 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 z-20 pointer-events-auto sm:w-auto max-w-2xl">
+                <div className="flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)]">
+                  {/* Category Filter Chips */}
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none px-1 pt-0.5">
+                    <span className="text-[10px] font-mono font-bold text-white/50 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
+                      <span>🚨</span>
+                      <span className="hidden xs:inline">Hazards:</span>
+                    </span>
+                    {[
+                      { id: 'all', label: 'All', icon: '🌐' },
+                      { id: 'cyclones', label: 'Cyclones', icon: '🌀' },
+                      { id: 'seismic', label: 'Quakes', icon: '🌋' },
+                      { id: 'wildfires', label: 'Fires', icon: '🔥' },
+                      { id: 'thunderstorms', label: 'Storms', icon: '⚡' },
+                      { id: 'space_weather', label: 'Space', icon: '🌌' },
+                    ].map((tab) => {
+                      const isActive = disasterCategoryFilter === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setDisasterCategoryFilter(tab.id as any)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                            isActive
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                              : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
+                          }`}
+                        >
+                          <span>{tab.icon}</span>
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  {(weather.activeLayer === 'hurricane' ? activeCyclones : activeThunderstorms).map((storm) => {
-                    const isSelected = selectedDisasterEvent?.id === storm.id;
-                    return (
-                      <button
-                        key={storm.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDisasterEvent(storm);
-                          setViewMode('globe');
-                          globeApiRef.current?.flyTo({ lat: storm.lat, lng: storm.lng, altitude: 1.2 }, 1400);
-                        }}
-                        className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
-                            : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
-                        }`}
-                        title={`Click to view detailed disaster dossier for ${storm.title}`}
-                      >
-                        <span>{weather.activeLayer === 'hurricane' ? '🌀' : '⚡'}</span>
-                        <span className="whitespace-nowrap font-medium text-[11px]">{storm.title.split('(')[0].trim()}</span>
-                        {storm.planetaryTelemetry?.windSpeedKph && (
-                          <span className="text-[9px] font-mono font-bold text-rose-300 px-1 py-0.2 rounded bg-rose-500/20">
-                            {storm.planetaryTelemetry.windSpeedKph} km/h
+
+                  {/* Disaster Cards Track */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                    {displayedDisasters.map((disaster) => {
+                      const isSelected = selectedDisasterEvent?.id === disaster.id;
+                      const icon =
+                        disaster.category === 'seismic' || (disaster.title && disaster.title.toLowerCase().includes('magnitude'))
+                          ? '🌋'
+                          : disaster.category === 'wildfires'
+                          ? '🔥'
+                          : disaster.category === 'space_weather'
+                          ? '🌌'
+                          : (disaster.title || '').toLowerCase().includes('cyclone') || (disaster.title || '').toLowerCase().includes('hurricane')
+                          ? '🌀'
+                          : '⚡';
+
+                      return (
+                        <button
+                          key={disaster.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDisasterEvent(disaster);
+                            setViewMode('globe');
+                            globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
+                          }}
+                          className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
+                              : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
+                          }`}
+                          title={`Click to inspect live telemetry dossier for ${disaster.title}`}
+                        >
+                          <span>{icon}</span>
+                          <span className="whitespace-nowrap font-medium text-[11px] max-w-[120px] sm:max-w-[160px] truncate">
+                            {disaster.title.split('(')[0].split('-')[0].trim()}
                           </span>
-                        )}
-                        {storm.planetaryTelemetry?.lightningStrikeRatePerMin && (
-                          <span className="text-[9px] font-mono font-bold text-amber-300 px-1 py-0.2 rounded bg-amber-500/20">
-                            {storm.planetaryTelemetry.lightningStrikeRatePerMin}/min
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          {disaster.planetaryTelemetry?.magnitude && (
+                            <span className="text-[9px] font-mono font-bold text-rose-300 px-1 py-0.2 rounded bg-rose-500/20">
+                              M {disaster.planetaryTelemetry.magnitude.toFixed(1)}
+                            </span>
+                          )}
+                          {disaster.planetaryTelemetry?.fireRadiativePowerMw && (
+                            <span className="text-[9px] font-mono font-bold text-amber-300 px-1 py-0.2 rounded bg-amber-500/20">
+                              {disaster.planetaryTelemetry.fireRadiativePowerMw} MW
+                            </span>
+                          )}
+                          {disaster.planetaryTelemetry?.windSpeedKph && (
+                            <span className="text-[9px] font-mono font-bold text-cyan-300 px-1 py-0.2 rounded bg-cyan-500/20">
+                              {disaster.planetaryTelemetry.windSpeedKph} km/h
+                            </span>
+                          )}
+                          {disaster.planetaryTelemetry?.lightningStrikeRatePerMin && (
+                            <span className="text-[9px] font-mono font-bold text-yellow-300 px-1 py-0.2 rounded bg-yellow-500/20">
+                              {disaster.planetaryTelemetry.lightningStrikeRatePerMin}/min
+                            </span>
+                          )}
+                          {disaster.planetaryTelemetry?.kpIndex && (
+                            <span className="text-[9px] font-mono font-bold text-purple-300 px-1 py-0.2 rounded bg-purple-500/20">
+                              Kp {disaster.planetaryTelemetry.kpIndex}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}

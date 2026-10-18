@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, getCycloneCategoryLabel } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 
@@ -2053,8 +2053,68 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
+    // Populate active earthquake & seismic rupture disaster markers (USGS standard)
+    if (globeView === 'weather' || activeCategory === 'seismic') {
+      const seismicList = events.filter((e) => {
+        if (e.category === 'seismic') return true;
+        const t = (e.title || '').toLowerCase();
+        return t.includes('earthquake') || t.includes('richter') || t.includes('magnitude');
+      });
+      const activeQuakes = seismicList.length > 0 ? seismicList.slice(0, isMobile ? 2 : 4) : BASELINE_SEISMIC_EVENTS.slice(0, isMobile ? 2 : 4);
+      activeQuakes.forEach((quake) => {
+        data.push({
+          id: `seismic-disaster-${quake.id}`,
+          title: quake.title,
+          lat: quake.lat,
+          lng: quake.lng,
+          isSeismicDisaster: true,
+          event: quake,
+        });
+      });
+    }
+
+    // Populate active wildfire & thermal hotspot disaster markers (NASA FIRMS / VIIRS standard)
+    if (globeView === 'weather' || activeCategory === 'wildfires') {
+      const fireList = events.filter((e) => {
+        if (e.category === 'wildfires') return true;
+        const t = (e.title || '').toLowerCase();
+        return t.includes('wildfire') || t.includes('bushfire') || t.includes('forest fire');
+      });
+      const activeFires = fireList.length > 0 ? fireList.slice(0, isMobile ? 2 : 4) : BASELINE_WILDFIRE_EVENTS.slice(0, isMobile ? 2 : 4);
+      activeFires.forEach((fire) => {
+        data.push({
+          id: `wildfire-disaster-${fire.id}`,
+          title: fire.title,
+          lat: fire.lat,
+          lng: fire.lng,
+          isWildfireDisaster: true,
+          event: fire,
+        });
+      });
+    }
+
+    // Populate active space weather & auroral storm disaster markers (NOAA SWPC standard)
+    if (globeView === 'weather' || activeCategory === 'space_weather') {
+      const spaceList = events.filter((e) => {
+        if (e.category === 'space_weather') return true;
+        const t = (e.title || '').toLowerCase();
+        return t.includes('geomagnetic') || t.includes('aurora') || t.includes('solar storm');
+      });
+      const activeSpace = spaceList.length > 0 ? spaceList.slice(0, 2) : BASELINE_SPACE_WEATHER_EVENTS.slice(0, 2);
+      activeSpace.forEach((sw) => {
+        data.push({
+          id: `space-weather-disaster-${sw.id}`,
+          title: sw.title,
+          lat: sw.lat,
+          lng: sw.lng,
+          isSpaceWeatherDisaster: true,
+          event: sw,
+        });
+      });
+    }
+
     return data;
-  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView, weatherLayerMode]);
+  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView, weatherLayerMode, activeCategory]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(
@@ -2389,6 +2449,294 @@ const GlobeScene = React.memo(function GlobeScene({
           recordInteraction();
           flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
           onSelectEvent(storm);
+        });
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
+        return el;
+      }
+
+      // ── Dedicated Earthquake & Seismic Rupture Disaster Marker ──
+      if (d.isSeismicDisaster) {
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
+        }
+
+        const quake = d.event as WorldEvent;
+        const mag = typeof quake.planetaryTelemetry?.magnitude === 'number' ? quake.planetaryTelemetry.magnitude : 6.2;
+
+        const el = document.createElement('div');
+        el.className = 'seismic-disaster-marker group';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          pointer-events: none;
+          user-select: none;
+          transform: translateY(-50%);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
+        `;
+
+        el.innerHTML = `
+          <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <!-- Outer pulsing shockwave rings -->
+            <div style="
+              position: absolute; inset: -4px;
+              border-radius: 50%;
+              border: 2px dashed rgba(244, 63, 94, 0.85);
+              animation: ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <!-- Inner core seismic badge -->
+            <div style="
+              width: 28px; height: 28px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(20, 10, 15, 0.95) 0%, rgba(225, 29, 72, 0.85) 100%);
+              border: 2px solid #fda4af;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              box-shadow: 0 0 20px rgba(244, 63, 94, 0.9), inset 0 0 8px rgba(253, 164, 175, 0.6);
+            ">
+              🌋
+            </div>
+          </div>
+          <!-- Quake label badge -->
+          <div style="
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(15, 8, 12, 0.92);
+            border: 1px solid rgba(244, 63, 94, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${quake.title.split('-')[0].trim()}</span>
+            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(244, 63, 94, 0.35); color: #fda4af;">M ${mag.toFixed(1)}</span>
+          </div>
+        `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(quake);
+        });
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
+        return el;
+      }
+
+      // ── Dedicated Wildfire & Thermal Hotspot Disaster Marker ──
+      if (d.isWildfireDisaster) {
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
+        }
+
+        const fire = d.event as WorldEvent;
+        const frp = typeof fire.planetaryTelemetry?.fireRadiativePowerMw === 'number' ? fire.planetaryTelemetry.fireRadiativePowerMw : 350;
+
+        const el = document.createElement('div');
+        el.className = 'wildfire-disaster-marker group';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          pointer-events: none;
+          user-select: none;
+          transform: translateY(-50%);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
+        `;
+
+        el.innerHTML = `
+          <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <!-- Outer thermal convective halo -->
+            <div style="
+              position: absolute; inset: -3px;
+              border-radius: 50%;
+              border: 2px solid rgba(249, 115, 22, 0.85);
+              animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <!-- Inner flame core badge -->
+            <div style="
+              width: 28px; height: 28px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(20, 10, 5, 0.95) 0%, rgba(234, 88, 12, 0.9) 100%);
+              border: 2px solid #fed7aa;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              box-shadow: 0 0 20px rgba(249, 115, 22, 0.9), inset 0 0 8px rgba(254, 215, 170, 0.6);
+            ">
+              🔥
+            </div>
+          </div>
+          <!-- Fire label badge -->
+          <div style="
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(18, 10, 5, 0.92);
+            border: 1px solid rgba(249, 115, 22, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${fire.title.split('-')[0].trim()}</span>
+            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(249, 115, 22, 0.35); color: #fed7aa;">${frp} MW</span>
+          </div>
+        `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(fire);
+        });
+
+        htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
+        return el;
+      }
+
+      // ── Dedicated Space Weather & Auroral Storm Disaster Marker ──
+      if (d.isSpaceWeatherDisaster) {
+        if (htmlMarkersCacheRef.current.has(markerId)) {
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
+        }
+
+        const sw = d.event as WorldEvent;
+        const kp = typeof sw.planetaryTelemetry?.kpIndex === 'number' ? sw.planetaryTelemetry.kpIndex : 6.0;
+
+        const el = document.createElement('div');
+        el.className = 'space-weather-disaster-marker group';
+        el.style.cssText = `
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          pointer-events: none;
+          user-select: none;
+          transform: translateY(-50%);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
+        `;
+
+        el.innerHTML = `
+          <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <!-- Outer rotating auroral ring -->
+            <div style="
+              position: absolute; inset: -4px;
+              border-radius: 50%;
+              border: 2px dashed rgba(168, 85, 247, 0.85);
+              animation: spin 6s linear infinite;
+            "></div>
+            <!-- Inner cosmic plasma core badge -->
+            <div style="
+              width: 28px; height: 28px;
+              border-radius: 50%;
+              background: radial-gradient(circle, rgba(13, 10, 28, 0.95) 0%, rgba(126, 34, 206, 0.85) 100%);
+              border: 2px solid #d8b4fe;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 14px;
+              box-shadow: 0 0 20px rgba(168, 85, 247, 0.9), inset 0 0 8px rgba(216, 180, 254, 0.6);
+            ">
+              🌌
+            </div>
+          </div>
+          <!-- Space weather label badge -->
+          <div style="
+            margin-top: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            background: rgba(10, 8, 22, 0.92);
+            border: 1px solid rgba(168, 85, 247, 0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          ">
+            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${sw.title.split('-')[0].trim()}</span>
+            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(168, 85, 247, 0.35); color: #e9d5ff;">Kp ${kp.toFixed(1)}</span>
+          </div>
+        `;
+
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        const stopProp = (e: Event) => e.stopPropagation();
+        el.addEventListener('pointerdown', stopProp);
+        el.addEventListener('pointerup', stopProp);
+        el.addEventListener('mousedown', stopProp);
+        el.addEventListener('mouseup', stopProp);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(sw);
         });
 
         htmlMarkersCacheRef.current.set(markerId, el);
@@ -3016,12 +3364,31 @@ const GlobeScene = React.memo(function GlobeScene({
       return;
     }
 
+    // Direct 3D Surface Proximity Tap: if user clicks near an active natural disaster (cyclone, earthquake, wildfire, storm, auroral center)
+    if (coords && combinedHtmlData.length > 0) {
+      const hitDisaster = combinedHtmlData.find((item: any) => {
+        if (!item.event || (!item.isCycloneDisaster && !item.isThunderstormDisaster && !item.isSeismicDisaster && !item.isWildfireDisaster && !item.isSpaceWeatherDisaster)) return false;
+        const dLat = Math.abs(item.lat - coords.lat);
+        const dLng = Math.abs(item.lng - coords.lng);
+        // ~3.5 degrees angular distance (~380km radius)
+        return (dLat * dLat + dLng * dLng) < 12.25;
+      });
+
+      if (hitDisaster && hitDisaster.event) {
+        pauseRotation();
+        recordInteraction();
+        flyTo({ lat: hitDisaster.lat, lng: hitDisaster.lng, altitude: 1.15 }, 1200);
+        onSelectEvent(hitDisaster.event);
+        return;
+      }
+    }
+
     onSelectEvent(null);
     if (onSelectCountry) onSelectCountry(null);
     if (onGlobeClick && coords) onGlobeClick(coords);
     resumeRotation();
     recordInteraction();
-  }, [onSelectEvent, onSelectCountry, onGlobeClick, resumeRotation, recordInteraction, handleStopTheEarthPointer]);
+  }, [onSelectEvent, onSelectCountry, onGlobeClick, resumeRotation, recordInteraction, handleStopTheEarthPointer, combinedHtmlData, pauseRotation, flyTo]);
 
   // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
   const constrainedTooltipPos = useMemo(() => {

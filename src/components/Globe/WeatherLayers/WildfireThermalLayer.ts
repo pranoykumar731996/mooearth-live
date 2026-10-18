@@ -52,7 +52,7 @@ export function getWildfireIntensityLabel(frpMw: number): string {
 /**
  * Baseline NASA FIRMS global thermal anomalies.
  */
-const BASELINE_WILDFIRE_EVENTS: WorldEvent[] = [
+export const BASELINE_WILDFIRE_EVENTS: WorldEvent[] = [
   {
     id: 'wildfire-amazon-basin-front',
     title: 'Amazon Basin Active Fire Complex - Pará, Brazil',

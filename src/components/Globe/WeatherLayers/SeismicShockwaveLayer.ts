@@ -62,7 +62,7 @@ export function getRichterCategoryLabel(magnitude: number): string {
 /**
  * Scientific baseline USGS earthquake events for 100% telemetry availability.
  */
-const BASELINE_SEISMIC_EVENTS: WorldEvent[] = [
+export const BASELINE_SEISMIC_EVENTS: WorldEvent[] = [
   {
     id: 'quake-usgs-ring-of-fire-japan',
     title: 'M 7.2 Off the Coast of Fukushima, Japan',

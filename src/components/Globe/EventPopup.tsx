@@ -277,6 +277,31 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                           </span>
                         </div>
                       )}
+                      {event.category === 'seismic' && typeof event.planetaryTelemetry.magnitude === 'number' && (
+                        <div className="flex flex-col">
+                          <span className="text-white/40 uppercase tracking-wider text-[10px]">ShakeMap Ground Motion</span>
+                          <span className="font-black text-amber-300 text-xs flex items-center gap-1 mt-0.5">
+                            <span>⚡</span>
+                            <span>
+                              {event.planetaryTelemetry.magnitude >= 7.5 ? 'MMI IX (Violent Shaking)' :
+                               event.planetaryTelemetry.magnitude >= 6.5 ? 'MMI VII-VIII (Severe)' :
+                               event.planetaryTelemetry.magnitude >= 5.5 ? 'MMI VI (Strong Ground Motion)' :
+                               'MMI IV-V (Moderate)'}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      {event.category === 'seismic' && (
+                        <div className="col-span-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300">
+                          <span className="flex items-center gap-1.5 font-bold">
+                            <span>🏛️</span>
+                            <span>Monitoring Agency:</span>
+                          </span>
+                          <span className="font-semibold text-white/90 text-right">
+                            {event.source || 'USGS National Earthquake Information Center'}
+                          </span>
+                        </div>
+                      )}
                       {typeof event.planetaryTelemetry.kpIndex === 'number' && (
                         <>
                           <div className="flex flex-col">
@@ -298,6 +323,18 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               </span>
                             </div>
                           )}
+                          {typeof event.planetaryTelemetry.imfBzNt === 'number' && (
+                            <div className="flex flex-col">
+                              <span className="text-white/40 uppercase tracking-wider text-[10px]">Magnetic Field (Bz)</span>
+                              <span className={`font-black text-xs flex items-center gap-1 mt-0.5 ${event.planetaryTelemetry.imfBzNt < -5 ? 'text-rose-400' : 'text-cyan-300'}`}>
+                                <span>🧲</span>
+                                <span>{event.planetaryTelemetry.imfBzNt > 0 ? `+${event.planetaryTelemetry.imfBzNt}` : event.planetaryTelemetry.imfBzNt} nT</span>
+                              </span>
+                              <span className="text-[9px] text-white/45 font-medium mt-0.5">
+                                {event.planetaryTelemetry.imfBzNt < -5 ? 'Southward / Reconnection' : 'Northward / Shielded'}
+                              </span>
+                            </div>
+                          )}
                           {event.planetaryTelemetry.auroraVisibilityLatitude && (
                             <div className="col-span-2 pt-1 border-t border-white/5 flex items-center justify-between text-[10px]">
                               <span className="text-white/50">Aurora Extent:</span>
@@ -307,6 +344,15 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               </span>
                             </div>
                           )}
+                          <div className="col-span-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                            <span className="flex items-center gap-1.5 font-bold">
+                              <span>🌌</span>
+                              <span>Space Weather Advisory:</span>
+                            </span>
+                            <span className="font-semibold text-white/90 text-right">
+                              {event.source || 'NOAA Space Weather Prediction Center (SWPC)'}
+                            </span>
+                          </div>
                         </>
                       )}
                       {typeof event.planetaryTelemetry.windSpeedKph === 'number' && (
@@ -431,6 +477,17 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                           )}
                         </div>
                       )}
+                      {(typeof event.planetaryTelemetry.lightningStrikeRatePerMin === 'number' || typeof event.planetaryTelemetry.radarReflectivityDbz === 'number') && !event.planetaryTelemetry.cycloneAgency && (
+                        <div className="col-span-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                          <span className="flex items-center gap-1.5 font-bold">
+                            <span>⚡</span>
+                            <span>Convective Network:</span>
+                          </span>
+                          <span className="font-semibold text-white/90 text-right">
+                            {event.source || 'NOAA NWS & Global Lightning Sensor Grid'}
+                          </span>
+                        </div>
+                      )}
                       {typeof event.planetaryTelemetry.fireRadiativePowerMw === 'number' && (
                         <>
                           <div className="flex flex-col">
@@ -472,6 +529,15 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               </span>
                             </div>
                           )}
+                          <div className="col-span-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                            <span className="flex items-center gap-1.5 font-bold">
+                              <span>🛰️</span>
+                              <span>Thermal Satellite Network:</span>
+                            </span>
+                            <span className="font-semibold text-white/90 text-right">
+                              {event.source || 'NASA FIRMS (MODIS / VIIRS 375m)'}
+                            </span>
+                          </div>
                         </>
                       )}
                       {typeof event.planetaryTelemetry.oceanCurrentSpeedMs === 'number' && (
