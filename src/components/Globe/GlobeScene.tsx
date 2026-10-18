@@ -374,6 +374,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const lastLoggedLatRef = useRef<number | null>(null);
   const lastLoggedLngRef = useRef<number | null>(null);
   const htmlMarkersCacheRef = useRef<Map<string, HTMLElement>>(new Map());
+  const activeHtmlMarkersRef = useRef<Map<HTMLElement, { lat: number; lng: number }>>(new Map());
 
   // Failsafe FPS Monitor & Trigger (Rule 11)
   // Tracks FPS and triggers failsafe mode only when status changes (minimizing re-renders)
@@ -417,6 +418,7 @@ const GlobeScene = React.memo(function GlobeScene({
   // Clear html marker cache when event data or view mode changes
   useEffect(() => {
     htmlMarkersCacheRef.current.clear();
+    activeHtmlMarkersRef.current.clear();
   }, [events, celebrations, selectedLocation, globeView]);
 
   const adjustOpacity = useCallback((rgbaStr: string, multiplier: number) => {
@@ -920,32 +922,50 @@ const GlobeScene = React.memo(function GlobeScene({
 
         // 7. Real Animated Cyclone & Hurricane Vortices (Phase 1 Atmospheric Dynamics)
         if (cycloneVortexLayerRef.current) {
-          cycloneVortexLayerRef.current.update(time, 0.016);
+          const m = cycloneVortexLayerRef.current.getMesh();
+          if (m?.visible) {
+            cycloneVortexLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 8. Real Animated Earthquake Seismic Pillars & Hypocenters (Phase 2 Geophysics)
         if (seismicShockwaveLayerRef.current) {
-          seismicShockwaveLayerRef.current.update(time, 0.016);
+          const m = seismicShockwaveLayerRef.current.getMesh();
+          if (m?.visible) {
+            seismicShockwaveLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 9. Real Animated Lightning Network Flash Engine (Phase 3 Severe Convective Storms)
         if (lightningNetworkLayerRef.current) {
-          lightningNetworkLayerRef.current.update(time, 0.016);
+          const m = lightningNetworkLayerRef.current.getMesh();
+          if (m?.visible) {
+            lightningNetworkLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 10. Real Animated Wildfire Convective Plumes & Smoke Embers (Phase 4 Thermal Physics)
         if (wildfireThermalLayerRef.current) {
-          wildfireThermalLayerRef.current.update(time, 0.016);
+          const m = wildfireThermalLayerRef.current.getMesh();
+          if (m?.visible) {
+            wildfireThermalLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 11. Real Animated Auroral Oval Curtains & Ionospheric Waves (Phase 5 Space Weather)
         if (auroralOvalLayerRef.current) {
-          auroralOvalLayerRef.current.update(time, 0.016);
+          const m = auroralOvalLayerRef.current.getMesh();
+          if (m?.visible) {
+            auroralOvalLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 12. Real Animated Ocean Current Streamlines & SST Anomaly Vector Engine (Phase 6 Marine Physics)
         if (oceanCurrentsLayerRef.current) {
-          oceanCurrentsLayerRef.current.update(time, 0.016);
+          const m = oceanCurrentsLayerRef.current.getMesh();
+          if (m?.visible) {
+            oceanCurrentsLayerRef.current.update(time, 0.016);
+          }
         }
 
         // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Windy Satellite)
@@ -956,6 +976,50 @@ const GlobeScene = React.memo(function GlobeScene({
         // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Windy Isobars)
         if (atmosphericPressureLayerRef.current) {
           atmosphericPressureLayerRef.current.update(time, 0.016);
+        }
+      }
+
+      // 15. Horizon Occlusion Culling for CSS2D HTML markers
+      // Hides markers located on the far hemisphere of the Earth so they never float in outer space
+      const currGlobe = globeRef.current;
+      if (currGlobe && activeHtmlMarkersRef.current.size > 0) {
+        const camera = currGlobe.camera ? currGlobe.camera() : null;
+        if (camera) {
+          const camPos = camera.position;
+          const camDist = camPos.length();
+          const globeRadius = currGlobe.getGlobeRadius ? currGlobe.getGlobeRadius() : 100;
+          // Exact spherical horizon threshold: cos(theta_h) = globeRadius / camDist
+          const horizonCos = (globeRadius / Math.max(camDist, 0.001)) - 0.02;
+
+          activeHtmlMarkersRef.current.forEach((coord, el) => {
+            if (!el.isConnected) {
+              activeHtmlMarkersRef.current.delete(el);
+              return;
+            }
+
+            const phi = (90 - coord.lat) * (Math.PI / 180);
+            const theta = (90 - coord.lng) * (Math.PI / 180);
+            const nx = Math.sin(phi) * Math.sin(theta);
+            const ny = Math.cos(phi);
+            const nz = Math.sin(phi) * Math.cos(theta);
+
+            const dot = (nx * camPos.x + ny * camPos.y + nz * camPos.z) / camDist;
+            const isVisible = dot > horizonCos;
+
+            if (!isVisible) {
+              if (el.style.opacity !== '0') {
+                el.style.opacity = '0';
+                el.style.pointerEvents = 'none';
+                el.style.visibility = 'hidden';
+              }
+            } else {
+              if (el.style.opacity !== '1') {
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+                el.style.visibility = 'visible';
+              }
+            }
+          });
         }
       }
 
@@ -1254,6 +1318,46 @@ const GlobeScene = React.memo(function GlobeScene({
       oceanCurrentsLayerRef.current.setEvents(planetaryFeed);
     }
   }, [planetaryFeed]);
+
+  // ── Sync Three.js Weather & Geophysical Layer Visibility & Categorical Isolation ──
+  useEffect(() => {
+    const isCycloneVisible = !isPlayEarthActive && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null);
+    if (cycloneVortexLayerRef.current) {
+      const mesh = cycloneVortexLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isCycloneVisible;
+    }
+
+    const isLightningVisible = !isPlayEarthActive && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null);
+    if (lightningNetworkLayerRef.current) {
+      const mesh = lightningNetworkLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isLightningVisible;
+    }
+
+    const isSeismicVisible = !isPlayEarthActive && globeView !== 'weather' && (activeCategory === 'seismic' || activeCategory === null);
+    if (seismicShockwaveLayerRef.current) {
+      const mesh = seismicShockwaveLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isSeismicVisible;
+    }
+
+    const isWildfireVisible = !isPlayEarthActive && globeView !== 'weather' && (activeCategory === 'wildfires' || activeCategory === null);
+    if (wildfireThermalLayerRef.current) {
+      const mesh = wildfireThermalLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isWildfireVisible;
+    }
+
+    // Auroral oval space weather curtain: ONLY visible in space weather mode, NEVER in weather radar or general overview!
+    const isAuroralVisible = !isPlayEarthActive && globeView !== 'weather' && activeCategory === 'space_weather';
+    if (auroralOvalLayerRef.current) {
+      const mesh = auroralOvalLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isAuroralVisible;
+    }
+
+    const isOceanVisible = !isPlayEarthActive && (weatherLayerMode === 'marine' || weatherLayerMode === 'waves' || activeCategory === 'climate_oceans');
+    if (oceanCurrentsLayerRef.current) {
+      const mesh = oceanCurrentsLayerRef.current.getMesh();
+      if (mesh) mesh.visible = isOceanVisible;
+    }
+  }, [globeView, activeCategory, weatherLayerMode, isPlayEarthActive]);
 
   // When an event dossier report is active, suppress HTML disaster markers so animations never overlap the report
   useEffect(() => {
@@ -1849,22 +1953,30 @@ const GlobeScene = React.memo(function GlobeScene({
       return gameMarkers;
     }
 
-    // On mobile, limit to top 8 events so we don't overwhelm the 3D-to-2D CSS DOM projection engine
-    const eventSlice = isMobile ? events.slice(0, 8) : events;
-    const data: any[] = [...eventSlice.map(e => ({ ...e, isEvent: true }))];
-    if (celebrations) {
-      const celebSlice = isMobile ? celebrations.slice(0, 2) : celebrations;
-      celebSlice.forEach(c => {
-        data.push({
-          ...c,
-          isCelebration: true,
-          category: 'sports', // Map category for default fallback styling
-        });
+    const data: any[] = [];
+
+    // In standard / discovery / night / blueprint view, render event markers
+    if (globeView !== 'weather') {
+      const eventSlice = isMobile ? events.slice(0, 8) : events;
+      eventSlice.forEach(e => {
+        data.push({ ...e, isEvent: true });
       });
+
+      if (celebrations) {
+        const celebSlice = isMobile ? celebrations.slice(0, 2) : celebrations;
+        celebSlice.forEach(c => {
+          data.push({
+            ...c,
+            isCelebration: true,
+            category: 'sports', // Map category for default fallback styling
+          });
+        });
+      }
     }
+
     const selLoc = selectedLocation as any;
     if (selLoc && selLoc.type === 'city') {
-      // Always add the weather city pin marker — with a unique key per city to avoid duplicates
+      // Always add the weather city pin marker for selected location
       data.push({
         id: `weather-city-pin-${selLoc.lat.toFixed(4)}-${selLoc.lng.toFixed(4)}`,
         title: selLoc.name,
@@ -1879,34 +1991,34 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
-    // Populate global city pins across all continents for planetary location exploration
-    if (globeView === 'weather' || globeView === 'standard' || globeView === 'discovery') {
+    // Populate curated anchor cities across continents for planetary location exploration
+    if (!selLoc && (globeView === 'weather' || globeView === 'standard' || globeView === 'discovery')) {
       const cityList = locations.filter(l => l.type === 'city');
-      const maxWeatherCities = isMobile ? 8 : 18;
+      const maxWeatherCities = globeView === 'weather' ? (isMobile ? 3 : 6) : (isMobile ? 6 : 12);
       cityList.slice(0, maxWeatherCities).forEach(city => {
-        if (!selLoc || selLoc.id !== city.id) {
-          data.push({
-            id: `weather-city-pin-${city.lat.toFixed(4)}-${city.lng.toFixed(4)}`,
-            title: city.name,
-            summary: `${city.name}, ${city.country}`,
-            category: 'weather',
-            country: city.country,
-            city: city.name,
-            lat: city.lat,
-            lng: city.lng,
-            isWeatherCityPin: true,
-            locationRecord: city,
-          });
-        }
+        data.push({
+          id: `weather-city-pin-${city.lat.toFixed(4)}-${city.lng.toFixed(4)}`,
+          title: city.name,
+          summary: `${city.name}, ${city.country}`,
+          category: 'weather',
+          country: city.country,
+          city: city.name,
+          lat: city.lat,
+          lng: city.lng,
+          isWeatherCityPin: true,
+          locationRecord: city,
+        });
       });
     }
 
-    // Populate active tropical cyclone & hurricane disaster markers
+    // Populate active tropical cyclone & hurricane disaster markers (Windy / NOAA NHC standard)
     if (globeView === 'weather' || weatherLayerMode === 'hurricane' || weatherLayerMode === 'wind') {
       const cycloneList = events.filter((e) => {
-        if (e.category === 'severe_weather') return true;
-        const t = (e.title || '').toLowerCase();
-        return t.includes('hurricane') || t.includes('cyclone') || t.includes('typhoon') || t.includes('tropical storm');
+        if (e.category === 'severe_weather') {
+          const t = (e.title || '').toLowerCase();
+          return t.includes('cyclone') || t.includes('hurricane') || t.includes('typhoon') || t.includes('tropical storm');
+        }
+        return false;
       });
       const activeCyclones = cycloneList.length > 0 ? cycloneList : BASELINE_CYCLONE_EVENTS;
       activeCyclones.forEach((storm) => {
@@ -1922,12 +2034,13 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // Populate active severe thunderstorm & lightning convective complex disaster markers
-    if (globeView === 'weather' || weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar') {
+    if (globeView === 'weather' && (weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar' || weatherLayerMode === 'overview')) {
       const lightningList = events.filter((e) => {
         const t = (e.title || '').toLowerCase();
-        return t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective');
+        return (t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective')) &&
+          !t.includes('cyclone') && !t.includes('hurricane') && !t.includes('typhoon');
       });
-      const activeLightning = lightningList.length > 0 ? lightningList : BASELINE_LIGHTNING_EVENTS;
+      const activeLightning = lightningList.length > 0 ? lightningList.slice(0, 3) : BASELINE_LIGHTNING_EVENTS.slice(0, 3);
       activeLightning.forEach((storm) => {
         data.push({
           id: `lightning-disaster-${storm.id}`,
@@ -1953,13 +2066,17 @@ const GlobeScene = React.memo(function GlobeScene({
       // Return cached element if available to prevent DOM reflow/allocation jank
       // Weather city pin markers get a unique ID per location, so skip cache for stale pins
       if (!d.isWeatherCityPin && htmlMarkersCacheRef.current.has(markerId)) {
-        return htmlMarkersCacheRef.current.get(markerId)!;
+        const cached = htmlMarkersCacheRef.current.get(markerId)!;
+        activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+        return cached;
       }
 
       // ── Dedicated Weather City Pin Marker ────────────────────────
       if (d.isWeatherCityPin) {
         if (htmlMarkersCacheRef.current.has(markerId)) {
-          return htmlMarkersCacheRef.current.get(markerId)!;
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
         }
 
         const cityName = d.title || d.city || 'Location';
@@ -1978,9 +2095,11 @@ const GlobeScene = React.memo(function GlobeScene({
           flex-direction: column;
           align-items: center;
           cursor: pointer;
-          pointer-events: auto;
+          pointer-events: none;
           transform: translateY(-14px);
-          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
           user-select: none;
         `;
         el.innerHTML = `
@@ -2080,13 +2199,16 @@ const GlobeScene = React.memo(function GlobeScene({
         }
 
         htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
         return el;
       }
 
       // ── Dedicated Tropical Cyclone & Hurricane Disaster Marker ────
       if (d.isCycloneDisaster) {
         if (htmlMarkersCacheRef.current.has(markerId)) {
-          return htmlMarkersCacheRef.current.get(markerId)!;
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
         }
 
         const storm = d.event as WorldEvent;
@@ -2101,10 +2223,12 @@ const GlobeScene = React.memo(function GlobeScene({
           flex-direction: column;
           align-items: center;
           cursor: pointer;
-          pointer-events: auto;
+          pointer-events: none;
           user-select: none;
           transform: translateY(-50%);
-          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
         `;
 
         el.innerHTML = `
@@ -2172,13 +2296,16 @@ const GlobeScene = React.memo(function GlobeScene({
         });
 
         htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
         return el;
       }
 
       // ── Dedicated Severe Thunderstorm & Lightning Hotspot Marker ──
       if (d.isThunderstormDisaster) {
         if (htmlMarkersCacheRef.current.has(markerId)) {
-          return htmlMarkersCacheRef.current.get(markerId)!;
+          const cached = htmlMarkersCacheRef.current.get(markerId)!;
+          activeHtmlMarkersRef.current.set(cached, { lat: Number(d.lat), lng: Number(d.lng) });
+          return cached;
         }
 
         const storm = d.event as WorldEvent;
@@ -2192,10 +2319,12 @@ const GlobeScene = React.memo(function GlobeScene({
           flex-direction: column;
           align-items: center;
           cursor: pointer;
-          pointer-events: auto;
+          pointer-events: none;
           user-select: none;
           transform: translateY(-50%);
-          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+          opacity: 0;
+          visibility: hidden;
         `;
 
         el.innerHTML = `
@@ -2263,6 +2392,7 @@ const GlobeScene = React.memo(function GlobeScene({
         });
 
         htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
         return el;
       }
 
@@ -2303,6 +2433,7 @@ const GlobeScene = React.memo(function GlobeScene({
           "></div>
         `;
         htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
         return el;
       }
 
@@ -2313,14 +2444,16 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'globe-celebration-marker';
-        el.style.pointerEvents = 'auto';
         el.style.cssText = `
           position: relative;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          pointer-events: auto;
+          pointer-events: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.2s ease-out;
         `;
 
         el.innerHTML = `
@@ -2392,6 +2525,7 @@ const GlobeScene = React.memo(function GlobeScene({
         });
 
         htmlMarkersCacheRef.current.set(markerId, el);
+        activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
         return el;
       }
 
@@ -2400,15 +2534,16 @@ const GlobeScene = React.memo(function GlobeScene({
 
       const el = document.createElement('div');
       el.className = 'globe-marker';
-      el.style.pointerEvents = 'auto';
       el.style.cssText = `
         position: relative;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        pointer-events: auto;
-        animation: marker-fade-in 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease-out;
       `;
 
       // Inner glowing core with emoji (omit continuous ripple div on mobile for 60fps)
@@ -2487,6 +2622,7 @@ const GlobeScene = React.memo(function GlobeScene({
       });
 
       htmlMarkersCacheRef.current.set(markerId, el);
+      activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
       return el;
     },
     [onSelectEvent, pauseRotation, recordInteraction, onSelectCelebration, flyTo, onSelectLocation, selectedLocation]

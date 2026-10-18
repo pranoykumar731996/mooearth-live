@@ -168,16 +168,16 @@ export class AuroralOvalLayer {
     const tangentU = new THREE.Vector3().crossVectors(poleNormal, arbitrary).normalize();
     const tangentV = new THREE.Vector3().crossVectors(poleNormal, tangentU).normalize();
 
-    // High-altitude ionospheric curtain bounds (floating high above cloud deck)
-    const lowerAlt = this.radius * 1.026; // ~150 km ionosphere
-    const upperAlt = this.radius * 1.058; // ~380 km crown
+    // Snug ionospheric curtain bounds closely hugging the polar upper atmosphere
+    const lowerAlt = this.radius * 1.006; // Lower auroral ionosphere
+    const upperAlt = this.radius * 1.018; // Upper auroral crown
 
     for (let i = 0; i <= curtain.segments; i++) {
       const angle = (i / curtain.segments) * Math.PI * 2;
 
       // Undulating wave harmonics simulating dynamic auroral curtains
-      const wave1 = Math.sin(angle * 5.0 - timeSec * 1.8) * 1.1;
-      const wave2 = Math.sin(angle * 9.0 + timeSec * 2.4) * 0.6;
+      const wave1 = Math.sin(angle * 5.0 - timeSec * 1.8) * 0.8;
+      const wave2 = Math.sin(angle * 9.0 + timeSec * 2.4) * 0.4;
       const totalWave = wave1 + wave2;
 
       const currentRadiusDeg = ovalRadiusDeg + totalWave;
@@ -204,8 +204,8 @@ export class AuroralOvalLayer {
       colors[i * 6 + 1] = lowerColor.g;
       colors[i * 6 + 2] = lowerColor.b;
 
-      // Upper curtain vertex (violet/magenta crown with wave lift)
-      const lift = 1.0 + totalWave * 0.06;
+      // Upper curtain vertex (violet/magenta crown with subtle harmonic wave lift)
+      const lift = 1.0 + totalWave * 0.012;
       const upperPos = localDir.clone().multiplyScalar(upperAlt * lift);
       positions[i * 6 + 3] = upperPos.x;
       positions[i * 6 + 1 + 3] = upperPos.y;

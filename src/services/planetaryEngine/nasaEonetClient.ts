@@ -89,6 +89,15 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
   const { country, city } = resolveEonetLocation(event.title, lat, lng);
   const dateIso = latestGeo.date || new Date().toISOString();
 
+  // Freshness check: Discard stale historical events (e.g. from 2014) left open in NASA EONET
+  if (latestGeo.date) {
+    const geoTime = new Date(latestGeo.date).getTime();
+    const maxAgeMs = 45 * 24 * 3600 * 1000;
+    if (Number.isFinite(geoTime) && Date.now() - geoTime > maxAgeMs) {
+      return null;
+    }
+  }
+
   let telemetryDesc = '';
   let magValue: number | undefined;
   if (typeof latestGeo.magnitudeValue === 'number') {
