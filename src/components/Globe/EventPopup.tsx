@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
@@ -64,6 +65,12 @@ function getFlagChar(country: string): string {
 
 export default function EventPopup({ event, onClose }: EventPopupProps) {
   const { locale, dict, t } = useLanguage();
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const placeId = useMemo(() => {
     if (!event) return null;
     const cleanId = event.id || event.title?.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 50);
@@ -146,13 +153,18 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {event && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4 pointer-events-auto">
           {/* Backdrop overlay */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs cursor-pointer z-0"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/75 backdrop-blur-md cursor-pointer z-0"
             onClick={onClose}
           />
 
@@ -162,11 +174,11 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="w-[90vw] max-w-[460px] rounded-3xl p-6 glass pointer-events-auto relative z-10"
+            className="w-[90vw] max-w-[470px] rounded-3xl p-6 glass pointer-events-auto relative z-10 border border-white/10"
             style={{
-              background: 'linear-gradient(135deg, rgba(10,10,20,0.95) 0%, rgba(20,20,35,0.85) 100%)',
-              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
-              maxHeight: '70vh',
+              background: 'linear-gradient(135deg, rgba(8,10,24,0.98) 0%, rgba(14,18,36,0.96) 100%)',
+              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15)`,
+              maxHeight: '75vh',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -307,7 +319,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                           </span>
                         </div>
                       )}
-                      {typeof event.planetaryTelemetry.stormWarningType ? (
+                      {event.planetaryTelemetry.stormWarningType ? (
                         <div className="flex flex-col">
                           <span className="text-white/40 uppercase tracking-wider text-[10px]">Warning Type</span>
                           <span className="font-extrabold text-amber-300 text-xs flex items-center gap-1">
@@ -555,6 +567,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

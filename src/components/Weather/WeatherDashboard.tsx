@@ -572,7 +572,7 @@ export default function WeatherDashboard() {
       {/* ── Main Viewport Area ──────────────────────── */}
       <main className="fixed top-[98px] bottom-0 left-0 right-0 flex flex-col lg:flex-row overflow-hidden bg-[#010106]">
         {/* Globe Viewport */}
-        <div className="flex-1 relative w-full h-full min-h-0 bg-[#010106] overflow-hidden">
+        <div className="flex-1 relative w-full h-full min-h-0 bg-[#010106] overflow-hidden isolate z-0">
           {/* Direct 3D Interactive Earth Globe & Overlays (preserved in DOM during city exploration) */}
           <div className={`absolute inset-0 w-full h-full ${viewMode === 'city-map' ? 'invisible pointer-events-none' : 'visible'}`}>
             <div className="absolute inset-0 w-full h-full">

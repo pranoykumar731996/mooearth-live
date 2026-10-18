@@ -2913,11 +2913,12 @@ const GlobeScene = React.memo(function GlobeScene({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full"
+      className="relative w-full h-full isolate z-0"
       id="globe-container"
       style={{
         opacity: 1,
         touchAction: 'none',
+        isolation: 'isolate',
       }}
       onPointerDown={(e) => {
         recordInteraction();
