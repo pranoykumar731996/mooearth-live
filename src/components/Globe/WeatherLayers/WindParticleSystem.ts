@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import type { GlobalGridPointData } from '@/services/weather/globalGridService';
 import { interpolateGridWeatherAt } from '@/services/weather/globalGridService';
+import { GriddedWindField, getGlobalWindField } from '@/services/weather/griddedWindService';
 
 interface WindParticle {
   lat: number;
@@ -65,6 +66,7 @@ export class WindParticleSystem {
   private particleCount: number;
   private particles: WindParticle[] = [];
   private stations: GlobalGridPointData[] = [];
+  private windField: GriddedWindField | null = null;
   private hourlyIndex: number = 0;
   private mesh: THREE.LineSegments | null = null;
   private geometry: THREE.BufferGeometry | null = null;
@@ -79,6 +81,7 @@ export class WindParticleSystem {
     this.isMobile = options.isMobile ?? false;
     this.reducedMotion = options.reducedMotion ?? false;
     this.particleCount = options.particleCount ?? (this.isMobile ? 600 : 1800);
+    this.windField = getGlobalWindField();
 
     // 2 vertices per particle streamline (head and tail)
     this.positions = new Float32Array(this.particleCount * 2 * 3);
@@ -130,6 +133,10 @@ export class WindParticleSystem {
     this.stations = stations;
   }
 
+  public setWindField(windField: GriddedWindField | null) {
+    this.windField = windField;
+  }
+
   public setHourlyIndex(index: number) {
     this.hourlyIndex = index;
   }
@@ -146,7 +153,10 @@ export class WindParticleSystem {
    * Advects particles along real meteorological vectors (u, v).
    */
   public update() {
-    if (!this.mesh || !this.geometry || this.stations.length === 0) return;
+    if (!this.mesh || !this.geometry) return;
+    const hasStations = this.stations.length > 0;
+    const hasField = this.windField !== null;
+    if (!hasStations && !hasField) return;
 
     const timeScale = this.reducedMotion ? 0.04 : 0.16;
     const tailScale = 0.08;
@@ -155,14 +165,29 @@ export class WindParticleSystem {
       const p = this.particles[i];
 
       // Sample real wind vector at current particle location
-      const vector = interpolateGridWeatherAt(p.lat, p.lng, this.stations, this.hourlyIndex);
-      p.speed = vector.windSpeed;
+      let u: number;
+      let v: number;
+      let speed: number;
+
+      if (this.windField) {
+        const sample = this.windField.sampleAt(p.lat, p.lng);
+        u = sample.u;
+        v = sample.v;
+        speed = sample.speed;
+      } else {
+        const vector = interpolateGridWeatherAt(p.lat, p.lng, this.stations, this.hourlyIndex);
+        u = vector.u;
+        v = vector.v;
+        speed = vector.windSpeed;
+      }
+
+      p.speed = speed;
 
       // Advect particle: u is eastward (deg lon), v is northward (deg lat)
       // Conversion from km/h to degrees per frame:
       const cosLat = Math.max(0.1, Math.cos(p.lat * (Math.PI / 180)));
-      const deltaLat = (vector.v * timeScale) / 111.0;
-      const deltaLng = (vector.u * timeScale) / (111.0 * cosLat);
+      const deltaLat = (v * timeScale) / 111.32;
+      const deltaLng = (u * timeScale) / (111.32 * cosLat);
 
       p.lat += deltaLat;
       p.lng += deltaLng;
@@ -182,8 +207,8 @@ export class WindParticleSystem {
       // Head position
       const head = geoToVector3(p.lat, p.lng, this.radius);
       // Tail position: trail slightly behind along velocity
-      const tailLat = p.lat - (vector.v * tailScale) / 111.0;
-      const tailLng = p.lng - (vector.u * tailScale) / (111.0 * cosLat);
+      const tailLat = p.lat - (v * tailScale) / 111.32;
+      const tailLng = p.lng - (u * tailScale) / (111.32 * cosLat);
       const tail = geoToVector3(tailLat, tailLng, this.radius);
 
       // Color based on wind speed

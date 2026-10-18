@@ -22,6 +22,14 @@ import WindParticleOverlay from './WindParticleOverlay';
 import WeatherTimeline from './WeatherTimeline';
 import WeatherLegend from './WeatherLegend';
 import EventPopup from '@/components/Globe/EventPopup';
+import RadarCoverageNotice from './RadarCoverageNotice';
+import {
+  isLocationCoveredByRadar,
+  getActiveRadarMetadata,
+  type RadarMetadataResponse,
+} from '@/services/weather/radarAdapter';
+import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService';
+import { getActiveTropicalCyclonesAsEvents } from '@/services/weather/cycloneTrackingService';
 import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import type { GeocodingResult, UnitPreferences, ForecastResponse, SatelliteSpectralMode } from '@/services/weather/types';
@@ -118,15 +126,12 @@ export default function WeatherDashboard() {
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
   const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
+  const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
+  const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
 
-  // Active cyclones list for quick-tracking
+  // Active cyclones list for quick-tracking (official NOAA NHC, JTWC, and IMD feeds)
   const activeCyclones = useMemo(() => {
-    const fromEvents = events.filter((e) => {
-      if (e.category === 'severe_weather') return true;
-      const t = (e.title || '').toLowerCase();
-      return t.includes('hurricane') || t.includes('cyclone') || t.includes('typhoon') || t.includes('tropical storm');
-    });
-    return fromEvents.length > 0 ? fromEvents : BASELINE_CYCLONE_EVENTS;
+    return getActiveTropicalCyclonesAsEvents(events);
   }, [events]);
 
   // Active thunderstorms list for quick-tracking
@@ -137,6 +142,11 @@ export default function WeatherDashboard() {
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_LIGHTNING_EVENTS;
   }, [events]);
+
+  // Genuine satellite metadata & observation timestamp (NASA GIBS / NOAA GOES)
+  const satelliteMeta = useMemo(() => {
+    return getSatelliteMetadata(spectralMode, timelineIndex);
+  }, [spectralMode, timelineIndex]);
 
   // Helper: push location and view mode into URL query params for shareable links
   const updateUrlParams = useCallback(
@@ -250,6 +260,38 @@ export default function WeatherDashboard() {
       cancelled = true;
     };
   }, [weather.units]);
+
+  // Fetch Doppler radar frames when viewing radar or overlaying radar
+  useEffect(() => {
+    let cancelled = false;
+    if (weather.activeLayer === 'radar' || overlayRadar) {
+      fetch('/api/weather/radar/frames')
+        .then((res) => {
+          if (!res.ok) throw new Error('Failed to fetch radar frames');
+          return res.json();
+        })
+        .then((data: RadarMetadataResponse) => {
+          if (!cancelled && data && data.frames) {
+            setRadarMetadata(data);
+            setRadarFrameIndex(data.frames.length - 1);
+          }
+        })
+        .catch(async () => {
+          try {
+            const fallback = await getActiveRadarMetadata();
+            if (!cancelled && fallback) {
+              setRadarMetadata(fallback);
+              setRadarFrameIndex(fallback.frames.length - 1);
+            }
+          } catch {
+            // Silently ignore
+          }
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [weather.activeLayer, overlayRadar]);
 
   // Restore location from URL query params on mount (shareable links)
   useEffect(() => {
@@ -692,6 +734,32 @@ export default function WeatherDashboard() {
               </div>
             )}
 
+            {/* Honest Radar Coverage Notice when viewing areas outside terrestrial ground radar */}
+            {weather.activeLayer === 'radar' &&
+              weather.selectedLocation &&
+              !isLocationCoveredByRadar(
+                weather.selectedLocation.latitude,
+                weather.selectedLocation.longitude
+              ) && (
+                <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-4 z-20 pointer-events-auto">
+                  <RadarCoverageNotice
+                    locationName={weather.selectedLocation.name}
+                    onSwitchToPrecipitation={() => weather.setActiveLayer('precipitation')}
+                    onSwitchToSatellite={() => weather.setActiveLayer('satellite')}
+                    onRecenterRadar={() => {
+                      globeApiRef.current?.flyTo({ lat: 38.5, lng: -96.0, altitude: 1.5 }, getFlyDuration(1200));
+                      weather.fetchWeatherForLocation({
+                        name: 'United States (NOAA NEXRAD)',
+                        latitude: 38.5,
+                        longitude: -96.0,
+                        timezone: 'auto',
+                        source: 'search',
+                      });
+                    }}
+                  />
+                </div>
+              )}
+
             {/* Quick-Track Disaster Bar for Hurricane Tracker and Thunderstorms */}
             {(weather.activeLayer === 'hurricane' || weather.activeLayer === 'precipitation') && (
               <div className="absolute top-16 sm:top-4 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 z-20 pointer-events-auto sm:w-auto max-w-xl">
@@ -779,6 +847,11 @@ export default function WeatherDashboard() {
               isPlaying={isTimelinePlaying}
               onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
               timestamps={gridData?.timestamps}
+              radarFrames={radarMetadata?.frames || []}
+              activeRadarFrameIndex={radarFrameIndex}
+              onSelectRadarFrameIndex={setRadarFrameIndex}
+              radarAttribution={radarMetadata?.attribution}
+              satelliteObservationUtc={satelliteMeta.observationUtc}
               className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
             />
 
@@ -788,7 +861,7 @@ export default function WeatherDashboard() {
                 type="button"
                 data-testid="open-mobile-sheet"
                 onClick={() => setIsPanelOpen(true)}
-                className="lg:hidden absolute bottom-24 right-4 z-20 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
+                className="lg:hidden absolute bottom-36 right-4 z-40 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
               >
                 📊 Telemetry →
               </button>
@@ -796,14 +869,19 @@ export default function WeatherDashboard() {
           </div>
 
           {/* Dedicated Interactive 2D City Map (MapLibre GL JS) */}
-          {viewMode === 'city-map' && weather.selectedLocation && (
+          {viewMode === 'city-map' && (
             <div className="absolute inset-0 w-full h-full z-20">
               <CityMapViewer
-                latitude={weather.selectedLocation.latitude}
-                longitude={weather.selectedLocation.longitude}
-                cityName={weather.selectedLocation.name}
-                countryName={weather.selectedLocation.country}
-                initialZoom={13}
+                latitude={weather.selectedLocation?.latitude ?? 20}
+                longitude={weather.selectedLocation?.longitude ?? 0}
+                cityName={weather.selectedLocation?.name ?? 'World Map'}
+                countryName={weather.selectedLocation?.country ?? ''}
+                initialZoom={weather.selectedLocation ? 13 : 2.5}
+                activeLayer={weather.activeLayer}
+                radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
+                satelliteTileUrl={satelliteMeta.tileUrlTemplate}
+                satelliteObservationUtc={satelliteMeta.observationUtc}
+                particlesEnabled={particlesEnabled}
                 weatherSummary={
                   displayedForecast?.current
                     ? {
@@ -859,11 +937,14 @@ export default function WeatherDashboard() {
                 />
                 {/* Sheet Drawer */}
                 <div
-                  className={`relative flex flex-col bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl transition-all duration-300 z-10 ${
+                  className={`relative flex flex-col bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl transition-all duration-300 z-10 overscroll-contain touch-pan-y ${
                     isPanelMinimized ? 'h-[85px]' : 'h-[75vh] max-h-[85vh]'
                   }`}
                 >
-                  <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+                  <div
+                    className="flex justify-center pt-2.5 pb-1 shrink-0 touch-none cursor-grab active:cursor-grabbing select-none"
+                    onClick={() => setIsPanelMinimized(!isPanelMinimized)}
+                  >
                     <div className="w-12 h-1.5 rounded-full bg-white/20" />
                   </div>
                   <button

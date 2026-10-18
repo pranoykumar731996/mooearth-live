@@ -97,3 +97,62 @@ export type {
   GlobalGridPointData,
   GlobalWeatherGridResponse,
 } from './globalGridService';
+
+// Weather Layer Registry
+export {
+  WEATHER_LAYER_REGISTRY,
+  getWeatherLayerDefinition,
+  getAllWeatherLayers,
+  isCoordinateWithinLayerCoverage,
+} from './layerRegistry';
+export type {
+  WeatherLayerDefinition,
+  TemporalClassification,
+  GeographicCoverage,
+  LayerTimeHorizon,
+  LayerLegend,
+  LayerLegendStop,
+} from './layerRegistry';
+
+// Radar Provider Adapter
+export {
+  radarManager,
+  NoaaMrmsRadarProvider,
+  getActiveRadarMetadata,
+  isLocationCoveredByRadar,
+} from './radarAdapter';
+export type {
+  IRadarProvider,
+  RadarFrame,
+  RadarCoverageArea,
+  RadarMetadataResponse,
+} from './radarAdapter';
+
+// Satellite Imagery Service (NASA GIBS & NOAA GOES)
+export {
+  SATELLITE_PRODUCTS,
+  getSatelliteObservationDate,
+  buildGibsTileUrl,
+  getSatelliteMetadata,
+} from './satelliteImageryService';
+export type {
+  SatelliteProduct,
+  SatelliteMetadataResponse,
+} from './satelliteImageryService';
+
+// Tropical Cyclone Tracking Service
+export {
+  OFFICIAL_CYCLONE_BASELINES,
+  getSaffirSimpsonCategoryNumber,
+  getTropicalCycloneStageName,
+  computeForecastCone,
+  getActiveTropicalCyclones,
+  cycloneToWorldEvent,
+  getActiveTropicalCyclonesAsEvents,
+} from './cycloneTrackingService';
+export type {
+  TropicalCyclone,
+  CycloneTrackWaypoint,
+  CycloneForecastConeNode,
+  CycloneFeedResponse,
+} from './cycloneTrackingService';

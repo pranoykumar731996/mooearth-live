@@ -66,6 +66,14 @@ export interface PlanetaryTelemetry {
   seaSurfaceTempAnomalyC?: number;
   significantWaveHeightM?: number;
   oceanCurrentName?: string;
+  forecastCone?: {
+    timeHours: number;
+    centerLat: number;
+    centerLng: number;
+    errorRadiusKm: number;
+  }[];
+  cycloneAgency?: string;
+  cycloneBasin?: string;
 }
 
 /** A world event displayed on the globe */

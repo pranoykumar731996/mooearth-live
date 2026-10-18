@@ -336,17 +336,6 @@ export class GeostationarySatelliteLayer {
             finalColor = getInfraredColor(cloudDensity, altitude);
           }
 
-          // Composite Doppler Radar Echo Overlay (RainViewer style dBZ cores)
-          if (uOverlayRadar > 0.5 && cloudDensity > 0.6) {
-            float radarNoise = fbm(advectedUv * 64.0 + 7.5);
-            if (radarNoise > 0.55) {
-              float dbzNorm = smoothstep(0.55, 0.88, radarNoise);
-              vec3 radarCol = mix(vec3(0.15, 0.95, 0.15), vec3(0.95, 0.15, 0.15), dbzNorm);
-              finalColor.rgb = mix(finalColor.rgb, radarCol, 0.85);
-              finalColor.a = max(finalColor.a, 0.95);
-            }
-          }
-
           gl_FragColor = finalColor;
         }
       `,

@@ -158,13 +158,16 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
   return createPortal(
     <AnimatePresence>
       {event && (
-        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4 pointer-events-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-[99999] p-4 pointer-events-auto"
+          style={{ isolation: 'isolate' }}
+        >
           {/* Backdrop overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/75 backdrop-blur-md cursor-pointer z-0"
+            className="fixed inset-0 bg-[#020308]/88 backdrop-blur-xl cursor-pointer z-0"
             onClick={onClose}
           />
 
@@ -174,11 +177,11 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="w-[90vw] max-w-[470px] rounded-3xl p-6 glass pointer-events-auto relative z-10 border border-white/10"
+            className="w-[90vw] max-w-[490px] rounded-3xl p-6 pointer-events-auto relative z-10 border border-white/15 shadow-2xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(8,10,24,0.98) 0%, rgba(14,18,36,0.96) 100%)',
-              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15)`,
-              maxHeight: '75vh',
+              background: 'linear-gradient(135deg, rgba(7,9,24,0.98) 0%, rgba(12,16,36,0.98) 100%)',
+              boxShadow: `0 0 80px ${CATEGORY_MAP[event.category]?.glowColor || 'rgba(0,229,255,0.5)'}, 0 25px 60px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.15)`,
+              maxHeight: '78vh',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -356,6 +359,48 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                               </span>
                             ))}
                           </div>
+                        </div>
+                      )}
+                      {(event.planetaryTelemetry.cycloneAgency || (Array.isArray(event.planetaryTelemetry.forecastCone) && event.planetaryTelemetry.forecastCone.length > 0)) && (
+                        <div className="col-span-2 pt-2 border-t border-white/10 flex flex-col gap-2">
+                          {event.planetaryTelemetry.cycloneAgency && (
+                            <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
+                              <span className="flex items-center gap-1.5 font-bold">
+                                <span>🏛️</span>
+                                <span>Official Advisory:</span>
+                              </span>
+                              <span className="font-semibold text-white/90 text-right">
+                                {event.planetaryTelemetry.cycloneAgency}
+                              </span>
+                            </div>
+                          )}
+                          {Array.isArray(event.planetaryTelemetry.forecastCone) && event.planetaryTelemetry.forecastCone.length > 0 && (
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-white/40 uppercase tracking-wider font-semibold">
+                                  Official 5-Day Cone of Uncertainty
+                                </span>
+                                <span className="text-cyan-400 font-mono text-[9px]">
+                                  67% Confidence Margin
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-5 gap-1 text-center font-mono">
+                                {event.planetaryTelemetry.forecastCone.map((node, i) => (
+                                  <div
+                                    key={i}
+                                    className="p-1 rounded-lg bg-white/5 border border-white/10 flex flex-col items-center"
+                                  >
+                                    <span className="text-[9px] text-cyan-300 font-bold">+{node.timeHours}h</span>
+                                    <span className="text-[10px] text-white font-extrabold">{node.errorRadiusKm} km</span>
+                                    <span className="text-[8px] text-white/40">±{Math.round(node.errorRadiusKm / 1.852)} nm</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <span className="text-[9px] text-white/35 italic leading-tight">
+                                National Hurricane Center verification error margins expand with lead time.
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                       {typeof event.planetaryTelemetry.lightningStrikeRatePerMin === 'number' && (

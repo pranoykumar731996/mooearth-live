@@ -1255,6 +1255,15 @@ const GlobeScene = React.memo(function GlobeScene({
     }
   }, [planetaryFeed]);
 
+  // When an event dossier report is active, suppress HTML disaster markers so animations never overlap the report
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const markers = document.querySelectorAll('.cyclone-disaster-marker, .thunderstorm-disaster-marker');
+    markers.forEach((m: any) => {
+      m.style.visibility = selectedEvent ? 'hidden' : 'visible';
+    });
+  }, [selectedEvent]);
+
   // ── 3D Geostationary Satellite Cloud Cover Layer (Windy Satellite Visible / Blue / Infra) ──
   useEffect(() => {
     if (!globeRef.current || !introDone) return;
@@ -1312,7 +1321,10 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    const shouldShow = !isPlayEarthActive && showPressureIsobars && (globeView === 'weather' || globeView === 'satellite' || weatherLayerMode !== undefined);
+    const shouldShow =
+      !isPlayEarthActive &&
+      (showPressureIsobars || weatherLayerMode === 'pressure') &&
+      (globeView === 'weather' || globeView === 'satellite' || weatherLayerMode !== undefined);
 
     if (shouldShow) {
       const radius = globe.getGlobeRadius();
@@ -1335,7 +1347,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return () => {
-      if ((!showPressureIsobars || isPlayEarthActive) && atmosphericPressureLayerRef.current) {
+      if ((!showPressureIsobars && weatherLayerMode !== 'pressure' || isPlayEarthActive) && atmosphericPressureLayerRef.current) {
         const m = atmosphericPressureLayerRef.current.getMesh();
         if (m) scene.remove(m);
         atmosphericPressureLayerRef.current.dispose();

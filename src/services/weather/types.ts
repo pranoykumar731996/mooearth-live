@@ -267,6 +267,7 @@ export type WeatherLayerMode =
   | 'wind'
   | 'precipitation'
   | 'temperature'
+  | 'pressure'
   | 'hurricane'
   | 'clouds'
   | 'waves'
@@ -287,11 +288,12 @@ export interface WeatherLayerConfig {
 }
 
 export const WEATHER_LAYERS: WeatherLayerConfig[] = [
-  { id: 'satellite', name: 'Satellite', icon: '🛰️', description: 'Geostationary cloud cover & IR', requiresCoordinates: false, refreshIntervalMs: 600_000 },
-  { id: 'radar', name: 'Weather radar', icon: '📡', description: 'Global composite Doppler radar', requiresCoordinates: false, refreshIntervalMs: 300_000 },
+  { id: 'satellite', name: 'Satellite', icon: '🛰️', description: 'Geostationary cloud cover & IR (NASA/NOAA)', requiresCoordinates: false, refreshIntervalMs: 600_000 },
+  { id: 'radar', name: 'Weather radar', icon: '📡', description: 'Doppler radar (NOAA NEXRAD • North America)', requiresCoordinates: false, refreshIntervalMs: 300_000 },
   { id: 'wind', name: 'Wind', icon: '💨', description: 'Wind speed, direction & gusts', requiresCoordinates: true, refreshIntervalMs: 600_000 },
-  { id: 'precipitation', name: 'Rain, thunder', icon: '⛈️', description: 'Rainfall, snow & lightning', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'precipitation', name: 'Rain, thunder', icon: '⛈️', description: 'Precipitation forecast (Open-Meteo GFS/ECMWF)', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'temperature', name: 'Temperature', icon: '🌡️', description: 'Temperature & feels-like', requiresCoordinates: true, refreshIntervalMs: 600_000 },
+  { id: 'pressure', name: 'Pressure & Isobars', icon: '🔵', description: 'Mean sea level pressure (MSLP) & 4 hPa isobars', requiresCoordinates: false, refreshIntervalMs: 600_000 },
   { id: 'hurricane', name: 'Hurricane tracker', icon: '🌀', description: 'Active tropical cyclones & tracks', requiresCoordinates: false, refreshIntervalMs: 600_000 },
   { id: 'clouds', name: 'Clouds', icon: '☁️', description: 'Cloud cover fraction & base', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'marine', name: 'Waves & Currents', icon: '🌊', description: 'Wave height, swell & ocean gyres', requiresCoordinates: true, refreshIntervalMs: 1_800_000 },

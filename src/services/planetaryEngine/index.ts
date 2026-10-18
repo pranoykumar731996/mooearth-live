@@ -8,7 +8,7 @@ import { fetchUsgsEarthquakes } from './usgsClient';
 import { fetchNasaEonetEvents } from './nasaEonetClient';
 import { fetchNoaaSpaceWeather } from './noaaSpaceWeatherClient';
 import { fetchNasaEarthObservatory } from './nasaEarthObsClient';
-import { fetchNoaaSevereStorms, fetchRainViewerRadarMetadata } from './noaaSevereStormsClient';
+import { fetchNoaaSevereStorms } from './noaaSevereStormsClient';
 import { fetchNoaaOceanCurrents } from './noaaOceanCurrentsClient';
 
 export * from './types';

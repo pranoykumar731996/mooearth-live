@@ -16,7 +16,10 @@ export interface AtmosphericPressureLayerOptions {
   visible?: boolean;
 }
 
-interface PressureSystemCenter {
+export const STANDARD_ISOBAR_STEP_HPA = 4;
+export const STANDARD_SEA_LEVEL_PRESSURE_HPA = 1013.25;
+
+export interface PressureSystemCenter {
   type: 'L' | 'H';
   name: string;
   lat: number;
@@ -25,9 +28,31 @@ interface PressureSystemCenter {
 }
 
 /**
+ * Returns canonical synoptic isobar contours in 4 hPa steps for a pressure center.
+ */
+export function getIsobarLevels(centralHpa: number, type: 'L' | 'H', count: number = 4): number[] {
+  const levels: number[] = [];
+  const baseIsobar = Math.round(centralHpa / 4) * 4;
+  for (let i = 1; i <= count; i++) {
+    levels.push(type === 'L' ? baseIsobar + i * 4 : baseIsobar - i * 4);
+  }
+  return levels;
+}
+
+/**
+ * Categorizes mean sea level pressure into High or Low pressure synoptic classification.
+ */
+export function classifyPressureSystem(hpa: number): { type: 'L' | 'H'; label: string } {
+  if (hpa < STANDARD_SEA_LEVEL_PRESSURE_HPA) {
+    return { type: 'L', label: 'Low Pressure System (Cyclone/Trough)' };
+  }
+  return { type: 'H', label: 'High Pressure System (Anticyclone/Ridge)' };
+}
+
+/**
  * Verified planetary synoptic pressure centers
  */
-const GLOBAL_PRESSURE_CENTERS: PressureSystemCenter[] = [
+export const GLOBAL_PRESSURE_CENTERS: PressureSystemCenter[] = [
   // Low Pressure Systems (Cyclones & Subpolar Lows)
   { type: 'L', name: 'Aleutian Subpolar Low', lat: 52.0, lng: -175.0, centralHpa: 992 },
   { type: 'L', name: 'Icelandic Subpolar Low', lat: 64.0, lng: -35.0, centralHpa: 988 },

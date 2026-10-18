@@ -196,6 +196,7 @@ interface StormVortexInstance {
   particlesAngles: Float32Array;
   particlesDistances: Float32Array;
   trackLine?: THREE.Line;
+  coneGroup?: THREE.Group;
   spinDirection: number; // 1 for Northern counter-clockwise, -1 for Southern clockwise
   spinVelocity: number;
   baseRadius: number;
@@ -434,6 +435,65 @@ export class CycloneVortexLayer {
       group.add(trackLine);
     }
 
+    // 9. Official 5-Day Forecast Cone of Uncertainty (NOAA NHC / JTWC / IMD)
+    let coneGroup: THREE.Group | undefined;
+    const forecastCone = event.planetaryTelemetry?.forecastCone;
+    if (forecastCone && forecastCone.length > 0) {
+      coneGroup = new THREE.Group();
+      coneGroup.name = `ForecastCone_${event.id}`;
+
+      // Projected track center line through all cone nodes
+      const coneLineWorldPoints: THREE.Vector3[] = [
+        geoToVector3(event.lat, event.lng, this.radius * 1.004),
+      ];
+
+      for (const node of forecastCone) {
+        const centerPos = geoToVector3(node.centerLat, node.centerLng, this.radius * 1.004);
+        coneLineWorldPoints.push(centerPos);
+
+        // Uncertainty circle ring on sphere surface around each forecast lead time
+        const radiusWorld = (node.errorRadiusKm / 6371) * this.radius;
+        const ringSegments = 24;
+        const ringWorldPoints: THREE.Vector3[] = [];
+        const normal = centerPos.clone().normalize();
+        let u = new THREE.Vector3(0, 1, 0).cross(normal).normalize();
+        if (u.lengthSq() < 0.001) u = new THREE.Vector3(1, 0, 0).cross(normal).normalize();
+        const v = normal.clone().cross(u).normalize();
+
+        for (let j = 0; j <= ringSegments; j++) {
+          const theta = (j / ringSegments) * Math.PI * 2;
+          const offset = u.clone().multiplyScalar(Math.cos(theta) * radiusWorld)
+            .add(v.clone().multiplyScalar(Math.sin(theta) * radiusWorld));
+          ringWorldPoints.push(centerPos.clone().add(offset).normalize().multiplyScalar(this.radius * 1.004));
+        }
+
+        const localRingPoints = ringWorldPoints.map((wp) => group.worldToLocal(wp.clone()));
+        const ringGeo = new THREE.BufferGeometry().setFromPoints(localRingPoints);
+        const ringMat = new THREE.LineBasicMaterial({
+          color: 0x38bdf8, // Sky cyan
+          transparent: true,
+          opacity: 0.55,
+          depthWrite: false,
+        });
+        const ringLine = new THREE.Line(ringGeo, ringMat);
+        coneGroup.add(ringLine);
+      }
+
+      // Projected track center line
+      const localLinePoints = coneLineWorldPoints.map((wp) => group.worldToLocal(wp.clone()));
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(localLinePoints);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false,
+      });
+      const coneCenterLine = new THREE.Line(lineGeo, lineMat);
+      coneGroup.add(coneCenterLine);
+
+      group.add(coneGroup);
+    }
+
     return {
       eventId: event.id,
       group,
@@ -446,6 +506,7 @@ export class CycloneVortexLayer {
       particlesAngles: angles,
       particlesDistances: distances,
       trackLine,
+      coneGroup,
       spinDirection,
       spinVelocity,
       baseRadius: outerRadius,
@@ -549,6 +610,22 @@ export class CycloneVortexLayer {
       } else {
         storm.trackLine.material.dispose();
       }
+    }
+
+    if (storm.coneGroup) {
+      storm.coneGroup.traverse((child) => {
+        if ((child as THREE.Mesh).geometry) {
+          (child as THREE.Mesh).geometry.dispose();
+        }
+        if ((child as THREE.Mesh).material) {
+          const mat = (child as THREE.Mesh).material;
+          if (Array.isArray(mat)) {
+            mat.forEach((m) => m.dispose());
+          } else {
+            mat.dispose();
+          }
+        }
+      });
     }
   }
 

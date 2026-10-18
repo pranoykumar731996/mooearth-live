@@ -3,6 +3,27 @@ import { test, expect } from '@playwright/test';
 test.describe('Weather Intelligence 3D Globe Fix', () => {
   test.setTimeout(90000);
 
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('mooearth_consent_v1', JSON.stringify({
+          essential: true,
+          analytics: true,
+          advertising: true,
+          personalizedAds: true,
+          respondedAt: Date.now()
+        }));
+        localStorage.setItem('mooearth_cookie_consent', JSON.stringify({
+          essential: true,
+          analytics: true,
+          advertising: true,
+          personalizedAds: true,
+          respondedAt: Date.now()
+        }));
+      } catch {}
+    });
+  });
+
   test('Globe renders with valid dimensions and visible Earth mesh on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/weather', { waitUntil: 'domcontentloaded' });

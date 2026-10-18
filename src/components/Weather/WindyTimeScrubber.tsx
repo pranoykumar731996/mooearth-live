@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { SatelliteSpectralMode, WeatherLayerMode } from '@/services/weather/types';
+import type { RadarFrame } from '@/services/weather/radarAdapter';
 
 interface WindyTimeScrubberProps {
   activeLayer: WeatherLayerMode;
@@ -30,6 +31,11 @@ interface WindyTimeScrubberProps {
   onTogglePlay: () => void;
   timestamps?: string[];
   className?: string;
+  radarFrames?: RadarFrame[];
+  activeRadarFrameIndex?: number;
+  onSelectRadarFrameIndex?: (index: number) => void;
+  radarAttribution?: string;
+  satelliteObservationUtc?: string;
 }
 
 export default function WindyTimeScrubber({
@@ -48,12 +54,22 @@ export default function WindyTimeScrubber({
   onTogglePlay,
   timestamps = [],
   className = '',
+  radarFrames = [],
+  activeRadarFrameIndex,
+  onSelectRadarFrameIndex,
+  radarAttribution,
+  satelliteObservationUtc,
 }: WindyTimeScrubberProps) {
   const [playbackSpeed, setPlaybackSpeed] = useState<1 | 2 | 4>(1);
 
-  // Time scrubber steps (24 hours total, step = 1 hour)
-  const totalSteps = 24;
-  const currentStep = Math.min(totalSteps - 1, Math.max(0, timelineIndex % totalSteps));
+  const isRadarMode = activeLayer === 'radar' && radarFrames.length > 0;
+  const totalSteps = isRadarMode ? radarFrames.length : 24;
+  const currentStep = isRadarMode
+    ? Math.min(totalSteps - 1, Math.max(0, activeRadarFrameIndex ?? (timelineIndex % totalSteps)))
+    : Math.min(totalSteps - 1, Math.max(0, timelineIndex % totalSteps));
+
+  const selectedRadarFrame = isRadarMode ? radarFrames[currentStep] : null;
+  const isLiveRadar = isRadarMode && currentStep === totalSteps - 1;
 
   // Compute live relative time text
   const [liveTimeString, setLiveTimeString] = useState('');
@@ -71,15 +87,22 @@ export default function WindyTimeScrubber({
   // Auto-play interval
   useEffect(() => {
     if (!isPlaying) return;
-    const intervalMs = Math.round(1200 / playbackSpeed);
+    const intervalMs = Math.round((isRadarMode ? 800 : 1200) / playbackSpeed);
     const timer = setInterval(() => {
-      onSelectIndex((timelineIndex + 1) % totalSteps);
+      const nextStep = (currentStep + 1) % totalSteps;
+      if (isRadarMode && onSelectRadarFrameIndex) {
+        onSelectRadarFrameIndex(nextStep);
+      }
+      onSelectIndex(nextStep);
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [isPlaying, playbackSpeed, timelineIndex, totalSteps, onSelectIndex]);
+  }, [isPlaying, playbackSpeed, currentStep, totalSteps, isRadarMode, onSelectIndex, onSelectRadarFrameIndex]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
+    if (isRadarMode && onSelectRadarFrameIndex) {
+      onSelectRadarFrameIndex(val);
+    }
     onSelectIndex(val);
   };
 
@@ -100,7 +123,7 @@ export default function WindyTimeScrubber({
                   ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-rose-500/50 ring-2 ring-rose-400 animate-pulse'
                   : 'bg-gradient-to-tr from-red-600 to-rose-500 text-white hover:from-red-500 hover:to-rose-400 shadow-red-500/30'
               }`}
-            title={isPlaying ? 'Pause animation' : 'Play 24h loop'}
+            title={isPlaying ? 'Pause animation' : isRadarMode ? 'Play radar loop' : 'Play 24h loop'}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
@@ -113,19 +136,43 @@ export default function WindyTimeScrubber({
           {/* Time Scrubber Track Container */}
           <div className="flex-1 flex flex-col justify-center">
             {/* Timeline Tick Labels */}
-            <div className="flex justify-between items-center text-[10px] font-mono text-white/50 px-1 mb-1">
-              <span>24h ago</span>
-              <span>12h ago</span>
-              <span>6h ago</span>
-              <span>1h ago</span>
-              {/* Live Pill Badge */}
-              <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                <span>{liveTimeString || 'Live'}</span>
+            {isRadarMode ? (
+              <div className="flex justify-between items-center text-[10px] font-mono text-white/50 px-1 mb-1">
+                <span>-110m</span>
+                <span>-80m</span>
+                <span>-50m</span>
+                <span>-20m</span>
+                {/* Live Pill Badge */}
+                <div
+                  className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] tracking-wide flex items-center gap-1 shadow-md transition-all ${
+                    isLiveRadar
+                      ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse'
+                      : 'bg-cyan-500/30 text-cyan-200 border border-cyan-400/50'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isLiveRadar ? 'bg-red-600' : 'bg-cyan-400'}`} />
+                  <span>
+                    {selectedRadarFrame
+                      ? `${selectedRadarFrame.formattedUtc} (${selectedRadarFrame.label})`
+                      : liveTimeString || 'Live'}
+                  </span>
+                </div>
               </div>
-              <span className="hidden sm:inline">Next 1h</span>
-              <span className="hidden sm:inline">+24h</span>
-            </div>
+            ) : (
+              <div className="flex justify-between items-center text-[10px] font-mono text-white/50 px-1 mb-1">
+                <span>24h ago</span>
+                <span>12h ago</span>
+                <span>6h ago</span>
+                <span>1h ago</span>
+                {/* Live Pill Badge */}
+                <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>{liveTimeString || 'Live'}</span>
+                </div>
+                <span className="hidden sm:inline">Next 1h</span>
+                <span className="hidden sm:inline">+24h</span>
+              </div>
+            )}
 
             {/* Range Scrubber Input */}
             <div className="relative flex items-center">
@@ -138,6 +185,102 @@ export default function WindyTimeScrubber({
                 className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-white/10 accent-cyan-400 hover:bg-white/20 transition-all focus:outline-none"
               />
             </div>
+
+            {/* Radar Truth-in-Weather Met Information Bar */}
+            {isRadarMode && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-cyan-300/80">
+                  <span>📡</span>
+                  <span className="truncate">{radarAttribution || 'NOAA NEXRAD Doppler Network'}</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  Terrestrial Radar • 10m Scans • Public Domain (17 U.S.C. § 105)
+                </span>
+                <span className="text-amber-400/90 font-bold shrink-0">
+                  Frame {currentStep + 1}/{totalSteps}
+                </span>
+              </div>
+            )}
+
+            {/* Satellite Truth-in-Weather Information Bar */}
+            {activeLayer === 'satellite' && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-cyan-300/80">
+                  <span>🛰️</span>
+                  <span>NASA GIBS / NOAA GOES</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  Daily Global Composite • VIIRS/MODIS • Earth Science Open Data
+                </span>
+                <span className="text-cyan-300 font-bold shrink-0">
+                  {satelliteObservationUtc || 'Observation UTC Active'}
+                </span>
+              </div>
+            )}
+
+            {/* Pressure Isobars Truth-in-Weather Information Bar */}
+            {activeLayer === 'pressure' && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-cyan-300/80">
+                  <span>🔵</span>
+                  <span>Surface Pressure (MSLP)</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  MSLP • Synoptic 4 hPa isobars • Planetary High (H) & Low (L) Centers
+                </span>
+                <span className="text-cyan-300 font-bold shrink-0">
+                  Open-Meteo GFS
+                </span>
+              </div>
+            )}
+
+            {/* Marine Truth-in-Weather Information Bar */}
+            {activeLayer === 'marine' && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-cyan-300/80">
+                  <span>🌊</span>
+                  <span>Marine & Ocean Currents</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  Significant Wave Height • Swell Vectors • Douglas Sea State Scale
+                </span>
+                <span className="text-cyan-300 font-bold shrink-0">
+                  Open-Meteo Marine
+                </span>
+              </div>
+            )}
+
+            {/* Air Quality Information Bar */}
+            {activeLayer === 'air-quality' && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-cyan-300/80">
+                  <span>🍃</span>
+                  <span>Atmospheric Air Quality</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  PM2.5 / PM10 / Ozone / NO₂ • European & US AQI Standards
+                </span>
+                <span className="text-cyan-300 font-bold shrink-0">
+                  Copernicus CAMS
+                </span>
+              </div>
+            )}
+
+            {/* Forecast Precipitation Truth-in-Weather Information Bar */}
+            {activeLayer === 'precipitation' && (
+              <div className="flex items-center justify-between text-[9px] font-mono text-white/40 px-1 mt-1">
+                <span className="flex items-center gap-1 text-amber-300/80">
+                  <span>🌧️</span>
+                  <span>Precipitation Forecast</span>
+                </span>
+                <span className="hidden sm:inline text-white/40">
+                  Numerical NWP model forecast • Precipitation Simulation • Not Observed Terrestrial Radar
+                </span>
+                <span className="text-amber-300 font-bold shrink-0">
+                  ECMWF / GFS
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Speed Selector (1x / 2x / 4x) */}

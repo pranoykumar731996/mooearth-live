@@ -33,6 +33,9 @@ import {
 } from '@/services/map/mapStyles';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
+import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
+import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
+import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
 
 export type { MapStyleKey, MapStyleOption };
 export { MAP_STYLES, DEFAULT_CITY_ZOOM };
@@ -64,6 +67,11 @@ export interface CityMapViewerProps {
   countryName?: string;
   initialZoom?: number;
   weatherSummary?: CityWeatherSummary | null;
+  activeLayer?: string;
+  radarTileUrl?: string;
+  satelliteTileUrl?: string;
+  satelliteObservationUtc?: string;
+  particlesEnabled?: boolean;
   onReturnToEarth: () => void;
   onOpenWeather?: () => void;
   className?: string;
@@ -76,6 +84,11 @@ export default function CityMapViewer({
   countryName,
   initialZoom = 12.8,
   weatherSummary,
+  activeLayer = 'wind',
+  radarTileUrl,
+  satelliteTileUrl,
+  satelliteObservationUtc,
+  particlesEnabled = true,
   onReturnToEarth,
   onOpenWeather,
   className = '',
@@ -297,6 +310,145 @@ export default function CityMapViewer({
     }
   }, [latitude, longitude, initialZoom, isMapLoaded]);
 
+  // Synchronize NOAA Radar Raster Layer with MapLibre
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const sourceId = 'noaa-mrms-radar-source';
+    const layerId = 'noaa-mrms-radar-layer';
+    const defaultTileUrl = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png';
+    const activeTileUrl = radarTileUrl || defaultTileUrl;
+
+    if (activeLayer === 'radar') {
+      try {
+        const existingSource = map.getSource(sourceId) as any;
+        if (existingSource) {
+          // If the tile URL changed (e.g., user stepped through past radar frames), swap smoothly
+          if (existingSource.tiles?.[0] !== activeTileUrl) {
+            if (map.getLayer(layerId)) {
+              map.removeLayer(layerId);
+            }
+            map.removeSource(sourceId);
+            map.addSource(sourceId, {
+              type: 'raster',
+              tiles: [activeTileUrl],
+              tileSize: 256,
+              bounds: [-128.0, 24.0, -66.0, 50.0],
+            });
+            map.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: sourceId,
+              paint: {
+                'raster-opacity': 0.75,
+                'raster-fade-duration': 150,
+              },
+            });
+          }
+        } else {
+          map.addSource(sourceId, {
+            type: 'raster',
+            tiles: [activeTileUrl],
+            tileSize: 256,
+            bounds: [-128.0, 24.0, -66.0, 50.0],
+          });
+          map.addLayer({
+            id: layerId,
+            type: 'raster',
+            source: sourceId,
+            paint: {
+              'raster-opacity': 0.75,
+              'raster-fade-duration': 300,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('[MapLibre Radar] Layer sync notice:', err);
+      }
+    } else {
+      try {
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+      } catch {
+        // Silently ignore cleanup errors
+      }
+    }
+  }, [activeLayer, isMapLoaded, radarTileUrl]);
+
+  // Synchronize NASA GIBS Satellite Raster Layer with MapLibre
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const sourceId = 'nasa-gibs-satellite-source';
+    const layerId = 'nasa-gibs-satellite-layer';
+
+    if (activeLayer === 'satellite' && satelliteTileUrl) {
+      try {
+        const existingSource = map.getSource(sourceId) as any;
+        if (existingSource) {
+          if (existingSource.tiles?.[0] !== satelliteTileUrl) {
+            if (map.getLayer(layerId)) {
+              map.removeLayer(layerId);
+            }
+            map.removeSource(sourceId);
+            map.addSource(sourceId, {
+              type: 'raster',
+              tiles: [satelliteTileUrl],
+              tileSize: 256,
+              maxzoom: 9,
+              attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
+            });
+            map.addLayer({
+              id: layerId,
+              type: 'raster',
+              source: sourceId,
+              paint: {
+                'raster-opacity': 0.85,
+                'raster-fade-duration': 200,
+              },
+            });
+          }
+        } else {
+          map.addSource(sourceId, {
+            type: 'raster',
+            tiles: [satelliteTileUrl],
+            tileSize: 256,
+            maxzoom: 9,
+            attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
+          });
+          map.addLayer({
+            id: layerId,
+            type: 'raster',
+            source: sourceId,
+            paint: {
+              'raster-opacity': 0.85,
+              'raster-fade-duration': 300,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('[MapLibre Satellite] Layer sync notice:', err);
+      }
+    } else {
+      try {
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+      } catch {
+        // Silently ignore cleanup errors
+      }
+    }
+  }, [activeLayer, isMapLoaded, satelliteTileUrl]);
+
   // Center map on city marker
   const handleRecenter = () => {
     if (mapRef.current) {
@@ -321,6 +473,15 @@ export default function CityMapViewer({
         className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
       />
 
+      {/* ── Synchronized 2D Weather Overlay (Wind Streamlines) ── */}
+      {isMapLoaded && mapRef.current && (
+        <WeatherMapLibreOverlay
+          map={mapRef.current}
+          activeLayer={activeLayer}
+          particlesEnabled={particlesEnabled}
+        />
+      )}
+
       {/* ── Fallback Notification Toast ─────────────── */}
       {fallbackNotice && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-auto max-w-[90%] sm:max-w-md bg-[#070718]/95 border border-cyan-500/40 px-3.5 py-2 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-mono text-cyan-300 flex items-center justify-between gap-3 animate-fade-in">
@@ -336,6 +497,46 @@ export default function CityMapViewer({
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* ── Radar Coverage Notice when viewing areas outside North American Doppler network ── */}
+      {activeLayer === 'radar' && !isLocationCoveredByRadar(latitude, longitude) && (
+        <div className="absolute top-20 left-4 z-40 pointer-events-auto">
+          <RadarCoverageNotice
+            locationName={cityName}
+            onSwitchToPrecipitation={() => {
+              if (onOpenWeather) onOpenWeather();
+            }}
+            onSwitchToSatellite={() => {
+              if (onOpenWeather) onOpenWeather();
+            }}
+            onRecenterRadar={() => {
+              if (mapRef.current) {
+                mapRef.current.flyTo({ center: [-96.0, 38.5], zoom: 4.5, speed: 1.4 });
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* ── Satellite Genuine Observation Pass Badge (NASA GIBS) ── */}
+      {activeLayer === 'satellite' && (
+        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[90%] sm:max-w-md">
+          <div className="rounded-2xl bg-[#060818]/92 backdrop-blur-xl border border-cyan-500/30 shadow-[0_8px_30px_rgba(0,0,0,0.6)] px-3 py-2 flex items-center gap-2.5 text-xs">
+            <span className="text-base shrink-0">🛰️</span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-white text-[11px] flex items-center gap-1.5 flex-wrap">
+                <span>NASA GIBS Global Satellite Observation</span>
+                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1 py-0.2 rounded bg-emerald-500/20">
+                  REAL SENSOR PASS
+                </span>
+              </span>
+              <span className="text-[10px] text-white/50 font-mono truncate">
+                {satelliteObservationUtc || 'Daily Planetary Composite • NASA EOSDIS'}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

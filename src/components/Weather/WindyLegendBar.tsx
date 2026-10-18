@@ -52,7 +52,7 @@ export default function WindyLegendBar({
     if (activeLayer === 'radar') {
       return {
         unit: 'dBZ',
-        title: 'Doppler Radar Reflectivity',
+        title: 'Doppler Radar Reflectivity (NOAA NEXRAD)',
         ticks: ['15', '25', '35', '45', '55', '65+'],
         gradient: 'linear-gradient(to right, #0284c7 0%, #22c55e 25%, #eab308 50%, #f97316 75%, #ec4899 100%)',
       };
@@ -61,7 +61,7 @@ export default function WindyLegendBar({
     if (activeLayer === 'wind') {
       return {
         unit: 'km/h',
-        title: 'Surface Wind Speed',
+        title: 'Surface Wind Speed (Open-Meteo)',
         ticks: ['10', '25', '40', '60', '80', '110+'],
         gradient: 'linear-gradient(to right, #00f0ff 0%, #10b981 25%, #facc15 50%, #f97316 75%, #ef4444 100%)',
       };
@@ -70,7 +70,7 @@ export default function WindyLegendBar({
     if (activeLayer === 'precipitation') {
       return {
         unit: 'mm/h',
-        title: 'Precipitation Intensity',
+        title: 'Precipitation Intensity (Model Forecast)',
         ticks: ['0.5', '2.0', '5.0', '15', '30', '50+'],
         gradient: 'linear-gradient(to right, #38bdf8 0%, #2563eb 25%, #16a34a 50%, #eab308 75%, #dc2626 100%)',
       };

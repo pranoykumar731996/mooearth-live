@@ -2,8 +2,7 @@
 // MooEarth Live — Planetary Engine: NOAA NWS Severe Storms & Lightning Client
 // ============================================================
 // Genuine real-time severe convective thunderstorm & tornado warnings.
-// Driven by NOAA National Weather Service (NWS) active alerts API,
-// coupled with RainViewer Global Weather Radar Doppler network.
+// Driven by NOAA National Weather Service (NWS) active alerts API.
 // Telemetry includes real Doppler dBZ reflectivity, lightning strike rate,
 // peak return-stroke current, and hail hazard metrics.
 
@@ -11,55 +10,6 @@ import { PlanetaryEvent } from './types';
 import { CANONICAL_COUNTRIES } from '@/data/countries';
 
 const NOAA_ALERTS_ENDPOINT = 'https://api.weather.gov/alerts/active?event=Severe%20Thunderstorm%20Warning,Tornado%20Warning';
-const RAINVIEWER_ENDPOINT = 'https://api.rainviewer.com/public/weather-maps.json';
-
-interface RainViewerCache {
-  data: { host: string; path: string; time: number } | null;
-  cachedAt: number;
-}
-
-let rainViewerCache: RainViewerCache | null = null;
-const RAINVIEWER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Retrieves the latest RainViewer global composite Doppler radar timestamp and tile host.
- */
-export async function fetchRainViewerRadarMetadata(): Promise<{ host: string; path: string; time: number } | null> {
-  const now = Date.now();
-  if (rainViewerCache && now - rainViewerCache.cachedAt < RAINVIEWER_CACHE_TTL_MS) {
-    return rainViewerCache.data;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(RAINVIEWER_ENDPOINT, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'MooEarthLive/1.0 (contact@mooearth.live)' },
-    });
-    clearTimeout(timeout);
-
-    if (!res.ok) return rainViewerCache?.data || null;
-
-    const json = await res.json();
-    const host = json.host || 'https://tilecache.rainviewer.com';
-    const latestPast = json.radar?.past?.slice(-1)[0];
-
-    if (latestPast && latestPast.path) {
-      const result = {
-        host,
-        path: latestPast.path,
-        time: latestPast.time,
-      };
-      rainViewerCache = { data: result, cachedAt: now };
-      return result;
-    }
-  } catch (e) {
-    console.warn('[RainViewer] Failed to fetch radar metadata:', e);
-  }
-
-  return rainViewerCache?.data || null;
-}
 
 /**
  * Computes centroid [lat, lng] from GeoJSON geometry (Point, Polygon, MultiPolygon).
