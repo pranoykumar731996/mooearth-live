@@ -189,3 +189,79 @@ export async function fetchNoaaSevereStorms(timeoutMs = 7000): Promise<Planetary
     return getFallbackSevereStorms();
   }
 }
+
+const NOAA_NHC_CURRENT_STORMS_ENDPOINT = 'https://www.nhc.noaa.gov/CurrentStorms.json';
+
+/**
+ * Fetches real-time active tropical cyclones and hurricanes from official NOAA NHC feed.
+ * Returns only genuine, currently tracked tropical storms (strictly zero stale/fake data).
+ */
+export async function fetchNoaaCurrentStorms(timeoutMs = 6000): Promise<PlanetaryEvent[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    const res = await fetch(NOAA_NHC_CURRENT_STORMS_ENDPOINT, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'MooEarthLive/1.0 (contact@mooearth.live)',
+        Accept: 'application/json',
+      },
+      next: { revalidate: 300 }, // 5-minute cache
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const data = await res.json();
+    if (!Array.isArray(data?.activeStorms) || data.activeStorms.length === 0) {
+      return [];
+    }
+
+    const storms: PlanetaryEvent[] = [];
+
+    for (const s of data.activeStorms) {
+      const lat = typeof s.latitudeNumeric === 'number' ? s.latitudeNumeric : parseFloat(s.latitude || '');
+      const lng = typeof s.longitudeNumeric === 'number' ? s.longitudeNumeric : parseFloat(s.longitude || '');
+      if (isNaN(lat) || isNaN(lng)) continue;
+
+      const windKnots = parseFloat(s.intensity || '35');
+      const windSpeedKph = Math.round(windKnots * 1.852);
+      const pressureHpa = parseFloat(s.pressure || '1000');
+      const isHurricane = s.classification === 'HU' || windSpeedKph >= 119;
+      const stageName = isHurricane ? 'Hurricane' : 'Tropical Storm';
+      const basin: 'Atlantic' | 'East Pacific' = lng >= -100 ? 'Atlantic' : 'East Pacific';
+
+      storms.push({
+        id: `nhc-${s.id || s.binNumber || s.name.toLowerCase()}`,
+        title: `${stageName} ${s.name}`,
+        summary: `Active tropical cyclone tracked by NOAA National Hurricane Center with ${windSpeedKph} km/h maximum sustained winds and central pressure ${pressureHpa} hPa.`,
+        category: 'severe_weather',
+        lat,
+        lng,
+        country: basin === 'Atlantic' ? 'Atlantic Basin' : 'Eastern Pacific Basin',
+        city: `${s.name} Convective Center`,
+        source: s.publicAdvisory?.url || 'https://www.nhc.noaa.gov',
+        publishedAt: s.lastUpdate || new Date().toISOString(),
+        dataOrigin: 'noaa_severe',
+        planetaryTelemetry: {
+          windSpeedKph,
+          pressureHpa,
+          stormWarningType: 'tropical_cyclone',
+          cycloneAgency: 'NOAA National Hurricane Center (NHC)',
+          cycloneBasin: basin,
+          eventStatus: 'active',
+          sensorSource: 'NOAA NHC / GOES-East & GOES-West / Hurricane Hunters',
+          externalDataUrl: s.publicAdvisory?.url || 'https://www.nhc.noaa.gov',
+        },
+      });
+    }
+
+    return storms;
+  } catch (err) {
+    console.warn('[NOAA NHC] Failed to fetch active storms:', err);
+    return [];
+  }
+}

@@ -481,7 +481,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
       })).toBe(false);
     });
 
-    test('getActiveTropicalCyclones never drops Bay of Bengal Dana when severe thunderstorms are present', () => {
+    test('getActiveTropicalCyclones strictly reflects live feed and never injects stale historical Dana when only severe thunderstorms are present', () => {
       const feed = getActiveTropicalCyclones([
         {
           id: 'noaa-storm-tropical-squall',
@@ -496,11 +496,10 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
         },
       ]);
 
+      // Strictly zero stale data: when no real cyclone is active in North Indian basin, Dana (2024) must NOT be injected
       const dana = feed.cyclones.find((c) => c.basin === 'North Indian');
-      expect(dana).toBeDefined();
-      expect(dana!.lat).toBe(17.5);
-      expect(dana!.lng).toBe(88.5);
-      expect(dana!.id).toBe('cyclone-indian-ocean-tropical-cyclone');
+      expect(dana).toBeUndefined();
+      expect(feed.cyclones.length).toBe(0);
     });
 
     test('getDisasterMeta classifies Dana in Bay of Bengal as cyclone with matching telemetry on 2D map', () => {

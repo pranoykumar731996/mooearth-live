@@ -253,16 +253,17 @@ export const OFFICIAL_CYCLONE_BASELINES: TropicalCyclone[] = [
 ];
 
 /**
- * Aggregates tropical cyclones from live events feed or verified baselines.
- * Never drops baseline cyclones unless live cyclone data in that basin supersedes it.
+ * Aggregates tropical cyclones strictly from live events feed.
+ * Strictly live data: never fabricates or injects stale historical storms (e.g. Dana 2024).
+ * If no cyclones are active in a basin or globally, returns genuine empty count.
  */
 export function getActiveTropicalCyclones(liveEvents: WorldEvent[] = []): CycloneFeedResponse {
   const filtered = liveEvents.filter(isTropicalCycloneEvent);
 
   if (filtered.length === 0) {
     return {
-      count: OFFICIAL_CYCLONE_BASELINES.length,
-      cyclones: OFFICIAL_CYCLONE_BASELINES,
+      count: 0,
+      cyclones: [],
       attribution: 'NOAA National Hurricane Center / JTWC / IMD',
       sourceAgencies: ['NOAA NHC', 'JTWC', 'IMD'],
       fetchedAt: new Date().toISOString(),
@@ -323,20 +324,9 @@ export function getActiveTropicalCyclones(liveEvents: WorldEvent[] = []): Cyclon
     };
   });
 
-  // Guarantee planetary multi-basin coverage: if a major basin (e.g. North Indian / Bay of Bengal)
-  // does not have an active live storm, retain the verified baseline storm for that basin.
-  const activeBasins = new Set(liveCyclones.map((c) => c.basin));
-  const mergedCyclones = [...liveCyclones];
-  for (const baseline of OFFICIAL_CYCLONE_BASELINES) {
-    if (!activeBasins.has(baseline.basin)) {
-      mergedCyclones.push(baseline);
-      activeBasins.add(baseline.basin);
-    }
-  }
-
   return {
-    count: mergedCyclones.length,
-    cyclones: mergedCyclones,
+    count: liveCyclones.length,
+    cyclones: liveCyclones,
     attribution: 'NOAA National Hurricane Center / JTWC / IMD',
     sourceAgencies: ['NOAA NHC', 'JTWC', 'IMD'],
     fetchedAt: new Date().toISOString(),

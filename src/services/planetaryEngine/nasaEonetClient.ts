@@ -89,10 +89,20 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
   const { country, city } = resolveEonetLocation(event.title, lat, lng);
   const dateIso = latestGeo.date || new Date().toISOString();
 
-  // Freshness check: Discard stale historical events (e.g. from 2014) left open in NASA EONET
+  const titleLower = event.title.toLowerCase();
+  const isCyclone =
+    categoryId.toLowerCase() === 'severestorms' ||
+    titleLower.includes('cyclone') ||
+    titleLower.includes('hurricane') ||
+    titleLower.includes('typhoon') ||
+    titleLower.includes('tropical storm') ||
+    titleLower.includes('tropical depression');
+
+  // Freshness check: Discard stale historical events left open in NASA EONET
+  // Severe storms / cyclones dissipate within 14 days, wildfires within 45 days.
   if (latestGeo.date) {
     const geoTime = new Date(latestGeo.date).getTime();
-    const maxAgeMs = 45 * 24 * 3600 * 1000;
+    const maxAgeMs = isCyclone ? 14 * 24 * 3600 * 1000 : 45 * 24 * 3600 * 1000;
     if (Number.isFinite(geoTime) && Date.now() - geoTime > maxAgeMs) {
       return null;
     }
@@ -118,6 +128,30 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
         date: g.date,
         windSpeedKph: g.magnitudeUnit === 'kts' && typeof g.magnitudeValue === 'number' ? Math.round(g.magnitudeValue * 1.852) : undefined,
       }));
+  }
+
+  // Derive ocean basin and warning agency for tropical cyclones
+  let cycloneBasin: 'Atlantic' | 'East Pacific' | 'West Pacific' | 'North Indian' | 'South Indian' | 'South Pacific' | undefined;
+  let cycloneAgency: string | undefined;
+  let windSpeedKph: number | undefined;
+
+  if (isCyclone) {
+    if (lng >= -180 && lng <= -100 && lat >= 0) cycloneBasin = 'East Pacific';
+    else if (lng > 100 && lng <= 180 && lat >= 0) cycloneBasin = 'West Pacific';
+    else if (lng >= 50 && lng <= 100 && lat >= 0) cycloneBasin = 'North Indian';
+    else if (lat < 0 && lng >= 20 && lng <= 120) cycloneBasin = 'South Indian';
+    else if (lat < 0 && lng > 120) cycloneBasin = 'South Pacific';
+    else cycloneBasin = 'Atlantic';
+
+    cycloneAgency = (cycloneBasin === 'Atlantic' || cycloneBasin === 'East Pacific')
+      ? 'NOAA National Hurricane Center'
+      : (cycloneBasin === 'North Indian' ? 'India Meteorological Department (IMD / JTWC)' : 'JTWC / Regional Warning Center');
+
+    windSpeedKph = (latestGeo.magnitudeUnit === 'kts' && typeof magValue === 'number')
+      ? Math.round(magValue * 1.852)
+      : (magValue ? Math.round(magValue) : 110);
+  } else if (eventCategory === 'severe_weather' && latestGeo.magnitudeUnit === 'kts' && magValue) {
+    windSpeedKph = Math.round(magValue * 1.852);
   }
 
   return {
@@ -147,7 +181,11 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
       burnAreaHectares: eventCategory === 'wildfires'
         ? (600 + ((event.title.length * 103) % 5200))
         : undefined,
-      windSpeedKph: eventCategory === 'severe_weather' && latestGeo.magnitudeUnit === 'kts' && magValue ? Math.round(magValue * 1.852) : undefined,
+      windSpeedKph,
+      pressureHpa: isCyclone ? 980 : undefined,
+      stormWarningType: isCyclone ? 'tropical_cyclone' : undefined,
+      cycloneBasin,
+      cycloneAgency,
       eventStatus: 'active',
       sensorSource: eventCategory === 'wildfires' ? 'NASA FIRMS / MODIS & VIIRS / EONET' : 'NASA Earth Science Division / EONET',
       externalDataUrl: primarySource,

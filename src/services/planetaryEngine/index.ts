@@ -8,7 +8,7 @@ import { fetchUsgsEarthquakes } from './usgsClient';
 import { fetchNasaEonetEvents } from './nasaEonetClient';
 import { fetchNoaaSpaceWeather } from './noaaSpaceWeatherClient';
 import { fetchNasaEarthObservatory } from './nasaEarthObsClient';
-import { fetchNoaaSevereStorms } from './noaaSevereStormsClient';
+import { fetchNoaaSevereStorms, fetchNoaaCurrentStorms } from './noaaSevereStormsClient';
 import { fetchNoaaOceanCurrents } from './noaaOceanCurrentsClient';
 
 export * from './types';
@@ -45,6 +45,7 @@ export async function fetchLivePlanetaryEvents(refresh = false): Promise<Planeta
     fetchNoaaSpaceWeather(6000),
     fetchNasaEarthObservatory(7000),
     fetchNoaaSevereStorms(7000),
+    fetchNoaaCurrentStorms(6000),
     fetchNoaaOceanCurrents(7000),
   ]);
 

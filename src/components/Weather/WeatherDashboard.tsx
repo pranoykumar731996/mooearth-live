@@ -33,7 +33,7 @@ import {
   getActiveTropicalCyclonesAsEvents,
   isTropicalCycloneEvent,
 } from '@/services/weather/cycloneTrackingService';
-import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
+import { BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import { WEATHER_LAYERS, type WeatherLayerMode, type GeocodingResult, type UnitPreferences, type ForecastResponse, type SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobeApi } from '@/hooks/useGlobeControls';
@@ -217,11 +217,8 @@ export default function WeatherDashboard() {
   // Guarantees 100% synchronization and identical positions across 3D Earth and 2D MapLibre map.
   const allDisasters = useMemo(() => {
     const map = new Map<string, WorldEvent>();
-    // 1. Cyclones (live + verified baselines ensuring Bay of Bengal Dana & all basins always present)
+    // 1. Live tropical cyclones & hurricanes (strictly live real-time events, zero stale/historical data)
     activeCyclones.forEach((c) => map.set(c.id, c));
-    BASELINE_CYCLONE_EVENTS.forEach((c) => {
-      if (!map.has(c.id)) map.set(c.id, c);
-    });
     // 2. Earthquakes
     activeEarthquakes.forEach((e) => map.set(e.id, e));
     // 3. Wildfires

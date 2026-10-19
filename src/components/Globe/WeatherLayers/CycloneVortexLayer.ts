@@ -253,12 +253,12 @@ export class CycloneVortexLayer {
       this.particleTexture = createSoftParticleTexture();
     }
 
-    // Populate baseline initially
-    this.setEvents([]);
+    // Initialize empty; only populate when live events are received
   }
 
   /**
-   * Filter and populate active tropical cyclones / severe storms, seamlessly preserving baseline.
+   * Filter and populate active tropical cyclones / severe storms.
+   * Strictly live data: never injects stale historical baselines like Cyclone Dana (2024).
    */
   public setEvents(events: WorldEvent[]): void {
     const cycloneEvents = events.filter((e) => {
@@ -274,19 +274,7 @@ export class CycloneVortexLayer {
       );
     });
 
-    // Multi-basin preservation: Always ensure baseline coverage (e.g. Bay of Bengal Dana)
-    // unless a live cyclone is active in that basin.
-    const activeBasinIds = new Set(cycloneEvents.map((e) => e.planetaryTelemetry?.cycloneBasin || (e.lng >= 50 && e.lng <= 100 && e.lat >= 0 ? 'North Indian' : 'Other')));
     const activeList = [...cycloneEvents];
-    for (const baseline of BASELINE_CYCLONE_EVENTS) {
-      const bBasin = baseline.planetaryTelemetry?.cycloneBasin || (baseline.lng >= 50 && baseline.lng <= 100 && baseline.lat >= 0 ? 'North Indian' : 'Other');
-      if (!activeBasinIds.has(bBasin) || activeList.length === 0) {
-        if (!activeList.some((e) => e.id === baseline.id)) {
-          activeList.push(baseline);
-          activeBasinIds.add(bBasin);
-        }
-      }
-    }
     const activeIds = new Set(activeList.map((e) => e.id));
 
     // Remove storms no longer active
