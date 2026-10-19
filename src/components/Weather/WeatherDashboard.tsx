@@ -202,6 +202,36 @@ export default function WeatherDashboard() {
     }
   }, [disasterCategoryFilter, activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather]);
 
+  // Comprehensive planetary disaster feed combining all active cyclones and active hazards
+  const allDisasters = useMemo(() => {
+    const map = new Map<string, WorldEvent>();
+    // 1. Cyclones (live or baseline)
+    activeCyclones.forEach((c) => map.set(c.id, c));
+    if (activeCyclones.length === 0) {
+      BASELINE_CYCLONE_EVENTS.forEach((c) => map.set(c.id, c));
+    }
+    // 2. Earthquakes
+    activeEarthquakes.forEach((e) => map.set(e.id, e));
+    // 3. Wildfires
+    activeWildfires.forEach((w) => map.set(w.id, w));
+    // 4. Thunderstorms
+    activeThunderstorms.forEach((t) => map.set(t.id, t));
+    // 5. Space weather
+    activeSpaceWeather.forEach((s) => map.set(s.id, s));
+    // 6. Additional events from events feed
+    events.forEach((ev) => {
+      if (
+        ev.category === 'severe_weather' ||
+        ev.category === 'seismic' ||
+        ev.category === 'wildfires' ||
+        ev.category === 'space_weather'
+      ) {
+        if (!map.has(ev.id)) map.set(ev.id, ev);
+      }
+    });
+    return Array.from(map.values());
+  }, [activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather, events]);
+
   // Genuine satellite metadata & observation timestamp (NASA GIBS / NOAA GOES)
   const satelliteMeta = useMemo(() => {
     return getSatelliteMetadata(spectralMode, timelineIndex);
@@ -247,15 +277,16 @@ export default function WeatherDashboard() {
 
   // Action: Explore City Map using MapLibre GL JS
   const handleExploreCity = useCallback(() => {
-    if (!weather.selectedLocation) return;
     setViewMode('city-map');
-    updateUrlParams(
-      weather.selectedLocation.latitude,
-      weather.selectedLocation.longitude,
-      weather.selectedLocation.name,
-      weather.selectedLocation.country,
-      'city-map'
-    );
+    if (weather.selectedLocation) {
+      updateUrlParams(
+        weather.selectedLocation.latitude,
+        weather.selectedLocation.longitude,
+        weather.selectedLocation.name,
+        weather.selectedLocation.country,
+        'city-map'
+      );
+    }
   }, [weather.selectedLocation, updateUrlParams]);
 
   // Action: Return to 3D Earth Globe preserving coordinates, camera, and weather state
@@ -933,8 +964,9 @@ export default function WeatherDashboard() {
                           type="button"
                           onClick={() => {
                             setSelectedDisasterEvent(disaster);
-                            setViewMode('globe');
-                            globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
+                            if (viewMode === 'globe') {
+                              globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
+                            }
                           }}
                           className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
                             isSelected
@@ -1057,6 +1089,9 @@ export default function WeatherDashboard() {
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
                 satelliteObservationUtc={satelliteMeta.observationUtc}
                 particlesEnabled={particlesEnabled}
+                disasters={allDisasters}
+                selectedDisaster={selectedDisasterEvent}
+                onSelectDisaster={setSelectedDisasterEvent}
                 weatherSummary={
                   displayedForecast?.current
                     ? {

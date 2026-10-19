@@ -13,6 +13,7 @@ import { generateMetadata as generateWorldEventsMeta } from '../../src/app/world
 import { generateMetadata as generateLiveEventsMeta } from '../../src/app/live-events/page';
 import { generateMetadata as generateLocationWeatherMeta } from '../../src/app/weather/[location]/page';
 import { geoToVector3 } from '../../src/components/Globe/WeatherLayers/WindParticleSystem';
+import { getDisasterMeta } from '../../src/services/map/disasterMapUtils';
 
 test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGINE', () => {
 
@@ -347,5 +348,77 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
     });
   });
 
+  // =========================================================================
+  // 7. 2D MAP DISASTER & CYCLONE ENGINE
+  // =========================================================================
+  test.describe('7. 2D Map Disaster & Cyclone Engine', () => {
+    test('getDisasterMeta accurately classifies cyclones, earthquakes, wildfires, and thunderstorms', () => {
+      const cycloneMeta = getDisasterMeta({
+        id: 'test-cyclone',
+        title: 'Super Typhoon Kong-rey (Category 4)',
+        summary: 'Cat 4 tropical cyclone',
+        category: 'severe_weather',
+        lat: 19.5,
+        lng: 126.8,
+        city: 'Philippine Sea',
+        country: 'Philippines',
+        source: 'JTWC',
+        publishedAt: new Date().toISOString(),
+        planetaryTelemetry: {
+          windSpeedKph: 230,
+          pressureHpa: 935,
+          stormWarningType: 'tropical_cyclone',
+        },
+      });
+
+      expect(cycloneMeta.type).toBe('cyclone');
+      expect(cycloneMeta.icon).toBe('🌀');
+      expect(cycloneMeta.categoryLabel).toBe('Cat 4-5');
+      expect(cycloneMeta.cleanTitle).toContain('Kong-rey');
+
+      const quakeMeta = getDisasterMeta({
+        id: 'test-quake',
+        title: 'M 7.2 - Off-Coast Honshu Earthquake',
+        summary: 'Major subduction earthquake',
+        category: 'seismic',
+        lat: 37.5,
+        lng: 142.1,
+        city: 'Tohoku Coast',
+        country: 'Japan',
+        source: 'USGS',
+        publishedAt: new Date().toISOString(),
+        planetaryTelemetry: {
+          magnitude: 7.2,
+          depthKm: 28,
+        },
+      });
+
+      expect(quakeMeta.type).toBe('seismic');
+      expect(quakeMeta.icon).toBe('🌋');
+      expect(quakeMeta.categoryLabel).toBe('M 7.2');
+
+      const fireMeta = getDisasterMeta({
+        id: 'test-fire',
+        title: 'Jasper Complex Wildfire',
+        summary: 'Aggressive wildfire front',
+        category: 'wildfires',
+        lat: 52.87,
+        lng: -118.08,
+        city: 'Alberta',
+        country: 'Canada',
+        source: 'NASA FIRMS',
+        publishedAt: new Date().toISOString(),
+        planetaryTelemetry: {
+          fireRadiativePowerMw: 450,
+        },
+      });
+
+      expect(fireMeta.type).toBe('wildfires');
+      expect(fireMeta.icon).toBe('🔥');
+      expect(fireMeta.categoryLabel).toBe('450 MW');
+    });
+  });
+
 });
+
 

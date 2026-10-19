@@ -12,7 +12,7 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   Map,
   NavigationControl,
@@ -33,6 +33,7 @@ import {
 } from '@/services/map/mapStyles';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
+import type { WorldEvent } from '@/types';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
@@ -60,6 +61,14 @@ export interface CityWeatherSummary {
   units?: string;
 }
 
+import {
+  getDisasterMeta,
+  type DisasterCategoryType,
+  type DisasterMeta,
+} from '@/services/map/disasterMapUtils';
+
+export { getDisasterMeta, type DisasterCategoryType, type DisasterMeta };
+
 export interface CityMapViewerProps {
   latitude: number;
   longitude: number;
@@ -72,6 +81,9 @@ export interface CityMapViewerProps {
   satelliteTileUrl?: string;
   satelliteObservationUtc?: string;
   particlesEnabled?: boolean;
+  disasters?: WorldEvent[];
+  selectedDisaster?: WorldEvent | null;
+  onSelectDisaster?: (event: WorldEvent | null) => void;
   onReturnToEarth: () => void;
   onOpenWeather?: () => void;
   className?: string;
@@ -89,6 +101,9 @@ export default function CityMapViewer({
   satelliteTileUrl,
   satelliteObservationUtc,
   particlesEnabled = true,
+  disasters = [],
+  selectedDisaster = null,
+  onSelectDisaster,
   onReturnToEarth,
   onOpenWeather,
   className = '',
@@ -97,6 +112,7 @@ export default function CityMapViewer({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
+  const disasterMarkersRef = useRef<{ marker: Marker; event: WorldEvent; popup: Popup }[]>([]);
   const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>(() => getDefaultMapStyleKey());
@@ -108,6 +124,23 @@ export default function CityMapViewer({
   const [currentPitch, setCurrentPitch] = useState(0);
   const [currentBearing, setCurrentBearing] = useState(0);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+
+  // Disaster filtering and visibility on 2D map
+  const [disasterFilter, setDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms'>('all');
+  const [showDisasters, setShowDisasters] = useState(true);
+
+  // Filtered disaster list
+  const filteredDisasters = useMemo(() => {
+    if (!disasters || disasters.length === 0) return [];
+    if (disasterFilter === 'all') return disasters;
+    return disasters.filter((d) => getDisasterMeta(d).type === disasterFilter);
+  }, [disasters, disasterFilter]);
+
+  // Disaster counts
+  const cycloneCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'cyclone').length, [disasters]);
+  const quakeCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'seismic').length, [disasters]);
+  const wildfireCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'wildfires').length, [disasters]);
+  const stormCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'thunderstorms').length, [disasters]);
 
   // Initialize or reconfigure MapLibre
   const initMap = useCallback(
@@ -165,37 +198,42 @@ export default function CityMapViewer({
         });
         map.addControl(scale, 'bottom-left');
 
-        // Create glowing location pin element
-        const pinEl = document.createElement('div');
-        pinEl.className = 'city-map-pin-container group cursor-pointer';
-        pinEl.innerHTML = `
-          <div class="relative flex items-center justify-center">
-            <span class="absolute w-8 h-8 rounded-full bg-cyan-400/30 animate-ping"></span>
-            <span class="absolute w-5 h-5 rounded-full bg-cyan-500/50"></span>
-            <div class="relative w-3.5 h-3.5 rounded-full bg-cyan-300 border-2 border-white shadow-[0_0_12px_rgba(6,182,212,1)]"></div>
-          </div>
-        `;
+        // Create glowing location pin element if a specific city is selected
+        const isSpecificCity = cityName && cityName !== 'World Map';
+        if (isSpecificCity) {
+          const pinEl = document.createElement('div');
+          pinEl.className = 'city-map-pin-container group cursor-pointer';
+          pinEl.innerHTML = `
+            <div class="relative flex items-center justify-center">
+              <span class="absolute w-8 h-8 rounded-full bg-cyan-400/30 animate-ping"></span>
+              <span class="absolute w-5 h-5 rounded-full bg-cyan-500/50"></span>
+              <div class="relative w-3.5 h-3.5 rounded-full bg-cyan-300 border-2 border-white shadow-[0_0_12px_rgba(6,182,212,1)]"></div>
+            </div>
+          `;
 
-        // Create custom popup tooltip
-        const popup = new Popup({
-          offset: 20,
-          closeButton: false,
-          className: 'city-map-popup',
-        }).setHTML(`
-          <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(12px); border: 1px solid rgba(6,182,212,0.4); border-radius: 12px; padding: 8px 12px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
-            <div style="font-weight: 700; color: #67e8f9; font-size: 13px; margin-bottom: 2px;">${cityName}</div>
-            <div style="color: rgba(255,255,255,0.7); font-size: 10px;">${countryName || ''}</div>
-            <div style="color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 4px;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
-          </div>
-        `);
+          // Create custom popup tooltip
+          const popup = new Popup({
+            offset: 20,
+            closeButton: false,
+            className: 'city-map-popup',
+          }).setHTML(`
+            <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(12px); border: 1px solid rgba(6,182,212,0.4); border-radius: 12px; padding: 8px 12px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
+              <div style="font-weight: 700; color: #67e8f9; font-size: 13px; margin-bottom: 2px;">${cityName}</div>
+              <div style="color: rgba(255,255,255,0.7); font-size: 10px;">${countryName || ''}</div>
+              <div style="color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 4px;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
+            </div>
+          `);
 
-        // Attach marker
-        const marker = new Marker({ element: pinEl, anchor: 'center' })
-          .setLngLat([longitude, latitude])
-          .setPopup(popup)
-          .addTo(map);
+          // Attach marker
+          const marker = new Marker({ element: pinEl, anchor: 'center' })
+            .setLngLat([longitude, latitude])
+            .setPopup(popup)
+            .addTo(map);
 
-        markerRef.current = marker;
+          markerRef.current = marker;
+        } else {
+          markerRef.current = null;
+        }
 
         // Map lifecycle listeners
         map.on('load', () => {
@@ -204,11 +242,13 @@ export default function CityMapViewer({
             watchdogTimerRef.current = null;
           }
           setIsMapLoaded(true);
-          // Auto-display popup for instant clarity
-          try {
-            popup.addTo(map);
-          } catch {
-            // popup display optional
+          // Auto-display popup for instant clarity if city marker exists
+          if (markerRef.current) {
+            try {
+              markerRef.current.getPopup()?.addTo(map);
+            } catch {
+              // popup display optional
+            }
           }
         });
 
@@ -285,6 +325,14 @@ export default function CityMapViewer({
         markerRef.current.remove();
         markerRef.current = null;
       }
+      disasterMarkersRef.current.forEach(({ marker }) => {
+        try {
+          marker.remove();
+        } catch {
+          // ignore
+        }
+      });
+      disasterMarkersRef.current = [];
       if (mapRef.current) {
         try {
           mapRef.current.remove();
@@ -299,16 +347,301 @@ export default function CityMapViewer({
   // Handle fly-to coordinate updates if parent changes props
   useEffect(() => {
     if (mapRef.current && isMapLoaded) {
-      mapRef.current.flyTo({
-        center: [longitude, latitude],
-        zoom: initialZoom,
-        essential: true,
-      });
-      if (markerRef.current) {
-        markerRef.current.setLngLat([longitude, latitude]);
+      if (cityName && cityName !== 'World Map') {
+        mapRef.current.flyTo({
+          center: [longitude, latitude],
+          zoom: initialZoom,
+          essential: true,
+        });
+        if (markerRef.current) {
+          markerRef.current.setLngLat([longitude, latitude]);
+        }
       }
     }
-  }, [latitude, longitude, initialZoom, isMapLoaded]);
+  }, [latitude, longitude, initialZoom, isMapLoaded, cityName]);
+
+  // Synchronize 2D Disaster and Cyclone Markers with MapLibre
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    // Clear previous markers
+    disasterMarkersRef.current.forEach(({ marker }) => {
+      try {
+        marker.remove();
+      } catch {
+        // ignore
+      }
+    });
+    disasterMarkersRef.current = [];
+
+    if (!showDisasters || filteredDisasters.length === 0) return;
+
+    filteredDisasters.forEach((event) => {
+      if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return;
+      if (isNaN(event.lat) || isNaN(event.lng)) return;
+
+      const meta = getDisasterMeta(event);
+      const isSelected = selectedDisaster?.id === event.id;
+
+      // Build marker DOM element
+      const el = document.createElement('div');
+      el.className = `disaster-map-marker-container disaster-${meta.type} cursor-pointer group`;
+      el.setAttribute('data-disaster-id', event.id);
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', `${event.title} - ${meta.categoryLabel}`);
+
+      el.innerHTML = `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; user-select: none;">
+          <!-- Animated outer ring based on hazard type -->
+          ${
+            meta.type === 'cyclone'
+              ? `<div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; border: 2px dashed rgba(6,182,212,0.8); animation: cyclone-spin 5s linear infinite; pointer-events: none;"></div>
+                 <div style="position: absolute; width: 48px; height: 48px; top: -7px; border-radius: 9999px; background: rgba(6,182,212,0.2); animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
+              : meta.type === 'seismic'
+              ? `<div style="position: absolute; width: 50px; height: 50px; top: -8px; border-radius: 9999px; border: 2px solid rgba(244,63,94,0.7); animation: seismic-shockwave 2s ease-out infinite; pointer-events: none;"></div>
+                 <div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; background: rgba(244,63,94,0.25); animation: marker-glow-pulse 2s ease-in-out infinite; pointer-events: none;"></div>`
+              : meta.type === 'wildfires'
+              ? `<div style="position: absolute; width: 46px; height: 46px; top: -6px; border-radius: 9999px; background: radial-gradient(circle, rgba(249,115,22,0.45) 0%, transparent 70%); animation: marker-glow-pulse 2s ease-in-out infinite; pointer-events: none;"></div>`
+              : `<div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; border: 1.5px solid ${meta.colorHex}; opacity: 0.6; animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
+          }
+
+          <!-- Core Badge -->
+          <div style="
+            position: relative;
+            width: 34px;
+            height: 34px;
+            border-radius: 9999px;
+            background: #060818;
+            border: 2px solid ${isSelected ? '#ffffff' : meta.colorHex};
+            box-shadow: 0 0 ${isSelected ? '22px' : '14px'} ${meta.glowRgba};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transform: ${isSelected ? 'scale(1.25)' : 'scale(1)'};
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          ">
+            ${meta.type === 'cyclone' ? `<span style="display: inline-block; animation: cyclone-spin 4s linear infinite;">${meta.icon}</span>` : meta.icon}
+          </div>
+
+          <!-- Instant Name & Telemetry Label Pill (Always visible on 2D map!) -->
+          <div style="
+            margin-top: 4px;
+            padding: 2.5px 7px;
+            border-radius: 8px;
+            background: rgba(5, 5, 18, 0.95);
+            border: 1px solid ${isSelected ? '#ffffff' : `${meta.colorHex}66`};
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            pointer-events: none;
+            font-family: monospace;
+            font-size: 10px;
+            backdrop-filter: blur(8px);
+          ">
+            <span style="font-weight: 700; color: #ffffff;">${meta.cleanTitle}</span>
+            <span style="
+              padding: 1px 4px;
+              border-radius: 4px;
+              background: ${meta.badgeBg};
+              border: 1px solid ${meta.badgeBorder};
+              color: ${meta.colorHex};
+              font-weight: 800;
+              font-size: 9px;
+            ">${meta.categoryLabel}</span>
+          </div>
+        </div>
+      `;
+
+      // Custom Popup
+      const popup = new Popup({
+        offset: 24,
+        closeButton: true,
+        className: 'disaster-map-popup',
+        maxWidth: '320px',
+      }).setHTML(`
+        <div style="
+          background: rgba(6, 8, 24, 0.97);
+          backdrop-filter: blur(20px);
+          border: 1px solid ${meta.colorHex}66;
+          border-radius: 16px;
+          padding: 14px 16px;
+          color: #fff;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px ${meta.glowRgba}33;
+          min-width: 250px;
+          max-width: 300px;
+        ">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 16px;">${meta.icon}</span>
+              <span style="font-family: monospace; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: ${meta.colorHex};">
+                ${meta.type === 'cyclone' ? 'TROPICAL CYCLONE' : meta.type === 'seismic' ? 'SEISMIC EVENT' : meta.type === 'wildfires' ? 'THERMAL WILDFIRE' : meta.type === 'space_weather' ? 'SPACE WEATHER' : 'SEVERE STORM'}
+              </span>
+            </div>
+            <span style="font-family: monospace; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: ${meta.badgeBg}; border: 1px solid ${meta.badgeBorder}; color: ${meta.colorHex};">
+              ${meta.categoryLabel}
+            </span>
+          </div>
+
+          <div style="font-size: 13px; font-weight: 800; color: #ffffff; line-height: 1.3; margin-bottom: 3px;">
+            ${event.title}
+          </div>
+
+          <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-bottom: 8px; font-family: monospace;">
+            📍 ${event.city ? `${event.city}` : ''}${event.country ? ` · ${event.country}` : ''} (${event.lat.toFixed(2)}°, ${event.lng.toFixed(2)}°)
+          </div>
+
+          <div style="font-size: 11px; line-height: 1.45; color: rgba(255, 255, 255, 0.8); margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+            ${event.summary}
+          </div>
+
+          <!-- Telemetry Badge Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); font-family: monospace; font-size: 10px; margin-bottom: 10px;">
+            ${event.planetaryTelemetry?.windSpeedKph ? `
+              <div><span style="color: rgba(255,255,255,0.4);">WIND:</span> <strong style="color: #67e8f9;">${Math.round(event.planetaryTelemetry.windSpeedKph)} km/h</strong></div>
+            ` : ''}
+            ${event.planetaryTelemetry?.pressureHpa ? `
+              <div><span style="color: rgba(255,255,255,0.4);">PRES:</span> <strong style="color: #67e8f9;">${event.planetaryTelemetry.pressureHpa} hPa</strong></div>
+            ` : ''}
+            ${event.planetaryTelemetry?.magnitude ? `
+              <div><span style="color: rgba(255,255,255,0.4);">MAG:</span> <strong style="color: #fda4af;">M ${event.planetaryTelemetry.magnitude.toFixed(1)}</strong></div>
+            ` : ''}
+            ${event.planetaryTelemetry?.fireRadiativePowerMw ? `
+              <div><span style="color: rgba(255,255,255,0.4);">FRP:</span> <strong style="color: #fcd34d;">${event.planetaryTelemetry.fireRadiativePowerMw} MW</strong></div>
+            ` : ''}
+            ${event.source ? `
+              <div style="grid-column: span 2;"><span style="color: rgba(255,255,255,0.4);">SRC:</span> <strong style="color: rgba(255,255,255,0.85);">${event.source}</strong></div>
+            ` : ''}
+          </div>
+
+          <button type="button" class="inspect-dossier-btn" data-event-id="${event.id}" style="
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, ${meta.colorHex}22, ${meta.colorHex}44);
+            border: 1px solid ${meta.colorHex}88;
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+          ">
+            <span>📊 Inspect Telemetry Dossier</span>
+            <span>↗</span>
+          </button>
+        </div>
+      `);
+
+      // Click / touch handler on marker
+      const handleSelect = (e: Event) => {
+        e.stopPropagation();
+        onSelectDisaster?.(event);
+        map.flyTo({
+          center: [event.lng, event.lat],
+          zoom: Math.max(map.getZoom(), 5.5),
+          speed: 1.2,
+          essential: true,
+        });
+        popup.addTo(map);
+      };
+
+      el.addEventListener('click', handleSelect);
+      el.addEventListener('touchend', handleSelect);
+
+      // Popup dossier inspect button handler
+      popup.on('open', () => {
+        const pEl = popup.getElement();
+        if (pEl) {
+          const btn = pEl.querySelector(`.inspect-dossier-btn[data-event-id="${event.id}"]`);
+          if (btn) {
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              onSelectDisaster?.(event);
+            });
+          }
+        }
+      });
+
+      const marker = new Marker({ element: el, anchor: 'center' })
+        .setLngLat([event.lng, event.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      disasterMarkersRef.current.push({ marker, event, popup });
+
+      // If this event was already selected, open its popup
+      if (isSelected) {
+        try {
+          popup.addTo(map);
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    return () => {
+      disasterMarkersRef.current.forEach(({ marker }) => {
+        try {
+          marker.remove();
+        } catch {
+          // ignore
+        }
+      });
+      disasterMarkersRef.current = [];
+    };
+  }, [filteredDisasters, showDisasters, isMapLoaded, onSelectDisaster, selectedDisaster?.id]);
+
+  // Handle outside selectedDisaster updates (e.g. from top dashboard pills)
+  useEffect(() => {
+    if (selectedDisaster && mapRef.current && isMapLoaded) {
+      mapRef.current.flyTo({
+        center: [selectedDisaster.lng, selectedDisaster.lat],
+        zoom: Math.max(mapRef.current.getZoom(), 5.5),
+        speed: 1.2,
+        essential: true,
+      });
+      const entry = disasterMarkersRef.current.find((m) => m.event.id === selectedDisaster.id);
+      if (entry) {
+        try {
+          entry.popup.addTo(mapRef.current);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [selectedDisaster, isMapLoaded]);
+
+  // Action: Fly to disaster when selected from 2D disaster tray
+  const handleFlyToDisaster = useCallback(
+    (event: WorldEvent) => {
+      if (!mapRef.current) return;
+      onSelectDisaster?.(event);
+      mapRef.current.flyTo({
+        center: [event.lng, event.lat],
+        zoom: Math.max(mapRef.current.getZoom(), 5.5),
+        speed: 1.2,
+        essential: true,
+      });
+      const entry = disasterMarkersRef.current.find((m) => m.event.id === event.id);
+      if (entry) {
+        try {
+          entry.popup.addTo(mapRef.current);
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [onSelectDisaster]
+  );
 
   // Synchronize NOAA Radar Raster Layer with MapLibre
   useEffect(() => {
@@ -561,21 +894,25 @@ export default function CityMapViewer({
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <div className="min-w-0">
               <div className="font-bold text-white truncate max-w-[180px] sm:max-w-[240px]">
-                {cityName}
+                {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
               </div>
               <div className="text-[10px] text-white/50 truncate">
-                {(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · {latitude.toFixed(2)}°, {longitude.toFixed(2)}°
+                {cityName === 'World Map'
+                  ? 'Planetary Cyclones & Hazards'
+                  : `${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleRecenter}
-              className="ml-1 p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer"
-              title="Recenter camera on city marker"
-              aria-label="Recenter"
-            >
-              🎯
-            </button>
+            {cityName !== 'World Map' && (
+              <button
+                type="button"
+                onClick={handleRecenter}
+                className="ml-1 p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer"
+                title="Recenter camera on city marker"
+                aria-label="Recenter"
+              >
+                🎯
+              </button>
+            )}
           </div>
         </div>
 
@@ -676,6 +1013,125 @@ export default function CityMapViewer({
           )}
         </div>
       </div>
+
+      {/* ── 2D Map Active Disasters Floating HUD & Quick Selector ── */}
+      {disasters && disasters.length > 0 && (
+        <div className="absolute bottom-11 sm:bottom-12 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
+          <div className="pointer-events-auto max-w-full w-auto flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-2xl bg-[#050512]/92 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+            {/* Category Filter Chips & Eye Visibility Toggle */}
+            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none max-w-full">
+              <button
+                type="button"
+                onClick={() => setShowDisasters(!showDisasters)}
+                className={`px-2 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                  showDisasters
+                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                    : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                }`}
+                title="Toggle disaster markers on 2D map"
+              >
+                <span>{showDisasters ? '👁️' : '🕶️'}</span>
+                <span className="hidden sm:inline">Disasters</span>
+                <span className="text-[9px] px-1 rounded bg-white/10 font-bold">{filteredDisasters.length}</span>
+              </button>
+
+              <div className="h-3 w-px bg-white/15" />
+
+              {/* Filter Pills */}
+              {(
+                [
+                  { key: 'all', label: 'All Hazards', icon: '🌐', count: disasters.length },
+                  { key: 'cyclones', label: 'Cyclones', icon: '🌀', count: cycloneCount },
+                  { key: 'seismic', label: 'Quakes', icon: '🌋', count: quakeCount },
+                  { key: 'wildfires', label: 'Fires', icon: '🔥', count: wildfireCount },
+                  { key: 'thunderstorms', label: 'Storms', icon: '⚡', count: stormCount },
+                ] as const
+              ).map((tab) => {
+                const isActive = disasterFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setDisasterFilter(tab.key)}
+                    className={`shrink-0 px-2 py-0.8 rounded-xl text-[10px] font-mono font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                        : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    <span className="text-[9px] font-bold opacity-60">({tab.count})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Horizontal Carousel of Disasters for Quick-Fly */}
+            {showDisasters && filteredDisasters.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[92vw] sm:max-w-2xl py-0.5">
+                {filteredDisasters.map((ev) => {
+                  const meta = getDisasterMeta(ev);
+                  const isSelected = selectedDisaster?.id === ev.id;
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => handleFlyToDisaster(ev)}
+                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-cyan-500/30 border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.6)]'
+                          : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                      title={`Fly to ${ev.title}`}
+                    >
+                      <span>{meta.icon}</span>
+                      <span className="truncate max-w-[120px]">{meta.cleanTitle}</span>
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 font-bold" style={{ color: meta.colorHex }}>
+                        {meta.categoryLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Scoped Disaster Animations & MapLibre Popup Styling ── */}
+      <style>{`
+        @keyframes cyclone-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes seismic-shockwave {
+          0% { transform: scale(0.6); opacity: 0.9; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes marker-glow-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50% { transform: scale(1.1); opacity: 1; }
+        }
+        .disaster-map-popup .maplibregl-popup-content {
+          background: transparent !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          border-radius: 16px !important;
+        }
+        .disaster-map-popup .maplibregl-popup-tip {
+          border-top-color: rgba(6, 8, 24, 0.97) !important;
+          border-bottom-color: rgba(6, 8, 24, 0.97) !important;
+        }
+        .disaster-map-popup .maplibregl-popup-close-button {
+          color: #fff !important;
+          padding: 4px 8px !important;
+          font-size: 16px !important;
+          right: 8px !important;
+          top: 8px !important;
+          outline: none !important;
+        }
+      `}</style>
 
       {/* ── Bottom Telemetry & Attribution Bar ───────── */}
       <div className="absolute bottom-2 left-4 right-4 z-20 pointer-events-none flex items-end justify-between text-[10px] font-mono text-white/40">
