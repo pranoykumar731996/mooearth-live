@@ -280,6 +280,22 @@ export default function WeatherDashboard() {
     }
   }, [weather.selectedLocation, updateUrlParams, getFlyDuration]);
 
+  // Action: Switch to Weather view and return to 3D Earth globe if in city-map
+  const handleSwitchToWeather = useCallback(() => {
+    if (viewMode === 'city-map') {
+      setViewMode('globe');
+      if (weather.selectedLocation) {
+        updateUrlParams(
+          weather.selectedLocation.latitude,
+          weather.selectedLocation.longitude,
+          weather.selectedLocation.name,
+          weather.selectedLocation.country,
+          'globe'
+        );
+      }
+    }
+  }, [viewMode, weather, updateUrlParams]);
+
   // Action: Switch to Weather Radar layer and return to 3D Earth globe if in city-map
   const handleSwitchToRadar = useCallback(() => {
     if (viewMode === 'city-map') {
@@ -597,17 +613,13 @@ export default function WeatherDashboard() {
             <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors hidden md:inline">
               MooEarth
             </span>
-            <span className="text-xs font-semibold text-cyan-400 px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20">
-              <span className="sm:hidden">Weather</span>
-              <span className="hidden sm:inline">Weather Intelligence</span>
-            </span>
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-0">
+          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-[130px] sm:min-w-[200px]">
             <WeatherSearch
               onSelectLocation={handleSelectLocation}
-              placeholder="Search any city or place..."
+              placeholder="Search city or place..."
               initialQuery={
                 weather.selectedLocation
                   ? weather.selectedLocation.country &&
@@ -623,7 +635,7 @@ export default function WeatherDashboard() {
           {/* Quick Links & View Mode Switch */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {weather.selectedLocation && (
-              <div className="flex rounded-xl bg-white/5 border border-white/10 p-0.5">
+              <div className="hidden sm:flex rounded-xl bg-white/5 border border-white/10 p-0.5">
                 <button
                   type="button"
                   data-testid="header-earth-mode-btn"
@@ -652,27 +664,27 @@ export default function WeatherDashboard() {
                 </button>
               </div>
             )}
-            {/* Two Primary Destinations Navigation: Weather Radar & Games Hub */}
+            {/* Two Primary Destinations Navigation: Weather & Games Hub */}
             <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
-              {/* Destination 1: Weather Radar */}
+              {/* Destination 1: Weather */}
               <button
                 type="button"
-                data-testid="header-weather-radar-btn"
-                onClick={handleSwitchToRadar}
+                data-testid="header-weather-btn"
+                onClick={handleSwitchToWeather}
                 className={`h-8 sm:h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
-                  weather.activeLayer === 'radar' && viewMode === 'globe'
+                  viewMode === 'globe'
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,255,0.6)]'
                     : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-400/30 hover:border-cyan-400/60'
                 }`}
-                title="View Live Doppler Weather Radar (NOAA NEXRAD)"
-                aria-label="Weather Radar"
-                aria-pressed={weather.activeLayer === 'radar' && viewMode === 'globe'}
+                title="View Live Planetary Weather Intelligence"
+                aria-label="Weather Intelligence"
+                aria-pressed={viewMode === 'globe'}
               >
-                <span className="text-sm">📡</span>
+                <span className="text-sm">🌤️</span>
                 <span className="font-bold whitespace-nowrap">
-                  <span className="hidden sm:inline">Weather </span>Radar
+                  Weather
                 </span>
-                {weather.activeLayer === 'radar' && viewMode === 'globe' && (
+                {viewMode === 'globe' && (
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping shrink-0" />
                 )}
               </button>

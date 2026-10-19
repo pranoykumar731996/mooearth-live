@@ -172,7 +172,7 @@ export default function WeatherSearch({
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full px-3.5 sm:px-4 py-2 sm:py-2.5 pl-9 sm:pl-10 pr-8 sm:pr-9 rounded-xl sm:rounded-2xl 
+          className="w-full px-2.5 sm:px-4 py-1.5 sm:py-2.5 pl-8 sm:pl-10 pr-7 sm:pr-9 rounded-xl sm:rounded-2xl 
                      bg-white/[0.07] border border-white/10 
                      text-xs sm:text-sm text-white placeholder-white/40 
                      focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.1]
@@ -182,7 +182,7 @@ export default function WeatherSearch({
           aria-autocomplete="list"
           role="combobox"
         />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
+        <span className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
           {isLoading ? (
             <svg className="animate-spin h-3.5 w-3.5 sm:h-4 sm:w-4" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" />
@@ -197,7 +197,7 @@ export default function WeatherSearch({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-2 sm:right-2.5 top-1/2 -translate-y-1/2 p-1 text-white/40 hover:text-white transition-colors"
+            className="absolute right-1.5 sm:right-2.5 top-1/2 -translate-y-1/2 p-1 text-white/40 hover:text-white transition-colors"
             title="Clear search"
             aria-label="Clear search"
           >

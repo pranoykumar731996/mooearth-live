@@ -219,16 +219,15 @@ export default function GamesHubClient({ initialQuestions }: GamesHubClientProps
 
           {/* Exactly Two Primary Destinations Navigation */}
           <nav role="navigation" aria-label="Primary destinations" className="flex items-center p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            {/* Destination 1: Weather Radar (/?layer=radar) */}
+            {/* Destination 1: Weather (/) */}
             <Link
-              href="/?layer=radar"
+              href="/"
               className="h-9 px-2.5 sm:px-4 rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs font-bold tracking-wider text-cyan-300 hover:text-white hover:bg-white/5 transition-all duration-300 cursor-pointer"
-              title="MooEarth Live Weather Radar"
-              aria-label="Weather Radar"
+              title="MooEarth Weather Intelligence"
+              aria-label="Weather Intelligence"
             >
-              <span className="text-base">📡</span>
-              <span className="hidden sm:inline">WEATHER RADAR</span>
-              <span className="sm:hidden">RADAR</span>
+              <span className="text-base">🌤️</span>
+              <span>WEATHER</span>
             </Link>
 
             {/* Destination 2: Games (/games) - ACTIVE */}
