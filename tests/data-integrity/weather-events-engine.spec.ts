@@ -452,6 +452,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
         lng: 88.5,
         city: 'Bay of Bengal',
         country: 'India',
+        source: 'IMD',
         publishedAt: new Date().toISOString(),
       })).toBe(true);
 
@@ -465,6 +466,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
         lng: -97.1,
         country: 'United States',
         city: 'Oklahoma City Corridor',
+        source: 'NOAA NWS',
         publishedAt: new Date().toISOString(),
       })).toBe(false);
 
@@ -477,6 +479,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
         lng: 121.0,
         country: 'Philippines',
         city: 'Manila Bay Sector',
+        source: 'PAGASA',
         publishedAt: new Date().toISOString(),
       })).toBe(false);
     });
@@ -492,6 +495,7 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
           lng: 121.0,
           city: 'Manila',
           country: 'Philippines',
+          source: 'NOAA NWS',
           publishedAt: new Date().toISOString(),
         },
       ]);

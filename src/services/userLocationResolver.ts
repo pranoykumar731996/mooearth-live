@@ -87,7 +87,7 @@ const TIMEZONE_LOCATION_MAP: { match: string; loc: Omit<ResolvedLocationTarget, 
 // In-memory fallback for SSR and testing environments
 const memoryStorage: Record<string, string> = {};
 
-function getStorage(): { getItem(key: string): string | null; setItem(key: string, val: string): void } {
+function getStorage(): { getItem(key: string): string | null; setItem(key: string, val: string): void; removeItem(key: string): void } {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       const testKey = '__mooearth_test__';
@@ -102,6 +102,9 @@ function getStorage(): { getItem(key: string): string | null; setItem(key: strin
     getItem: (key: string) => memoryStorage[key] ?? null,
     setItem: (key: string, val: string) => {
       memoryStorage[key] = val;
+    },
+    removeItem: (key: string) => {
+      delete memoryStorage[key];
     },
   };
 }
@@ -121,6 +124,15 @@ export function getSavedUserLocation(): ResolvedLocationTarget | null {
       typeof parsed?.longitude === 'number' &&
       typeof parsed?.name === 'string'
     ) {
+      // Auto-heal / invalidate legacy hardcoded Tokyo default if user is not in Japan timezone
+      if (parsed.name.toLowerCase().includes('tokyo') || parsed.country?.toLowerCase() === 'japan') {
+        const tz = (typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : '').toLowerCase();
+        if (!tz.includes('tokyo') && !tz.includes('japan')) {
+          storage.removeItem(STORAGE_KEY);
+          return null;
+        }
+      }
+
       return {
         latitude: parsed.latitude,
         longitude: parsed.longitude,
