@@ -191,5 +191,33 @@ test.describe('Weather Intelligence 3D Globe Fix', () => {
     });
     expect(panelScrollable).toBe(true);
   });
+
+  test('Mobile 2D map displays weather telemetry option and opens bottom sheet drawer', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Navigate directly with view=city query param or through URL
+    await page.goto('/weather?view=city&lat=35.6762&lng=139.6503&city=Tokyo', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    // 1. In mobile 2D map, the floating Weather Telemetry CTA must be visible
+    const telemetryCta = page.locator('[data-testid="open-mobile-sheet"]').first();
+    await expect(telemetryCta).toBeVisible({ timeout: 15000 });
+
+    // 2. The 2D map top HUD telemetry option should also be present
+    const cityTelemetryBtn = page.locator('[data-testid="city-map-telemetry-btn"]').first();
+    await expect(cityTelemetryBtn).toBeVisible({ timeout: 15000 });
+
+    // 3. Tapping the telemetry CTA opens the bottom sheet drawer
+    await telemetryCta.click();
+    await page.waitForTimeout(600);
+    const closeBtn = page.locator('[data-testid="close-mobile-sheet"]').first();
+    await expect(closeBtn).toBeVisible();
+
+    // 4. Closing the sheet returns back to the 2D map view
+    await closeBtn.click();
+    await page.waitForTimeout(600);
+    await expect(closeBtn).not.toBeVisible();
+    await expect(telemetryCta).toBeVisible();
+  });
 });
+
 

@@ -86,6 +86,7 @@ export interface CityMapViewerProps {
   onSelectDisaster?: (event: WorldEvent | null) => void;
   onReturnToEarth: () => void;
   onOpenWeather?: () => void;
+  onMapClick?: (coords: { lat: number; lng: number }) => void;
   className?: string;
 }
 
@@ -106,6 +107,7 @@ export default function CityMapViewer({
   onSelectDisaster,
   onReturnToEarth,
   onOpenWeather,
+  onMapClick,
   className = '',
 }: CityMapViewerProps) {
   const { locale, dict } = useLanguage();
@@ -258,6 +260,17 @@ export default function CityMapViewer({
           setCurrentBearing(Math.round(map.getBearing()));
         });
 
+        // Click on map coordinates to inspect weather telemetry
+        map.on('click', (e) => {
+          const target = e.originalEvent.target as HTMLElement;
+          if (target?.closest('.disaster-map-marker-container') || target?.closest('.maplibregl-popup')) {
+            return;
+          }
+          const lat = Number(e.lngLat.lat.toFixed(4));
+          const lng = Number(e.lngLat.lng.toFixed(4));
+          onMapClick?.({ lat, lng });
+        });
+
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
@@ -309,7 +322,7 @@ export default function CityMapViewer({
         setErrorMessage(err?.message || 'Unable to initialize WebGL city map.');
       }
     },
-    [latitude, longitude, cityName, countryName, initialZoom]
+    [latitude, longitude, cityName, countryName, initialZoom, onMapClick]
   );
 
   // Mount effect
@@ -874,29 +887,29 @@ export default function CityMapViewer({
       )}
 
       {/* ── Top Floating Navigation HUD ──────────────── */}
-      <div className="absolute top-4 left-4 right-4 z-30 pointer-events-none flex items-start justify-between gap-3">
-        {/* Left: "Return to Earth" Action */}
-        <div className="flex flex-col gap-2 pointer-events-auto">
+      <div className="absolute top-4 left-3 right-3 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-2 sm:gap-3">
+        {/* Left: "Return to Earth" Action & City Badge */}
+        <div className="flex flex-col gap-1.5 sm:gap-2 pointer-events-auto min-w-0">
           <button
             type="button"
             data-testid="return-to-earth-btn"
             onClick={onReturnToEarth}
-            className="group px-3.5 py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-2.5 shadow-2xl transition-all active:scale-95 cursor-pointer"
+            className="group px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit"
             title="Return to interactive 3D Earth globe"
           >
             <span className="text-base group-hover:rotate-12 transition-transform">🌍</span>
-            <span>{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
-            <span className="text-[10px] text-cyan-400/60 font-normal">⟵ Orbit</span>
+            <span className="truncate">{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
+            <span className="text-[10px] text-cyan-400/60 font-normal hidden sm:inline">⟵ Orbit</span>
           </button>
 
           {/* City Badge & Recenter Button */}
-          <div className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-2 shadow-2xl">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-2 shadow-2xl max-w-full">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
             <div className="min-w-0">
-              <div className="font-bold text-white truncate max-w-[180px] sm:max-w-[240px]">
+              <div className="font-bold text-white truncate max-w-[130px] sm:max-w-[240px]">
                 {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
               </div>
-              <div className="text-[10px] text-white/50 truncate">
+              <div className="text-[10px] text-white/50 truncate max-w-[130px] sm:max-w-[240px]">
                 {cityName === 'World Map'
                   ? 'Planetary Cyclones & Hazards'
                   : `${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
@@ -906,7 +919,7 @@ export default function CityMapViewer({
               <button
                 type="button"
                 onClick={handleRecenter}
-                className="ml-1 p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer"
+                className="ml-1 p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer shrink-0"
                 title="Recenter camera on city marker"
                 aria-label="Recenter"
               >
@@ -916,15 +929,15 @@ export default function CityMapViewer({
           </div>
         </div>
 
-        {/* Right: Style Selector & Weather Summary */}
-        <div className="flex flex-col items-end gap-2 pointer-events-auto">
+        {/* Right: Style Selector & Weather Telemetry Summary */}
+        <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
           {/* Style Selector Dropdown Pill */}
           <div className="relative">
             <button
               type="button"
               data-testid="map-style-selector-btn"
               onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-              className="px-3 py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
               title="Change Map Tiles & Styling"
             >
               <span className="text-cyan-400">🗺️</span>
@@ -965,24 +978,28 @@ export default function CityMapViewer({
             )}
           </div>
 
-          {/* Compact Live Weather Summary Badge */}
-          {weatherSummary && (
+          {/* Live Weather Summary Badge & Mobile Weather Telemetry Option */}
+          {weatherSummary ? (
             <div
               data-testid="city-weather-summary-card"
-              className="px-3.5 py-2.5 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/20 shadow-2xl flex flex-col gap-1 max-w-[220px]"
+              className="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 shadow-2xl flex flex-col gap-1 max-w-[210px] sm:max-w-[230px]"
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
+                <div
+                  className="flex items-center gap-1.5 cursor-pointer group"
+                  onClick={onOpenWeather}
+                  title="Click to view detailed weather telemetry"
+                >
                   <span className="text-xl">
                     {weatherSummary.weatherEmoji || '🌤️'}
                   </span>
                   <div>
-                    <div className="text-sm font-black text-white font-mono leading-tight">
+                    <div className="text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors">
                       {typeof weatherSummary.temperature === 'number'
                         ? `${Math.round(weatherSummary.temperature)}°${weatherSummary.units === 'fahrenheit' ? 'F' : 'C'}`
                         : '—'}
                     </div>
-                    <div className="text-[10px] text-white/50 truncate max-w-[110px]">
+                    <div className="text-[10px] text-white/50 truncate max-w-[90px] sm:max-w-[110px]">
                       {weatherSummary.weatherDescription || 'Current weather'}
                     </div>
                   </div>
@@ -991,17 +1008,22 @@ export default function CityMapViewer({
                 {onOpenWeather && (
                   <button
                     type="button"
+                    data-testid="city-map-telemetry-btn"
                     onClick={onOpenWeather}
-                    className="p-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-300 text-[10px] font-mono transition-colors cursor-pointer"
-                    title="Open full meteorological radar and forecasts"
+                    className="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-300 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 shadow-sm"
+                    title="Open full meteorological telemetry and forecasts"
                   >
-                    Radar ↗
+                    <span>📊</span>
+                    <span>Telemetry</span>
                   </button>
                 )}
               </div>
 
               {/* Extra telemetry pill */}
-              <div className="flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40">
+              <div
+                className="flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40 cursor-pointer hover:text-white/70 transition-colors"
+                onClick={onOpenWeather}
+              >
                 {typeof weatherSummary.windSpeed === 'number' && (
                   <span>💨 {Math.round(weatherSummary.windSpeed)} km/h</span>
                 )}
@@ -1010,6 +1032,19 @@ export default function CityMapViewer({
                 )}
               </div>
             </div>
+          ) : (
+            onOpenWeather && (
+              <button
+                type="button"
+                data-testid="city-map-telemetry-btn"
+                onClick={onOpenWeather}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/35 backdrop-blur-xl border border-cyan-400/40 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95"
+                title="Open live meteorological telemetry"
+              >
+                <span>📊</span>
+                <span>Weather Telemetry</span>
+              </button>
+            )
           )}
         </div>
       </div>

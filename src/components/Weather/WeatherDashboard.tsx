@@ -1073,17 +1073,6 @@ export default function WeatherDashboard() {
               className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
             />
 
-            {/* Mobile "Open Weather Sheet" floating CTA */}
-            {hasData && !isPanelOpen && (
-              <button
-                type="button"
-                data-testid="open-mobile-sheet"
-                onClick={() => setIsPanelOpen(true)}
-                className="lg:hidden absolute bottom-36 right-4 z-40 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold shadow-2xl shadow-cyan-500/30 active:scale-95 transition-transform cursor-pointer"
-              >
-                📊 Telemetry →
-              </button>
-            )}
           </div>
 
           {/* Dedicated Interactive 2D City Map (MapLibre GL JS) */}
@@ -1119,83 +1108,131 @@ export default function WeatherDashboard() {
                 }
                 onReturnToEarth={handleReturnToEarth}
                 onOpenWeather={() => {
+                  if (!hasData) {
+                    weather.fetchWeatherForLocation({
+                      latitude: 35.6762,
+                      longitude: 139.6503,
+                      name: 'Tokyo',
+                      country: 'Japan',
+                      timezone: 'Asia/Tokyo',
+                      source: 'search',
+                    });
+                  }
+                  setIsPanelOpen(true);
+                  setIsPanelMinimized(false);
+                }}
+                onMapClick={(coords) => {
+                  weather.fetchWeatherForLocation({
+                    name: `${coords.lat >= 0 ? coords.lat.toFixed(1) + '°N' : Math.abs(coords.lat).toFixed(1) + '°S'}, ${coords.lng >= 0 ? coords.lng.toFixed(1) + '°E' : Math.abs(coords.lng).toFixed(1) + '°W'}`,
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    timezone: 'auto',
+                    source: 'globe-click',
+                  });
                   setIsPanelOpen(true);
                   setIsPanelMinimized(false);
                 }}
               />
             </div>
           )}
+
+          {/* Universal Mobile "Open Weather Sheet" floating CTA */}
+          {/* Visible in BOTH 3D Earth and 2D City Map */}
+          {!isPanelOpen && (
+            <button
+              type="button"
+              data-testid="open-mobile-sheet"
+              onClick={() => {
+                if (!hasData) {
+                  weather.fetchWeatherForLocation({
+                    latitude: 35.6762,
+                    longitude: 139.6503,
+                    name: 'Tokyo',
+                    country: 'Japan',
+                    timezone: 'Asia/Tokyo',
+                    source: 'search',
+                  });
+                }
+                setIsPanelOpen(true);
+                setIsPanelMinimized(false);
+              }}
+              className="lg:hidden absolute bottom-36 right-4 z-40 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold shadow-2xl shadow-cyan-500/40 border border-cyan-400/40 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer pointer-events-auto"
+              title="Open real-time meteorological telemetry & forecast sheet"
+              aria-label="Open Weather Telemetry"
+            >
+              <span className="text-sm">📊</span>
+              <span>Weather Telemetry →</span>
+            </button>
+          )}
         </div>
 
         {/* ── Weather Details Panel (Desktop: side panel / Mobile: bottom sheet) ── */}
         {hasData && (
-          <>
-            {/* Desktop Side Panel */}
-            <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0">
-              <WeatherPanel
-                forecast={displayedForecast}
-                airQuality={weather.data.airQuality}
-                elevation={weather.data.elevation}
-                flood={weather.data.flood}
-                marine={weather.data.marine}
-                location={weather.selectedLocation}
-                activeLayer={weather.activeLayer}
-                loading={weather.loading}
-                errors={weather.errors}
-                isMinimized={isPanelMinimized}
-                onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
-                onExploreCity={handleExploreCity}
-              />
-            </div>
+          /* Desktop Side Panel */
+          <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0">
+            <WeatherPanel
+              forecast={displayedForecast}
+              airQuality={weather.data.airQuality}
+              elevation={weather.data.elevation}
+              flood={weather.data.flood}
+              marine={weather.data.marine}
+              location={weather.selectedLocation}
+              activeLayer={weather.activeLayer}
+              loading={weather.loading}
+              errors={weather.errors}
+              isMinimized={isPanelMinimized}
+              onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+              onExploreCity={handleExploreCity}
+            />
+          </div>
+        )}
 
-            {/* Mobile Bottom Sheet Modal */}
-            {isPanelOpen && (
-              <div className="lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col justify-end">
-                {/* Backdrop overlay */}
-                <div
-                  className="fixed inset-0 bg-black/40 backdrop-blur-xs"
-                  onClick={() => setIsPanelOpen(false)}
-                />
-                {/* Sheet Drawer */}
-                <div
-                  className={`relative flex flex-col bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl transition-all duration-300 z-10 overscroll-contain touch-pan-y ${
-                    isPanelMinimized ? 'h-[85px]' : 'h-[75vh] max-h-[85vh]'
-                  }`}
-                >
-                  <div
-                    className="flex justify-center pt-2.5 pb-1 shrink-0 touch-none cursor-grab active:cursor-grabbing select-none"
-                    onClick={() => setIsPanelMinimized(!isPanelMinimized)}
-                  >
-                    <div className="w-12 h-1.5 rounded-full bg-white/20" />
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="close-mobile-sheet"
-                    onClick={() => setIsPanelOpen(false)}
-                    className="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/5 text-white/50 hover:text-white flex items-center justify-center text-xs z-20 cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                  <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                    <WeatherPanel
-                      forecast={displayedForecast}
-                      airQuality={weather.data.airQuality}
-                      elevation={weather.data.elevation}
-                      flood={weather.data.flood}
-                      marine={weather.data.marine}
-                      location={weather.selectedLocation}
-                      activeLayer={weather.activeLayer}
-                      loading={weather.loading}
-                      errors={weather.errors}
-                      isMinimized={isPanelMinimized}
-                      onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
-                      onExploreCity={handleExploreCity}
-                    />
-                  </div>
-                </div>
+        {/* Mobile Bottom Sheet Modal — Can open in both 3D Earth and 2D City Map */}
+        {isPanelOpen && (
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-50 flex flex-col justify-end">
+            {/* Backdrop overlay */}
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+              onClick={() => setIsPanelOpen(false)}
+            />
+            {/* Sheet Drawer */}
+            <div
+              className={`relative flex flex-col bg-[#070718]/98 backdrop-blur-2xl border-t border-white/10 rounded-t-3xl shadow-2xl transition-all duration-300 z-10 overscroll-contain touch-pan-y ${
+                isPanelMinimized ? 'h-[85px]' : 'h-[75vh] max-h-[85vh]'
+              }`}
+            >
+              <div
+                className="flex justify-center pt-2.5 pb-1 shrink-0 touch-none cursor-grab active:cursor-grabbing select-none"
+                onClick={() => setIsPanelMinimized(!isPanelMinimized)}
+              >
+                <div className="w-12 h-1.5 rounded-full bg-white/20" />
               </div>
-            )}
-          </>
+              <button
+                type="button"
+                data-testid="close-mobile-sheet"
+                onClick={() => setIsPanelOpen(false)}
+                className="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/5 text-white/50 hover:text-white flex items-center justify-center text-xs z-20 cursor-pointer"
+              >
+                ✕
+              </button>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <WeatherPanel
+                  forecast={displayedForecast}
+                  airQuality={weather.data.airQuality}
+                  elevation={weather.data.elevation}
+                  flood={weather.data.flood}
+                  marine={weather.data.marine}
+                  location={weather.selectedLocation}
+                  activeLayer={weather.activeLayer}
+                  loading={weather.loading}
+                  errors={weather.errors}
+                  isMinimized={isPanelMinimized}
+                  onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+                  onExploreCity={handleExploreCity}
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Empty State Prompt (Desktop) */}
