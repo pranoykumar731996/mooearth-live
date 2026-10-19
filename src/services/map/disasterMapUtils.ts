@@ -30,9 +30,10 @@ export function getDisasterMeta(event: WorldEvent): DisasterMeta {
 
   // 1. Tropical Cyclones / Hurricanes / Typhoons
   if (
-    title.includes('cyclone') ||
+    title.includes('cyclon') ||
     title.includes('hurricane') ||
     title.includes('typhoon') ||
+    title.includes('tropical storm') ||
     event.planetaryTelemetry?.stormWarningType === 'tropical_cyclone'
   ) {
     const wind = event.planetaryTelemetry?.windSpeedKph;

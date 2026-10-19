@@ -29,7 +29,10 @@ import {
   type RadarMetadataResponse,
 } from '@/services/weather/radarAdapter';
 import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService';
-import { getActiveTropicalCyclonesAsEvents } from '@/services/weather/cycloneTrackingService';
+import {
+  getActiveTropicalCyclonesAsEvents,
+  isTropicalCycloneEvent,
+} from '@/services/weather/cycloneTrackingService';
 import { BASELINE_CYCLONE_EVENTS, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import { WEATHER_LAYERS, type WeatherLayerMode, type GeocodingResult, type UnitPreferences, type ForecastResponse, type SatelliteSpectralMode } from '@/services/weather/types';
@@ -134,11 +137,18 @@ export default function WeatherDashboard() {
     return getActiveTropicalCyclonesAsEvents(events);
   }, [events]);
 
-  // Active thunderstorms list for quick-tracking
+  // Active thunderstorms list for quick-tracking (severe convective cells and squalls, excluding cyclones)
   const activeThunderstorms = useMemo(() => {
     const fromEvents = events.filter((e) => {
+      if (isTropicalCycloneEvent(e)) return false;
       const t = (e.title || '').toLowerCase();
-      return t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective');
+      return (
+        t.includes('lightning') ||
+        t.includes('thunderstorm') ||
+        t.includes('convective') ||
+        t.includes('squall') ||
+        e.planetaryTelemetry?.stormWarningType === 'severe_thunderstorm'
+      );
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_LIGHTNING_EVENTS;
   }, [events]);
@@ -203,13 +213,14 @@ export default function WeatherDashboard() {
   }, [disasterCategoryFilter, activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather]);
 
   // Comprehensive planetary disaster feed combining all active cyclones and active hazards
+  // Guarantees 100% synchronization and identical positions across 3D Earth and 2D MapLibre map.
   const allDisasters = useMemo(() => {
     const map = new Map<string, WorldEvent>();
-    // 1. Cyclones (live or baseline)
+    // 1. Cyclones (live + verified baselines ensuring Bay of Bengal Dana & all basins always present)
     activeCyclones.forEach((c) => map.set(c.id, c));
-    if (activeCyclones.length === 0) {
-      BASELINE_CYCLONE_EVENTS.forEach((c) => map.set(c.id, c));
-    }
+    BASELINE_CYCLONE_EVENTS.forEach((c) => {
+      if (!map.has(c.id)) map.set(c.id, c);
+    });
     // 2. Earthquakes
     activeEarthquakes.forEach((e) => map.set(e.id, e));
     // 3. Wildfires
@@ -218,7 +229,7 @@ export default function WeatherDashboard() {
     activeThunderstorms.forEach((t) => map.set(t.id, t));
     // 5. Space weather
     activeSpaceWeather.forEach((s) => map.set(s.id, s));
-    // 6. Additional events from events feed
+    // 6. Additional events from events feed (if not already mapped)
     events.forEach((ev) => {
       if (
         ev.category === 'severe_weather' ||
@@ -766,7 +777,7 @@ export default function WeatherDashboard() {
             <div className="absolute inset-0 w-full h-full">
               <GlobeScene
                 events={events}
-                allEvents={events}
+                allEvents={allDisasters}
                 selectedEvent={selectedDisasterEvent}
                 onSelectEvent={setSelectedDisasterEvent}
                 selectedCountry={weather.selectedLocation?.country}

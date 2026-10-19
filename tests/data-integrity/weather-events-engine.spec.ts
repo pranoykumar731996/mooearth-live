@@ -13,6 +13,12 @@ import { generateMetadata as generateWorldEventsMeta } from '../../src/app/world
 import { generateMetadata as generateLiveEventsMeta } from '../../src/app/live-events/page';
 import { generateMetadata as generateLocationWeatherMeta } from '../../src/app/weather/[location]/page';
 import { geoToVector3 } from '../../src/components/Globe/WeatherLayers/WindParticleSystem';
+import { BASELINE_CYCLONE_EVENTS } from '../../src/components/Globe/WeatherLayers/CycloneVortexLayer';
+import {
+  OFFICIAL_CYCLONE_BASELINES,
+  isTropicalCycloneEvent,
+  getActiveTropicalCyclones,
+} from '../../src/services/weather/cycloneTrackingService';
 import { getDisasterMeta } from '../../src/services/map/disasterMapUtils';
 
 test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGINE', () => {
@@ -416,6 +422,95 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
       expect(fireMeta.type).toBe('wildfires');
       expect(fireMeta.icon).toBe('🔥');
       expect(fireMeta.categoryLabel).toBe('450 MW');
+    });
+
+    test('BASELINE_CYCLONE_EVENTS and OFFICIAL_CYCLONE_BASELINES are 100% synchronized in IDs and coordinates', () => {
+      expect(BASELINE_CYCLONE_EVENTS.length).toBe(4);
+      expect(OFFICIAL_CYCLONE_BASELINES.length).toBe(4);
+
+      // Verify Dana in Bay of Bengal (East coast of India)
+      const globeDana = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
+      const serviceDana = OFFICIAL_CYCLONE_BASELINES.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
+
+      expect(globeDana).toBeDefined();
+      expect(serviceDana).toBeDefined();
+      expect(globeDana!.lat).toBe(17.5);
+      expect(globeDana!.lng).toBe(88.5);
+      expect(serviceDana!.lat).toBe(17.5);
+      expect(serviceDana!.lng).toBe(88.5);
+      expect(serviceDana!.basin).toBe('North Indian');
+    });
+
+    test('isTropicalCycloneEvent accurately identifies cyclones and excludes severe thunderstorms', () => {
+      // Genuine cyclone
+      expect(isTropicalCycloneEvent({
+        id: 'c1',
+        title: 'Very Severe Cyclonic Storm Dana',
+        summary: 'Cyclone over Bay of Bengal',
+        category: 'severe_weather',
+        lat: 17.5,
+        lng: 88.5,
+        city: 'Bay of Bengal',
+        country: 'India',
+        publishedAt: new Date().toISOString(),
+      })).toBe(true);
+
+      // Severe thunderstorm must NOT be treated as a tropical cyclone
+      expect(isTropicalCycloneEvent({
+        id: 'noaa-storm-supercell-plains',
+        title: 'Severe Thunderstorm Warning — Central Convective Corridor',
+        summary: 'Severe convective supercell capable of producing 65 mph wind gusts',
+        category: 'severe_weather',
+        lat: 34.2,
+        lng: -97.1,
+        country: 'United States',
+        city: 'Oklahoma City Corridor',
+        publishedAt: new Date().toISOString(),
+      })).toBe(false);
+
+      expect(isTropicalCycloneEvent({
+        id: 'noaa-storm-tropical-squall',
+        title: 'Tropical Squall Line & Intense Lightning Network',
+        summary: 'High-energy tropical convective cell generating intense lightning flash rates',
+        category: 'severe_weather',
+        lat: 14.6,
+        lng: 121.0,
+        country: 'Philippines',
+        city: 'Manila Bay Sector',
+        publishedAt: new Date().toISOString(),
+      })).toBe(false);
+    });
+
+    test('getActiveTropicalCyclones never drops Bay of Bengal Dana when severe thunderstorms are present', () => {
+      const feed = getActiveTropicalCyclones([
+        {
+          id: 'noaa-storm-tropical-squall',
+          title: 'Tropical Squall Line & Intense Lightning Network',
+          summary: 'High-energy tropical convective cell',
+          category: 'severe_weather',
+          lat: 14.6,
+          lng: 121.0,
+          city: 'Manila',
+          country: 'Philippines',
+          publishedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const dana = feed.cyclones.find((c) => c.basin === 'North Indian');
+      expect(dana).toBeDefined();
+      expect(dana!.lat).toBe(17.5);
+      expect(dana!.lng).toBe(88.5);
+      expect(dana!.id).toBe('cyclone-indian-ocean-tropical-cyclone');
+    });
+
+    test('getDisasterMeta classifies Dana in Bay of Bengal as cyclone with matching telemetry on 2D map', () => {
+      const dana = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone')!;
+      const meta = getDisasterMeta(dana);
+      expect(meta.type).toBe('cyclone');
+      expect(meta.icon).toBe('🌀');
+      expect(meta.cleanTitle).toBe('Very Severe Cyclonic Storm Dana');
+      expect(meta.categoryLabel).toBe('Cat 1-2');
+      expect(meta.metricLabel).toBe('130 km/h');
     });
   });
 

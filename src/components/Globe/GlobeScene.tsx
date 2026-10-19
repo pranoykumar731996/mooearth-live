@@ -2012,14 +2012,20 @@ const GlobeScene = React.memo(function GlobeScene({
       });
     }
 
+    const disasterFeed = (allEvents && allEvents.length > 0) ? allEvents : events;
+
     // Populate active tropical cyclone & hurricane disaster markers (Windy / NOAA NHC standard)
     if (globeView === 'weather' || weatherLayerMode === 'hurricane' || weatherLayerMode === 'wind') {
-      const cycloneList = events.filter((e) => {
-        if (e.category === 'severe_weather') {
-          const t = (e.title || '').toLowerCase();
-          return t.includes('cyclone') || t.includes('hurricane') || t.includes('typhoon') || t.includes('tropical storm');
-        }
-        return false;
+      const cycloneList = disasterFeed.filter((e) => {
+        const t = (e.title || '').toLowerCase();
+        const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';
+        return (
+          isExplicitCyclone ||
+          t.includes('cyclone') ||
+          t.includes('hurricane') ||
+          t.includes('typhoon') ||
+          t.includes('tropical storm')
+        );
       });
       const activeCyclones = cycloneList.length > 0 ? cycloneList : BASELINE_CYCLONE_EVENTS;
       activeCyclones.forEach((storm) => {
@@ -2036,10 +2042,14 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Populate active severe thunderstorm & lightning convective complex disaster markers
     if (globeView === 'weather' && (weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar' || weatherLayerMode === 'overview')) {
-      const lightningList = events.filter((e) => {
+      const lightningList = disasterFeed.filter((e) => {
         const t = (e.title || '').toLowerCase();
-        return (t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective')) &&
-          !t.includes('cyclone') && !t.includes('hurricane') && !t.includes('typhoon');
+        const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';
+        return (
+          !isExplicitCyclone &&
+          (t.includes('lightning') || t.includes('thunderstorm') || t.includes('convective') || t.includes('squall')) &&
+          !t.includes('cyclone') && !t.includes('hurricane') && !t.includes('typhoon')
+        );
       });
       const activeLightning = lightningList.length > 0 ? lightningList.slice(0, 3) : BASELINE_LIGHTNING_EVENTS.slice(0, 3);
       activeLightning.forEach((storm) => {
@@ -2056,7 +2066,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Populate active earthquake & seismic rupture disaster markers (USGS standard)
     if (globeView === 'weather' || activeCategory === 'seismic') {
-      const seismicList = events.filter((e) => {
+      const seismicList = disasterFeed.filter((e) => {
         if (e.category === 'seismic') return true;
         const t = (e.title || '').toLowerCase();
         return t.includes('earthquake') || t.includes('richter') || t.includes('magnitude');
@@ -2076,7 +2086,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Populate active wildfire & thermal hotspot disaster markers (NASA FIRMS / VIIRS standard)
     if (globeView === 'weather' || activeCategory === 'wildfires') {
-      const fireList = events.filter((e) => {
+      const fireList = disasterFeed.filter((e) => {
         if (e.category === 'wildfires') return true;
         const t = (e.title || '').toLowerCase();
         return t.includes('wildfire') || t.includes('bushfire') || t.includes('forest fire');
@@ -2096,7 +2106,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Populate active space weather & auroral storm disaster markers (NOAA SWPC standard)
     if (globeView === 'weather' || activeCategory === 'space_weather') {
-      const spaceList = events.filter((e) => {
+      const spaceList = disasterFeed.filter((e) => {
         if (e.category === 'space_weather') return true;
         const t = (e.title || '').toLowerCase();
         return t.includes('geomagnetic') || t.includes('aurora') || t.includes('solar storm');

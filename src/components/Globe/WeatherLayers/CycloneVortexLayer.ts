@@ -105,11 +105,19 @@ export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
       windSpeedKph: 230,
       pressureHpa: 935,
       stormWarningType: 'tropical_cyclone',
+      cycloneBasin: 'West Pacific',
+      cycloneAgency: 'Joint Typhoon Warning Center (JTWC) / JMA',
       trackPoints: [
         { lat: 14.5, lng: 135.0 },
         { lat: 16.8, lng: 131.5 },
         { lat: 18.2, lng: 128.8 },
         { lat: 19.5, lng: 126.8 },
+      ],
+      forecastCone: [
+        { timeHours: 12, centerLat: 20.2, centerLng: 125.8, errorRadiusKm: 60 },
+        { timeHours: 24, centerLat: 21.1, centerLng: 124.6, errorRadiusKm: 110 },
+        { timeHours: 48, centerLat: 22.8, centerLng: 122.5, errorRadiusKm: 180 },
+        { timeHours: 72, centerLat: 24.5, centerLng: 120.2, errorRadiusKm: 260 },
       ],
     },
   },
@@ -129,10 +137,18 @@ export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
       windSpeedKph: 195,
       pressureHpa: 948,
       stormWarningType: 'tropical_cyclone',
+      cycloneBasin: 'Atlantic',
+      cycloneAgency: 'NOAA National Hurricane Center (NHC)',
       trackPoints: [
         { lat: 20.0, lng: -85.5 },
         { lat: 22.8, lng: -86.2 },
         { lat: 25.2, lng: -86.5 },
+      ],
+      forecastCone: [
+        { timeHours: 12, centerLat: 26.6, centerLng: -85.8, errorRadiusKm: 55 },
+        { timeHours: 24, centerLat: 28.2, centerLng: -84.9, errorRadiusKm: 105 },
+        { timeHours: 48, centerLat: 31.0, centerLng: -83.2, errorRadiusKm: 175 },
+        { timeHours: 72, centerLat: 33.8, centerLng: -82.1, errorRadiusKm: 250 },
       ],
     },
   },
@@ -152,10 +168,18 @@ export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
       windSpeedKph: 130,
       pressureHpa: 975,
       stormWarningType: 'tropical_cyclone',
+      cycloneBasin: 'North Indian',
+      cycloneAgency: 'India Meteorological Department (IMD)',
       trackPoints: [
         { lat: 14.0, lng: 91.5 },
         { lat: 15.8, lng: 90.0 },
         { lat: 17.5, lng: 88.5 },
+      ],
+      forecastCone: [
+        { timeHours: 12, centerLat: 18.3, centerLng: 87.8, errorRadiusKm: 50 },
+        { timeHours: 24, centerLat: 19.2, centerLng: 87.1, errorRadiusKm: 90 },
+        { timeHours: 48, centerLat: 20.8, centerLng: 86.4, errorRadiusKm: 155 },
+        { timeHours: 72, centerLat: 22.1, centerLng: 85.8, errorRadiusKm: 220 },
       ],
     },
   },
@@ -175,10 +199,18 @@ export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
       windSpeedKph: 160,
       pressureHpa: 965,
       stormWarningType: 'tropical_cyclone',
+      cycloneBasin: 'South Pacific',
+      cycloneAgency: 'Bureau of Meteorology (BOM)',
       trackPoints: [
         { lat: -12.0, lng: 156.0 },
         { lat: -14.2, lng: 154.5 },
         { lat: -15.8, lng: 152.5 },
+      ],
+      forecastCone: [
+        { timeHours: 12, centerLat: -16.2, centerLng: 150.8, errorRadiusKm: 55 },
+        { timeHours: 24, centerLat: -16.5, centerLng: 149.0, errorRadiusKm: 100 },
+        { timeHours: 48, centerLat: -16.8, centerLng: 146.5, errorRadiusKm: 165 },
+        { timeHours: 72, centerLat: -17.2, centerLng: 144.2, errorRadiusKm: 235 },
       ],
     },
   },
@@ -230,9 +262,10 @@ export class CycloneVortexLayer {
    */
   public setEvents(events: WorldEvent[]): void {
     const cycloneEvents = events.filter((e) => {
-      if (e.category === 'severe_weather') return true;
-      const titleLower = e.title.toLowerCase();
+      const titleLower = (e.title || '').toLowerCase();
+      const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';
       return (
+        isExplicitCyclone ||
         titleLower.includes('hurricane') ||
         titleLower.includes('cyclone') ||
         titleLower.includes('typhoon') ||
@@ -241,7 +274,19 @@ export class CycloneVortexLayer {
       );
     });
 
-    const activeList = cycloneEvents.length > 0 ? cycloneEvents : BASELINE_CYCLONE_EVENTS;
+    // Multi-basin preservation: Always ensure baseline coverage (e.g. Bay of Bengal Dana)
+    // unless a live cyclone is active in that basin.
+    const activeBasinIds = new Set(cycloneEvents.map((e) => e.planetaryTelemetry?.cycloneBasin || (e.lng >= 50 && e.lng <= 100 && e.lat >= 0 ? 'North Indian' : 'Other')));
+    const activeList = [...cycloneEvents];
+    for (const baseline of BASELINE_CYCLONE_EVENTS) {
+      const bBasin = baseline.planetaryTelemetry?.cycloneBasin || (baseline.lng >= 50 && baseline.lng <= 100 && baseline.lat >= 0 ? 'North Indian' : 'Other');
+      if (!activeBasinIds.has(bBasin) || activeList.length === 0) {
+        if (!activeList.some((e) => e.id === baseline.id)) {
+          activeList.push(baseline);
+          activeBasinIds.add(bBasin);
+        }
+      }
+    }
     const activeIds = new Set(activeList.map((e) => e.id));
 
     // Remove storms no longer active
