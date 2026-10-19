@@ -122,7 +122,7 @@ export class AtmosphericPressureLayer {
    * Constructs smooth concentric isobar isolines encircling pressure centers.
    */
   private buildIsobars(): void {
-    const sphereRadius = this.radius * 1.0026;
+    const sphereRadius = this.radius * 1.0014;
     const segmentsPerRing = this.isMobile ? 32 : 48;
     const positions: number[] = [];
     const colors: number[] = [];
@@ -193,7 +193,7 @@ export class AtmosphericPressureLayer {
    * Renders glowing target badges for Low (L) and High (H) pressure centers.
    */
   private buildPressureCenters(): void {
-    const sphereRadius = this.radius * 1.0035;
+    const sphereRadius = this.radius * 1.0016;
     const centers = GLOBAL_PRESSURE_CENTERS;
 
     const positions = new Float32Array(centers.length * 3);

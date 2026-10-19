@@ -116,7 +116,7 @@ export class GeostationarySatelliteLayer {
    * Initializes the Three.js spherical satellite shell mesh with custom GLSL shaders.
    */
   private initSatelliteMesh(): void {
-    const sphereRadius = this.radius * 1.0028; // Hovering right above terrain & ocean
+    const sphereRadius = this.radius * 1.0016; // Hovering right above terrain & ocean to eliminate zoom parallax
     const segments = this.isMobile ? 48 : 64;
     const geometry = new THREE.SphereGeometry(sphereRadius, segments, segments);
 
@@ -346,6 +346,7 @@ export class GeostationarySatelliteLayer {
     });
 
     this.satelliteMesh = new THREE.Mesh(geometry, this.shaderMaterial);
+    this.satelliteMesh.rotation.y = -Math.PI / 2; // Match three-globe globeObj rotation so Prime Meridian aligns at +Z
     this.satelliteMesh.name = 'GeostationarySatelliteMesh';
     this.rootGroup.add(this.satelliteMesh);
   }

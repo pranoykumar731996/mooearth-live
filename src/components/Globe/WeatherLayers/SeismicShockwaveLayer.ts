@@ -303,15 +303,15 @@ export class SeismicShockwaveLayer {
     const group = new THREE.Group();
     group.name = `quake-${event.id}`;
 
-    // 1. Surface Epicenter Coordinate (radius * 1.0045 to float safely above land/ocean textures)
-    const surfaceRadius = this.radius * 1.0045;
+    // 1. Surface Epicenter Coordinate (radius * 1.0015 tightly clamped above land/ocean textures to prevent zoom drift)
+    const surfaceRadius = this.radius * 1.0015;
     const surfacePos = geoToVector3(lat, lng, surfaceRadius);
     const surfaceNormal = surfacePos.clone().normalize();
 
     // 2. Outward Focal Depth Column (Projects UP into space so hypocenter depth is clearly visible from orbit)
     // Scale: shallow = lower height, deep (up to 700km) = tall pillar
     const depthRatio = Math.min(depthKm / 700, 1.0);
-    const outwardAltitude = this.radius * (1.018 + depthRatio * 0.055);
+    const outwardAltitude = this.radius * (1.006 + depthRatio * 0.02);
     const outwardHypoPos = geoToVector3(lat, lng, outwardAltitude);
 
     // Subterranean coordinate (for translucent earth inspection)

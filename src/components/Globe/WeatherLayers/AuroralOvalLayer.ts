@@ -169,8 +169,8 @@ export class AuroralOvalLayer {
     const tangentV = new THREE.Vector3().crossVectors(poleNormal, tangentU).normalize();
 
     // Snug ionospheric curtain bounds closely hugging the polar upper atmosphere
-    const lowerAlt = this.radius * 1.006; // Lower auroral ionosphere
-    const upperAlt = this.radius * 1.018; // Upper auroral crown
+    const lowerAlt = this.radius * 1.002; // Lower auroral ionosphere
+    const upperAlt = this.radius * 1.008; // Upper auroral crown
 
     for (let i = 0; i <= curtain.segments; i++) {
       const angle = (i / curtain.segments) * Math.PI * 2;

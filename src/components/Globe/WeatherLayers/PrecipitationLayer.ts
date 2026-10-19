@@ -68,7 +68,7 @@ export class PrecipitationLayer {
   private isUpdating: boolean = false;
 
   constructor(options: PrecipitationLayerOptions = {}) {
-    this.radius = (options.radius ?? 100) * 1.0025;
+    this.radius = (options.radius ?? 100) * 1.0015;
     this.canvasWidth = options.isMobile ? 128 : 256;
     this.canvasHeight = options.isMobile ? 64 : 128;
 
@@ -98,6 +98,7 @@ export class PrecipitationLayer {
     });
 
     this.mesh = new THREE.Mesh(this.geometry, this.material);
+    this.mesh.rotation.y = -Math.PI / 2; // Match three-globe globeObj rotation so Prime Meridian aligns at +Z
     this.mesh.name = 'weather-precipitation-layer';
   }
 

@@ -999,9 +999,10 @@ const GlobeScene = React.memo(function GlobeScene({
 
             const phi = (90 - coord.lat) * (Math.PI / 180);
             const theta = (90 - coord.lng) * (Math.PI / 180);
-            const nx = Math.sin(phi) * Math.sin(theta);
+            const sinPhi = Math.sin(phi);
+            const nx = sinPhi * Math.cos(theta);
             const ny = Math.cos(phi);
-            const nz = Math.sin(phi) * Math.cos(theta);
+            const nz = sinPhi * Math.sin(theta);
 
             const dot = (nx * camPos.x + ny * camPos.y + nz * camPos.z) / camDist;
             const isVisible = dot > horizonCos;
@@ -2334,12 +2335,23 @@ const GlobeScene = React.memo(function GlobeScene({
           </div>
         `;
 
+        const triggerCycloneSelect = (e: Event) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(storm);
+        };
+
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'translateY(-50%) scale(1.18)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
         });
+        el.addEventListener('touchstart', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
         el.addEventListener('pointerdown', stopProp);
@@ -2347,13 +2359,8 @@ const GlobeScene = React.memo(function GlobeScene({
         el.addEventListener('mousedown', stopProp);
         el.addEventListener('mouseup', stopProp);
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          pauseRotation();
-          recordInteraction();
-          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
-          onSelectEvent(storm);
-        });
+        el.addEventListener('click', triggerCycloneSelect);
+        el.addEventListener('touchend', triggerCycloneSelect);
 
         htmlMarkersCacheRef.current.set(markerId, el);
         activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
@@ -2430,12 +2437,23 @@ const GlobeScene = React.memo(function GlobeScene({
           </div>
         `;
 
+        const triggerStormSelect = (e: Event) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(storm);
+        };
+
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'translateY(-50%) scale(1.18)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
         });
+        el.addEventListener('touchstart', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
         el.addEventListener('pointerdown', stopProp);
@@ -2443,13 +2461,8 @@ const GlobeScene = React.memo(function GlobeScene({
         el.addEventListener('mousedown', stopProp);
         el.addEventListener('mouseup', stopProp);
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          pauseRotation();
-          recordInteraction();
-          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
-          onSelectEvent(storm);
-        });
+        el.addEventListener('click', triggerStormSelect);
+        el.addEventListener('touchend', triggerStormSelect);
 
         htmlMarkersCacheRef.current.set(markerId, el);
         activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
@@ -2526,12 +2539,23 @@ const GlobeScene = React.memo(function GlobeScene({
           </div>
         `;
 
+        const triggerQuakeSelect = (e: Event) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(quake);
+        };
+
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'translateY(-50%) scale(1.18)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
         });
+        el.addEventListener('touchstart', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
         el.addEventListener('pointerdown', stopProp);
@@ -2539,13 +2563,8 @@ const GlobeScene = React.memo(function GlobeScene({
         el.addEventListener('mousedown', stopProp);
         el.addEventListener('mouseup', stopProp);
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          pauseRotation();
-          recordInteraction();
-          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
-          onSelectEvent(quake);
-        });
+        el.addEventListener('click', triggerQuakeSelect);
+        el.addEventListener('touchend', triggerQuakeSelect);
 
         htmlMarkersCacheRef.current.set(markerId, el);
         activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
@@ -2622,12 +2641,23 @@ const GlobeScene = React.memo(function GlobeScene({
           </div>
         `;
 
+        const triggerFireSelect = (e: Event) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(fire);
+        };
+
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'translateY(-50%) scale(1.18)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
         });
+        el.addEventListener('touchstart', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
         el.addEventListener('pointerdown', stopProp);
@@ -2635,13 +2665,8 @@ const GlobeScene = React.memo(function GlobeScene({
         el.addEventListener('mousedown', stopProp);
         el.addEventListener('mouseup', stopProp);
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          pauseRotation();
-          recordInteraction();
-          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
-          onSelectEvent(fire);
-        });
+        el.addEventListener('click', triggerFireSelect);
+        el.addEventListener('touchend', triggerFireSelect);
 
         htmlMarkersCacheRef.current.set(markerId, el);
         activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
@@ -2718,12 +2743,23 @@ const GlobeScene = React.memo(function GlobeScene({
           </div>
         `;
 
+        const triggerSpaceSelect = (e: Event) => {
+          e.stopPropagation();
+          pauseRotation();
+          recordInteraction();
+          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
+          onSelectEvent(sw);
+        };
+
         el.addEventListener('mouseenter', () => {
           el.style.transform = 'translateY(-50%) scale(1.18)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
         });
+        el.addEventListener('touchstart', () => {
+          el.style.transform = 'translateY(-50%) scale(1.18)';
+        }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
         el.addEventListener('pointerdown', stopProp);
@@ -2731,13 +2767,8 @@ const GlobeScene = React.memo(function GlobeScene({
         el.addEventListener('mousedown', stopProp);
         el.addEventListener('mouseup', stopProp);
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          pauseRotation();
-          recordInteraction();
-          flyTo({ lat: d.lat, lng: d.lng, altitude: 1.15 }, 1200);
-          onSelectEvent(sw);
-        });
+        el.addEventListener('click', triggerSpaceSelect);
+        el.addEventListener('touchend', triggerSpaceSelect);
 
         htmlMarkersCacheRef.current.set(markerId, el);
         activeHtmlMarkersRef.current.set(el, { lat: Number(d.lat), lng: Number(d.lng) });
@@ -3369,9 +3400,11 @@ const GlobeScene = React.memo(function GlobeScene({
       const hitDisaster = combinedHtmlData.find((item: any) => {
         if (!item.event || (!item.isCycloneDisaster && !item.isThunderstormDisaster && !item.isSeismicDisaster && !item.isWildfireDisaster && !item.isSpaceWeatherDisaster)) return false;
         const dLat = Math.abs(item.lat - coords.lat);
-        const dLng = Math.abs(item.lng - coords.lng);
-        // ~3.5 degrees angular distance (~380km radius)
-        return (dLat * dLat + dLng * dLng) < 12.25;
+        let dLng = Math.abs(item.lng - coords.lng);
+        if (dLng > 180) dLng = 360 - dLng;
+        // Cyclones have large gale envelopes (~7 deg / ~770km), other disasters ~4.5 deg (~500km)
+        const maxDistSq = item.isCycloneDisaster ? 49.0 : 20.25;
+        return (dLat * dLat + dLng * dLng) < maxDistSq;
       });
 
       if (hitDisaster && hitDisaster.event) {
@@ -3567,6 +3600,58 @@ const GlobeScene = React.memo(function GlobeScene({
           }}
         />
       )}
+
+      {/* Instant Disaster Title HUD Pill (shows instantly when touching or selecting any natural disaster) */}
+      <AnimatePresence>
+        {selectedEvent && !isPlayEarthActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -24, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -24, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[110] max-w-[92vw] sm:max-w-md pointer-events-auto cursor-pointer"
+            onClick={() => onSelectEvent(selectedEvent)}
+          >
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#0d1126]/95 via-[#18112c]/95 to-[#0d1126]/95 border border-rose-500/50 shadow-[0_10px_35px_rgba(0,0,0,0.8),0_0_24px_rgba(244,63,94,0.35)] backdrop-blur-xl">
+              <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                {selectedEvent.category === 'severe_weather' && (selectedEvent.title.toLowerCase().includes('cyclone') || selectedEvent.title.toLowerCase().includes('typhoon') || selectedEvent.title.toLowerCase().includes('hurricane')) ? '🌀' :
+                 selectedEvent.category === 'severe_weather' ? '⚡' :
+                 selectedEvent.category === 'seismic' ? '🌋' :
+                 selectedEvent.category === 'wildfires' ? '🔥' : '⚠️'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-black text-white text-xs sm:text-sm truncate tracking-tight">{selectedEvent.title}</h4>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-rose-500/30 text-rose-300 border border-rose-500/40 shrink-0">
+                    LIVE
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/60 truncate">
+                  <span>{selectedEvent.city ? `${selectedEvent.city}, ` : ''}{selectedEvent.country || 'Global Telemetry'}</span>
+                  {selectedEvent.planetaryTelemetry?.windSpeedKph && (
+                    <span className="text-cyan-300 font-bold">• {selectedEvent.planetaryTelemetry.windSpeedKph} km/h</span>
+                  )}
+                  {selectedEvent.planetaryTelemetry?.magnitude && (
+                    <span className="text-amber-300 font-bold">• M {selectedEvent.planetaryTelemetry.magnitude.toFixed(1)}</span>
+                  )}
+                  {selectedEvent.planetaryTelemetry?.fireRadiativePowerMw && (
+                    <span className="text-orange-300 font-bold">• {selectedEvent.planetaryTelemetry.fireRadiativePowerMw} MW</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectEvent(null);
+                }}
+                className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors cursor-pointer shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating details card (Feature 2 & Feature 8) */}
       <AnimatePresence>

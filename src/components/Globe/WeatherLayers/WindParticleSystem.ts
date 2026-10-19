@@ -32,10 +32,11 @@ export interface WindParticleSystemOptions {
 export function geoToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (90 - lng) * (Math.PI / 180);
+  const sinPhi = Math.sin(phi);
   return new THREE.Vector3(
-    radius * Math.sin(phi) * Math.sin(theta),
+    radius * sinPhi * Math.cos(theta),
     radius * Math.cos(phi),
-    radius * Math.sin(phi) * Math.cos(theta)
+    radius * sinPhi * Math.sin(theta)
   );
 }
 

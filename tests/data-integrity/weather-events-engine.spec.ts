@@ -12,6 +12,7 @@ import { metadata as weatherMapMeta } from '../../src/app/weather-map/page';
 import { generateMetadata as generateWorldEventsMeta } from '../../src/app/world-events/page';
 import { generateMetadata as generateLiveEventsMeta } from '../../src/app/live-events/page';
 import { generateMetadata as generateLocationWeatherMeta } from '../../src/app/weather/[location]/page';
+import { geoToVector3 } from '../../src/components/Globe/WeatherLayers/WindParticleSystem';
 
 test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGINE', () => {
 
@@ -282,4 +283,69 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
     });
   });
 
+  // =========================================================================
+  // 6. 3D GLOBE COORDINATE ENGINE PARITY & INVARIANCE
+  // =========================================================================
+  test.describe('6. 3D Globe Coordinate Engine Parity & Invariance', () => {
+    // Canonical three-globe polar2Cartesian reference formula
+    function canonicalPolar2Cartesian(lat: number, lng: number, radius = 100) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (90 - lng) * (Math.PI / 180);
+      return {
+        x: radius * Math.sin(phi) * Math.cos(theta),
+        y: radius * Math.cos(phi),
+        z: radius * Math.sin(phi) * Math.sin(theta),
+      };
+    }
+
+    test('geoToVector3 matches canonical three-globe polar2Cartesian coordinate mapping exactly', () => {
+      const testCoordinates = [
+        { name: 'North Pole', lat: 90, lng: 0 },
+        { name: 'South Pole', lat: -90, lng: 0 },
+        { name: 'Equator Prime Meridian', lat: 0, lng: 0 },
+        { name: 'Equator East (Asia/Pacific)', lat: 0, lng: 90 },
+        { name: 'Equator West (Americas)', lat: 0, lng: -90 },
+        { name: 'International Date Line', lat: 0, lng: 180 },
+        { name: 'Super Typhoon Kong-rey (Philippine Sea)', lat: 19.5, lng: 126.8 },
+        { name: 'Major Hurricane Helene (Gulf of Mexico)', lat: 25.2, lng: -86.5 },
+        { name: 'Tokyo', lat: 35.6762, lng: 139.6503 },
+        { name: 'London', lat: 51.5074, lng: -0.1278 },
+        { name: 'New York', lat: 40.7128, lng: -74.0060 },
+      ];
+
+      const radius = 100;
+
+      for (const loc of testCoordinates) {
+        const canonical = canonicalPolar2Cartesian(loc.lat, loc.lng, radius);
+        const actual = geoToVector3(loc.lat, loc.lng, radius);
+
+        expect(actual.x, `${loc.name} X coordinate mismatch`).toBeCloseTo(canonical.x, 4);
+        expect(actual.y, `${loc.name} Y coordinate mismatch`).toBeCloseTo(canonical.y, 4);
+        expect(actual.z, `${loc.name} Z coordinate mismatch`).toBeCloseTo(canonical.z, 4);
+      }
+    });
+
+    test('Prime Meridian (0, 0) correctly projects onto +Z axis', () => {
+      const v = geoToVector3(0, 0, 100);
+      expect(v.x).toBeCloseTo(0, 4);
+      expect(v.y).toBeCloseTo(0, 4);
+      expect(v.z).toBeCloseTo(100, 4);
+    });
+
+    test('90 degrees East correctly projects onto +X axis', () => {
+      const v = geoToVector3(0, 90, 100);
+      expect(v.x).toBeCloseTo(100, 4);
+      expect(v.y).toBeCloseTo(0, 4);
+      expect(v.z).toBeCloseTo(0, 4);
+    });
+
+    test('90 degrees West correctly projects onto -X axis', () => {
+      const v = geoToVector3(0, -90, 100);
+      expect(v.x).toBeCloseTo(-100, 4);
+      expect(v.y).toBeCloseTo(0, 4);
+      expect(v.z).toBeCloseTo(0, 4);
+    });
+  });
+
 });
+

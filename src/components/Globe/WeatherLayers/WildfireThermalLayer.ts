@@ -261,8 +261,8 @@ export class WildfireThermalLayer {
     const group = new THREE.Group();
     group.name = `wildfire-${event.id}`;
 
-    // 1. Surface coordinate at radius * 1.0045 to float cleanly above terrain
-    const surfacePos = geoToVector3(lat, lng, this.radius * 1.0045);
+    // 1. Surface coordinate at radius * 1.0015 to float cleanly above terrain without zoom parallax
+    const surfacePos = geoToVector3(lat, lng, this.radius * 1.0015);
     const normal = surfacePos.clone().normalize();
 
     // Compute orthonormal tangent basis on the sphere

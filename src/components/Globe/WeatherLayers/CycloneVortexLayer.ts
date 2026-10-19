@@ -276,8 +276,8 @@ export class CycloneVortexLayer {
     const lng = event.lng;
     const windSpeedKph = event.planetaryTelemetry?.windSpeedKph || 140;
 
-    // 1. Position on sphere surface (elevated to radius * 1.006 to float cleanly above ocean/land textures)
-    const worldPos = geoToVector3(lat, lng, this.radius * 1.006);
+    // 1. Position on sphere surface (tightly elevated to radius * 1.0016 to eliminate zoom parallax)
+    const worldPos = geoToVector3(lat, lng, this.radius * 1.0016);
     const surfaceNormal = worldPos.clone().normalize();
 
     // 2. Parent group at storm world coordinates
@@ -314,7 +314,7 @@ export class CycloneVortexLayer {
       depthWrite: false,
     });
     const eyeMesh = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeMesh.position.z = 0.08;
+    eyeMesh.position.z = 0.02;
     rotationPivot.add(eyeMesh);
 
     // Center Calm Eye Core Badge
@@ -327,7 +327,7 @@ export class CycloneVortexLayer {
       depthWrite: false,
     });
     const eyeCoreBadge = new THREE.Mesh(coreGeo, coreMat);
-    eyeCoreBadge.position.z = 0.07;
+    eyeCoreBadge.position.z = 0.018;
     rotationPivot.add(eyeCoreBadge);
 
     // 6. Outer Wind Radii Boundary Ring (Gale-force envelope)
@@ -337,7 +337,7 @@ export class CycloneVortexLayer {
     const outerRingPoints: THREE.Vector3[] = [];
     for (let i = 0; i <= outerRingSegments; i++) {
       const theta = (i / outerRingSegments) * Math.PI * 2;
-      outerRingPoints.push(new THREE.Vector3(Math.cos(theta) * outerRadius, Math.sin(theta) * outerRadius, 0.03));
+      outerRingPoints.push(new THREE.Vector3(Math.cos(theta) * outerRadius, Math.sin(theta) * outerRadius, 0.01));
     }
     const outerRingGeo = new THREE.BufferGeometry().setFromPoints(outerRingPoints);
     const outerRingMat = new THREE.LineBasicMaterial({
@@ -379,7 +379,7 @@ export class CycloneVortexLayer {
 
         const x = Math.cos(finalTheta) * finalR;
         const y = Math.sin(finalTheta) * finalR;
-        const z = 0.12 + Math.random() * 0.16;
+        const z = 0.015 + Math.random() * 0.025;
 
         positions[pIdx * 3] = x;
         positions[pIdx * 3 + 1] = y;
@@ -421,7 +421,7 @@ export class CycloneVortexLayer {
     if (trackPoints && trackPoints.length > 1) {
       const trackWorldPoints: THREE.Vector3[] = [];
       for (const pt of trackPoints) {
-        trackWorldPoints.push(geoToVector3(pt.lat, pt.lng, this.radius * 1.004));
+        trackWorldPoints.push(geoToVector3(pt.lat, pt.lng, this.radius * 1.0014));
       }
       const localTrackPoints = trackWorldPoints.map((wp) => group.worldToLocal(wp.clone()));
       const trackGeo = new THREE.BufferGeometry().setFromPoints(localTrackPoints);
@@ -444,11 +444,11 @@ export class CycloneVortexLayer {
 
       // Projected track center line through all cone nodes
       const coneLineWorldPoints: THREE.Vector3[] = [
-        geoToVector3(event.lat, event.lng, this.radius * 1.004),
+        geoToVector3(event.lat, event.lng, this.radius * 1.0014),
       ];
 
       for (const node of forecastCone) {
-        const centerPos = geoToVector3(node.centerLat, node.centerLng, this.radius * 1.004);
+        const centerPos = geoToVector3(node.centerLat, node.centerLng, this.radius * 1.0014);
         coneLineWorldPoints.push(centerPos);
 
         // Uncertainty circle ring on sphere surface around each forecast lead time
@@ -464,7 +464,7 @@ export class CycloneVortexLayer {
           const theta = (j / ringSegments) * Math.PI * 2;
           const offset = u.clone().multiplyScalar(Math.cos(theta) * radiusWorld)
             .add(v.clone().multiplyScalar(Math.sin(theta) * radiusWorld));
-          ringWorldPoints.push(centerPos.clone().add(offset).normalize().multiplyScalar(this.radius * 1.004));
+          ringWorldPoints.push(centerPos.clone().add(offset).normalize().multiplyScalar(this.radius * 1.0014));
         }
 
         const localRingPoints = ringWorldPoints.map((wp) => group.worldToLocal(wp.clone()));
@@ -517,7 +517,7 @@ export class CycloneVortexLayer {
    * Updates storm location & orientation if live coordinates update.
    */
   private updateStormPosition(storm: StormVortexInstance, event: WorldEvent): void {
-    const worldPos = geoToVector3(event.lat, event.lng, this.radius * 1.006);
+    const worldPos = geoToVector3(event.lat, event.lng, this.radius * 1.0016);
     storm.group.position.copy(worldPos);
     const surfaceNormal = worldPos.clone().normalize();
     const defaultNormal = new THREE.Vector3(0, 0, 1);

@@ -309,7 +309,7 @@ export class OceanCurrentsLayer {
    * Constructs smooth 3D Catmull-Rom spherical splines for each oceanic path.
    */
   private buildSplines(): void {
-    const sphereRadius = this.radius * 1.0055; // Elevated to float cleanly above ocean/terrain textures
+    const sphereRadius = this.radius * 1.0016; // Tightly clamped to eliminate zoom parallax
 
     for (const def of GLOBAL_GYRE_PATHS) {
       const controlPoints: THREE.Vector3[] = [];
@@ -447,7 +447,7 @@ export class OceanCurrentsLayer {
    * Initializes oceanographic mesoscale eddies & upwelling vortex rings.
    */
   private initEddyVortices(): void {
-    const sphereRadius = this.radius * 1.0058;
+    const sphereRadius = this.radius * 1.0018;
 
     const vortexSites = [
       { name: 'Agulhas Ring Retroflection', lat: -38.5, lng: 18.5, radiusKm: 2.2, spin: -1.2, color: 0xf43f5e },
@@ -564,7 +564,7 @@ export class OceanCurrentsLayer {
     if (this.reducedMotion) return;
 
     const clampedDelta = Math.min(delta, 0.05); // Prevent huge jumps on tab resume
-    const sphereRadius = this.radius * 1.0055;
+    const sphereRadius = this.radius * 1.0016;
     const segmentsPerStreak = 4;
 
     let vIdx = 0;

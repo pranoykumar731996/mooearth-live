@@ -226,7 +226,7 @@ export class LightningNetworkLayer {
     const group = new THREE.Group();
     group.name = `storm-beacon-${event.id}`;
 
-    const cloudAltitude = this.radius * 1.015;
+    const cloudAltitude = this.radius * 1.004;
     const pos = geoToVector3(event.lat, event.lng, cloudAltitude);
     const normal = pos.clone().normalize();
 
@@ -339,9 +339,9 @@ export class LightningNetworkLayer {
     const offsetLat = lat + (Math.random() - 0.5) * 1.4;
     const offsetLng = lng + (Math.random() - 0.5) * 1.4;
 
-    // Cloud base: R * 1.020; Ground: R * 1.0045
-    const cloudPos = geoToVector3(offsetLat + (Math.random() - 0.5) * 0.5, offsetLng + (Math.random() - 0.5) * 0.5, this.radius * 1.020);
-    const groundPos = geoToVector3(offsetLat, offsetLng, this.radius * 1.0045);
+    // Cloud base: R * 1.005; Ground: R * 1.0015
+    const cloudPos = geoToVector3(offsetLat + (Math.random() - 0.5) * 0.5, offsetLng + (Math.random() - 0.5) * 0.5, this.radius * 1.005);
+    const groundPos = geoToVector3(offsetLat, offsetLng, this.radius * 1.0015);
 
     const { main, branch } = this.generateBoltPoints(cloudPos, groundPos, 3);
 
