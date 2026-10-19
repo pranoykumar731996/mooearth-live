@@ -514,6 +514,38 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
     });
   });
 
+  test.describe('8. Dynamic Initial User Location Resolution', () => {
+    test('detectUserTimezoneLocation resolves region dynamically and never forces hardcoded Tokyo for Indian or global visitors', async () => {
+      const { detectUserTimezoneLocation } = await import('../../src/services/userLocationResolver');
+      const resolved = detectUserTimezoneLocation();
+      expect(resolved).toBeDefined();
+      expect(typeof resolved.latitude).toBe('number');
+      expect(typeof resolved.longitude).toBe('number');
+      expect(resolved.name).toBeDefined();
+      expect(resolved.source).toBeDefined();
+    });
+
+    test('resolveInitialLocation respects saved user locations from localStorage', async () => {
+      const { resolveInitialLocation, saveUserLocation, getSavedUserLocation } = await import('../../src/services/userLocationResolver');
+      saveUserLocation({
+        latitude: 20.2961,
+        longitude: 85.8245,
+        name: 'Bhubaneswar',
+        country: 'India',
+        timezone: 'Asia/Kolkata',
+      });
+
+      const saved = getSavedUserLocation();
+      expect(saved).not.toBeNull();
+      expect(saved?.name).toBe('Bhubaneswar');
+      expect(saved?.latitude).toBe(20.2961);
+
+      const resolved = resolveInitialLocation();
+      expect(resolved.name).toBe('Bhubaneswar');
+      expect(resolved.source).toBe('saved');
+    });
+  });
 });
+
 
 

@@ -41,6 +41,7 @@ import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 import { getWmoWeatherInfo } from '@/services/weather/forecastService';
+import { resolveInitialLocation, saveUserLocation } from '@/services/userLocationResolver';
 
 // Check reduced-motion preference
 const prefersReducedMotion = () =>
@@ -473,14 +474,16 @@ export default function WeatherDashboard() {
       }
     }
 
-    // Default: load Tokyo
+    // Dynamic initial location resolution (User's saved preference or local timezone)
+    // Eliminates hardcoded Tokyo, Japan on fresh site loads!
     if (!weather.selectedLocation) {
+      const initialTarget = resolveInitialLocation();
       weather.fetchWeatherForLocation({
-        latitude: 35.6762,
-        longitude: 139.6503,
-        name: 'Tokyo',
-        country: 'Japan',
-        timezone: 'Asia/Tokyo',
+        latitude: initialTarget.latitude,
+        longitude: initialTarget.longitude,
+        name: initialTarget.name,
+        country: initialTarget.country,
+        timezone: initialTarget.timezone || 'auto',
         source: 'search',
       });
     }
@@ -494,8 +497,15 @@ export default function WeatherDashboard() {
       api.flyTo({
         lat: weather.selectedLocation.latitude,
         lng: weather.selectedLocation.longitude,
-        altitude: 1.8,
-      });
+        altitude: 2.2,
+      }, 1000);
+    } else {
+      const initialTarget = resolveInitialLocation();
+      api.flyTo({
+        lat: initialTarget.latitude,
+        lng: initialTarget.longitude,
+        altitude: 2.3,
+      }, 1000);
     }
   }, [weather.selectedLocation]);
 
@@ -510,10 +520,17 @@ export default function WeatherDashboard() {
         timezone: result.timezone,
         source: 'search',
       });
+      saveUserLocation({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        name: result.name,
+        country: result.country,
+        timezone: result.timezone,
+      });
       globeApiRef.current?.flyTo({
         lat: result.latitude,
         lng: result.longitude,
-        altitude: 1.6,
+        altitude: 1.8,
       }, getFlyDuration(1500));
       updateUrlParams(result.latitude, result.longitude, result.name, result.country);
       setIsPanelMinimized(false);
@@ -582,10 +599,15 @@ export default function WeatherDashboard() {
         timezone: 'auto',
         source: 'globe-click',
       });
+      saveUserLocation({
+        latitude: coords.lat,
+        longitude: coords.lng,
+        name,
+      });
       globeApiRef.current?.flyTo({
         lat: coords.lat,
         lng: coords.lng,
-        altitude: 1.6,
+        altitude: 1.8,
       }, getFlyDuration(1200));
       updateUrlParams(coords.lat, coords.lng, name);
       setIsPanelMinimized(false);
@@ -1079,11 +1101,15 @@ export default function WeatherDashboard() {
           {viewMode === 'city-map' && (
             <div className="absolute inset-0 w-full h-full z-20">
               <CityMapViewer
-                latitude={weather.selectedLocation?.latitude ?? 20}
-                longitude={weather.selectedLocation?.longitude ?? 0}
+                latitude={weather.selectedLocation?.latitude ?? resolveInitialLocation().latitude}
+                longitude={weather.selectedLocation?.longitude ?? resolveInitialLocation().longitude}
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
-                initialZoom={weather.selectedLocation ? 13 : 2.5}
+                initialZoom={
+                  searchParams.get('city') || searchParams.get('lat')
+                    ? 12.8
+                    : 2.8
+                }
                 activeLayer={weather.activeLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
@@ -1109,12 +1135,13 @@ export default function WeatherDashboard() {
                 onReturnToEarth={handleReturnToEarth}
                 onOpenWeather={() => {
                   if (!hasData) {
+                    const fallback = resolveInitialLocation();
                     weather.fetchWeatherForLocation({
-                      latitude: 35.6762,
-                      longitude: 139.6503,
-                      name: 'Tokyo',
-                      country: 'Japan',
-                      timezone: 'Asia/Tokyo',
+                      latitude: fallback.latitude,
+                      longitude: fallback.longitude,
+                      name: fallback.name,
+                      country: fallback.country,
+                      timezone: fallback.timezone || 'auto',
                       source: 'search',
                     });
                   }
@@ -1122,12 +1149,18 @@ export default function WeatherDashboard() {
                   setIsPanelMinimized(false);
                 }}
                 onMapClick={(coords) => {
+                  const clickName = `${coords.lat >= 0 ? coords.lat.toFixed(1) + '°N' : Math.abs(coords.lat).toFixed(1) + '°S'}, ${coords.lng >= 0 ? coords.lng.toFixed(1) + '°E' : Math.abs(coords.lng).toFixed(1) + '°W'}`;
                   weather.fetchWeatherForLocation({
-                    name: `${coords.lat >= 0 ? coords.lat.toFixed(1) + '°N' : Math.abs(coords.lat).toFixed(1) + '°S'}, ${coords.lng >= 0 ? coords.lng.toFixed(1) + '°E' : Math.abs(coords.lng).toFixed(1) + '°W'}`,
+                    name: clickName,
                     latitude: coords.lat,
                     longitude: coords.lng,
                     timezone: 'auto',
                     source: 'globe-click',
+                  });
+                  saveUserLocation({
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    name: clickName,
                   });
                   setIsPanelOpen(true);
                   setIsPanelMinimized(false);
@@ -1144,12 +1177,13 @@ export default function WeatherDashboard() {
               data-testid="open-mobile-sheet"
               onClick={() => {
                 if (!hasData) {
+                  const fallback = resolveInitialLocation();
                   weather.fetchWeatherForLocation({
-                    latitude: 35.6762,
-                    longitude: 139.6503,
-                    name: 'Tokyo',
-                    country: 'Japan',
-                    timezone: 'Asia/Tokyo',
+                    latitude: fallback.latitude,
+                    longitude: fallback.longitude,
+                    name: fallback.name,
+                    country: fallback.country,
+                    timezone: fallback.timezone || 'auto',
                     source: 'search',
                   });
                 }
