@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
     const gateResult = shouldIndexWeatherPage(decoded, canonicalSlug, weatherResult);
 
     const obs = weatherResult.observation;
-    let title = `${city.name} Weather: Today's Temperature, Tomorrow & 7-Day Forecast | MooEarth Live`;
+    let title = `${city.name} Weather: Today's Temperature, Tomorrow & 7-Day Forecast`;
     let description = `Real-time verified meteorological station telemetry, hourly outlook, and 7-day forecast for ${city.name}, ${city.country}.`;
 
     if (obs) {
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
         ? ` Tomorrow: ${tomorrow.dayName} will be ${tomorrow.weatherDescription.toLowerCase()} with high of ${tomorrow.temperatureMax}°C (${Math.round((tomorrow.temperatureMax * 9) / 5 + 32)}°F).`
         : '';
 
-      title = `${city.name} Weather: Today's Temperature (${tempC}°C), Tomorrow & 7-Day Forecast | MooEarth Live`;
+      title = `${city.name} Weather: Today's Temperature (${tempC}°C), Tomorrow & 7-Day Forecast`;
       description = `Live weather in ${city.name}, ${city.country}: current temperature is ${tempC}°C (${tempF}°F), feels like ${Math.round(obs.apparentTemperature)}°C, ${obs.weatherDescription.toLowerCase()}.${tomorrowNote} Hourly outlook, 7-day forecast, wind, humidity, pressure, and interactive 3D radar.`;
     }
 
@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
       alternates: { canonical: canonicalUrl },
       robots: gateResult.robotsDirective,
       openGraph: {
-        title,
+        title: `${title} | MooEarth Live`,
         description,
         url: canonicalUrl,
         type: 'website',
@@ -72,7 +72,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
       },
       twitter: {
         card: 'summary_large_image',
-        title,
+        title: `${title} | MooEarth Live`,
         description,
       },
     };
@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
     const gateResult = shouldIndexWeatherPage(decoded, canonicalSlug, weatherResult);
 
     const obs = weatherResult.observation;
-    let title = `${country.name} Weather: Live Climate & 7-Day Forecast | MooEarth Live`;
+    let title = `${country.name} Weather: Live Climate & 7-Day Forecast`;
     let description = `Real-time verified meteorological station telemetry and climate data for ${country.name} (${country.capital}).`;
 
     if (obs) {
@@ -97,7 +97,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
         ? ` Tomorrow: ${tomorrow.weatherDescription.toLowerCase()} with high of ${tomorrow.temperatureMax}°C.`
         : '';
 
-      title = `${country.name} Weather: Current Temperature (${tempC}°C), Forecast & Climate | MooEarth Live`;
+      title = `${country.name} Weather: Current Temperature (${tempC}°C), Forecast & Climate`;
       description = `National weather observation for ${country.name} (${country.capital}): ${tempC}°C (${tempF}°F), ${obs.weatherDescription.toLowerCase()}.${tomorrowNote} Wind ${obs.windSpeed} km/h, humidity ${obs.relativeHumidity}%, surface pressure ${Math.round(obs.surfacePressure)} hPa, and 7-day forecast.`;
     }
 
@@ -109,7 +109,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
       alternates: { canonical: canonicalUrl },
       robots: gateResult.robotsDirective,
       openGraph: {
-        title,
+        title: `${title} | MooEarth Live`,
         description,
         url: canonicalUrl,
         type: 'website',
