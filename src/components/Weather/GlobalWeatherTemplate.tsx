@@ -110,7 +110,7 @@ export default function GlobalWeatherTemplate({
                 </span>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  Live Open-Meteo Telemetry • {stations.length} Anchor Stations
+                  Live Synoptic Telemetry • {stations.length} Anchor Stations
                 </span>
               </div>
 
@@ -178,7 +178,7 @@ export default function GlobalWeatherTemplate({
                 </p>
               </div>
               <span className="text-xs font-mono text-cyan-400 hidden sm:inline-block">
-                Atmospheric Model: Open-Meteo Telemetry
+                Atmospheric Model: Global Synoptic Model
               </span>
             </div>
 

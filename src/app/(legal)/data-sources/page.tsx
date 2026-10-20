@@ -68,6 +68,7 @@ export default function DataSources() {
           <ul className="list-disc pl-6 space-y-1 mt-2">
             <li><strong>Three.js & React-Globe.gl:</strong> 3D WebGL spherical rendering, orbital camera physics, and volumetric atmosphere shaders.</li>
             <li><strong>MapLibre GL:</strong> Vector tile city mapping and local geospatial exploration.</li>
+            <li><strong>OpenStreetMap & CARTO:</strong> Cartographic street basemaps, coastlines, and geographic boundaries provided by OpenStreetMap contributors under ODbL and CARTO under CC BY 4.0.</li>
             <li><strong>Natural Earth & GeoJSON:</strong> Boundary polygons and national centroid coordinates derived from Natural Earth public domain datasets.</li>
           </ul>
         </section>

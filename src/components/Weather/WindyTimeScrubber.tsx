@@ -229,7 +229,7 @@ export default function WindyTimeScrubber({
                   MSLP • Synoptic 4 hPa isobars • Planetary High (H) & Low (L) Centers
                 </span>
                 <span className="text-cyan-300 font-bold shrink-0">
-                  Open-Meteo GFS
+                  Global GFS Model
                 </span>
               </div>
             )}
@@ -245,7 +245,7 @@ export default function WindyTimeScrubber({
                   Significant Wave Height • Swell Vectors • Douglas Sea State Scale
                 </span>
                 <span className="text-cyan-300 font-bold shrink-0">
-                  Open-Meteo Marine
+                  Marine Wave Model
                 </span>
               </div>
             )}

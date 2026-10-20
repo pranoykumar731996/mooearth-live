@@ -53,7 +53,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
   return {
     'esri-street': {
       key: 'esri-street',
-      label: 'Esri Street',
+      label: 'Street Navigation',
       badge: 'Fast',
       style: {
         version: 8,
@@ -83,7 +83,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     'maptiler-streets': {
       key: 'maptiler-streets',
-      label: 'MapTiler Streets',
+      label: 'Vector HD',
       badge: 'Vector',
       style: maptilerKey
         ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${maptilerKey}`
@@ -94,7 +94,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     liberty: {
       key: 'liberty',
-      label: 'Liberty Vector',
+      label: 'Liberty Clean',
       badge: 'Vector',
       style: 'https://tiles.openfreemap.org/styles/liberty',
       type: 'vector',
@@ -102,7 +102,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     bright: {
       key: 'bright',
-      label: 'Bright Vector',
+      label: 'Bright Daytime',
       badge: 'Vector',
       style: 'https://tiles.openfreemap.org/styles/bright',
       type: 'vector',
@@ -110,8 +110,8 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     osm: {
       key: 'osm',
-      label: 'OpenStreetMap',
-      badge: 'OSM',
+      label: 'Standard Cartography',
+      badge: 'Global',
       style: {
         version: 8,
         sources: {
@@ -138,7 +138,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     voyager: {
       key: 'voyager',
-      label: 'Voyager Color',
+      label: 'Voyager Detailed',
       badge: 'Raster',
       style: {
         version: 8,
@@ -171,7 +171,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     dark: {
       key: 'dark',
-      label: 'Dark Matter',
+      label: 'Night Mode',
       badge: 'Night',
       style: {
         version: 8,

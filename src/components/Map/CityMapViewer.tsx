@@ -1191,7 +1191,7 @@ export default function CityMapViewer({
           <div className="w-10 h-10 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin mb-3" />
           <span>RENDERING {cityName.toUpperCase()} CITY MAP...</span>
           <span className="text-[10px] text-white/40 mt-1">
-            Loading roads, labels, and tiles from {MAP_STYLES[activeStyleKey]?.label}
+            Loading high-resolution roads, boundaries, and cartographic vectors...
           </span>
         </div>
       )}

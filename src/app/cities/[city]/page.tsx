@@ -315,7 +315,7 @@ export default async function CityPage({ params }: CityPageProps) {
                   <span>🌤️</span> Live Weather & Atmosphere: {city.name}
                 </h2>
                 <p className="text-xs text-white/60">
-                  Real-time meteorological observations for coordinates ({city.coordinates.lat.toFixed(2)}°, {city.coordinates.lng.toFixed(2)}°) powered by Open-Meteo.
+                  Real-time meteorological observations for coordinates ({city.coordinates.lat.toFixed(2)}°, {city.coordinates.lng.toFixed(2)}°).
                 </p>
               </div>
             </div>

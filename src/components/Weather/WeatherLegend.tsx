@@ -162,7 +162,7 @@ export default function WeatherLegend({
       {/* Provider Attribution & Model Distinction */}
       <div className="mt-1.5 pt-1.5 border-t border-white/5 flex items-center justify-between text-[8px] font-mono text-white/40">
         <span>
-          {activeLayer === 'precipitation' ? 'Numerical Model Forecast • Not Radar' : 'Open-Meteo Global Telemetry'}
+          {activeLayer === 'precipitation' ? 'Numerical Model Forecast • Not Radar' : 'Global Synoptic Telemetry'}
         </span>
         <span>48h Forecast</span>
       </div>

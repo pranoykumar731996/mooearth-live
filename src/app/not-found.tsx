@@ -68,7 +68,7 @@ export default function NotFound() {
           >
             <div className="text-2xl mb-1 group-hover:scale-110 transition-transform">🌤️</div>
             <div className="text-xs font-bold text-white group-hover:text-cyan-300">Weather Radar</div>
-            <div className="text-[10px] text-white/40">Live Open-Meteo</div>
+            <div className="text-[10px] text-white/40">Live Telemetry</div>
           </Link>
 
           <Link

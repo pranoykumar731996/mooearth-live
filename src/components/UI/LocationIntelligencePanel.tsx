@@ -562,7 +562,7 @@ export default function LocationIntelligencePanel({
                 <span>🌦️</span>
                 <span>METEOROLOGICAL TELEMETRY</span>
               </span>
-              <span className="text-white/40">LIVE OPEN-METEO</span>
+              <span className="text-white/40">LIVE TELEMETRY</span>
             </div>
 
             {/* Weather State Handling: Loading, Error with Retry, Success */}

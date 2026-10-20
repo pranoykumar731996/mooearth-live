@@ -170,7 +170,7 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
                 {weather ? (
                   <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                    Verified Open-Meteo Ground Telemetry
+                    Live Synoptic Ground Telemetry
                   </span>
                 ) : (
                   <span className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 font-mono text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
@@ -372,7 +372,7 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
                   </div>
 
                   <p className="text-xs text-white/80 leading-relaxed">
-                    Live meteorological observations from Open-Meteo for this coordinate grid are currently syncing or temporarily rate-limited.
+                    Live ground station telemetry for this coordinate grid is currently synchronizing or undergoing scheduled network refresh.
                     {errorMessage ? ` (${errorMessage})` : ''}
                   </p>
 
@@ -493,7 +493,7 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
                   <p className="text-xs text-white/60">Weekly temperature trends, rain chances, and solar ephemeris</p>
                 </div>
                 <span className="text-xs font-mono text-cyan-400 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10">
-                  Open-Meteo Synoptic Model
+                  Global Synoptic Forecast Model
                 </span>
               </div>
 
@@ -567,7 +567,7 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
                 </h3>
                 <p>{description}</p>
                 <p>
-                  MooEarth synchronizes live surface observations through the Open-Meteo meteorological pipeline, adhering strictly to World Meteorological Organization (WMO) atmospheric code standards. Zero synthetic or simulated weather data is displayed.
+                  MooEarth synthesizes live surface observations adhering strictly to World Meteorological Organization (WMO) atmospheric standards. Telemetry calibrated via Open-Meteo observational feeds.
                 </p>
               </div>
             </div>

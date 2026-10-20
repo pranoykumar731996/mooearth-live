@@ -274,7 +274,7 @@ export default function WindParticleOverlay({
 
         {/* Disclaimer note */}
         <div className="text-[9px] text-white/30 text-right px-1">
-          Streamlines rendered from Open-Meteo vector vectors.
+          Streamlines rendered from real-time atmospheric vector fields.
         </div>
       </div>
     </div>

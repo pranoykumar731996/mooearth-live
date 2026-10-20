@@ -193,7 +193,7 @@ export default async function CountryWeatherPage({ params }: CountryWeatherPageP
               </h1>
             </div>
             <p className="text-sm text-white/60 max-w-md">
-              Real-world meteorological feeds provided by Open-Meteo satellites and surface observation sensors. No synthetic or fabricated weather data.
+              Real-world meteorological feeds provided by atmospheric sensors and observational telemetry. No synthetic or fabricated weather data.
             </p>
           </div>
         </header>

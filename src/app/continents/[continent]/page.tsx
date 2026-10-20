@@ -287,7 +287,7 @@ export default async function ContinentPage({ params }: ContinentPageProps) {
                   {continent.climateOverview}
                 </p>
                 <p>
-                  Atmospheric readings across {continent.name} are monitored continuously through Open-Meteo numerical weather telemetry stations.
+                  Atmospheric readings across {continent.name} are monitored continuously through numerical weather telemetry stations.
                 </p>
               </div>
             </div>

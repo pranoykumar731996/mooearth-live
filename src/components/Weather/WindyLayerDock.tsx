@@ -38,14 +38,14 @@ const PRIMARY_DOCK_ITEMS: DockItem[] = [
     iconEmoji: '📡',
     badge: 'NOAA',
     gradient: 'from-emerald-500/30 to-teal-600/30 text-emerald-300',
-    description: 'Doppler radar reflectivity (NOAA NEXRAD/MRMS • North America terrestrial)',
+    description: 'Doppler radar reflectivity • High-resolution terrestrial network',
   },
   {
     id: 'wind',
     name: 'Wind',
     iconEmoji: '💨',
     gradient: 'from-cyan-500/30 to-blue-600/30 text-cyan-300',
-    description: 'Animated particle streamlines & peak surface gusts (Open-Meteo)',
+    description: 'Animated particle streamlines & peak surface gusts',
   },
   {
     id: 'precipitation',

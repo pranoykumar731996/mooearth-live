@@ -10,7 +10,7 @@ import { redirect } from 'next/navigation';
 import { generateHreflangs } from '@/lib/i18n';
 
 const title = 'Weather Intelligence — Live Global Weather, Air Quality & Marine Forecast | MooEarth Live';
-const description = 'Explore real-time weather on a 3D globe. Current conditions, 7-day forecast, wind, air quality (AQI), elevation, flood risk, and marine data for any location worldwide. Powered by Open-Meteo.';
+const description = 'Explore real-time weather on a 3D globe. Current conditions, 7-day forecast, wind, air quality (AQI), elevation, flood risk, and marine data for any location worldwide with live synoptic telemetry.';
 
 export const metadata: Metadata = {
   title,
