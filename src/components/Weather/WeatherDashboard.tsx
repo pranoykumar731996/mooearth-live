@@ -719,7 +719,7 @@ export default function WeatherDashboard() {
                       ? 'bg-cyan-500 text-black shadow-md'
                       : 'text-white/60 hover:text-white'
                   }`}
-                  title="Explore detailed 2D city map with MapLibre GL JS"
+                  title="Explore detailed high-resolution 2D city map"
                 >
                   🗺️ <span className="hidden sm:inline">City Map</span>
                 </button>
@@ -902,7 +902,7 @@ export default function WeatherDashboard() {
                   data-testid="hud-explore-city-btn"
                   onClick={handleExploreCity}
                   className="px-3 py-2 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 backdrop-blur-xl border border-cyan-400/40 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer active:scale-95"
-                  title="Explore detailed 2D city map with MapLibre GL JS"
+                  title="Explore detailed high-resolution 2D city map"
                 >
                   <span>🗺️</span>
                   <span className="hidden sm:inline">Explore City</span>

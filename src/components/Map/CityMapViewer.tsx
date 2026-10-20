@@ -13,6 +13,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Map,
   NavigationControl,
@@ -1179,10 +1180,15 @@ export default function CityMapViewer({
           <span>BEARING: {currentBearing}°</span>
         </div>
 
-        {/* Tile Provider Attribution Notice */}
-        <div className="bg-[#050512]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 pointer-events-auto max-w-[60%] truncate text-right">
-          <span>{MAP_STYLES[activeStyleKey]?.attribution}</span>
-        </div>
+        {/* Subtle Cartography Sources Link */}
+        <Link
+          href="/data-sources"
+          title={MAP_STYLES[activeStyleKey]?.attribution || 'Cartographic Data Sources'}
+          className="bg-[#050512]/80 hover:bg-[#050512] backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 hover:border-white/20 text-white/40 hover:text-white/80 pointer-events-auto transition-colors flex items-center gap-1.5"
+        >
+          <span className="text-[11px]">ℹ️</span>
+          <span className="hidden sm:inline">Data Sources</span>
+        </Link>
       </div>
 
       {/* ── Loading Spinner State ─────────────────────── */}

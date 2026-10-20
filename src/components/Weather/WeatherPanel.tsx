@@ -153,7 +153,7 @@ export default function WeatherPanel({
               className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-400/40 hover:border-cyan-400 text-cyan-300 hover:text-white font-mono text-xs font-bold tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98 cursor-pointer group"
             >
               <span className="text-base group-hover:scale-110 transition-transform">🗺️</span>
-              <span>EXPLORE CITY MAP (MAPLIBRE)</span>
+              <span>EXPLORE CITY MAP</span>
               <span className="text-[10px] text-cyan-400 font-bold">→</span>
             </button>
           )}
