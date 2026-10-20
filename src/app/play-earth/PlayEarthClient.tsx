@@ -228,6 +228,15 @@ export default function PlayEarthClient({
   useEffect(() => {
     isFocusModeRef.current = isFocusMode;
   }, [isFocusMode]);
+
+  // Check if any game mode is actively running (Play Earth, Stop The Earth, Focus/Quiz)
+  const isAnyGameActive = Boolean(
+    isPlayEarthActive ||
+    isStopTheEarthActive ||
+    isStopTheEarthSpinning ||
+    playEarthInitialMode ||
+    isFocusMode
+  );
   const [showDebugConsole, setShowDebugConsole] = useState(false);
   const [isDeveloper, setIsDeveloper] = useState(false);
 
@@ -1495,7 +1504,7 @@ export default function PlayEarthClient({
 
       {/* PWA INSTALL BANNER FOR MOBILE */}
       <AnimatePresence>
-        {showInstallBanner && isMobile && (
+        {showInstallBanner && isMobile && !isAnyGameActive && (
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1955,82 +1964,84 @@ export default function PlayEarthClient({
       />
 
       {/* UI Overlays (Mini Globe, Timeline, AI Button) */}
-      <div 
-        className="fixed bottom-6 left-6 right-6 z-30 flex items-end justify-between pointer-events-none transition-all duration-300"
-        style={isMobile && !isFullScreenGlobe && !isPlayEarthActive ? { bottom: `calc(${mobileSheet.sheetHeightPercent}vh + 16px)` } : undefined}
-      >
-        
-        {/* Phase 10: Left - Global Pulse Energy Card + Mini Globe */}
-        <div className="hidden lg:flex flex-col gap-2.5 pointer-events-auto ml-16 xl:ml-20">
-          {/* Energy Score card */}
-          <div className="glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3.5 shadow-[0_0_20px_rgba(0,229,255,0.08)]">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center text-lg relative">
-              <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping absolute" />
-              💓
+      {!isAnyGameActive && (
+        <div 
+          className="fixed bottom-6 left-6 right-6 z-30 flex items-end justify-between pointer-events-none transition-all duration-300"
+          style={isMobile && !isFullScreenGlobe ? { bottom: `calc(${mobileSheet.sheetHeightPercent}vh + 16px)` } : undefined}
+        >
+          
+          {/* Phase 10: Left - Global Pulse Energy Card + Mini Globe */}
+          <div className="hidden lg:flex flex-col gap-2.5 pointer-events-auto ml-16 xl:ml-20">
+            {/* Energy Score card */}
+            <div className="glass px-4 py-3 rounded-2xl border border-white/10 flex items-center gap-3.5 shadow-[0_0_20px_rgba(0,229,255,0.08)]">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/20 flex items-center justify-center text-lg relative">
+                <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping absolute" />
+                💓
+              </div>
+              <div>
+                <div className="text-[9px] text-white/40 uppercase tracking-widest font-semibold">Global Pulse Energy</div>
+                <div className="text-lg font-black text-white leading-tight">{globalEnergyScore}%</div>
+              </div>
             </div>
-            <div>
-              <div className="text-[9px] text-white/40 uppercase tracking-widest font-semibold">Global Pulse Energy</div>
-              <div className="text-lg font-black text-white leading-tight">{globalEnergyScore}%</div>
-            </div>
-          </div>
 
-          {/* Mini Globe */}
-          <div className="w-24 h-24 rounded-full glass items-center justify-center cursor-pointer hover:border-cyan-500/50 transition-colors shadow-[0_0_30px_rgba(0,229,255,0.1)] group flex">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-900/40 to-black border border-white/5 relative overflow-hidden">
-              <div className="absolute top-4 left-4 w-6 h-4 bg-green-500/20 rounded-full blur-[2px] group-hover:bg-cyan-500/30 transition-colors" />
-              <div className="absolute bottom-6 right-4 w-8 h-6 bg-green-500/20 rounded-full blur-[2px] group-hover:bg-cyan-500/30 transition-colors" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-white/20 rounded-full flex items-center justify-center">
-                <div className="w-1 h-1 bg-cyan-400 rounded-full" />
+            {/* Mini Globe */}
+            <div className="w-24 h-24 rounded-full glass items-center justify-center cursor-pointer hover:border-cyan-500/50 transition-colors shadow-[0_0_30px_rgba(0,229,255,0.1)] group flex">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-900/40 to-black border border-white/5 relative overflow-hidden">
+                <div className="absolute top-4 left-4 w-6 h-4 bg-green-500/20 rounded-full blur-[2px] group-hover:bg-cyan-500/30 transition-colors" />
+                <div className="absolute bottom-6 right-4 w-8 h-6 bg-green-500/20 rounded-full blur-[2px] group-hover:bg-cyan-500/30 transition-colors" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 border border-white/20 rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 bg-cyan-400 rounded-full" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Center: Timeline Slider */}
-        <TimelineSlider />
+          {/* Center: Timeline Slider */}
+          <TimelineSlider />
 
-        {/* Right: Floating AI & Upload Buttons (Desktop-only) */}
-        <div className="hidden lg:flex pointer-events-auto mb-2 mr-0 md:mr-[340px] lg:mr-0 items-center gap-3">
-          {/* Phase 9 Mobile Full Screen Toggle */}
-          <button
-            onClick={() => {
-              setIsFullScreenGlobe(!isFullScreenGlobe);
-              playHoverBlip();
-            }}
-            className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all pointer-events-auto cursor-pointer"
-            title={isFullScreenGlobe ? "Show Dashboard Panels" : "Maximize 3D Globe"}
-          >
-            {isFullScreenGlobe ? '📺' : '📱'}
-          </button>
+          {/* Right: Floating AI & Upload Buttons (Desktop-only) */}
+          <div className="hidden lg:flex pointer-events-auto mb-2 mr-0 md:mr-[340px] lg:mr-0 items-center gap-3">
+            {/* Phase 9 Mobile Full Screen Toggle */}
+            <button
+              onClick={() => {
+                setIsFullScreenGlobe(!isFullScreenGlobe);
+                playHoverBlip();
+              }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all pointer-events-auto cursor-pointer"
+              title={isFullScreenGlobe ? "Show Dashboard Panels" : "Maximize 3D Globe"}
+            >
+              {isFullScreenGlobe ? '📺' : '📱'}
+            </button>
 
-          {/* EarthCast Toggle Removed */}
+            {/* EarthCast Toggle Removed */}
 
-          <button
-            onClick={() => {
-              setIsAssistantOpen(!isAssistantOpen);
-              playHoverBlip();
-            }}
-            className={`relative group w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-300/50 transition-all duration-300 hover:scale-110 cursor-pointer ${
-              isAssistantOpen
-                ? 'shadow-[0_0_50px_rgba(0,229,255,0.6)] border-cyan-400 scale-105'
-                : 'shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:shadow-[0_0_60px_rgba(0,229,255,0.6)]'
-            }`}
-          >
-            <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-[marker-ring_2s_linear_infinite]" />
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a2 2 0 0 1 2 2c0 7.49-2 14-2 14" />
-              <path d="M20 18v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1" />
-              <path d="M16 12v-2a4 4 0 0 0-8 0v2" />
-            </svg>
-            {/* Tooltip */}
-            <div className="absolute right-[calc(100%+16px)] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-              <div className="glass px-4 py-2 rounded-xl text-sm font-medium text-white shadow-xl">
-                {isAssistantOpen ? 'Close AI Assistant' : 'MooEarth AI Assistant'}
+            <button
+              onClick={() => {
+                setIsAssistantOpen(!isAssistantOpen);
+                playHoverBlip();
+              }}
+              className={`relative group w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br from-cyan-500 to-blue-600 border border-cyan-300/50 transition-all duration-300 hover:scale-110 cursor-pointer ${
+                isAssistantOpen
+                  ? 'shadow-[0_0_50px_rgba(0,229,255,0.6)] border-cyan-400 scale-105'
+                  : 'shadow-[0_0_40px_rgba(0,229,255,0.4)] hover:shadow-[0_0_60px_rgba(0,229,255,0.6)]'
+              }`}
+            >
+              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-[marker-ring_2s_linear_infinite]" />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a2 2 0 0 1 2 2c0 7.49-2 14-2 14" />
+                <path d="M20 18v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-1" />
+                <path d="M16 12v-2a4 4 0 0 0-8 0v2" />
+              </svg>
+              {/* Tooltip */}
+              <div className="absolute right-[calc(100%+16px)] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                <div className="glass px-4 py-2 rounded-xl text-sm font-medium text-white shadow-xl">
+                  {isAssistantOpen ? 'Close AI Assistant' : 'MooEarth AI Assistant'}
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
 
 
@@ -2344,7 +2355,9 @@ export default function PlayEarthClient({
       </AnimatePresence>
 
       {/* DAILY CHALLENGE RETENTION CARD */}
-      <DailyChallengeRetentionCard />
+      {!isAnyGameActive && (
+        <DailyChallengeRetentionCard hidden={isAnyGameActive} />
+      )}
     </main>
   );
 }

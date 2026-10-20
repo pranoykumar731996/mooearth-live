@@ -4,7 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function DailyChallengeRetentionCard() {
+interface DailyChallengeRetentionCardProps {
+  hidden?: boolean;
+}
+
+export default function DailyChallengeRetentionCard({ hidden = false }: DailyChallengeRetentionCardProps = {}) {
   const [mounted, setMounted] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
@@ -66,7 +70,7 @@ export default function DailyChallengeRetentionCard() {
     }
   };
 
-  if (!mounted || isDismissed) return null;
+  if (!mounted || isDismissed || hidden) return null;
 
   return (
     <div className="fixed bottom-20 left-4 sm:left-6 z-30 pointer-events-auto max-w-xs sm:max-w-sm">
