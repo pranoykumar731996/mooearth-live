@@ -49,6 +49,7 @@ console.log('============================================================\n');
 console.log('--- 1. Map Style Providers & Licensing Compliance ---');
 
 const expectedStyles: MapStyleKey[] = [
+  'satellite',
   'esri-street',
   'maptiler-streets',
   'liberty',
@@ -60,8 +61,30 @@ const expectedStyles: MapStyleKey[] = [
 
 assert(
   expectedStyles.every((key) => key in MAP_STYLES),
-  'All 7 map styles (esri-street, maptiler-streets, liberty, bright, osm, voyager, dark) are registered'
+  'All 8 map styles (satellite, esri-street, maptiler-streets, liberty, bright, osm, voyager, dark) are registered'
 );
+
+// Check Satellite HD (Esri World Imagery + Reference Labels)
+const sat = MAP_STYLES['satellite'];
+assert(sat.type === 'raster', 'Satellite HD is raster type');
+assert(
+  typeof sat.style === 'object' && sat.style.version === 8,
+  'Satellite HD style is compliant with MapLibre Style Specification v8'
+);
+if (typeof sat.style === 'object') {
+  const imagerySource = (sat.style.sources as any)['esri-satellite-imagery'];
+  const labelsSource = (sat.style.sources as any)['esri-satellite-labels'];
+  assert(!!imagerySource, 'Satellite style contains esri-satellite-imagery raster source');
+  assert(!!labelsSource, 'Satellite style contains esri-satellite-labels raster source');
+  assert(
+    imagerySource.tiles[0].includes('World_Imagery'),
+    'Satellite tiles point to official World_Imagery MapServer'
+  );
+  assert(
+    labelsSource.tiles[0].includes('World_Boundaries_and_Places'),
+    'Satellite labels point to official World_Boundaries_and_Places MapServer'
+  );
+}
 
 // Check Esri World Street (Default Fast Raster Fallback)
 const esri = MAP_STYLES['esri-street'];

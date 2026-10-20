@@ -10,6 +10,7 @@
 // - Full attribution to OpenStreetMap contributors and respective data providers.
 
 export type MapStyleKey =
+  | 'satellite'
   | 'esri-street'
   | 'maptiler-streets'
   | 'liberty'
@@ -51,6 +52,50 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
   const cartoQuery = cartoKey ? `?api_key=${encodeURIComponent(cartoKey)}` : '';
 
   return {
+    satellite: {
+      key: 'satellite',
+      label: 'Satellite HD',
+      badge: 'Photo',
+      style: {
+        version: 8,
+        sources: {
+          'esri-satellite-imagery': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution:
+              'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+          },
+          'esri-satellite-labels': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: 'esri-satellite-imagery-layer',
+            type: 'raster',
+            source: 'esri-satellite-imagery',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+          {
+            id: 'esri-satellite-labels-layer',
+            type: 'raster',
+            source: 'esri-satellite-labels',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
+      },
+      type: 'raster',
+      attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS',
+    },
     'esri-street': {
       key: 'esri-street',
       label: 'Street Navigation',
@@ -279,6 +324,9 @@ export function parseCityMapUrl(urlOrQuery: string) {
 export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): MapStyleKey {
   if (!hasError) return currentKey;
   if (currentKey === 'maptiler-streets' || currentKey === 'liberty' || currentKey === 'bright') {
+    return 'esri-street';
+  }
+  if (currentKey === 'satellite') {
     return 'esri-street';
   }
   if (currentKey === 'esri-street') {
