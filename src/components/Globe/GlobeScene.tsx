@@ -21,6 +21,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
+import { getPerformanceProfile, recordFrameJank, subscribeToPerformanceProfile, PerformanceProfile } from '@/services/devicePerformanceTier';
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -222,9 +223,19 @@ const GlobeScene = React.memo(function GlobeScene({
   onGlobeClick,
 }: GlobeSceneProps) {
   const { globeRef, initControls, flyTo, zoomIn, zoomOut, pauseRotation, resumeRotation, spinRapidly, freezeRotation, getPointOfView } = useGlobeControls();
+  const [perfProfile, setPerfProfile] = useState<PerformanceProfile>(getPerformanceProfile);
   const [failsafeActive, setFailsafeActive] = useState(false);
   const lowFpsSecondsRef = useRef(0);
   const highFpsSecondsRef = useRef(0);
+
+  useEffect(() => {
+    return subscribeToPerformanceProfile((newProfile) => {
+      setPerfProfile(newProfile);
+      if (newProfile.isLowEndDevice) {
+        setFailsafeActive(true);
+      }
+    });
+  }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [introDone, setIntroDone] = useState(false);
@@ -661,10 +672,26 @@ const GlobeScene = React.memo(function GlobeScene({
             }, 150);
           }
 
-          // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions (1.0 on mobile for 60fps)
+          // Cap pixel ratio on high-DPI screens to prevent WebGL from rendering at massive resolutions
+          // (0.70 on low-end Android, 1.0 on mobile, 2.0 on high-end desktop)
           const renderer = globeRef.current.renderer();
           if (renderer) {
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 2.0));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, perfProfile.maxPixelRatio));
+
+            // WebGL context loss & restore guard for low-memory Android devices
+            const canvas = renderer.domElement;
+            if (canvas && !(canvas as any).__hasContextLossListener) {
+              (canvas as any).__hasContextLossListener = true;
+              canvas.addEventListener('webglcontextlost', (evt: Event) => {
+                evt.preventDefault();
+                console.warn('[GlobeScene] WebGL context lost on low memory device. Activating failsafe mode.');
+                setFailsafeActive(true);
+              }, false);
+              canvas.addEventListener('webglcontextrestored', () => {
+                console.log('[GlobeScene] WebGL context restored.');
+                setFailsafeActive(false);
+              }, false);
+            }
           }
         } catch (e) {
           console.warn('[Globe] Init error', e);
@@ -781,8 +808,8 @@ const GlobeScene = React.memo(function GlobeScene({
       scene.add(ambientLight);
     }
 
-    // Show clouds ONLY on desktop standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)
-    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather') && !failsafeActive;
+    // Show clouds ONLY on desktop standard and weather views, and NOT in failsafe mode or on low-end devices
+    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather') && !failsafeActive && perfProfile.cloudsLayerEnabled;
 
     if (!showClouds) {
       const existingClouds = scene.children.find((c: any) => c.name === 'clouds');
@@ -810,7 +837,7 @@ const GlobeScene = React.memo(function GlobeScene({
           (existingClouds.material as any).needsUpdate = true;
         }
       } else {
-        const segments = isMobile ? 36 : 75; // Optimize polygon count on mobile devices
+        const segments = perfProfile.sphereSegments; // Dynamically optimized polygon count based on performance tier
         const cloudsGeometry = new THREE.SphereGeometry(globe.getGlobeRadius() * 1.006, segments, segments);
         const cloudsMaterial = new THREE.MeshPhongMaterial({
           map: cloudsTexture,
@@ -825,7 +852,7 @@ const GlobeScene = React.memo(function GlobeScene({
         cloudsMeshRef.current = clouds;
       }
     });
-  }, [globeRef, introDone, cloudsTextureUrl, isMobile, globeView, failsafeActive, isPlayEarthActive]);
+  }, [globeRef, introDone, cloudsTextureUrl, isMobile, globeView, failsafeActive, isPlayEarthActive, perfProfile]);
 
   // Unified Render Loop: Phase 8 (Breathing/Rotation), Phase 10 (Energy), Phase 1 (Flicker)
   useEffect(() => {
@@ -836,9 +863,19 @@ const GlobeScene = React.memo(function GlobeScene({
     if (!scene) return;
 
     let animFrameId: number;
+    let lastFrameTime = performance.now();
 
     const tick = () => {
       const time = performance.now();
+      const delta = time - lastFrameTime;
+
+      // 30 FPS clamp on budget Android devices (~32ms interval) to completely prevent CPU thermal throttling
+      if (perfProfile.maxFps === 30 && delta < 31) {
+        animFrameId = requestAnimationFrame(tick);
+        return;
+      }
+      recordFrameJank(delta);
+      lastFrameTime = time;
 
       // 1. Cloud rotation speed (Phase 8: faster when energy is high)
       const clouds = cloudsMeshRef.current;
@@ -1030,7 +1067,7 @@ const GlobeScene = React.memo(function GlobeScene({
     animFrameId = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(animFrameId);
-  }, [globeRef, introDone, globalEnergyScore, isCinematicModeActive, hasPenaltyShootout, celebration, earthCastActive, earthCastAudioLevel]);
+  }, [globeRef, introDone, globalEnergyScore, isCinematicModeActive, hasPenaltyShootout, celebration, earthCastActive, earthCastAudioLevel, perfProfile]);
 
   // ── Weather Layers Three.js Management (Wind, Temperature, Precipitation) ──
   useEffect(() => {
@@ -3495,7 +3532,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
           // Textures & Atmosphere (Rule 1 & Rule 2 & Rule 11)
           globeImageUrl={globeTextureUrl}
-          bumpImageUrl={failsafeActive || isMobile ? "" : GLOBE_CONFIG.bumpImageUrl}
+          bumpImageUrl={failsafeActive || isMobile || perfProfile.isLowEndDevice ? "" : GLOBE_CONFIG.bumpImageUrl}
           backgroundImageUrl=""
           backgroundColor="rgba(0,0,0,0)"
           showAtmosphere={true}
@@ -3513,7 +3550,7 @@ const GlobeScene = React.memo(function GlobeScene({
           atmosphereAltitude={
             celebration?.active 
               ? (isMobile ? 0.35 : 0.4) 
-              : failsafeActive
+              : failsafeActive || perfProfile.isLowEndDevice
               ? 0.05
               : (globeView === 'discovery' || isPlayEarthActive)
               ? 0.16
@@ -3524,20 +3561,20 @@ const GlobeScene = React.memo(function GlobeScene({
               : (isMobile ? 0.2 : GLOBE_CONFIG.atmosphereAltitude)
           }
 
-          // HTML markers
-          htmlElementsData={combinedHtmlData}
+          // HTML markers: Suppress in game mode or on low-end devices to eliminate DOM layout thrashing
+          htmlElementsData={isPlayEarthActive || perfProfile.suppressHtmlMarkersInGame ? [] : combinedHtmlData}
           htmlElement={htmlMarkerRenderer}
           htmlAltitude={GLOBE_CONFIG.markerAltitude}
 
-          // Polygons (Countries)
+          // Polygons (Countries): Flatten 3D prism extrusion on low-end devices to eliminate 20,000+ side triangles
           polygonsData={countries}
           polygonCapColor={getPolygonColor}
-          polygonSideColor={getPolygonSideColor}
+          polygonSideColor={perfProfile.flatPolygons ? 'rgba(0,0,0,0)' : getPolygonSideColor}
           polygonStrokeColor={getPolygonStrokeColor}
-          polygonAltitude={getPolygonAltitude}
-          polygonsTransitionDuration={failsafeActive || isMobile ? 0 : 600} // Disable transitions on mobile for 60fps
+          polygonAltitude={perfProfile.flatPolygons ? 0 : getPolygonAltitude}
+          polygonsTransitionDuration={failsafeActive || isMobile || perfProfile.isLowEndDevice ? 0 : 600} // Disable transitions on mobile for 60fps
           onPolygonClick={handlePolygonClick}
-          onPolygonHover={isMobile ? undefined : handlePolygonHover} // Disable raycasting hover queries on touch screens
+          onPolygonHover={isMobile || perfProfile.isLowEndDevice ? undefined : handlePolygonHover} // Disable raycasting hover queries on touch screens
 
           // Labels (Feature 1, 7, 10, 4)
           labelsData={filteredLabels}

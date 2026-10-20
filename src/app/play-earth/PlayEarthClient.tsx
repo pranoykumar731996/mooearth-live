@@ -54,6 +54,7 @@ import type { PlayEarthMode } from '@/types';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { useEmotionMap } from '@/hooks/useEmotionMap';
 import { findCountryMeta, getMetadataCountries } from '@/data/questions/countryMetadata';
+import { getPerformanceProfile, setPerformanceTierOverride, subscribeToPerformanceProfile, PerformanceProfile } from '@/services/devicePerformanceTier';
 import { initAnalyticsSession, trackEvent, updateAnalyticsUser } from '@/services/analytics';
 import { onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
@@ -168,6 +169,11 @@ export default function PlayEarthClient({
   const [directorySearch, setDirectorySearch] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [lastGlobeTap, setLastGlobeTap] = useState<{ country: string; timestamp: number } | null>(null);
+  const [perfProfile, setPerfProfile] = useState<PerformanceProfile>(getPerformanceProfile);
+
+  useEffect(() => {
+    return subscribeToPerformanceProfile(setPerfProfile);
+  }, []);
 
   // Stop The Earth Game Mode Bridge States
   const [isStopTheEarthSpinning, setIsStopTheEarthSpinning] = useState(false);
@@ -2114,6 +2120,23 @@ export default function PlayEarthClient({
               <circle cx="12" cy="5" r="2" />
               <path d="M12 7v4M9 16h.01M15 16h.01M8 11V8a4 4 0 0 1 8 0v3" />
             </svg>
+          </button>
+
+          {/* Quick Lite Mode Toggle for Low-End Mobile Anti-Hang */}
+          <button
+            onClick={() => {
+              const next = perfProfile.tier === 'low' ? 'high' : 'low';
+              setPerformanceTierOverride(next);
+              playHoverBlip();
+            }}
+            className={`w-9.5 h-9.5 sm:w-10.5 sm:h-10.5 shrink-0 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-300 border cursor-pointer ${
+              perfProfile.tier === 'low'
+                ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                : 'bg-black/60 border-white/10 text-white/70 hover:text-white'
+            }`}
+            title={perfProfile.tier === 'low' ? "Lite Mode Active (Fast & Battery Saver)" : "Switch to Lite Mode (Fast for Low-End Mobile)"}
+          >
+            <span className="text-sm font-black">⚡</span>
           </button>
 
           {/* Globe/Fullscreen Toggle */}
