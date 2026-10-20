@@ -3,6 +3,32 @@
 // ============================================================
 // Real-world meteorological data integration. Never fabricates weather.
 
+export interface HourlyForecastItem {
+  time: string;
+  hour: string;
+  temperature: number;
+  apparentTemperature?: number;
+  weatherCode: number;
+  weatherDescription: string;
+  weatherEmoji: string;
+  precipitationProbability: number;
+  relativeHumidity: number;
+}
+
+export interface DailyForecastItem {
+  date: string;
+  dayName: string;
+  temperatureMax: number;
+  temperatureMin: number;
+  weatherCode: number;
+  weatherDescription: string;
+  weatherEmoji: string;
+  precipitationProbability: number;
+  uvIndexMax: number;
+  sunrise: string;
+  sunset: string;
+}
+
 export interface WeatherTelemetry {
   temperature: number;
   apparentTemperature: number;
@@ -20,6 +46,11 @@ export interface WeatherTelemetry {
   stationLat: number;
   stationLng: number;
   timestamp: string;
+  sunrise?: string;
+  sunset?: string;
+  uvIndex?: number;
+  hourly?: HourlyForecastItem[];
+  daily?: DailyForecastItem[];
 }
 
 export interface WeatherFetchResult {
@@ -70,6 +101,7 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 /**
  * Fetch real-world weather telemetry from Open-Meteo API.
  * Never fabricates or fakes weather readings.
+ * Returns current conditions, next 24 hours hourly forecast, and 7-day daily outlook.
  * Employs in-memory caching and Next.js ISR revalidation.
  */
 export async function fetchCountryWeather(
@@ -86,7 +118,7 @@ export async function fetchCountryWeather(
   }
 
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,weather_code,is_day,surface_pressure&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,rain,wind_speed_10m,wind_direction_10m,cloud_cover,weather_code,is_day,surface_pressure&hourly=temperature_2m,apparent_temperature,weather_code,relative_humidity_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&forecast_days=7&timezone=auto`;
 
     const res = await fetch(url, {
       signal: AbortSignal.timeout(7000),
@@ -116,6 +148,69 @@ export async function fetchCountryWeather(
 
     const wmo = getWmoWeatherInfo(curr.weather_code ?? 0);
 
+    // Extract next 24h hourly forecast
+    let hourlyItems: HourlyForecastItem[] | undefined;
+    if (data.hourly && Array.isArray(data.hourly.time)) {
+      const currTime = curr.time || '';
+      const hTimes: string[] = data.hourly.time;
+      let startIdx = hTimes.findIndex((t: string) => t >= currTime);
+      if (startIdx < 0) startIdx = 0;
+
+      hourlyItems = hTimes.slice(startIdx, startIdx + 24).map((t: string, idx: number) => {
+        const i = startIdx + idx;
+        const dt = new Date(t);
+        const hour = dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+        const hCode = data.hourly.weather_code?.[i] ?? 0;
+        const hWmo = getWmoWeatherInfo(hCode);
+
+        return {
+          time: t,
+          hour,
+          temperature: Math.round(data.hourly.temperature_2m?.[i] ?? 0),
+          apparentTemperature: data.hourly.apparent_temperature?.[i] != null
+            ? Math.round(data.hourly.apparent_temperature[i])
+            : undefined,
+          weatherCode: hCode,
+          weatherDescription: hWmo.desc,
+          weatherEmoji: hWmo.emoji,
+          precipitationProbability: Math.round(data.hourly.precipitation_probability?.[i] ?? 0),
+          relativeHumidity: Math.round(data.hourly.relative_humidity_2m?.[i] ?? 0),
+        };
+      });
+    }
+
+    // Extract 7-day daily forecast
+    let dailyItems: DailyForecastItem[] | undefined;
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    if (data.daily && Array.isArray(data.daily.time)) {
+      dailyItems = data.daily.time.map((t: string, i: number) => {
+        const d = new Date(t + 'T12:00:00');
+        const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : days[d.getDay()];
+        const dCode = data.daily.weather_code?.[i] ?? 0;
+        const dWmo = getWmoWeatherInfo(dCode);
+        const sunriseFull = data.daily.sunrise?.[i] || '';
+        const sunsetFull = data.daily.sunset?.[i] || '';
+
+        return {
+          date: t,
+          dayName,
+          temperatureMax: Math.round(data.daily.temperature_2m_max?.[i] ?? 0),
+          temperatureMin: Math.round(data.daily.temperature_2m_min?.[i] ?? 0),
+          weatherCode: dCode,
+          weatherDescription: dWmo.desc,
+          weatherEmoji: dWmo.emoji,
+          precipitationProbability: Math.round(data.daily.precipitation_probability_max?.[i] ?? 0),
+          uvIndexMax: Number((data.daily.uv_index_max?.[i] ?? 0).toFixed(1)),
+          sunrise: sunriseFull.includes('T') ? sunriseFull.split('T')[1] : sunriseFull,
+          sunset: sunsetFull.includes('T') ? sunsetFull.split('T')[1] : sunsetFull,
+        };
+      });
+    }
+
+    const todaySunrise = data.daily?.sunrise?.[0];
+    const todaySunset = data.daily?.sunset?.[0];
+    const todayUv = data.daily?.uv_index_max?.[0];
+
     const observation: WeatherTelemetry = {
       temperature: curr.temperature_2m,
       apparentTemperature: curr.apparent_temperature ?? curr.temperature_2m,
@@ -133,6 +228,11 @@ export async function fetchCountryWeather(
       stationLat: lat,
       stationLng: lng,
       timestamp: curr.time || new Date().toISOString(),
+      sunrise: todaySunrise ? (todaySunrise.includes('T') ? todaySunrise.split('T')[1] : todaySunrise) : undefined,
+      sunset: todaySunset ? (todaySunset.includes('T') ? todaySunset.split('T')[1] : todaySunset) : undefined,
+      uvIndex: todayUv != null ? Number(todayUv.toFixed(1)) : undefined,
+      hourly: hourlyItems,
+      daily: dailyItems,
     };
 
     const successResult: WeatherFetchResult = {

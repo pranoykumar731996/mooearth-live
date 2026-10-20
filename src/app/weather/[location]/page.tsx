@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getAllCountries, getCountryBySlug, resolveCanonicalSlug } from '@/data/countries';
 import { getAllCities, getCityBySlug, resolveCanonicalCitySlug, getNearbyCities } from '@/data/places';
-import { fetchCountryWeather, WeatherTelemetry } from '@/services/weatherService';
+import { fetchCountryWeather } from '@/services/weatherService';
 import { shouldIndexWeatherPage } from '@/lib/seo/weatherQualityGate';
 import LocationWeatherTemplate, { LocationWeatherViewData } from '@/components/Weather/LocationWeatherTemplate';
 
@@ -40,10 +40,22 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
     const weatherResult = await fetchCountryWeather(city.coordinates.lat, city.coordinates.lng);
     const gateResult = shouldIndexWeatherPage(decoded, canonicalSlug, weatherResult);
 
-    const title = `${city.name}, ${city.country} Weather & Live Climate Telemetry | MooEarth Live`;
-    const description = weatherResult.observation
-      ? `Current verified weather in ${city.name} (${city.state ? `${city.state}, ` : ''}${city.country}): ${Math.round(weatherResult.observation.temperature)}°C, ${weatherResult.observation.weatherDescription}. Barometric pressure: ${Math.round(weatherResult.observation.surfacePressure)} hPa.`
-      : `Real-time verified meteorological station telemetry and climate data for ${city.name}, ${city.country}.`;
+    const obs = weatherResult.observation;
+    let title = `${city.name} Weather: Today's Temperature, Tomorrow & 7-Day Forecast | MooEarth Live`;
+    let description = `Real-time verified meteorological station telemetry, hourly outlook, and 7-day forecast for ${city.name}, ${city.country}.`;
+
+    if (obs) {
+      const tempC = Math.round(obs.temperature);
+      const tempF = Math.round((obs.temperature * 9) / 5 + 32);
+      const tomorrow = obs.daily?.[1];
+      const tomorrowNote = tomorrow
+        ? ` Tomorrow: ${tomorrow.dayName} will be ${tomorrow.weatherDescription.toLowerCase()} with high of ${tomorrow.temperatureMax}°C (${Math.round((tomorrow.temperatureMax * 9) / 5 + 32)}°F).`
+        : '';
+
+      title = `${city.name} Weather: Today's Temperature (${tempC}°C), Tomorrow & 7-Day Forecast | MooEarth Live`;
+      description = `Live weather in ${city.name}, ${city.country}: current temperature is ${tempC}°C (${tempF}°F), feels like ${Math.round(obs.apparentTemperature)}°C, ${obs.weatherDescription.toLowerCase()}.${tomorrowNote} Hourly outlook, 7-day forecast, wind, humidity, pressure, and interactive 3D radar.`;
+    }
+
     const canonicalUrl = `https://www.mooearth.live/weather/${canonicalSlug}`;
 
     return {
@@ -56,7 +68,7 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
         description,
         url: canonicalUrl,
         type: 'website',
-        images: [{ url: 'https://www.mooearth.live/icons/icon-512.png', width: 512, height: 512, alt: `${city.name} Weather` }],
+        images: [{ url: 'https://www.mooearth.live/icons/icon-512.png', width: 512, height: 512, alt: `${city.name} Weather Forecast` }],
       },
       twitter: {
         card: 'summary_large_image',
@@ -73,10 +85,22 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
     const weatherResult = await fetchCountryWeather(country.coordinates.lat, country.coordinates.lng);
     const gateResult = shouldIndexWeatherPage(decoded, canonicalSlug, weatherResult);
 
-    const title = `${country.name} Weather & Live Climate Telemetry | MooEarth Live`;
-    const description = weatherResult.observation
-      ? `Current verified weather in ${country.name} (${country.capital}): ${Math.round(weatherResult.observation.temperature)}°C, ${weatherResult.observation.weatherDescription}. Wind: ${weatherResult.observation.windSpeed} km/h, pressure: ${Math.round(weatherResult.observation.surfacePressure)} hPa.`
-      : `Real-time verified meteorological station telemetry and climate data for ${country.name} (${country.capital}).`;
+    const obs = weatherResult.observation;
+    let title = `${country.name} Weather: Live Climate & 7-Day Forecast | MooEarth Live`;
+    let description = `Real-time verified meteorological station telemetry and climate data for ${country.name} (${country.capital}).`;
+
+    if (obs) {
+      const tempC = Math.round(obs.temperature);
+      const tempF = Math.round((obs.temperature * 9) / 5 + 32);
+      const tomorrow = obs.daily?.[1];
+      const tomorrowNote = tomorrow
+        ? ` Tomorrow: ${tomorrow.weatherDescription.toLowerCase()} with high of ${tomorrow.temperatureMax}°C.`
+        : '';
+
+      title = `${country.name} Weather: Current Temperature (${tempC}°C), Forecast & Climate | MooEarth Live`;
+      description = `National weather observation for ${country.name} (${country.capital}): ${tempC}°C (${tempF}°F), ${obs.weatherDescription.toLowerCase()}.${tomorrowNote} Wind ${obs.windSpeed} km/h, humidity ${obs.relativeHumidity}%, surface pressure ${Math.round(obs.surfacePressure)} hPa, and 7-day forecast.`;
+    }
+
     const canonicalUrl = `https://www.mooearth.live/weather/${canonicalSlug}`;
 
     return {
@@ -107,27 +131,6 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
   };
 }
 
-function getFallbackObservation(lat: number, lng: number): WeatherTelemetry {
-  return {
-    temperature: 20,
-    apparentTemperature: 20,
-    relativeHumidity: 55,
-    precipitation: 0,
-    rain: 0,
-    windSpeed: 12,
-    windDirection: 180,
-    cloudCover: 20,
-    surfacePressure: 1013.25,
-    weatherCode: 1,
-    weatherDescription: 'Mainly clear',
-    weatherEmoji: '🌤️',
-    isDay: true,
-    stationLat: lat,
-    stationLng: lng,
-    timestamp: new Date().toISOString(),
-  };
-}
-
 export default async function LocationWeatherPage({ params }: LocationWeatherPageProps) {
   const { location: rawSlug } = await params;
   const decoded = decodeURIComponent(rawSlug).toLowerCase();
@@ -135,14 +138,17 @@ export default async function LocationWeatherPage({ params }: LocationWeatherPag
   // 1. Try City
   const city = getCityBySlug(decoded);
   if (city) {
+    const canonicalSlug = resolveCanonicalCitySlug(decoded) || city.slug;
+    if (decoded !== canonicalSlug) {
+      redirect(`/weather/${canonicalSlug}`);
+    }
+
     const weatherResult = await fetchCountryWeather(city.coordinates.lat, city.coordinates.lng);
-    const nearby = getNearbyCities(city.coordinates.lat, city.coordinates.lng, 4, city.id).map(item => ({
+    const nearby = getNearbyCities(city.coordinates.lat, city.coordinates.lng, 6, city.id).map(item => ({
       name: item.city.name,
       slug: item.city.slug,
       type: 'city' as const,
     }));
-
-    const observation = weatherResult.observation || getFallbackObservation(city.coordinates.lat, city.coordinates.lng);
 
     const viewData: LocationWeatherViewData = {
       slug: city.slug,
@@ -157,7 +163,9 @@ export default async function LocationWeatherPage({ params }: LocationWeatherPag
       timezone: city.timezone,
       description: city.description || `${city.name} is a verified metropolitan city in ${city.country}.`,
       geographyContext: city.geography || `${city.name} is located at latitude ${city.coordinates.lat.toFixed(2)}°, longitude ${city.coordinates.lng.toFixed(2)}°.`,
-      weather: observation,
+      weather: weatherResult.observation,
+      isTemporaryError: weatherResult.isTemporaryError,
+      errorMessage: weatherResult.errorMessage,
       nearbyOrSubLocations: nearby,
     };
 
@@ -167,10 +175,13 @@ export default async function LocationWeatherPage({ params }: LocationWeatherPag
   // 2. Try Country
   const country = getCountryBySlug(decoded);
   if (country) {
+    const canonicalSlug = resolveCanonicalSlug(decoded) || country.slug;
+    if (decoded !== canonicalSlug) {
+      redirect(`/weather/${canonicalSlug}`);
+    }
+
     const weatherResult = await fetchCountryWeather(country.coordinates.lat, country.coordinates.lng);
     const capitalCities = getAllCities().filter(c => c.countrySlug === country.slug);
-
-    const observation = weatherResult.observation || getFallbackObservation(country.coordinates.lat, country.coordinates.lng);
 
     const viewData: LocationWeatherViewData = {
       slug: country.slug,
@@ -184,7 +195,9 @@ export default async function LocationWeatherPage({ params }: LocationWeatherPag
       population: country.population,
       description: `${country.name} is a sovereign nation in ${country.region} with its capital at ${country.capital}. ${country.climate}`,
       geographyContext: country.geography || `Situated across ${country.region}, ${country.name} experiences diverse climate patterns centered at latitude ${country.coordinates.lat.toFixed(2)}°, longitude ${country.coordinates.lng.toFixed(2)}°.`,
-      weather: observation,
+      weather: weatherResult.observation,
+      isTemporaryError: weatherResult.isTemporaryError,
+      errorMessage: weatherResult.errorMessage,
       nearbyOrSubLocations: capitalCities.map(c => ({ name: c.name, slug: c.slug, type: 'city' as const })),
     };
 

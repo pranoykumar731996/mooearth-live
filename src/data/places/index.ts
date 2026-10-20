@@ -33,19 +33,88 @@ const CANONICAL_CITY_SLUG_MAP: Record<string, string> = {
   'city-bhubaneswar-in': 'bhubaneswar',
   'city-mumbai-in': 'mumbai',
   'city-newdelhi-in': 'new-delhi',
+  'city-bengaluru-in': 'bengaluru',
+  'city-chennai-in': 'chennai',
+  'city-kolkata-in': 'kolkata',
+  'city-hyderabad-in': 'hyderabad',
+  'city-ahmedabad-in': 'ahmedabad',
+  'city-pune-in': 'pune',
   'city-nyc-us': 'new-york-city',
   'city-la-us': 'los-angeles',
   'city-sf-us': 'san-francisco',
   'city-houston-us': 'houston',
+  'city-chicago-us': 'chicago',
+  'city-miami-us': 'miami',
+  'city-seattle-us': 'seattle',
+  'city-boston-us': 'boston',
+  'city-washingtondc-us': 'washington-dc',
   'city-paris-tx-us': 'paris-texas',
   'city-paris-fr': 'paris',
   'city-tokyo-jp': 'tokyo',
   'city-kyoto-jp': 'kyoto',
+  'city-osaka-jp': 'osaka',
   'city-london-gb': 'london',
   'city-manchester-gb': 'manchester',
   'city-munich-de': 'munich',
+  'city-berlin-de': 'berlin',
+  'city-frankfurt-de': 'frankfurt',
+  'city-rome-it': 'rome',
+  'city-milan-it': 'milan',
+  'city-madrid-es': 'madrid',
+  'city-barcelona-es': 'barcelona',
+  'city-amsterdam-nl': 'amsterdam',
+  'city-brussels-be': 'brussels',
+  'city-vienna-at': 'vienna',
+  'city-zurich-ch': 'zurich',
+  'city-stockholm-se': 'stockholm',
+  'city-oslo-no': 'oslo',
+  'city-copenhagen-dk': 'copenhagen',
+  'city-dublin-ie': 'dublin',
+  'city-warsaw-pl': 'warsaw',
+  'city-athens-gr': 'athens',
+  'city-lisbon-pt': 'lisbon',
+  'city-prague-cz': 'prague',
+  'city-budapest-hu': 'budapest',
+  'city-istanbul-tr': 'istanbul',
   'city-saopaulo-br': 'sao-paulo',
   'city-rio-br': 'rio-de-janeiro',
+  'city-buenosaires-ar': 'buenos-aires',
+  'city-santiago-cl': 'santiago',
+  'city-bogota-co': 'bogota',
+  'city-lima-pe': 'lima',
+  'city-sydney-au': 'sydney',
+  'city-melbourne-au': 'melbourne',
+  'city-brisbane-au': 'brisbane',
+  'city-perth-au': 'perth',
+  'city-auckland-nz': 'auckland',
+  'city-cairo-eg': 'cairo',
+  'city-johannesburg-za': 'johannesburg',
+  'city-capetown-za': 'cape-town',
+  'city-lagos-ng': 'lagos',
+  'city-nairobi-ke': 'nairobi',
+  'city-casablanca-ma': 'casablanca',
+  'city-addisababa-et': 'addis-ababa',
+  'city-singapore-sg': 'singapore',
+  'city-seoul-kr': 'seoul',
+  'city-beijing-cn': 'beijing',
+  'city-shanghai-cn': 'shanghai',
+  'city-guangzhou-cn': 'guangzhou',
+  'city-hongkong-hk': 'hong-kong',
+  'city-taipei-tw': 'taipei',
+  'city-dubai-ae': 'dubai',
+  'city-abudhabi-ae': 'abu-dhabi',
+  'city-riyadh-sa': 'riyadh',
+  'city-doha-qa': 'doha',
+  'city-telaviv-il': 'tel-aviv',
+  'city-bangkok-th': 'bangkok',
+  'city-jakarta-id': 'jakarta',
+  'city-kualalumpur-my': 'kuala-lumpur',
+  'city-manila-ph': 'manila',
+  'city-hanoi-vn': 'hanoi',
+  'city-toronto-ca': 'toronto',
+  'city-vancouver-ca': 'vancouver',
+  'city-montreal-ca': 'montreal',
+  'city-mexicocity-mx': 'mexico-city',
 };
 
 // Aliases mapping to canonical city slugs
@@ -64,11 +133,57 @@ const CITY_ALIAS_MAP: Record<string, string> = {
   'sf': 'san-francisco',
   'frisco': 'san-francisco',
 
+  // Chicago
+  'chi': 'chicago',
+  'windy-city': 'chicago',
+
+  // Miami
+  'mia': 'miami',
+
+  // Seattle
+  'sea': 'seattle',
+
+  // Boston
+  'bos': 'boston',
+  'beantown': 'boston',
+
+  // Washington D.C.
+  'dc': 'washington-dc',
+  'washington': 'washington-dc',
+  'washington-d-c': 'washington-dc',
+
+  // Montreal
+  'yul': 'montreal',
+  'montréal': 'montreal',
+
   // Mumbai
   'bombay': 'mumbai',
 
   // New Delhi
   'delhi': 'new-delhi',
+
+  // Bengaluru
+  'bangalore': 'bengaluru',
+  'blr': 'bengaluru',
+
+  // Chennai
+  'madras': 'chennai',
+  'maa': 'chennai',
+
+  // Kolkata
+  'calcutta': 'kolkata',
+  'ccu': 'kolkata',
+
+  // Hyderabad
+  'hyd': 'hyderabad',
+
+  // Ahmedabad
+  'amd': 'ahmedabad',
+  'amdavad': 'ahmedabad',
+
+  // Pune
+  'pnq': 'pune',
+  'poona': 'pune',
 
   // Paris
   'paris-france': 'paris',
@@ -77,6 +192,61 @@ const CITY_ALIAS_MAP: Record<string, string> = {
   // Munich
   'munchen': 'munich',
 
+  // Berlin
+  'ber': 'berlin',
+
+  // Frankfurt
+  'fra': 'frankfurt',
+
+  // Milan
+  'milano': 'milan',
+  'mxp': 'milan',
+
+  // Barcelona
+  'bcn': 'barcelona',
+
+  // Brussels
+  'bru': 'brussels',
+  'bruxelles': 'brussels',
+
+  // Vienna
+  'wien': 'vienna',
+  'vie': 'vienna',
+
+  // Zurich
+  'zrh': 'zurich',
+  'zürich': 'zurich',
+
+  // Copenhagen
+  'cph': 'copenhagen',
+  'københavn': 'copenhagen',
+
+  // Dublin
+  'dub': 'dublin',
+
+  // Warsaw
+  'waw': 'warsaw',
+  'warszawa': 'warsaw',
+
+  // Athens
+  'ath': 'athens',
+  'athina': 'athens',
+
+  // Lisbon
+  'lis': 'lisbon',
+  'lisboa': 'lisbon',
+
+  // Prague
+  'prg': 'prague',
+  'praha': 'prague',
+
+  // Budapest
+  'bud': 'budapest',
+
+  // Istanbul
+  'ist': 'istanbul',
+  'constantinople': 'istanbul',
+
   // Rio
   'rio': 'rio-de-janeiro',
 
@@ -84,8 +254,60 @@ const CITY_ALIAS_MAP: Record<string, string> = {
   'sao-paulo-city': 'sao-paulo',
   'saopaulo': 'sao-paulo',
 
+  // Buenos Aires
+  'bsas': 'buenos-aires',
+  'bue': 'buenos-aires',
+  'buenosaires': 'buenos-aires',
+
+  // Mexico City
+  'cdmx': 'mexico-city',
+  'mexicocity': 'mexico-city',
+
+  // Santiago
+  'scl': 'santiago',
+
+  // Bogota
+  'bog': 'bogota',
+  'bogotá': 'bogota',
+
+  // Lima
+  'lim': 'lima',
+
   // Tokyo
   'edo': 'tokyo',
+
+  // Osaka
+  'kix': 'osaka',
+
+  // Beijing
+  'peking': 'beijing',
+  'pek': 'beijing',
+
+  // Guangzhou
+  'canton': 'guangzhou',
+  'can': 'guangzhou',
+
+  // Hong Kong
+  'hk': 'hong-kong',
+  'hkg': 'hong-kong',
+  'hongkong': 'hong-kong',
+
+  // Kuala Lumpur
+  'kl': 'kuala-lumpur',
+  'kul': 'kuala-lumpur',
+  'kualalumpur': 'kuala-lumpur',
+
+  // Abu Dhabi
+  'abudhabi': 'abu-dhabi',
+  'auh': 'abu-dhabi',
+
+  // Cape Town
+  'capetown': 'cape-town',
+  'cpt': 'cape-town',
+
+  // Addis Ababa
+  'addisababa': 'addis-ababa',
+  'add': 'addis-ababa',
 };
 
 // Descriptive geographical context for the verified cities in the database
