@@ -49,30 +49,30 @@ export default function TermsOfService() {
           <p>You agree to not use the Service to:</p>
           <ul className="list-disc pl-6 space-y-2">
             <li>Interfere with or disrupt the Service or servers or networks connected to the Service.</li>
-            <li>Attempt to scrape, mass-download, or reverse engineer the sports data, planetary telemetry, 3D globe models, or AI summaries provided on the platform.</li>
+            <li>Attempt to scrape, mass-download, or reverse engineer the planetary telemetry, meteorological grids, 3D globe models, or AI summaries provided on the platform.</li>
             <li>Impersonate any person or entity, or falsely state or otherwise misrepresent your affiliation with a person or entity.</li>
             <li>Violate any applicable local, state, national or international law.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Sports Data and Planetary Telemetry Disclaimer</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Planetary Telemetry and Meteorological Data Disclaimer</h2>
           <p>
-            The live scores, statistics, and fixtures provided on MooEarth.Live are sourced from third-party APIs, and environmental telemetry is sourced from official scientific organizations. While we strive for real-time accuracy, <strong>data may be subject to delays or sensor calibrations</strong>. We are not liable for any decisions made based on sports data or telemetry provided on this platform.
+            The real-time weather observations, satellite layers, and planetary telemetry provided on MooEarth.Live are sourced from official scientific organizations (NOAA, NASA, USGS, Open-Meteo). While we strive for real-time accuracy, <strong>data may be subject to sensor delays, forecast calibrations, or orbital latency</strong>. We are not liable for any decisions made based on meteorological data or telemetry provided on this platform.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">6. AI-Assisted Content</h2>
           <p>
-            Certain features, such as match summaries or translated planetary event briefings, may be generated using Artificial Intelligence (AI). AI-generated content is provided for convenience and may contain errors or hallucinations. Users should always refer to official sporting bodies or scientific agencies for verified information.
+            Certain features, such as automated weather telemetry briefings or localized geographic insights, may be generated using Artificial Intelligence (AI). AI-generated content is provided for educational and exploratory convenience and may contain inaccuracies. Users should always refer to official civil protection and scientific agencies for life-critical weather warnings.
           </p>
         </section>
 
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">7. Intellectual Property</h2>
           <p>
-            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party logos, competition names, and scientific datasets remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
+            The layout, design, 3D interactive globe integration, and custom code of MooEarth.Live are the property of MooEarth.Live. Third-party logos, institutional names, and scientific datasets remain the property of their respective copyright and trademark owners. Our use of these marks is purely for informational and descriptive purposes.
           </p>
         </section>
 

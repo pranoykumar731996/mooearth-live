@@ -26,12 +26,12 @@ export default function CopyrightPolicy() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">2. Third-Party Trademarks and Content</h2>
           <p>
-            MooEarth.Live is an informational platform covering global planetary telemetry, open scientific observations, sports, and geography discovery. 
+            MooEarth.Live is an educational and informational platform covering global planetary telemetry, open scientific observations, meteorological models, and geography discovery. 
           </p>
           <ul className="list-disc pl-6 space-y-2">
-            <li>National team names, league identifiers, and team logos are registered trademarks of their respective owners and organizations.</li>
-            <li>Scientific event telemetry, public domain space imagery, and specific data feeds are the property of their respective primary agencies or data providers.</li>
-            <li>Our use of these trademarks and data is purely nominative and descriptive, intended solely to inform users about global planetary phenomena and sporting events. MooEarth.Live claims no official affiliation with, nor endorsement by, any third-party entity unless explicitly stated.</li>
+            <li>Scientific event telemetry, public domain satellite imagery, and specific data feeds are the property of their respective primary space and meteorological agencies (e.g., NASA, NOAA, USGS, ESA).</li>
+            <li>Cartographic vector tiles and geographical boundary datasets are provided by open-source contributors and public registries (OpenStreetMap, CARTO, Natural Earth).</li>
+            <li>Our use of descriptive geographical marks and data is purely nominative and descriptive, intended solely to inform users about global planetary phenomena and world geography. MooEarth.Live claims no official affiliation with, nor endorsement by, any governmental or international agency unless explicitly stated.</li>
           </ul>
         </section>
 

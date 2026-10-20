@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Data Sources & Scientific Attribution | MooEarth.Live',
-  description: 'Official attribution for open scientific datasets, planetary telemetry, meteorological models, and sports data on MooEarth.Live.',
+  description: 'Official attribution for open scientific datasets, planetary telemetry, meteorological models, and geospatial cartography on MooEarth.Live.',
   alternates: {
     canonical: 'https://www.mooearth.live/data-sources'
   }

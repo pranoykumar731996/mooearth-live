@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Disclaimer | MooEarth.Live',
-  description: 'Legal disclaimer regarding sports data, planetary telemetry, and service availability on MooEarth.Live.',
+  description: 'Legal disclaimer regarding meteorological models, planetary telemetry, and service availability on MooEarth.Live.',
   alternates: {
     canonical: 'https://www.mooearth.live/disclaimer'
   }
@@ -56,7 +56,7 @@ export default function Disclaimer() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">5. Professional Advice Disclaimer</h2>
           <p>
-            MooEarth.Live does not offer professional sports analytics, legal, or financial advice. The use or reliance of any information contained on this site is solely at your own risk.
+            MooEarth.Live does not offer certified meteorology consultation, emergency dispatch, legal, or financial advice. The use or reliance of any information contained on this site is solely at your own risk.
           </p>
         </section>
 
