@@ -99,7 +99,7 @@ export async function runConnectivityVerification(baseUrl: string) {
   await testEndpoint(baseUrl, '/games', 'Frontend Core', 'Play Earth Games Hub');
   await testEndpoint(baseUrl, '/daily', 'Frontend Core', 'Daily Global Challenge');
   await testEndpoint(baseUrl, '/weather', 'Frontend Core', 'Weather Intelligence Radar');
-  await testEndpoint(baseUrl, '/news', 'Frontend Core', 'Global Breaking News Platform');
+  await testEndpoint(baseUrl, '/world-events', 'Frontend Core', 'World Events Telemetry Platform');
   await testEndpoint(baseUrl, '/explore', 'Frontend Core', 'Explore Earth Directory');
   await testEndpoint(baseUrl, '/globe', 'Frontend Core', '3D Earth Globe Simulator');
   await testEndpoint(baseUrl, '/world-map', 'Frontend Core', 'Interactive World Map');
