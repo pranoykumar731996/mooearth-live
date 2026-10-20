@@ -452,7 +452,10 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // Progressive Texture URLs & Lazy Loader (Rule 1 & Rule-2)
   const [globeTextureUrl, setGlobeTextureUrl] = useState(() => {
-    if (globeView === 'weather' || globeView === 'satellite' || globeView === 'discovery' || isPlayEarthActive) {
+    if (globeView === 'satellite') {
+      return GLOBE_CONFIG.globeSatellitePlaceholderUrl;
+    }
+    if (globeView === 'weather' || globeView === 'discovery' || isPlayEarthActive) {
       return '/textures/globe-day.jpg';
     }
     return GLOBE_CONFIG.globePlaceholderUrl;
@@ -475,9 +478,11 @@ const GlobeScene = React.memo(function GlobeScene({
 
     if (globeView === 'standard' || globeView === 'night') {
       targetTexture = '/textures/globe-night.jpg';
+    } else if (globeView === 'satellite') {
+      targetTexture = GLOBE_CONFIG.globeSatelliteImageUrl;
     } else if (globeView === 'discovery' || isPlayEarthActive) {
       targetTexture = '/textures/globe-day.jpg';
-    } else if (globeView === 'weather' || globeView === 'satellite') {
+    } else if (globeView === 'weather') {
       targetTexture = '/textures/globe-day.jpg';
     }
 
@@ -502,7 +507,7 @@ const GlobeScene = React.memo(function GlobeScene({
     };
     img.onerror = () => {
       if (active) {
-        setGlobeTextureUrl('/textures/globe-night-placeholder.jpg');
+        setGlobeTextureUrl(globeView === 'satellite' ? '/textures/globe-day.jpg' : '/textures/globe-night-placeholder.jpg');
         setIsTextureLoading(false);
       }
     };
@@ -781,8 +786,8 @@ const GlobeScene = React.memo(function GlobeScene({
       scene.add(ambientLight);
     }
 
-    // Show clouds ONLY on desktop standard and weather views, and NOT in failsafe mode (Rule 1 & Rule 11)
-    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather') && !failsafeActive;
+    // Show clouds on desktop standard, weather, and satellite views, and NOT in failsafe mode (Rule 1 & Rule 11)
+    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather' || globeView === 'satellite') && !failsafeActive;
 
     if (!showClouds) {
       const existingClouds = scene.children.find((c: any) => c.name === 'clouds');
@@ -3510,7 +3515,9 @@ const GlobeScene = React.memo(function GlobeScene({
               ? '#55ccff'
               : globeView === 'night'
               ? '#00e5ff'
-              : (globeView === 'weather' || globeView === 'satellite')
+              : globeView === 'satellite'
+              ? '#60a5fa' // Orbital Rayleigh atmospheric limb glow
+              : globeView === 'weather'
               ? '#87ceeb'
               : GLOBE_CONFIG.atmosphereColor
           }
@@ -3523,7 +3530,9 @@ const GlobeScene = React.memo(function GlobeScene({
               ? 0.16
               : globeView === 'night'
               ? 0.28
-              : (globeView === 'weather' || globeView === 'satellite')
+              : globeView === 'satellite'
+              ? (isMobile ? 0.14 : 0.18) // Natural orbital atmosphere thickness
+              : globeView === 'weather'
               ? 0.15
               : (isMobile ? 0.2 : GLOBE_CONFIG.atmosphereAltitude)
           }

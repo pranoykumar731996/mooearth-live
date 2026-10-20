@@ -81,6 +81,8 @@ export const GLOBE_CONFIG = {
   atmosphereAltitude: 0.25, // Stronger glow
   globeImageUrl: '/textures/globe-night.jpg', // Optimized local night texture (698KB)
   globePlaceholderUrl: '/textures/globe-night-placeholder.jpg', // Ultra-fast low-res night globe placeholder (32.6KB)
+  globeSatelliteImageUrl: '/textures/globe-satellite.jpg', // High-definition true-color satellite texture (4096x2048)
+  globeSatellitePlaceholderUrl: '/textures/globe-satellite-placeholder.jpg', // Ultra-fast low-res satellite placeholder (18KB)
   bumpImageUrl: '/textures/globe-topology.png', // Optimized local topology bump map (369KB)
   cloudsImageUrl: '/textures/clouds.png', // Optimized local transparent clouds layer (554KB)
   cloudsPlaceholderUrl: '/textures/clouds-placeholder.png', // Ultra-fast low-res clouds placeholder (39.7KB)
