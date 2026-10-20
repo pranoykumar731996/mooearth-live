@@ -1213,7 +1213,7 @@ export default function WeatherDashboard() {
               errors={weather.errors}
               isMinimized={isPanelMinimized}
               onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
-              onExploreCity={handleExploreCity}
+              onExploreCity={viewMode === 'city-map' ? undefined : handleExploreCity}
             />
           </div>
         )}
@@ -1259,7 +1259,7 @@ export default function WeatherDashboard() {
                   errors={weather.errors}
                   isMinimized={isPanelMinimized}
                   onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
-                  onExploreCity={handleExploreCity}
+                  onExploreCity={viewMode === 'city-map' ? undefined : handleExploreCity}
                 />
               </div>
             </div>
