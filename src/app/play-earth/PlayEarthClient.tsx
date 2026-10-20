@@ -29,7 +29,6 @@ const ArticleViewer = dynamic(() => import('@/components/Reactions/ArticleViewer
 const MobileCountrySheet = dynamic(() => import('@/components/UI/MobileCountrySheet'));
 const MobileGlobeViewsSheet = dynamic(() => import('@/components/UI/MobileGlobeViewsSheet'));
 const MobileCategoriesSheet = dynamic(() => import('@/components/UI/MobileCategoriesSheet'));
-const GoalOverlay = dynamic(() => import('@/components/Globe/GoalOverlay'));
 const EventPopup = dynamic(() => import('@/components/Globe/EventPopup'));
 const AIAssistantDrawer = dynamic(() => import('@/components/EarthCast/AIAssistantDrawer'));
 const TimelineSlider = dynamic(() => import('@/components/Timeline/TimelineSlider'));
@@ -1498,9 +1497,6 @@ export default function PlayEarthClient({
           />
         </div>
       </div>
-
-      {/* GOAL CELEBRATION OVERLAY */}
-      {!isFocusMode && <GoalOverlay celebration={activeCelebration} onDismiss={dismissCelebration} />}
 
       {/* PWA INSTALL BANNER FOR MOBILE */}
       <AnimatePresence>
