@@ -52,7 +52,6 @@ import {
 } from '@/engines/game/providers/StopTheEarthProvider';
 import { StopTheEarthCandidate } from '@/engines/game/types';
 import { haversineDistance } from '@/engines/game/ValidationEngine';
-import { getPerformanceProfile, setPerformanceTierOverride, subscribeToPerformanceProfile, PerformanceProfile } from '@/services/devicePerformanceTier';
 
 const TIMER_SECONDS = 15;
 const STREAK_BONUS_MULTIPLIER = 1.5;
@@ -558,11 +557,7 @@ export default function PlayEarthOverlay({
   const [unlockedBadgeToShow, setUnlockedBadgeToShow] = useState<GameBadge | null>(null);
   const [questionSource, setQuestionSource] = useState<string>('Local Database');
   
-  const [perfProfile, setPerfProfile] = useState<PerformanceProfile>(getPerformanceProfile);
-  useEffect(() => {
-    return subscribeToPerformanceProfile(setPerfProfile);
-  }, []);
-
+  // V2 Specific counters
   const [survivalCount, setSurvivalCount] = useState(0);
   const [survivalCountry, setSurvivalCountry] = useState<string>('');
   const [clockDuration, setClockDuration] = useState<'30s' | '60s' | '120s'>('60s');
@@ -2523,22 +2518,6 @@ export default function PlayEarthOverlay({
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = perfProfile.tier === 'low' ? 'high' : 'low';
-                    setPerformanceTierOverride(next);
-                  }}
-                  className={`px-2 py-1 rounded-lg border text-[9px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
-                    perfProfile.tier === 'low'
-                      ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                      : 'border-white/10 bg-white/5 text-white/50 hover:text-white'
-                  }`}
-                  title={perfProfile.tier === 'low' ? 'Lite Mode Active (Optimized for Low-End Mobile)' : 'Enable Lite Mode for low-end mobile speed'}
-                >
-                  <span>⚡</span>
-                  <span className="hidden sm:inline">{perfProfile.tier === 'low' ? 'Lite' : '3D'}</span>
-                </button>
                 <span className={`px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${diffClass}`}>
                   {engineChallenge.difficulty}
                 </span>

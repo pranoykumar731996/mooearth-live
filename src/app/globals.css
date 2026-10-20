@@ -288,33 +288,21 @@ body {
   100% { background-color: rgba(255, 60, 60, 0); }
 }
 
-/* ============================================================
-   Low-End Android / Anti-Hang Performance Tier Overrides
-   ============================================================ */
-.low-end-mobile *,
-.low-end-mobile *::before,
-.low-end-mobile *::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  text-shadow: none !important;
+/* Stop The Earth target beacon & disaster radar pulse keyframes */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
-.low-end-mobile .glass,
-.low-end-mobile [class*="backdrop-blur"],
-.low-end-mobile [class*="backdrop-filter"] {
-  background-color: rgba(10, 14, 26, 0.96) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+@keyframes spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-.low-end-mobile canvas {
-  image-rendering: auto;
-}
-
-/* Paint containment on HUD cards to prevent full-screen reflows during timer updates */
-.low-end-mobile .game-hud-card,
-.low-end-mobile .quiz-card-container {
-  contain: paint layout;
-  transform: translateZ(0);
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 
