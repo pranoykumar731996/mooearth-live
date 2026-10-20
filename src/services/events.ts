@@ -60,9 +60,6 @@ export function isArticleInCategory(title: string, summary: string, category: Ev
   if (category === 'weather') {
     return ['weather', 'climate', 'storm', 'rain', 'temperature', 'forecast', 'meteorology', 'flood', 'wind', 'atmosphere', 'heat', 'cold', 'degree', 'season', 'cyclone', 'typhoon', 'hurricane', 'drought', 'snow'].some(kw => text.includes(kw));
   }
-  if (category === 'sports' || category === 'football') {
-    return ['sports', 'match', 'championship', 'tournament', 'cup', 'athlete', 'coach', 'stadium', 'olympic', 'football', 'soccer', 'basketball', 'tennis', 'game', 'score', 'team'].some(kw => text.includes(kw));
-  }
 
   return true;
 }
@@ -78,7 +75,6 @@ export function detectCategory(title: string, summary: string): EventCategory {
     'severe_weather',
     'climate_oceans',
     'science_nature',
-    'football',
     'weather',
   ];
 
@@ -109,7 +105,7 @@ export async function fetchAllEvents(category?: string | null, refresh = false, 
     events,
     status: {
       newsActive: false,
-      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
+      footballActive: false,
     },
   };
 }
@@ -129,7 +125,7 @@ export async function searchAllEvents(query: string, category?: string | null, _
     events,
     status: {
       newsActive: false,
-      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
+      footballActive: false,
     },
   };
 }
@@ -238,7 +234,7 @@ export async function getLocationEvents(
     events,
     status: {
       newsActive: false,
-      footballActive: events.some(e => e.category === 'football' || e.category === 'sports'),
+      footballActive: false,
     },
     resolvedLocation,
     activeLocation,

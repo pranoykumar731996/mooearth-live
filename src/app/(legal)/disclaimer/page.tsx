@@ -24,14 +24,14 @@ export default function Disclaimer() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">2. Sports Data and APIs</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">2. Meteorological & Planetary Telemetry</h2>
           <p>
-            MooEarth.Live relies on third-party Application Programming Interfaces (APIs) to provide live football scores, fixtures, standings, and match statistics. Please be aware of the following:
+            MooEarth.Live synthesizes real-time planetary observations from authorized meteorological and geospatial APIs (including Open-Meteo, NOAA, NASA, and USGS). Please be aware of the following:
           </p>
-          <ul className="list-disc pl-6 space-y-2">
-            <li><strong>Data Accuracy:</strong> Sports schedules, rankings, and scores may change without prior notice. We do not guarantee that the data presented on our 3D globe or scoreboards is perfectly synchronized with real-time events.</li>
-            <li><strong>Service Interruptions:</strong> Third-party APIs may occasionally experience downtime, delays, or rate-limiting. MooEarth.Live cannot guarantee uninterrupted access to live data.</li>
-            <li><strong>No Betting or Financial Advice:</strong> The sports data provided is strictly for entertainment and informational purposes. It should not be used as the basis for sports betting, financial wagers, or any other critical decision-making.</li>
+          <ul className="list-disc pl-6 space-y-2 mt-2">
+            <li><strong>Atmospheric Variability:</strong> Meteorological models, radar estimates, and environmental telemetry represent numerical approximations based on available sensor stations and satellite sweeps. Numerical weather forecasts are subject to natural atmospheric dynamics.</li>
+            <li><strong>Service Continuity:</strong> Upstream scientific data feeds may occasionally experience maintenance cycles, satellite pass delays, or telemetry recalibration.</li>
+            <li><strong>Not for Life-Safety Directives:</strong> MooEarth.Live provides situational and educational planetary awareness. For urgent civil protection, flood evacuations, or severe weather life-safety directives, always follow official instructions from local emergency management authorities and national meteorological offices.</li>
           </ul>
         </section>
 

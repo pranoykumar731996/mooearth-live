@@ -19,7 +19,6 @@ const globalFetchRegistry = (global as any).mooearthFetchRegistry || {
   science_nature: 0,
   weather: 0,
   sports: 0,
-  football: 0,
 };
 (global as any).mooearthFetchRegistry = globalFetchRegistry;
 
@@ -32,7 +31,6 @@ const globalApiResponseTimes = (global as any).mooearthApiResponseTimes || {
   science_nature: 0,
   weather: 0,
   sports: 0,
-  football: 0,
 };
 (global as any).mooearthApiResponseTimes = globalApiResponseTimes;
 
@@ -86,7 +84,6 @@ export function getAllFreshness(): Record<string, FreshnessInfo> {
     'science_nature',
     'weather',
     'sports',
-    'football',
   ];
   const result: Record<string, FreshnessInfo> = {};
   for (const cat of categories) {

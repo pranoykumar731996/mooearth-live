@@ -44,9 +44,9 @@ export async function fetchCountryReactions(country: string, category?: string |
 
   const dataSource = countryEvents.length > 0 ? 'Earth Observatories Telemetry' : 'Global Cultural Indicators';
 
-  // Read local fan celebrations and filter for this country (only for sports / football / home)
+  // Read local community reactions and filter for this country
   const allCelebrations = readCelebrations();
-  const countryCelebrations = (!category || ['sports', 'football'].includes(category))
+  const countryCelebrations = (!category || ['science_nature', 'weather'].includes(category))
     ? allCelebrations.filter(
         (c: any) => isSameCountry(c.country, country) && (!c.reports || c.reports < 3)
       )
@@ -55,9 +55,9 @@ export async function fetchCountryReactions(country: string, category?: string |
   // Convert celebrations to headlines so they render in the Reaction Feed
   const celebrationHeadlines = countryCelebrations.map((c: any) => ({
     id: c.id,
-    title: `[Fan ${c.type.toUpperCase()}] ${c.username} reacted: "${c.comment}"`,
-    summary: `Live fan feedback uploaded from ${c.country}.`,
-    category: 'football' as EventCategory,
+    title: `[Community ${c.type.toUpperCase()}] ${c.username} reacted: "${c.comment}"`,
+    summary: `Live community observation from ${c.country}.`,
+    category: 'science_nature' as EventCategory,
     country: c.country,
     city: 'Live Network',
     lat: c.lat,

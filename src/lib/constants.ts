@@ -109,7 +109,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'climate_oceans', label: 'Climate & Oceans', icon: '🌊', category: 'climate_oceans' },
   { id: 'science_nature', label: 'Science & Discovery', icon: '🔬', category: 'science_nature' },
   { id: 'weather', label: 'Weather', icon: '🌤️', category: 'weather' },
-  { id: 'football', label: 'Football', icon: '⚽', category: 'football' },
   { id: 'info', label: 'About & Legal', icon: 'ℹ️' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];

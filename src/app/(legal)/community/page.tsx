@@ -16,20 +16,20 @@ export default function CommunityGuidelines() {
 
       <div className="space-y-6">
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">1. Welcome to the Global Pitch</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">1. Welcome to the Global Earth Community</h2>
           <p>
-            MooEarth.Live is designed to bring football fans from across the globe together. Whether you are checking live scores, exploring our 3D interactive globe, or reading AI-assisted match summaries, we want this platform to be a welcoming, safe, and enjoyable space for everyone. To ensure this, we ask all users to adhere to these Community Guidelines.
+            MooEarth.Live is designed to bring global explorers, geography enthusiasts, and weather observers together. Whether you are analyzing real-time planetary telemetry, competing in geography challenges, or exploring our 3D interactive globe, we want this platform to be a welcoming, safe, and enjoyable space for everyone. To ensure this, we ask all users to adhere to these Community Guidelines.
           </p>
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">2. Rules of Play (What is Not Allowed)</h2>
-          <p>By using MooEarth.Live and interacting with any community features (such as user profiles via Google Sign-In or potential future forums), you agree <strong>NOT</strong> to engage in the following behaviors:</p>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">2. Community Standards (What is Not Allowed)</h2>
+          <p>By using MooEarth.Live and interacting with any community features (such as user profiles via Google Sign-In or interactive multiplayer challenges), you agree <strong>NOT</strong> to engage in the following behaviors:</p>
           
           <div className="mt-4 space-y-4">
             <div>
               <h3 className="text-xl font-medium text-emerald-300">No Harassment or Bullying</h3>
-              <p>Do not attack, harass, threaten, or insult other users, teams, or players. Passion for football is great, but toxic behavior, hate speech, racism, sexism, or discrimination of any kind is strictly prohibited.</p>
+              <p>Do not attack, harass, threaten, or insult other users. Passionate discussion is welcome, but toxic behavior, hate speech, racism, sexism, or discrimination of any kind is strictly prohibited.</p>
             </div>
             
             <div>
@@ -39,12 +39,12 @@ export default function CommunityGuidelines() {
             
             <div>
               <h3 className="text-xl font-medium text-emerald-300">No Illegal Content</h3>
-              <p>Do not share, link to, or promote any content that violates international laws, including pirated sports streams, illegal betting rings, or any form of explicit, violent, or illegal material.</p>
+              <p>Do not share, link to, or promote any content that violates international laws or any form of explicit, violent, or illegal material.</p>
             </div>
 
             <div>
               <h3 className="text-xl font-medium text-emerald-300">No Impersonation</h3>
-              <p>Do not impersonate other users, MooEarth.Live staff, official sports figures, or journalists. Use your Google Sign-In account authentically.</p>
+              <p>Do not impersonate other users, MooEarth.Live staff, or public institutions. Use your Google Sign-In account authentically.</p>
             </div>
 
             <div>
@@ -62,7 +62,7 @@ export default function CommunityGuidelines() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">4. Enforcement Actions (The Red Card)</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">4. Enforcement Actions</h2>
           <p>
             MooEarth.Live reserves the right to take action against any account or IP address that violates these guidelines. Depending on the severity of the violation, enforcement actions may include:
           </p>

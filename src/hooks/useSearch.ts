@@ -107,12 +107,8 @@ export function useSearch({ events, activeCategory }: UseSearchProps) {
     if (!q) return [];
 
     const localFiltered = events.filter((e) => {
-      if (activeCategory) {
-        if (activeCategory === 'sports' || activeCategory === 'football') {
-          if (e.category !== 'sports' && e.category !== 'football') return false;
-        } else {
-          if (e.category !== activeCategory) return false;
-        }
+      if (activeCategory && e.category !== activeCategory) {
+        return false;
       }
 
       return (

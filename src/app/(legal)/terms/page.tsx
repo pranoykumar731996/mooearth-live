@@ -33,7 +33,7 @@ export default function TermsOfService() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">2. Description of Service</h2>
           <p>
-            MooEarth.Live provides users with access to a rich collection of resources, including live football scores, standings, fixtures, match statistics, a 3D interactive globe for spatial data visualization, planetary telemetry, and AI-generated event briefings (the &quot;Service&quot;). You understand and agree that the Service is provided &quot;AS-IS&quot; and that MooEarth.Live assumes no responsibility for the timeliness, deletion, mis-delivery or failure to store any user communications or personalization settings.
+            MooEarth.Live provides users with access to a rich collection of resources, including an interactive 3D globe for spatial data visualization, real-time planetary weather telemetry, 2D high-resolution city mapping, educational geography challenges, and scientific event briefings (the &quot;Service&quot;). You understand and agree that the Service is provided &quot;AS-IS&quot; and that MooEarth.Live assumes no responsibility for the timeliness, deletion, mis-delivery or failure to store any user communications or personalization settings.
           </p>
         </section>
 

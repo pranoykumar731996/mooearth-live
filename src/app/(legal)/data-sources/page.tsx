@@ -51,12 +51,12 @@ export default function DataSources() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">3. Sports Data & Interactive Match Engine</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">3. Geographic Datasets & World Atlas Standards</h2>
           <p>
-            Live football scores, match fixtures, team standings, and historical statistics presented on MooEarth.Live are obtained from authorized sports APIs and interactive simulation engines.
+            Country borders, capital cities, population metrics, currencies, and geographic coordinate centroids presented across MooEarth.Live are compiled from trusted public open data repositories, including Natural Earth Data, the World Bank Open Data catalog, and ISO 3166 country standards.
           </p>
           <p className="mt-2">
-            Team names, flags, and competition designations are used strictly for descriptive and nominative identification under fair use principles. MooEarth.Live is an independent platform and is not sponsored by or affiliated with FIFA, UEFA, or individual sports franchises.
+            These datasets are used exclusively for educational geography challenges, spatial visualization, and localized weather orientation.
           </p>
         </section>
 

@@ -13,7 +13,6 @@ import { LocationRecord, locations } from '@/data/locations';
 import { getCountriesForContinent } from '@/data/continents';
 import { useGlobeControls, GlobeApi } from '@/hooks/useGlobeControls';
 import { useCinematicCamera } from '@/hooks/useCinematicCamera';
-import { GoalCelebration } from '@/hooks/useGoalCelebration';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
@@ -21,6 +20,7 @@ import { CountryFlag } from '@/components/UI/CountryFlag';
 import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
+import type { GoalCelebration } from '@/hooks/useGoalCelebration';
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&

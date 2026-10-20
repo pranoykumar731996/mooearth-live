@@ -71,7 +71,6 @@ export interface ArticleDetails {
 // Curated premium images for each category
 export const CATEGORY_IMAGES: Record<string, string> = {
   sports: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
-  football: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800',
   weather: 'https://images.unsplash.com/photo-1592210454359-9043f067919b?q=80&w=800',
   seismic: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=800',
   severe_weather: 'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?q=80&w=800',

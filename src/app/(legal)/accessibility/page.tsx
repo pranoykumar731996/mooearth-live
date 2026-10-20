@@ -19,7 +19,7 @@ export default function AccessibilityStatement() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">1. Our Commitment</h2>
           <p>
-            MooEarth.Live is committed to ensuring digital accessibility for people with disabilities. We are continually improving the user experience for everyone and applying the relevant accessibility standards (such as WCAG 2.1 AA) to our Progressive Web App. We believe that global football coverage should be accessible to all fans.
+            MooEarth.Live is committed to ensuring digital accessibility for people with disabilities. We are continually improving the user experience for everyone and applying the relevant accessibility standards (such as WCAG 2.1 AA) to our Progressive Web App. We believe that interactive 3D global exploration, weather telemetry, and geography challenges should be accessible to all users.
           </p>
         </section>
 

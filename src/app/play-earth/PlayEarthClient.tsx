@@ -1052,7 +1052,7 @@ export default function PlayEarthClient({
           <Link href="/world-geography">World Geography Atlas</Link>
           <Link href="/explore">Explore Earth & World Map</Link>
           <Link href="/world-events">World Events</Link>
-          <Link href="/sports">World Sports</Link>
+          <Link href="/weather-map">Interactive Weather Map</Link>
           <Link href="/weather">Global Weather</Link>
           <Link href="/live-events">Live Planetary Events</Link>
           <Link href="/continents">Continents Atlas</Link>

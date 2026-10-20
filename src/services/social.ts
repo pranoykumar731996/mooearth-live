@@ -19,7 +19,7 @@ export async function fetchSocialReactions(country: string, category?: string | 
   const cleanCountry = country.replace(/\s+/g, '');
   const allCelebrations = readCelebrations();
   
-  const isSportsRelated = !category || ['sports', 'football'].includes(category);
+  const isSportsRelated = !category || category === 'sports';
   
   const countryCelebrations = isSportsRelated
     ? allCelebrations.filter(
@@ -27,7 +27,7 @@ export async function fetchSocialReactions(country: string, category?: string | 
       )
     : [];
 
-  let hashtags = [`#${cleanCountry}Sports`, `#${cleanCountry}Live`];
+  let hashtags = [`#${cleanCountry}Events`, `#${cleanCountry}Live`];
   let mockTemplates: string[] = [];
 
   const cat = category || 'home';
@@ -68,13 +68,13 @@ export async function fetchSocialReactions(country: string, category?: string | 
       `Breaking news broadcasts in ${country} report high public participation in regional initiatives.`
     ];
   } else {
-    // sports, football, or home
-    hashtags = [`#${cleanCountry}Sports`, `#${cleanCountry}Live`];
+    // earth, weather, or home
+    hashtags = [`#${cleanCountry}Earth`, `#${cleanCountry}Live`, `#${cleanCountry}Weather`];
     if (countryCelebrations.length === 0) {
       mockTemplates = [
-        `Enthusiasm for the upcoming fixtures in ${country} is reaching fever pitch! Stadiums and fan zones are ready. ⚽🏅`,
-        `The national squad in ${country} shows incredible form in training. Pundits are predicting a strong run!`,
-        `Local sports clubs in ${country} host massive events this weekend. The team form is looking outstanding.`
+        `Atmospheric observations and planetary monitoring around ${country} are active today. Live telemetry synced. 🌍🌤️`,
+        `Local citizens in ${country} are sharing community perspectives as seasonal weather patterns develop across the region.`,
+        `Geographic exploration and regional updates from ${country} continue to see high community engagement.`
       ];
     }
   }

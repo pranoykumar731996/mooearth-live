@@ -80,7 +80,6 @@ export function rankPersonalizedEvents(
       const isTopicMatch = favTopicsLower.some(
         (fav) =>
           fav === eventCatLower ||
-          (fav === 'sports' && eventCatLower === 'football') ||
           (fav === 'events' && (eventCatLower === 'science_nature' || eventCatLower === 'seismic'))
       );
       if (isTopicMatch) {

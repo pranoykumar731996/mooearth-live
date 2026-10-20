@@ -18,7 +18,7 @@ export default function AITransparency() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">1. Our Commitment to Transparency</h2>
           <p>
-            At MooEarth.Live, we leverage modern technology to enhance the football fan experience. This includes the use of Artificial Intelligence (AI) and Large Language Models (LLMs) to help process and summarize large amounts of sports data quickly. We believe in being fully transparent about when and how AI is used on our platform.
+            At MooEarth.Live, we leverage modern technology to enhance planetary exploration and geographic discovery. This includes the use of Artificial Intelligence (AI) and Large Language Models (LLMs) to help process and synthesize scientific event telemetry and educational geographic information quickly. We believe in being fully transparent about when and how AI is used on our platform.
           </p>
         </section>
 
@@ -27,7 +27,7 @@ export default function AITransparency() {
           <p>You may encounter AI-generated or AI-assisted content in the following areas of our site:</p>
           <ul className="list-disc pl-6 space-y-2 mt-4">
             <li><strong>Geophysical & Planetary Event Briefings:</strong> Objective, evidence-grounded scientific explanations of real-time earthquakes, space weather events, and thermal anomalies synthesized directly from official sensor telemetry (USGS, NOAA, NASA).</li>
-            <li><strong>Match Summaries & Sports Recaps:</strong> Brief text summaries explaining the outcome or key events of football matches.</li>
+            <li><strong>Educational Geography Insights:</strong> Curated cultural, geographic, and demographic overviews synthesized for global cities and countries.</li>
             <li><strong>Translation Assistance:</strong> Helping to translate global scientific context and planetary dispatches into your preferred language.</li>
             <li><strong>Chat & Discovery Assistants:</strong> Interactive features designed to help you navigate geospatial layers, climate anomalies, and country geography.</li>
           </ul>
@@ -39,7 +39,7 @@ export default function AITransparency() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">3. The Limitations of AI (Hallucinations)</h2>
           <p>
-            While AI is powerful, it is not perfect. AI models can sometimes misunderstand context, struggle with highly nuanced sporting rules, or produce "hallucinations" (plausible-sounding but factually incorrect statements). 
+            While AI is powerful, it is not perfect. AI models can sometimes misunderstand context or produce "hallucinations" (plausible-sounding but factually incorrect statements). 
           </p>
           <div className="mt-4 p-4 border-l-4 border-amber-500 bg-amber-500/10 rounded-r-lg">
             <p className="font-semibold text-amber-500 mb-2">Important Disclaimer:</p>
@@ -50,7 +50,7 @@ export default function AITransparency() {
         <section>
           <h2 className="text-2xl font-semibold mt-8 mb-4">4. User Verification</h2>
           <p>
-            We strongly encourage all users to verify important information. If an AI summary mentions a controversial match event, seismic event, or tournament advancement scenario, please cross-reference this information with official primary agency releases or event pages.
+            We strongly encourage all users to verify important information. If an AI summary mentions a seismic alert, severe weather advisory, or planetary observation, please cross-reference this information with official primary agency releases or event pages.
           </p>
         </section>
 

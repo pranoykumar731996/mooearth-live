@@ -20,7 +20,7 @@ export default function GlobalFooter({ locale = 'en' }: GlobalFooterProps) {
               MooEarth.Live
             </h3>
             <p className="text-gray-400 mb-4">
-              The ultimate global pitch. Interactive 3D football coverage, live scores, and localized news.
+              Interactive 3D Earth, real-time planetary weather telemetry, high-resolution 2D city guides, and geography challenges.
             </p>
             <div className="flex space-x-4">
               {/* Social icons can go here */}

@@ -9,7 +9,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WorldEvent } from '@/types';
 import { CATEGORY_MAP } from '@/lib/constants';
-import FootballMatchCenter from './FootballMatchCenter';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -227,11 +226,7 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                 minHeight: 0
               }}
             >
-              {event.category === 'football' ? (
-                <FootballMatchCenter event={event} />
-              ) : (
-                <>
-                  {/* Title */}
+              {/* Title */}
                   <h2 className="text-2xl font-bold text-white leading-tight pr-8 tracking-tight">
                     {event.title}
                   </h2>
@@ -618,13 +613,10 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                       {event.summary}
                     </p>
                   </div>
-                </>
-              )}
             </div>
 
             {/* Actions - Locked at the bottom */}
-            {event.category !== 'football' && (
-              <div className="flex items-center gap-3 shrink-0 pt-1">
+            <div className="flex items-center gap-3 shrink-0 pt-1">
                 <a
                   id="event-popup-source"
                   href={event.url || (event.source.startsWith('http') ? event.source : 'https://earthquake.usgs.gov')}
@@ -674,7 +666,6 @@ export default function EventPopup({ event, onClose }: EventPopupProps) {
                   </svg>
                 </button>
               </div>
-            )}
           </motion.div>
         </div>
       )}

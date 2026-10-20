@@ -20,7 +20,6 @@ export default function robots(): MetadataRoute.Robots {
         '/weather-map',
         '/cities',
         '/cities/*',
-        '/sports',
         '/world-events',
         '/live-events',
         '/play-earth',

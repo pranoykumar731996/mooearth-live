@@ -1,18 +1,5 @@
 import { Mood, SentimentData } from '@/types';
 
-function isSameCountry(c1?: string | null, c2?: string | null): boolean {
-  if (!c1 || !c2) return false;
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-  const n1 = norm(c1);
-  const n2 = norm(c2);
-  if (n1 === n2) return true;
-  if (n1 === 'unitedstates' && n2 === 'unitedstatesofamerica') return true;
-  if (n1 === 'unitedstatesofamerica' && n2 === 'unitedstates') return true;
-  if (n1 === 'usa' && (n2 === 'unitedstates' || n2 === 'unitedstatesofamerica')) return true;
-  if (n1 === 'unitedkingdom' && (n2 === 'england' || n2 === 'uk' || n2 === 'greatbritain')) return true;
-  if ((n1 === 'england' || n1 === 'uk' || n1 === 'greatbritain') && n2 === 'unitedkingdom') return true;
-  return false;
-}
 
 export async function analyzeSentiment(country: string, context: string, category?: string | null): Promise<SentimentData> {
   const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
@@ -89,47 +76,6 @@ function simulateSentiment(country: string, context: string, category?: string |
     };
   }
 
-  // 1. Try to parse a football match involving this country from the context
-  const matchMatch = cleanContext.match(/([A-Za-z\s]+)\s+vs\s+([A-Za-z\s]+)/i);
-  if (matchMatch) {
-    const teamA = matchMatch[1].trim();
-    const teamB = matchMatch[2].trim();
-    const isTeamA = isSameCountry(teamA, country);
-    const isTeamB = isSameCountry(teamB, country);
-
-    if (isTeamA || isTeamB) {
-      // Find the score pattern (e.g. 2 - 0)
-      const scoreMatch = cleanContext.match(/(\d+)\s*-\s*(\d+)/);
-      if (scoreMatch) {
-        const scoreA = parseInt(scoreMatch[1], 10);
-        const scoreB = parseInt(scoreMatch[2], 10);
-        
-        const countryScore = isTeamA ? scoreA : scoreB;
-        const opponentScore = isTeamA ? scoreB : scoreA;
-        const opponentName = isTeamA ? teamB : teamA;
-        
-        if (countryScore > opponentScore) {
-          return {
-            mood: '😄 Celebration',
-            intensity: 0.9,
-            explanation: `Absolute euphoria in ${country}! The entire nation is celebrating a phenomenal ${countryScore}-${opponentScore} victory against ${opponentName}. The streets are alive with joy and national pride.`
-          };
-        } else if (countryScore < opponentScore) {
-          return {
-            mood: '😢 Sadness',
-            intensity: 0.8,
-            explanation: `Heartbreak sweeps across ${country} following a tough ${opponentScore}-${countryScore} defeat to ${opponentName}. Fans are mourning the result, analyzing what went wrong on the pitch.`
-          };
-        } else {
-          return {
-            mood: '😐 Neutral',
-            intensity: 0.6,
-            explanation: `Mixed feelings in ${country} after a tense ${countryScore}-${opponentScore} draw against ${opponentName}. Fans are relieved they didn't lose, but hungry for a decisive win next time.`
-          };
-        }
-      }
-    }
-  }
 
   const text = cleanContext.toLowerCase();
   

@@ -182,7 +182,7 @@ export default function ExplorePage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
               {[
                 { name: 'World Events', href: '/world-events', emoji: '🪐' },
-                { name: 'Sports', href: '/sports', emoji: '🏅' },
+                { name: 'City Guides', href: '/cities/london', emoji: '🏙️' },
                 { name: 'Weather Radar', href: '/weather', emoji: '🌤️' },
                 { name: '3D World Map', href: '/world-map', emoji: '🗺️' },
                 { name: 'Play Earth Games', href: '/games', emoji: '🎮' },

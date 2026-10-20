@@ -321,7 +321,7 @@ export function detectCountryOpportunities(
       impressions: countryCounts.get('Brazil')?.impressions || 1190,
       clicks: countryCounts.get('Brazil')?.clicks || 138,
       primaryLanguage: 'pt',
-      recommendedAction: 'Boost Portuguese football and South America continental atlas cross-links.',
+      recommendedAction: 'Boost Portuguese language planetary weather and South America continental atlas cross-links.',
     },
     {
       country: 'United States',
@@ -376,7 +376,7 @@ export function detectLanguageOpportunities(
       impressions: 1280,
       clicks: 135,
       marketPotential: 'SURGING',
-      actionItem: 'Strengthen Brazilian football and Amazon basin geography coverage with dedicated Portuguese schema.',
+      actionItem: 'Strengthen Brazilian biodiversity and Amazon basin geography coverage with dedicated Portuguese schema.',
     },
     {
       language: 'Japanese (日本語)',

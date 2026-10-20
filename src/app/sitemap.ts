@@ -91,7 +91,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 2. Content Category Pages
   const contentPages = [
-    '/sports',
+    '/weather',
+    '/world-events',
+    '/weather-map',
   ].map(route => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
