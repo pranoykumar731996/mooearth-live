@@ -89,19 +89,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85
     }));
 
-  // 2. Content Category Pages
-  const contentPages = [
-    '/weather',
-    '/world-events',
-    '/weather-map',
-  ].map(route => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.9
-  }));
-
-
   // 4. Canonical 195 Sovereign Countries Hubs
   const canonicalCountryPages = getAllCountries().map(country => ({
     url: `${baseUrl}/countries/${country.slug}`,
@@ -196,7 +183,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...countryGamePages,
     ...countryWeatherPages,
     ...cityWeatherPages,
-    ...contentPages,
     ...canonicalCountryPages,
     ...multilingualPages,
     ...warRoomPages,

@@ -81,7 +81,21 @@ export default function Navbar({
     pathname?.startsWith('/play-earth') ||
     isPlayEarthActive
   );
-  const isWeatherNavActive = !isGamesActive;
+  const isExploreActive = Boolean(
+    pathname?.startsWith('/explore') ||
+    pathname?.startsWith('/globe') ||
+    pathname?.startsWith('/world-map') ||
+    pathname?.startsWith('/continents') ||
+    pathname?.startsWith('/countries') ||
+    pathname?.startsWith('/cities')
+  );
+  const isWeatherNavActive = Boolean(
+    pathname === '/' ||
+    pathname?.startsWith('/weather') ||
+    pathname?.startsWith('/world-weather') ||
+    pathname?.startsWith('/weather-map') ||
+    (!isGamesActive && !isExploreActive)
+  );
 
   const [isDeveloper, setIsDeveloper] = useState(false);
   const [isMobileSearchActive, setIsMobileSearchActive] = useState(false);
@@ -249,9 +263,9 @@ export default function Navbar({
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span>Football API</span>
-                    <span className={apiStatus?.footballActive ? 'text-emerald-400' : 'text-red-400'}>
-                      {apiStatus?.footballActive ? '🟢 Connected' : '🔴 Offline'}
+                    <span>Weather Radar API</span>
+                    <span className="text-emerald-400">
+                      🟢 Connected (Open-Meteo)
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
@@ -269,7 +283,6 @@ export default function Navbar({
               const getCategoryFreshness = () => {
                 if (!apiStatus?.freshness) return null;
                 let catKey = activeCategory ? activeCategory.toLowerCase().trim() : 'breaking';
-                if (catKey === 'sports') catKey = 'football';
                 if (catKey === 'home') catKey = 'breaking';
                 return apiStatus.freshness[catKey] || apiStatus.freshness['breaking'] || null;
               };
@@ -336,7 +349,7 @@ export default function Navbar({
               </svg>
             </button>
 
-            {/* Two Primary Mobile Navigation Destinations */}
+            {/* Three Primary Mobile Navigation Destinations */}
             <div className="flex items-center p-0.5 rounded-xl bg-[#090d20]/80 border border-white/10 backdrop-blur-md shrink-0">
               <Link
                 href="/"
@@ -345,11 +358,24 @@ export default function Navbar({
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 shadow-[0_0_12px_rgba(0,229,255,0.6)] font-black'
                     : 'text-white/60 hover:text-white'
                 }`}
-                title="Weather Radar"
+                title="Weather Radar & Forecast"
                 aria-label="Weather Radar"
               >
                 <span>🌦️</span>
-                <span>RADAR</span>
+                <span>WEATHER</span>
+              </Link>
+              <Link
+                href="/explore"
+                className={`h-8 px-2 rounded-lg flex items-center gap-1 font-extrabold text-[10px] tracking-wider transition-all ${
+                  isExploreActive
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.6)] font-black'
+                    : 'text-white/60 hover:text-white'
+                }`}
+                title="Explore Earth"
+                aria-label="Explore Earth"
+              >
+                <span>🌍</span>
+                <span>EXPLORE</span>
               </Link>
               <Link
                 href="/games"
@@ -358,8 +384,8 @@ export default function Navbar({
                     ? 'bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.6)] font-black'
                     : 'text-white/60 hover:text-white'
                 }`}
-                title="Games Hub"
-                aria-label="Games Hub"
+                title="Earth Games Hub"
+                aria-label="Earth Games Hub"
               >
                 <span>🎮</span>
                 <span>GAMES</span>
@@ -434,7 +460,26 @@ export default function Navbar({
                   </span>
                 </Link>
 
-                {/* Primary Destination 2: Games Hub */}
+                {/* Primary Destination 2: Explore Earth */}
+                <Link
+                  href="/explore"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition-all border ${
+                    isExploreActive
+                      ? 'bg-blue-500/20 border-blue-400/50 text-blue-200'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>🌍</span>
+                    <span>Explore Earth</span>
+                  </span>
+                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-blue-400/20 text-blue-300">
+                    ATLAS
+                  </span>
+                </Link>
+
+                {/* Primary Destination 3: Earth Games */}
                 <Link
                   href="/games"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -446,7 +491,7 @@ export default function Navbar({
                 >
                   <span className="flex items-center gap-2">
                     <span>🎮</span>
-                    <span>Games Hub</span>
+                    <span>Earth Games</span>
                   </span>
                   <span className="text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-emerald-400/20 text-emerald-200 border border-emerald-400/30">
                     11+ MODES
@@ -574,13 +619,13 @@ export default function Navbar({
         )}
 
         <div className="hidden sm:flex items-center gap-2 sm:gap-3">
-          {/* Exactly Two Primary Navigation Destinations */}
+          {/* Primary Navigation Destinations: Weather first, Explore Earth second, Earth Games third */}
           <div role="navigation" aria-label="Primary destinations" className="flex items-center p-1 rounded-2xl bg-[#090d20]/80 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
             {/* Destination 1: Weather Radar (/) */}
             <Link
               href="/"
               title="MooEarth Weather Radar — Global Weather Intelligence & Live Radar"
-              className={`relative h-9 px-4 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
+              className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
                 isWeatherNavActive
                   ? 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 shadow-[0_0_20px_rgba(0,229,255,0.6)] font-black'
                   : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -593,18 +638,35 @@ export default function Navbar({
               )}
             </Link>
 
-            {/* Destination 2: Games (/games) */}
+            {/* Destination 2: Explore Earth (/explore) */}
+            <Link
+              href="/explore"
+              title="Explore Earth — World Map, Sovereign Nations, Continents & Demographics"
+              className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
+                isExploreActive
+                  ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.6)] font-black'
+                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span className="text-base">🌍</span>
+              <span>EXPLORE EARTH</span>
+              {isExploreActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </Link>
+
+            {/* Destination 3: Earth Games (/games) */}
             <Link
               href="/games"
-              title="MooEarth Games Hub — Quizzes, Daily Challenge, Multiplayer & Discovery"
-              className={`relative h-9 px-4 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
+              title="Earth Games Hub — Quizzes, Daily Challenge, Multiplayer & Discovery"
+              className={`relative h-9 px-3.5 rounded-xl flex items-center gap-2 text-xs font-black tracking-wider transition-all duration-300 pointer-events-auto cursor-pointer ${
                 isGamesActive
                   ? 'bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.6)] font-black'
                   : 'text-white/70 hover:text-white hover:bg-white/5'
               }`}
             >
               <span className="text-base">🎮</span>
-              <span>GAMES</span>
+              <span>EARTH GAMES</span>
               {dailyStreak > 0 && (
                 <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40">
                   🔥{dailyStreak}

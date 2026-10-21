@@ -103,14 +103,14 @@ export const SEARCH_DEBOUNCE_MS = 200;
 
 /** Sidebar navigation items */
 export const SIDEBAR_ITEMS: SidebarItem[] = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'seismic', label: 'Earthquakes', icon: '🌋', category: 'seismic' },
+  { id: 'weather', label: 'Weather Radar', icon: '🌤️', category: 'weather' },
+  { id: 'home', label: 'Explore Earth', icon: '🌍' },
   { id: 'severe_weather', label: 'Severe Storms', icon: '🌪️', category: 'severe_weather' },
+  { id: 'seismic', label: 'Earthquakes', icon: '🌋', category: 'seismic' },
   { id: 'wildfires', label: 'Wildfires', icon: '🔥', category: 'wildfires' },
   { id: 'space_weather', label: 'Space & Aurora', icon: '🚀', category: 'space_weather' },
   { id: 'climate_oceans', label: 'Climate & Oceans', icon: '🌊', category: 'climate_oceans' },
   { id: 'science_nature', label: 'Science & Discovery', icon: '🔬', category: 'science_nature' },
-  { id: 'weather', label: 'Weather', icon: '🌤️', category: 'weather' },
   { id: 'info', label: 'About & Legal', icon: 'ℹ️' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];

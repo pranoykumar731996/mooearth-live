@@ -725,7 +725,7 @@ export default function WeatherDashboard() {
                 </button>
               </div>
             )}
-            {/* Two Primary Destinations Navigation: Weather & Games Hub */}
+            {/* Primary Destinations Navigation: 1. Weather, 2. Explore Earth, 3. Earth Games */}
             <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
               {/* Destination 1: Weather */}
               <button
@@ -737,7 +737,7 @@ export default function WeatherDashboard() {
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,255,0.6)]'
                     : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-400/30 hover:border-cyan-400/60'
                 }`}
-                title="View Live Planetary Weather Intelligence"
+                title="View Live Planetary Weather Intelligence & Radar"
                 aria-label="Weather Intelligence"
                 aria-pressed={viewMode === 'globe'}
               >
@@ -750,24 +750,38 @@ export default function WeatherDashboard() {
                 )}
               </button>
 
-              {/* Destination 2: Games Hub */}
+              {/* Destination 2: Explore Earth */}
+              <Link
+                href="/explore"
+                data-testid="header-explore-earth-btn"
+                className="h-8 sm:h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wide text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer"
+                title="Explore Earth — World Map, Sovereign Nations, Continents & Demographics"
+                aria-label="Explore Earth"
+              >
+                <span className="text-sm">🌍</span>
+                <span className="font-bold whitespace-nowrap">
+                  Explore<span className="hidden md:inline"> Earth</span>
+                </span>
+              </Link>
+
+              {/* Destination 3: Earth Games */}
               <Link
                 href="/games"
                 data-testid="header-games-hub-btn"
                 className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/50 hover:border-purple-300 shadow-[0_0_18px_rgba(147,51,234,0.45)] hover:shadow-[0_0_22px_rgba(147,51,234,0.7)] transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95"
                 title="Play Earth Games — Geography Quiz, Flag Quizzes & World Challenges"
-                aria-label="Games Hub"
+                aria-label="Earth Games"
               >
                 <span className="text-sm">🎮</span>
                 <span className="font-black whitespace-nowrap">
-                  Games<span className="hidden sm:inline"> Hub</span>
+                  <span className="hidden md:inline">Earth </span>Games
                 </span>
                 {dailyStreak > 0 ? (
                   <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 flex items-center gap-0.5">
                     🔥{dailyStreak}
                   </span>
                 ) : (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden md:inline tracking-wider">
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden lg:inline tracking-wider">
                     PLAY
                   </span>
                 )}

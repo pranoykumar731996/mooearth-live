@@ -6,11 +6,11 @@
 // preserving all query parameters (lat, lng, city, country, layer, mode).
 
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { generateHreflangs } from '@/lib/i18n';
+import WeatherPageClient from './WeatherPageClient';
 
-const title = 'Weather Intelligence — Live Global Weather, Air Quality & Marine Forecast | MooEarth Live';
-const description = 'Explore real-time weather on a 3D globe. Current conditions, 7-day forecast, wind, air quality (AQI), elevation, flood risk, and marine data for any location worldwide with live synoptic telemetry.';
+const title = 'Weather Intelligence — Live Global Weather, Radar & 7-Day Forecast | MooEarth Live';
+const description = 'Explore real-time weather on an interactive 3D globe and live city radar map. Satellite spectral layers, precipitation radar, storm & cyclone tracking, wind streams, and 7-day meteorological forecasts.';
 
 export const metadata: Metadata = {
   title,
@@ -41,22 +41,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function WeatherPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
-}) {
-  const resolvedParams = searchParams ? await searchParams : {};
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(resolvedParams)) {
-    if (value != null) {
-      if (Array.isArray(value)) {
-        value.forEach((v) => query.append(key, v));
-      } else {
-        query.append(key, value);
-      }
-    }
-  }
-  const queryString = query.toString();
-  redirect(queryString ? `/?${queryString}` : '/');
+export default function WeatherPage() {
+  return <WeatherPageClient />;
 }

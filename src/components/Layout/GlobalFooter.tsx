@@ -31,10 +31,13 @@ export default function GlobalFooter({ locale = 'en' }: GlobalFooterProps) {
           <div>
             <h4 className="text-white font-semibold mb-4">Explore</h4>
             <ul className="space-y-2 text-gray-400">
-              <li><Link href={getHref('/')} className="hover:text-emerald-400 transition-colors">Home</Link></li>
-              <li><Link href={getHref('/embed')} className="hover:text-emerald-400 transition-colors">Embed 3D Globe</Link></li>
-              <li><Link href={getHref('/about')} className="hover:text-emerald-400 transition-colors">About Us</Link></li>
-              <li><Link href={getHref('/contact')} className="hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link href={getHref('/')} className="hover:text-cyan-400 transition-colors">Weather Radar &amp; Forecast</Link></li>
+              <li><Link href={getHref('/explore')} className="hover:text-cyan-400 transition-colors">Explore Earth</Link></li>
+              <li><Link href={getHref('/games')} className="hover:text-cyan-400 transition-colors">Earth Games Hub</Link></li>
+              <li><Link href={getHref('/world-weather')} className="hover:text-cyan-400 transition-colors">World Weather Directory</Link></li>
+              <li><Link href={getHref('/embed')} className="hover:text-cyan-400 transition-colors">Embed 3D Globe</Link></li>
+              <li><Link href={getHref('/about')} className="hover:text-cyan-400 transition-colors">About Us</Link></li>
+              <li><Link href={getHref('/contact')} className="hover:text-cyan-400 transition-colors">Contact</Link></li>
             </ul>
           </div>
 

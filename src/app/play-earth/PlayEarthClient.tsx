@@ -1043,20 +1043,22 @@ export default function PlayEarthClient({
           becomes an interactive adventure featuring daily flag quizzes, capital challenges, and the Global Nations Cup tournament.
         </p>
         <nav aria-label="Primary Platform Navigation">
+          <Link href="/">Live Weather Radar &amp; Forecast</Link>
+          <Link href="/weather">Global Weather Intelligence</Link>
+          <Link href="/weather-map">Interactive Weather Map</Link>
+          <Link href="/world-weather">World Weather Directory</Link>
+          <Link href="/explore">Explore Earth &amp; World Map</Link>
           <Link href="/globe">3D Earth Globe</Link>
           <Link href="/world-map">Interactive World Map</Link>
+          <Link href="/continents">Continents Atlas</Link>
+          <Link href="/games">Earth Games Hub</Link>
+          <Link href="/daily">Daily Earth Challenge</Link>
           <Link href="/interactive-globe">3D Globe Simulator</Link>
           <Link href="/interactive-world-map">Clickable World Map</Link>
           <Link href="/geography">World Geography</Link>
           <Link href="/world-geography">World Geography Atlas</Link>
-          <Link href="/explore">Explore Earth & World Map</Link>
           <Link href="/world-events">World Events</Link>
-          <Link href="/weather-map">Interactive Weather Map</Link>
-          <Link href="/weather">Global Weather</Link>
           <Link href="/live-events">Live Planetary Events</Link>
-          <Link href="/continents">Continents Atlas</Link>
-          <Link href="/games">Play Earth Games</Link>
-          <Link href="/daily">Daily Earth Challenge</Link>
           <Link href="/tournament">Global Nations Cup</Link>
           <Link href="/war-room">Situation War Room</Link>
           <Link href="/challenges">Global Challenges</Link>
