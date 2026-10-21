@@ -23,6 +23,7 @@
     "test:sentry:full": "npx tsx scripts/regression-sentry.ts --full",
     "test:regression": "npx tsx scripts/regression-sentry.ts",
     "test:anti-repeat": "npx tsx scripts/test-anti-repeat.ts",
+    "test:stop-the-earth": "npx tsx scripts/test-stop-the-earth.ts",
     "test:security": "npx tsx scripts/test-anti-repeat.ts",
     "test:seo": "playwright test tests/seo-technical.spec.ts",
     "test:multilingual": "npx tsx scripts/test-multilingual.ts",

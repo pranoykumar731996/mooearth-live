@@ -143,6 +143,17 @@ const GAME_MODES_CATALOG: GameModeItem[] = [
     questionCount: 5,
   },
   {
+    id: 'stop-the-earth',
+    name: 'Stop the Earth',
+    emoji: '🌍',
+    href: '/games/stop-the-earth',
+    category: 'Map Guessing',
+    badge: 'NEW',
+    difficulty: 'Medium',
+    description: 'Spin the Earth, pick a country, and locate real places on an interactive map. Score based on distance accuracy.',
+    questionCount: 10,
+  },
+  {
     id: 'play-earth',
     name: 'Play Earth 3D Master Mode',
     emoji: '🎮',
