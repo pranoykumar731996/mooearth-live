@@ -633,7 +633,7 @@ export default function StopTheEarthClient() {
           </Link>
           <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '22px' }}>🌍</span>
+            <span style={{ fontSize: '22px' }}>🛰️</span>
             <h1 style={{
               fontSize: '17px',
               fontWeight: 700,
@@ -642,7 +642,7 @@ export default function StopTheEarthClient() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              Stop the Earth
+              Geo Locator Finder
             </h1>
           </div>
         </div>
@@ -694,7 +694,7 @@ export default function StopTheEarthClient() {
         >
           {/* Hero */}
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🌍</div>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🛰️</div>
             <h2 style={{
               fontSize: '36px',
               fontWeight: 800,
@@ -703,7 +703,7 @@ export default function StopTheEarthClient() {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}>
-              Stop the Earth
+              Geo Locator Finder
             </h2>
             <p style={{
               fontSize: '17px',
