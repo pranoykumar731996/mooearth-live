@@ -11,6 +11,7 @@ export type {
   UnitPreferences,
   GeocodingResult,
   GeocodingResponse,
+  GeographicFeatureType,
   CurrentWeather,
   HourlyForecast,
   DailyForecast,
@@ -58,6 +59,10 @@ export {
   searchLocations,
   formatLocationName,
 } from './geocodingService';
+export {
+  universalSearchLocations,
+  classifyOsmFeature,
+} from '../geocoding/universalGeocodingService';
 
 // Air Quality
 export {

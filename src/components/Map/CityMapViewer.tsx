@@ -38,6 +38,7 @@ import type { WorldEvent } from '@/types';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
+import NearbyPlacesPanel from './NearbyPlacesPanel';
 
 export type { MapStyleKey, MapStyleOption };
 export { MAP_STYLES, DEFAULT_CITY_ZOOM };
@@ -928,6 +929,22 @@ export default function CityMapViewer({
               </button>
             )}
           </div>
+
+          {/* Nearby Places Discovery */}
+          {cityName !== 'World Map' && (
+            <NearbyPlacesPanel
+              latitude={latitude}
+              longitude={longitude}
+              onSelectPlace={(place) => {
+                mapRef.current?.flyTo({
+                  center: [place.longitude, place.latitude],
+                  zoom: 14.5,
+                  essential: true,
+                });
+                onMapClick?.({ lat: place.latitude, lng: place.longitude });
+              }}
+            />
+          )}
         </div>
 
         {/* Right: Style Selector & Weather Telemetry Summary */}

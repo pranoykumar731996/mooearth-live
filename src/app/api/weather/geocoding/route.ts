@@ -5,7 +5,7 @@
 // Searches for locations by name. Never exposes raw API calls.
 
 import { NextRequest } from 'next/server';
-import { searchLocations } from '@/services/weather';
+import { universalSearchLocations } from '@/services/geocoding/universalGeocodingService';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const language = searchParams.get('language') || 'en';
 
     if (!query.trim()) {
-      return Response.json({ results: [], generationTime: 0 });
+      return Response.json({ results: [], generationTime: 0, provider: 'none' });
     }
 
     if (query.trim().length < 2) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const results = await searchLocations(query, count, language);
+    const results = await universalSearchLocations(query, count, language);
 
     return Response.json(results, {
       headers: {

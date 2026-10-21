@@ -507,6 +507,7 @@ export default function WeatherDashboard() {
   }, [weather.selectedLocation]);
 
   // Search selection handler
+  // Search selection handler with adaptive feature altitude & mode synchronization
   const handleSelectLocation = useCallback(
     (result: GeocodingResult) => {
       weather.fetchWeatherForLocation({
@@ -524,16 +525,46 @@ export default function WeatherDashboard() {
         country: result.country,
         timezone: result.timezone,
       });
-      globeApiRef.current?.flyTo({
-        lat: result.latitude,
-        lng: result.longitude,
-        altitude: 1.8,
-      }, getFlyDuration(1500));
-      updateUrlParams(result.latitude, result.longitude, result.name, result.country);
+
+      // Adaptive altitude based on geographic feature scale
+      let altitude = 1.5;
+      if (result.type === 'country') {
+        altitude = 2.2;
+      } else if (result.type === 'administrative') {
+        altitude = 1.8;
+      } else if (result.type === 'city') {
+        altitude = 1.4;
+      } else if (
+        result.type === 'street' ||
+        result.type === 'address' ||
+        result.type === 'landmark' ||
+        result.type === 'airport' ||
+        result.type === 'mountain' ||
+        result.type === 'park'
+      ) {
+        altitude = 0.85;
+      }
+
+      globeApiRef.current?.flyTo(
+        {
+          lat: result.latitude,
+          lng: result.longitude,
+          altitude,
+        },
+        getFlyDuration(1500)
+      );
+
+      updateUrlParams(
+        result.latitude,
+        result.longitude,
+        result.name,
+        result.country,
+        viewMode
+      );
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
-    [weather, updateUrlParams, getFlyDuration]
+    [weather, updateUrlParams, getFlyDuration, viewMode]
   );
 
   // Globe country tap handler
@@ -916,10 +947,10 @@ export default function WeatherDashboard() {
                   data-testid="hud-explore-city-btn"
                   onClick={handleExploreCity}
                   className="px-3 py-2 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 backdrop-blur-xl border border-cyan-400/40 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 shadow-2xl transition-all cursor-pointer active:scale-95"
-                  title="Explore detailed high-resolution 2D city map"
+                  title="Explore detailed interactive 2D map with street and satellite imagery"
                 >
                   <span>🗺️</span>
-                  <span className="hidden sm:inline">Explore City</span>
+                  <span className="hidden sm:inline">Interactive Map</span>
                 </button>
               </div>
             )}

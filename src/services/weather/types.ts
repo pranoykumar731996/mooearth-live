@@ -24,6 +24,19 @@ export const DEFAULT_UNITS: UnitPreferences = {
 
 // ── Geocoding ─────────────────────────────────────────────────
 
+export type GeographicFeatureType =
+  | 'city'
+  | 'street'
+  | 'address'
+  | 'airport'
+  | 'mountain'
+  | 'landmark'
+  | 'water'
+  | 'park'
+  | 'station'
+  | 'administrative'
+  | 'country';
+
 export interface GeocodingResult {
   id: number;
   name: string;
@@ -38,11 +51,19 @@ export interface GeocodingResult {
   admin3?: string;
   population?: number;
   featureCode?: string;
+  type?: GeographicFeatureType;
+  street?: string;
+  housenumber?: string;
+  postcode?: string;
+  displayName?: string;
+  osmId?: number | string;
+  boundingBox?: [number, number, number, number];
 }
 
 export interface GeocodingResponse {
   results: GeocodingResult[];
   generationTime: number;
+  provider?: string;
 }
 
 // ── Current Weather ───────────────────────────────────────────

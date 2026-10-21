@@ -12,6 +12,7 @@
 export type MapStyleKey =
   | 'satellite'
   | 'esri-street'
+  | 'terrain'
   | 'maptiler-streets'
   | 'liberty'
   | 'bright'
@@ -125,6 +126,36 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       },
       type: 'raster',
       attribution: 'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, TomTom, OpenStreetMap contributors',
+    },
+    terrain: {
+      key: 'terrain',
+      label: 'Topography & Relief',
+      badge: 'Terrain',
+      style: {
+        version: 8,
+        sources: {
+          'esri-topo-source': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution:
+              'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, NAVTEQ, OpenStreetMap contributors',
+          },
+        },
+        layers: [
+          {
+            id: 'esri-topo-layer',
+            type: 'raster',
+            source: 'esri-topo-source',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
+      },
+      type: 'raster',
+      attribution: 'Tiles © Esri — Source: USGS, Esri, OpenStreetMap contributors',
     },
     'maptiler-streets': {
       key: 'maptiler-streets',
@@ -326,7 +357,7 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
   if (currentKey === 'maptiler-streets' || currentKey === 'liberty' || currentKey === 'bright') {
     return 'esri-street';
   }
-  if (currentKey === 'satellite') {
+  if (currentKey === 'satellite' || currentKey === 'terrain') {
     return 'esri-street';
   }
   if (currentKey === 'esri-street') {
