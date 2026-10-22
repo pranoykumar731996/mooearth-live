@@ -708,10 +708,10 @@ export default function WeatherDashboard() {
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-[130px] sm:min-w-[200px]">
+          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-[70px] sm:min-w-[180px]">
             <WeatherSearch
               onSelectLocation={handleSelectLocation}
-              placeholder="Search city or place..."
+              placeholder="Search..."
               initialQuery={
                 weather.selectedLocation
                   ? weather.selectedLocation.country &&
@@ -725,9 +725,9 @@ export default function WeatherDashboard() {
           </div>
 
           {/* Quick Links & View Mode Switch */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {weather.selectedLocation && (
-              <div className="hidden sm:flex rounded-xl bg-white/5 border border-white/10 p-0.5">
+              <div className="hidden xl:flex rounded-xl bg-white/5 border border-white/10 p-0.5">
                 <button
                   type="button"
                   data-testid="header-earth-mode-btn"
@@ -757,13 +757,13 @@ export default function WeatherDashboard() {
               </div>
             )}
             {/* Primary Destinations Navigation: 1. Weather, 2. Explore Earth, 3. Earth Games */}
-            <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-2xl bg-[#090d20]/90 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
+            <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl bg-[#090d20]/95 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
               {/* Destination 1: Weather */}
               <button
                 type="button"
                 data-testid="header-weather-btn"
                 onClick={handleSwitchToWeather}
-                className={`h-8 sm:h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
                   viewMode === 'globe'
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,255,0.6)]'
                     : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-400/30 hover:border-cyan-400/60'
@@ -773,7 +773,7 @@ export default function WeatherDashboard() {
                 aria-pressed={viewMode === 'globe'}
               >
                 <span className="text-sm">🌤️</span>
-                <span className="font-bold whitespace-nowrap">
+                <span className="font-bold whitespace-nowrap hidden lg:inline">
                   Weather
                 </span>
                 {viewMode === 'globe' && (
@@ -785,34 +785,34 @@ export default function WeatherDashboard() {
               <Link
                 href="/explore"
                 data-testid="header-explore-earth-btn"
-                className="h-8 sm:h-9 px-2 sm:px-3 rounded-xl flex items-center gap-1.5 text-xs font-bold tracking-wide text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer"
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer"
                 title="Explore Earth — World Map, Sovereign Nations, Continents & Demographics"
                 aria-label="Explore Earth"
               >
                 <span className="text-sm">🌍</span>
-                <span className="font-bold whitespace-nowrap">
-                  Explore<span className="hidden md:inline"> Earth</span>
+                <span className="font-bold whitespace-nowrap hidden lg:inline">
+                  Explore<span className="hidden xl:inline"> Earth</span>
                 </span>
               </Link>
 
-              {/* Destination 3: Earth Games */}
+              {/* Destination 3: Earth Games (ALWAYS VISIBLE WITH TEXT ON MOBILE!) */}
               <Link
                 href="/games"
                 data-testid="header-games-hub-btn"
-                className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-xl flex items-center gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/50 hover:border-purple-300 shadow-[0_0_18px_rgba(147,51,234,0.45)] hover:shadow-[0_0_22px_rgba(147,51,234,0.7)] transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95"
+                className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/60 hover:border-purple-300 shadow-[0_0_16px_rgba(147,51,234,0.55)] hover:shadow-[0_0_22px_rgba(147,51,234,0.7)] transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0"
                 title="Play Earth Games — Geography Quiz, Flag Quizzes & World Challenges"
                 aria-label="Earth Games"
               >
-                <span className="text-sm">🎮</span>
-                <span className="font-black whitespace-nowrap">
-                  <span className="hidden md:inline">Earth </span>Games
+                <span className="text-sm shrink-0">🎮</span>
+                <span className="font-black whitespace-nowrap text-xs">
+                  <span className="hidden xl:inline">Earth </span>Games
                 </span>
                 {dailyStreak > 0 ? (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 flex items-center gap-0.5">
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 hidden sm:flex items-center gap-0.5">
                     🔥{dailyStreak}
                   </span>
                 ) : (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden lg:inline tracking-wider">
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden xl:inline tracking-wider">
                     PLAY
                   </span>
                 )}

@@ -218,13 +218,13 @@ export default function CityMapViewer({
           // Create custom popup tooltip
           const popup = new Popup({
             offset: 20,
-            closeButton: false,
+            closeButton: true,
             className: 'city-map-popup',
           }).setHTML(`
-            <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(12px); border: 1px solid rgba(6,182,212,0.4); border-radius: 12px; padding: 8px 12px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
-              <div style="font-weight: 700; color: #67e8f9; font-size: 13px; margin-bottom: 2px;">${cityName}</div>
-              <div style="color: rgba(255,255,255,0.7); font-size: 10px;">${countryName || ''}</div>
-              <div style="color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 4px;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
+            <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 30px 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-width: 260px;">
+              <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
+              <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName || ''}</div>
+              <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
             </div>
           `);
 
@@ -889,29 +889,29 @@ export default function CityMapViewer({
       )}
 
       {/* ── Top Floating Navigation HUD ──────────────── */}
-      <div className="absolute top-4 left-3 right-3 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-2 sm:gap-3">
+      <div className="absolute top-3 left-2.5 right-2.5 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
         {/* Left: "Return to Earth" Action & City Badge */}
-        <div className="flex flex-col gap-1.5 sm:gap-2 pointer-events-auto min-w-0">
+        <div className="flex flex-col gap-1.5 sm:gap-2 pointer-events-auto min-w-0 max-w-[55%] sm:max-w-none">
           <button
             type="button"
             data-testid="return-to-earth-btn"
             onClick={onReturnToEarth}
-            className="group px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit"
+            className="group px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-[11px] sm:text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 sm:gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit shrink-0"
             title="Return to interactive 3D Earth globe"
           >
-            <span className="text-base group-hover:rotate-12 transition-transform">🌍</span>
+            <span className="text-sm sm:text-base group-hover:rotate-12 transition-transform">🌍</span>
             <span className="truncate">{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
             <span className="text-[10px] text-cyan-400/60 font-normal hidden sm:inline">⟵ Orbit</span>
           </button>
 
           {/* City Badge & Recenter Button */}
-          <div className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-2 shadow-2xl max-w-full">
+          <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-1.5 sm:gap-2 shadow-2xl max-w-full">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
             <div className="min-w-0">
-              <div className="font-bold text-white truncate max-w-[130px] sm:max-w-[240px]">
+              <div className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
                 {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
               </div>
-              <div className="text-[10px] text-white/50 truncate max-w-[130px] sm:max-w-[240px]">
+              <div className="text-[10px] text-white/50 truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
                 {cityName === 'World Map'
                   ? 'Planetary Cyclones & Hazards'
                   : `${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
@@ -948,19 +948,19 @@ export default function CityMapViewer({
         </div>
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
-        <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
+        <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
           {/* Style Selector Dropdown Pill */}
           <div className="relative">
             <button
               type="button"
               data-testid="map-style-selector-btn"
               onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-              className="px-2.5 py-1.5 sm:px-3 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[10px] sm:text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer"
               title="Change Map Tiles & Styling"
             >
               <span className="text-cyan-400">🗺️</span>
-              <span className="font-semibold">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
-              <span className="text-[9px] text-white/40">▼</span>
+              <span className="font-semibold truncate max-w-[80px] sm:max-w-none">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
+              <span className="text-[8px] sm:text-[9px] text-white/40">▼</span>
             </button>
 
             {isStyleMenuOpen && (
@@ -1000,25 +1000,25 @@ export default function CityMapViewer({
           {weatherSummary ? (
             <div
               data-testid="city-weather-summary-card"
-              className="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 shadow-2xl flex flex-col gap-1 max-w-[210px] sm:max-w-[230px]"
+              className="px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 shadow-2xl flex flex-col gap-1 max-w-[130px] min-[400px]:max-w-[160px] sm:max-w-[230px]"
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-1.5 sm:gap-2">
                 <div
-                  className="flex items-center gap-1.5 cursor-pointer group"
+                  className="flex items-center gap-1 sm:gap-1.5 cursor-pointer group"
                   onClick={onOpenWeather}
                   title="Click to view detailed weather telemetry"
                 >
-                  <span className="text-xl">
+                  <span className="text-lg sm:text-xl shrink-0">
                     {weatherSummary.weatherEmoji || '🌤️'}
                   </span>
                   <div>
-                    <div className="text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors">
+                    <div className="text-xs sm:text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors">
                       {typeof weatherSummary.temperature === 'number'
                         ? `${Math.round(weatherSummary.temperature)}°${weatherSummary.units === 'fahrenheit' ? 'F' : 'C'}`
                         : '—'}
                     </div>
-                    <div className="text-[10px] text-white/50 truncate max-w-[90px] sm:max-w-[110px]">
-                      {weatherSummary.weatherDescription || 'Current weather'}
+                    <div className="text-[9px] sm:text-[10px] text-white/50 truncate max-w-[65px] min-[400px]:max-w-[90px] sm:max-w-[110px]">
+                      {weatherSummary.weatherDescription || 'Current'}
                     </div>
                   </div>
                 </div>
@@ -1028,18 +1028,18 @@ export default function CityMapViewer({
                     type="button"
                     data-testid="city-map-telemetry-btn"
                     onClick={onOpenWeather}
-                    className="px-2 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-300 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 shadow-sm"
+                    className="p-1 sm:px-2 sm:py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-cyan-300 text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 shadow-sm"
                     title="Open full meteorological telemetry and forecasts"
                   >
                     <span>📊</span>
-                    <span>Telemetry</span>
+                    <span className="hidden min-[440px]:inline">Telemetry</span>
                   </button>
                 )}
               </div>
 
-              {/* Extra telemetry pill */}
+              {/* Extra telemetry pill - hidden on small mobile to avoid crowding */}
               <div
-                className="flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40 cursor-pointer hover:text-white/70 transition-colors"
+                className="hidden sm:flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40 cursor-pointer hover:text-white/70 transition-colors"
                 onClick={onOpenWeather}
               >
                 {typeof weatherSummary.windSpeed === 'number' && (
@@ -1056,7 +1056,7 @@ export default function CityMapViewer({
                 type="button"
                 data-testid="city-map-telemetry-btn"
                 onClick={onOpenWeather}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/35 backdrop-blur-xl border border-cyan-400/40 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95"
+                className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/35 backdrop-blur-xl border border-cyan-400/40 text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95"
                 title="Open live meteorological telemetry"
               >
                 <span>📊</span>
@@ -1166,42 +1166,59 @@ export default function CityMapViewer({
           0%, 100% { transform: scale(1); opacity: 0.85; }
           50% { transform: scale(1.1); opacity: 1; }
         }
-        .disaster-map-popup .maplibregl-popup-content {
+        .disaster-map-popup .maplibregl-popup-content,
+        .city-map-popup .maplibregl-popup-content {
           background: transparent !important;
           padding: 0 !important;
           box-shadow: none !important;
-          border-radius: 16px !important;
+          border-radius: 14px !important;
+          border: none !important;
         }
-        .disaster-map-popup .maplibregl-popup-tip {
-          border-top-color: rgba(6, 8, 24, 0.97) !important;
-          border-bottom-color: rgba(6, 8, 24, 0.97) !important;
+        .disaster-map-popup .maplibregl-popup-tip,
+        .city-map-popup .maplibregl-popup-tip {
+          border-top-color: rgba(5, 5, 18, 0.95) !important;
+          border-bottom-color: rgba(5, 5, 18, 0.95) !important;
         }
-        .disaster-map-popup .maplibregl-popup-close-button {
-          color: #fff !important;
-          padding: 4px 8px !important;
-          font-size: 16px !important;
-          right: 8px !important;
-          top: 8px !important;
+        .disaster-map-popup .maplibregl-popup-close-button,
+        .city-map-popup .maplibregl-popup-close-button {
+          color: #67e8f9 !important;
+          padding: 3px 7px !important;
+          font-size: 15px !important;
+          right: 6px !important;
+          top: 6px !important;
           outline: none !important;
+          background: rgba(255, 255, 255, 0.12) !important;
+          border-radius: 6px !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          transition: background 0.15s !important;
+        }
+        .disaster-map-popup .maplibregl-popup-close-button:hover,
+        .city-map-popup .maplibregl-popup-close-button:hover {
+          background: rgba(6, 182, 212, 0.3) !important;
+          color: #fff !important;
         }
       `}</style>
 
       {/* ── Bottom Telemetry & Attribution Bar ───────── */}
-      <div className="absolute bottom-2 left-4 right-4 z-20 pointer-events-none flex items-end justify-between text-[10px] font-mono text-white/40">
+      <div className="absolute bottom-1.5 sm:bottom-2 left-2 right-2 sm:left-4 sm:right-4 z-20 pointer-events-none flex items-end justify-between text-[10px] font-mono text-white/40 pb-[env(safe-area-inset-bottom)]">
         {/* Telemetry coords */}
-        <div className="bg-[#050512]/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 pointer-events-auto">
+        <div className="bg-[#050512]/80 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-white/5 pointer-events-auto">
           <span>ZOOM: {currentZoom}</span>
-          <span className="mx-1.5 text-white/20">|</span>
-          <span>PITCH: {currentPitch}°</span>
-          <span className="mx-1.5 text-white/20">|</span>
-          <span>BEARING: {currentBearing}°</span>
+          <span className="hidden sm:inline">
+            <span className="mx-1.5 text-white/20">|</span>
+            <span>PITCH: {currentPitch}°</span>
+            <span className="mx-1.5 text-white/20">|</span>
+            <span>BEARING: {currentBearing}°</span>
+          </span>
         </div>
 
         {/* Subtle Cartography Sources Link */}
         <Link
           href="/data-sources"
           title={MAP_STYLES[activeStyleKey]?.attribution || 'Cartographic Data Sources'}
-          className="bg-[#050512]/80 hover:bg-[#050512] backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/5 hover:border-white/20 text-white/40 hover:text-white/80 pointer-events-auto transition-colors flex items-center gap-1.5"
+          className="bg-[#050512]/80 hover:bg-[#050512] backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-white/5 hover:border-white/20 text-white/40 hover:text-white/80 pointer-events-auto transition-colors flex items-center gap-1 sm:gap-1.5"
         >
           <span className="text-[11px]">ℹ️</span>
           <span className="hidden sm:inline">Data Sources</span>
