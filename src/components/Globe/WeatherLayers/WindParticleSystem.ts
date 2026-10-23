@@ -78,10 +78,10 @@ export class WindParticleSystem {
   private reducedMotion: boolean;
 
   constructor(options: WindParticleSystemOptions = {}) {
-    this.radius = (options.radius ?? 100) * 1.0035; // Hover slightly above globe surface
+    this.radius = (options.radius ?? 100) * 1.0042; // Hover slightly above globe surface and radar layer
     this.isMobile = options.isMobile ?? false;
     this.reducedMotion = options.reducedMotion ?? false;
-    this.particleCount = options.particleCount ?? (this.isMobile ? 600 : 1800);
+    this.particleCount = options.particleCount ?? (this.isMobile ? 2500 : 7500);
     this.windField = getGlobalWindField();
 
     // 2 vertices per particle streamline (head and tail)
@@ -104,7 +104,7 @@ export class WindParticleSystem {
       lat: (Math.random() - 0.5) * 160, // -80 to +80 deg
       lng: (Math.random() - 0.5) * 360, // -180 to +180 deg
       age: Math.floor(Math.random() * 80),
-      maxAge: 60 + Math.floor(Math.random() * 60), // 60-120 frames
+      maxAge: 70 + Math.floor(Math.random() * 70), // 70-140 frames
       speed: 15,
     };
   }
@@ -117,13 +117,14 @@ export class WindParticleSystem {
     this.material = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
 
     this.mesh = new THREE.LineSegments(this.geometry, this.material);
     this.mesh.name = 'weather-wind-particles';
+    this.mesh.renderOrder = 35; // Render above radar and satellite layers
   }
 
   public getMesh(): THREE.LineSegments | null {
@@ -159,8 +160,8 @@ export class WindParticleSystem {
     const hasField = this.windField !== null;
     if (!hasStations && !hasField) return;
 
-    const timeScale = this.reducedMotion ? 0.04 : 0.16;
-    const tailScale = 0.08;
+    const timeScale = this.reducedMotion ? 0.04 : 0.20;
+    const tailScale = 0.42; // Long flowing streamline trails matching Nullschool
 
     for (let i = 0; i < this.particleCount; i++) {
       const p = this.particles[i];
@@ -217,11 +218,12 @@ export class WindParticleSystem {
       // Fade in at birth, fade out at death
       const progress = p.age / p.maxAge;
       const alpha = Math.sin(progress * Math.PI);
-      const r = color.r * alpha;
-      const g = color.g * alpha;
-      const b = color.b * alpha;
+      const intensity = alpha * 1.35 + 0.15;
+      const r = Math.min(1.0, color.r * intensity);
+      const g = Math.min(1.0, color.g * intensity);
+      const b = Math.min(1.0, color.b * intensity);
 
-      // Head vertex
+      // Head vertex (bright head)
       const idxHead = i * 2;
       this.positions[idxHead * 3] = head.x;
       this.positions[idxHead * 3 + 1] = head.y;
@@ -230,14 +232,14 @@ export class WindParticleSystem {
       this.colors[idxHead * 3 + 1] = g;
       this.colors[idxHead * 3 + 2] = b;
 
-      // Tail vertex (slightly dimmer for sleek streak effect)
+      // Tail vertex (tapered streak effect)
       const idxTail = i * 2 + 1;
       this.positions[idxTail * 3] = tail.x;
       this.positions[idxTail * 3 + 1] = tail.y;
       this.positions[idxTail * 3 + 2] = tail.z;
-      this.colors[idxTail * 3] = r * 0.3;
-      this.colors[idxTail * 3 + 1] = g * 0.3;
-      this.colors[idxTail * 3 + 2] = b * 0.3;
+      this.colors[idxTail * 3] = r * 0.45;
+      this.colors[idxTail * 3 + 1] = g * 0.45;
+      this.colors[idxTail * 3 + 2] = b * 0.45;
     }
 
     // Notify Three.js to upload updated buffers

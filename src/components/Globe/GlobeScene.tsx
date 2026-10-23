@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
-import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
+import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, PlanetaryGraticuleLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 import type { GoalCelebration } from '@/hooks/useGoalCelebration';
@@ -61,6 +61,7 @@ interface GlobeSceneProps {
   overlayRadar?: boolean;
   showPressureIsobars?: boolean;
   particlesEnabled?: boolean;
+  showGraticules?: boolean;
   isDashboardOpen?: boolean;
   isFocusMode?: boolean;
   isStopTheEarthSpinning?: boolean;
@@ -212,6 +213,7 @@ const GlobeScene = React.memo(function GlobeScene({
   overlayRadar = false,
   showPressureIsobars = false,
   particlesEnabled = true,
+  showGraticules = false,
   isDashboardOpen = false,
   isFocusMode = false,
   isStopTheEarthSpinning = false,
@@ -243,6 +245,7 @@ const GlobeScene = React.memo(function GlobeScene({
   const oceanCurrentsLayerRef = useRef<OceanCurrentsLayer | null>(null);
   const geostationarySatelliteLayerRef = useRef<GeostationarySatelliteLayer | null>(null);
   const atmosphericPressureLayerRef = useRef<AtmosphericPressureLayer | null>(null);
+  const planetaryGraticuleLayerRef = useRef<PlanetaryGraticuleLayer | null>(null);
 
   // Stop The Earth active/spinning refs for instant 60fps frame loop reading
   const isStopTheEarthSpinningRef = useRef(isStopTheEarthSpinning);
@@ -1048,8 +1051,12 @@ const GlobeScene = React.memo(function GlobeScene({
     const stations = weatherGridData?.stations || [];
     const radius = globe.getGlobeRadius();
 
-    // 1. Wind Particles Layer: active in 'wind' and 'overview' when viewing weather
-    const shouldShowWind = isWeather && (weatherLayerMode === 'wind' || weatherLayerMode === 'overview');
+    // 1. Wind Particles Layer: active in 'wind' and 'overview' when viewing weather, or in satellite/radar when particlesEnabled is true
+    const shouldShowWind = !isPlayEarthActive && isWeather && (
+      weatherLayerMode === 'wind' || 
+      weatherLayerMode === 'overview' || 
+      (particlesEnabled && (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds'))
+    );
     if (shouldShowWind) {
       if (!windParticleSystemRef.current) {
         windParticleSystemRef.current = new WindParticleSystem({
@@ -1069,6 +1076,24 @@ const GlobeScene = React.memo(function GlobeScene({
       if (mesh) scene.remove(mesh);
       windParticleSystemRef.current.dispose();
       windParticleSystemRef.current = null;
+    }
+
+    // 1b. Planetary Graticules Coordinate Grid (Nullschool-style latitude/longitude lines)
+    const shouldShowGraticules = !isPlayEarthActive && (showGraticules || (isWeather && weatherLayerMode === 'wind'));
+    if (shouldShowGraticules) {
+      if (!planetaryGraticuleLayerRef.current) {
+        planetaryGraticuleLayerRef.current = new PlanetaryGraticuleLayer({
+          radius,
+          isMobile,
+        });
+        const mesh = planetaryGraticuleLayerRef.current.getMesh();
+        if (mesh) scene.add(mesh);
+      }
+    } else if (planetaryGraticuleLayerRef.current) {
+      const mesh = planetaryGraticuleLayerRef.current.getMesh();
+      if (mesh) scene.remove(mesh);
+      planetaryGraticuleLayerRef.current.dispose();
+      planetaryGraticuleLayerRef.current = null;
     }
 
     // 2. Temperature Heatmap Layer: active in 'temperature'
@@ -1124,6 +1149,12 @@ const GlobeScene = React.memo(function GlobeScene({
           windParticleSystemRef.current.dispose();
           windParticleSystemRef.current = null;
         }
+        if (planetaryGraticuleLayerRef.current) {
+          const m = planetaryGraticuleLayerRef.current.getMesh();
+          if (m) scene.remove(m);
+          planetaryGraticuleLayerRef.current.dispose();
+          planetaryGraticuleLayerRef.current = null;
+        }
         if (temperatureLayerRef.current) {
           const m = temperatureLayerRef.current.getMesh();
           if (m) scene.remove(m);
@@ -1138,7 +1169,7 @@ const GlobeScene = React.memo(function GlobeScene({
         }
       }
     };
-  }, [globeRef, introDone, globeView, weatherLayerMode, weatherTimelineIndex, weatherGridData, isMobile]);
+  }, [globeRef, introDone, globeView, weatherLayerMode, weatherTimelineIndex, weatherGridData, isMobile, particlesEnabled, showGraticules, isPlayEarthActive]);
 
   // Priority telemetry feed for 3D planetary phenomena: prefer unfiltered allEvents, fallback to events
   const planetaryFeed = useMemo(() => {

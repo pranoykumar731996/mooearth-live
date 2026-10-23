@@ -18,6 +18,7 @@ interface RadarCoverageNoticeProps {
   onSwitchToPrecipitation: () => void;
   onSwitchToSatellite: () => void;
   onRecenterRadar?: () => void;
+  onDismiss?: () => void;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export default function RadarCoverageNotice({
   onSwitchToPrecipitation,
   onSwitchToSatellite,
   onRecenterRadar,
+  onDismiss,
   className = '',
 }: RadarCoverageNoticeProps) {
   return (
@@ -40,9 +42,22 @@ export default function RadarCoverageNotice({
             <h4 className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wider">
               Terrestrial Doppler Radar Unavailable
             </h4>
-            <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30">
-              PHYSICAL LIMIT
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30">
+                PHYSICAL LIMIT
+              </span>
+              {onDismiss && (
+                <button
+                  type="button"
+                  onClick={onDismiss}
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors text-xs font-bold cursor-pointer"
+                  title="Dismiss notice"
+                  aria-label="Dismiss notice"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           <p className="text-[11px] text-white/70 mt-1 leading-relaxed">

@@ -77,3 +77,6 @@ export type { GeostationarySatelliteLayerOptions } from './GeostationarySatellit
 
 export { AtmosphericPressureLayer } from './AtmosphericPressureLayer';
 export type { AtmosphericPressureLayerOptions } from './AtmosphericPressureLayer';
+
+export { PlanetaryGraticuleLayer } from './PlanetaryGraticuleLayer';
+export type { PlanetaryGraticuleLayerOptions } from './PlanetaryGraticuleLayer';

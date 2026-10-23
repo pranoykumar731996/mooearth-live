@@ -25,6 +25,8 @@ interface WindyTimeScrubberProps {
   onTogglePressureIsobars: (enabled: boolean) => void;
   particlesEnabled: boolean;
   onToggleParticles: (enabled: boolean) => void;
+  showGraticules?: boolean;
+  onToggleGraticules?: (enabled: boolean) => void;
   timelineIndex: number;
   onSelectIndex: (index: number) => void;
   isPlaying: boolean;
@@ -48,6 +50,8 @@ export default function WindyTimeScrubber({
   onTogglePressureIsobars,
   particlesEnabled,
   onToggleParticles,
+  showGraticules = false,
+  onToggleGraticules,
   timelineIndex,
   onSelectIndex,
   isPlaying,
@@ -363,10 +367,26 @@ export default function WindyTimeScrubber({
                   ? 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300'
                   : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
               }`}
-            title="Toggle animated particle streamlines"
+            title="Toggle animated particle streamlines (Nullschool wind)"
           >
             <span>💨</span>
             <span>particles</span>
+          </button>
+
+          {/* Graticule Grid Toggle (Nullschool Mode) */}
+          <button
+            type="button"
+            onClick={() => onToggleGraticules?.(!showGraticules)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-medium transition-colors border cursor-pointer
+              ${
+                showGraticules
+                  ? 'bg-sky-500/25 border-sky-400/50 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
+                  : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+              }`}
+            title="Toggle latitude / longitude coordinate graticules (Nullschool grid)"
+          >
+            <span>🌐</span>
+            <span>grid</span>
           </button>
         </div>
       </div>

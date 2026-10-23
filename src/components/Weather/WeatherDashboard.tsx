@@ -124,6 +124,8 @@ export default function WeatherDashboard() {
   const [overlayRadar, setOverlayRadar] = useState(false);
   const [showPressureIsobars, setShowPressureIsobars] = useState(false);
   const [particlesEnabled, setParticlesEnabled] = useState(true);
+  const [showGraticules, setShowGraticules] = useState(false);
+  const [isRadarNoticeDismissed, setIsRadarNoticeDismissed] = useState(false);
   const [events, setEvents] = useState<WorldEvent[]>([]);
   const [gridData, setGridData] = useState<GlobalWeatherGridResponse | null>(null);
   const [isGridLoading, setIsGridLoading] = useState(true);
@@ -872,6 +874,7 @@ export default function WeatherDashboard() {
                 overlayRadar={overlayRadar}
                 showPressureIsobars={showPressureIsobars}
                 particlesEnabled={particlesEnabled}
+                showGraticules={showGraticules}
                 onGlobeClick={handleGlobeClick}
                 onInitGlobeApi={handleInitGlobeApi}
               />
@@ -958,6 +961,7 @@ export default function WeatherDashboard() {
             {/* Honest Radar Coverage Notice when viewing areas outside terrestrial ground radar */}
             {weather.activeLayer === 'radar' &&
               weather.selectedLocation &&
+              !isRadarNoticeDismissed &&
               !isLocationCoveredByRadar(
                 weather.selectedLocation.latitude,
                 weather.selectedLocation.longitude
@@ -977,6 +981,7 @@ export default function WeatherDashboard() {
                         source: 'search',
                       });
                     }}
+                    onDismiss={() => setIsRadarNoticeDismissed(true)}
                   />
                 </div>
               )}
@@ -1124,6 +1129,8 @@ export default function WeatherDashboard() {
               onTogglePressureIsobars={setShowPressureIsobars}
               particlesEnabled={particlesEnabled}
               onToggleParticles={setParticlesEnabled}
+              showGraticules={showGraticules}
+              onToggleGraticules={setShowGraticules}
               timelineIndex={timelineIndex}
               onSelectIndex={setTimelineIndex}
               isPlaying={isTimelinePlaying}
