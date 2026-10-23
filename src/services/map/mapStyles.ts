@@ -214,147 +214,23 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     voyager: {
       key: 'voyager',
-      label: 'Voyager Detailed',
-      badge: 'Raster',
+      label: 'Positron Clean',
+      badge: 'Vector',
       style: cartoKey
-        ? {
-            version: 8,
-            sources: {
-              'carto-voyager': {
-                type: 'raster',
-                tiles: [
-                  `https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                  `https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                  `https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                ],
-                tileSize: 256,
-                attribution:
-                  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
-              },
-            },
-            layers: [
-              {
-                id: 'carto-voyager-layer',
-                type: 'raster',
-                source: 'carto-voyager',
-                minzoom: 0,
-                maxzoom: 20,
-              },
-            ],
-          }
-        : {
-            version: 8,
-            sources: {
-              'esri-light-base': {
-                type: 'raster',
-                tiles: [
-                  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-                ],
-                tileSize: 256,
-                attribution:
-                  'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, USGS, OpenStreetMap contributors',
-              },
-              'esri-light-labels': {
-                type: 'raster',
-                tiles: [
-                  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-                ],
-                tileSize: 256,
-              },
-            },
-            layers: [
-              {
-                id: 'esri-light-base-layer',
-                type: 'raster',
-                source: 'esri-light-base',
-                minzoom: 0,
-                maxzoom: 19,
-              },
-              {
-                id: 'esri-light-labels-layer',
-                type: 'raster',
-                source: 'esri-light-labels',
-                minzoom: 0,
-                maxzoom: 19,
-              },
-            ],
-          },
-      type: 'raster',
-      attribution: cartoKey
-        ? '© OpenStreetMap contributors © CARTO'
-        : 'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, OpenStreetMap contributors',
+        ? `https://api.maptiler.com/maps/positron/style.json?key=${cartoKey}`
+        : 'https://tiles.openfreemap.org/styles/positron',
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
     },
     dark: {
       key: 'dark',
       label: 'Night Mode',
       badge: 'Night',
       style: cartoKey
-        ? {
-            version: 8,
-            sources: {
-              'carto-dark': {
-                type: 'raster',
-                tiles: [
-                  `https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                  `https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                  `https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png${cartoQuery}`,
-                ],
-                tileSize: 256,
-                attribution:
-                  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
-              },
-            },
-            layers: [
-              {
-                id: 'carto-dark-layer',
-                type: 'raster',
-                source: 'carto-dark',
-                minzoom: 0,
-                maxzoom: 20,
-              },
-            ],
-          }
-        : {
-            version: 8,
-            sources: {
-              'esri-dark-base': {
-                type: 'raster',
-                tiles: [
-                  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-                ],
-                tileSize: 256,
-                attribution:
-                  'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, USGS, OpenStreetMap contributors',
-              },
-              'esri-dark-labels': {
-                type: 'raster',
-                tiles: [
-                  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-                ],
-                tileSize: 256,
-              },
-            },
-            layers: [
-              {
-                id: 'esri-dark-base-layer',
-                type: 'raster',
-                source: 'esri-dark-base',
-                minzoom: 0,
-                maxzoom: 19,
-              },
-              {
-                id: 'esri-dark-labels-layer',
-                type: 'raster',
-                source: 'esri-dark-labels',
-                minzoom: 0,
-                maxzoom: 19,
-              },
-            ],
-          },
-      type: 'raster',
-      attribution: cartoKey
-        ? '© OpenStreetMap contributors © CARTO'
-        : 'Tiles © Esri — Source: Esri, DeLorme, NAVTEQ, OpenStreetMap contributors',
+        ? `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${cartoKey}`
+        : 'https://tiles.openfreemap.org/styles/dark',
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © OpenFreeMap',
     },
   };
 }

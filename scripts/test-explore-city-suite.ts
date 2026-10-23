@@ -142,29 +142,29 @@ assert(
   'OpenStreetMap attribution honors ODbL requirements'
 );
 
-// Check Voyager Detailed Raster
+// Check Voyager Detailed Vector
 const voyager = MAP_STYLES.voyager;
-assert(voyager.type === 'raster', 'Voyager style is raster type');
-if (typeof voyager.style === 'object') {
-  const source = (voyager.style.sources as any)['carto-voyager'] || (voyager.style.sources as any)['esri-light-base'];
-  assert(!!source, 'Voyager style contains valid raster source');
-  assert(
-    Array.isArray(source.tiles) && (source.tiles[0].includes('{z}/{x}/{y}') || source.tiles[0].includes('{z}/{y}/{x}')),
-    'Voyager tiles specify standard spherical mercator URLs'
-  );
-  assert(
-    source.attribution.includes('OpenStreetMap') || source.attribution.includes('Esri'),
-    'Voyager attribution honors data licenses'
-  );
-}
+assert(voyager.type === 'vector', 'Voyager style is vector type');
+assert(
+  typeof voyager.style === 'string' && voyager.style.includes('openfreemap.org/styles/positron'),
+  'Voyager points to official HTTPS OpenFreeMap positron endpoint'
+);
+assert(
+  voyager.attribution.includes('OpenStreetMap') && voyager.attribution.includes('OpenFreeMap'),
+  'Voyager attribution honors data licenses'
+);
 
-// Check Dark / Night Mode
+// Check Dark Vector
 const dark = MAP_STYLES.dark;
-assert(dark.type === 'raster', 'Dark Matter style is raster type');
-if (typeof dark.style === 'object') {
-  const source = (dark.style.sources as any)['carto-dark'] || (dark.style.sources as any)['esri-dark-base'];
-  assert(!!source, 'Dark Matter style contains valid raster source');
-}
+assert(dark.type === 'vector', 'Dark Matter style is vector type');
+assert(
+  typeof dark.style === 'string' && dark.style.includes('openfreemap.org/styles/dark'),
+  'Dark points to official HTTPS OpenFreeMap dark endpoint'
+);
+assert(
+  dark.attribution.includes('OpenStreetMap') && dark.attribution.includes('OpenFreeMap'),
+  'Dark attribution honors data licenses'
+);
 
 // ── 2. Default Style Resolution & Failover Contracts ──────────
 console.log('\n--- 2. Default Style Resolution & Failover Contracts ---');
