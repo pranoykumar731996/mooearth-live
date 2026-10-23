@@ -251,25 +251,32 @@ export default function WeatherDashboard() {
     return getSatelliteMetadata(spectralMode, timelineIndex);
   }, [spectralMode, timelineIndex]);
 
-  // Helper: push location and view mode into URL query params for shareable links
+  // Helper: push location and view mode into URL query params for shareable links without triggering route navigation
   const updateUrlParams = useCallback(
     (lat: number, lng: number, city?: string, country?: string, mode?: 'globe' | 'city-map') => {
       try {
-        const params = new URLSearchParams();
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
         const currentMode = mode !== undefined ? mode : viewMode;
         if (currentMode === 'city-map') {
           params.set('view', 'city');
+        } else {
+          params.delete('view');
         }
         params.set('lat', lat.toFixed(4));
         params.set('lng', lng.toFixed(4));
         if (city) params.set('city', city);
+        else params.delete('city');
         if (country) params.set('country', country);
-        router.replace(`/weather?${params.toString()}`, { scroll: false });
+        else params.delete('country');
+
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
       } catch {
         // Silently ignore URL update errors
       }
     },
-    [router, viewMode]
+    [viewMode]
   );
 
   // Daily streak for Games Hub badge

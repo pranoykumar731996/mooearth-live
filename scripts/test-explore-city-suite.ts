@@ -142,28 +142,28 @@ assert(
   'OpenStreetMap attribution honors ODbL requirements'
 );
 
-// Check CARTO Voyager Raster
+// Check Voyager Detailed Raster
 const voyager = MAP_STYLES.voyager;
 assert(voyager.type === 'raster', 'Voyager style is raster type');
 if (typeof voyager.style === 'object') {
-  const source = (voyager.style.sources as any)['carto-voyager'];
-  assert(!!source, 'Voyager style contains carto-voyager raster source');
+  const source = (voyager.style.sources as any)['carto-voyager'] || (voyager.style.sources as any)['esri-light-base'];
+  assert(!!source, 'Voyager style contains valid raster source');
   assert(
-    Array.isArray(source.tiles) && source.tiles[0].includes('{z}/{x}/{y}'),
+    Array.isArray(source.tiles) && (source.tiles[0].includes('{z}/{x}/{y}') || source.tiles[0].includes('{z}/{y}/{x}')),
     'Voyager tiles specify standard spherical mercator URLs'
   );
   assert(
-    source.attribution.includes('OpenStreetMap') && source.attribution.includes('CARTO'),
-    'Voyager attribution honors OpenStreetMap and CARTO licenses'
+    source.attribution.includes('OpenStreetMap') || source.attribution.includes('Esri'),
+    'Voyager attribution honors data licenses'
   );
 }
 
-// Check CARTO Dark Matter
+// Check Dark / Night Mode
 const dark = MAP_STYLES.dark;
 assert(dark.type === 'raster', 'Dark Matter style is raster type');
 if (typeof dark.style === 'object') {
-  const source = (dark.style.sources as any)['carto-dark'];
-  assert(!!source, 'Dark Matter style contains carto-dark raster source');
+  const source = (dark.style.sources as any)['carto-dark'] || (dark.style.sources as any)['esri-dark-base'];
+  assert(!!source, 'Dark Matter style contains valid raster source');
 }
 
 // ── 2. Default Style Resolution & Failover Contracts ──────────

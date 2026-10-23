@@ -146,6 +146,10 @@ export default function CityMapViewer({
   const wildfireCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'wildfires').length, [disasters]);
   const stormCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'thunderstorms').length, [disasters]);
 
+  // Persistent ref tracking latest city coordinates & metadata without triggering map re-initialization
+  const currentLocationRef = useRef({ latitude, longitude, cityName, countryName, initialZoom });
+  currentLocationRef.current = { latitude, longitude, cityName, countryName, initialZoom };
+
   // Initialize or reconfigure MapLibre
   const initMap = useCallback(
     (styleKey: MapStyleKey) => {
@@ -172,13 +176,14 @@ export default function CityMapViewer({
       setErrorMessage(null);
 
       const styleDef = MAP_STYLES[styleKey] || MAP_STYLES['esri-street'];
+      const initCoords = currentLocationRef.current;
 
       try {
         const map = new Map({
           container: mapContainerRef.current,
           style: styleDef.style,
-          center: [longitude, latitude],
-          zoom: initialZoom,
+          center: [initCoords.longitude, initCoords.latitude],
+          zoom: initCoords.initialZoom,
           pitch: 35,
           bearing: 0,
           attributionControl: {
@@ -203,7 +208,7 @@ export default function CityMapViewer({
         map.addControl(scale, 'bottom-left');
 
         // Create glowing location pin element if a specific city is selected
-        const isSpecificCity = cityName && cityName !== 'World Map';
+        const isSpecificCity = initCoords.cityName && initCoords.cityName !== 'World Map';
         if (isSpecificCity) {
           const pinEl = document.createElement('div');
           pinEl.className = 'city-map-pin-container group cursor-pointer';
@@ -222,15 +227,15 @@ export default function CityMapViewer({
             className: 'city-map-popup',
           }).setHTML(`
             <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 30px 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-width: 260px;">
-              <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
-              <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName || ''}</div>
-              <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
+              <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${initCoords.cityName}</div>
+              <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${initCoords.countryName || ''}</div>
+              <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${initCoords.latitude.toFixed(4)}°, ${initCoords.longitude.toFixed(4)}°</div>
             </div>
           `);
 
           // Attach marker
           const marker = new Marker({ element: pinEl, anchor: 'center' })
-            .setLngLat([longitude, latitude])
+            .setLngLat([initCoords.longitude, initCoords.latitude])
             .setPopup(popup)
             .addTo(map);
 
@@ -324,7 +329,7 @@ export default function CityMapViewer({
         setErrorMessage(err?.message || 'Unable to initialize WebGL city map.');
       }
     },
-    [latitude, longitude, cityName, countryName, initialZoom, onMapClick]
+    [onMapClick]
   );
 
   // Mount effect
@@ -359,7 +364,7 @@ export default function CityMapViewer({
     };
   }, [initMap, activeStyleKey]);
 
-  // Handle fly-to coordinate updates if parent changes props
+  // Handle fly-to coordinate updates if parent changes props without destroying map instance
   useEffect(() => {
     if (mapRef.current && isMapLoaded) {
       if (cityName && cityName !== 'World Map') {
@@ -368,12 +373,47 @@ export default function CityMapViewer({
           zoom: initialZoom,
           essential: true,
         });
+
+        const popupHtml = `
+          <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 30px 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-width: 260px;">
+            <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
+            <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName || ''}</div>
+            <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
+          </div>
+        `;
+
         if (markerRef.current) {
           markerRef.current.setLngLat([longitude, latitude]);
+          markerRef.current.getPopup()?.setHTML(popupHtml);
+        } else {
+          const pinEl = document.createElement('div');
+          pinEl.className = 'city-map-pin-container group cursor-pointer';
+          pinEl.innerHTML = `
+            <div class="relative flex items-center justify-center">
+              <span class="absolute w-8 h-8 rounded-full bg-cyan-400/30 animate-ping"></span>
+              <span class="absolute w-5 h-5 rounded-full bg-cyan-500/50"></span>
+              <div class="relative w-3.5 h-3.5 rounded-full bg-cyan-300 border-2 border-white shadow-[0_0_12px_rgba(6,182,212,1)]"></div>
+            </div>
+          `;
+          const popup = new Popup({
+            offset: 20,
+            closeButton: true,
+            className: 'city-map-popup',
+          }).setHTML(popupHtml);
+
+          markerRef.current = new Marker({ element: pinEl, anchor: 'center' })
+            .setLngLat([longitude, latitude])
+            .setPopup(popup)
+            .addTo(mapRef.current);
+          try {
+            popup.addTo(mapRef.current);
+          } catch {
+            // popup display optional
+          }
         }
       }
     }
-  }, [latitude, longitude, initialZoom, isMapLoaded, cityName]);
+  }, [latitude, longitude, initialZoom, isMapLoaded, cityName, countryName]);
 
   // Synchronize 2D Disaster and Cyclone Markers with MapLibre
   useEffect(() => {
