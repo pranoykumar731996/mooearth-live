@@ -2333,11 +2333,12 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'cyclone-disaster-marker group';
+        el.title = `${storm.title} (${catLabel})`;
         el.style.cssText = `
           position: relative;
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
           cursor: pointer;
           pointer-events: none;
           user-select: none;
@@ -2371,27 +2372,6 @@ const GlobeScene = React.memo(function GlobeScene({
               🌀
             </div>
           </div>
-          <!-- Storm label badge (reveals on hover/tap to keep 3D Earth clean) -->
-          <div class="disaster-label-badge" style="
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: rgba(8, 10, 26, 0.92);
-            border: 1px solid rgba(244, 63, 94, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-4px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-          ">
-            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${storm.title}</span>
-            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(244, 63, 94, 0.3); color: #fda4af;">${catLabel}</span>
-          </div>
         `;
 
         const triggerCycloneSelect = (e: Event) => {
@@ -2403,19 +2383,13 @@ const GlobeScene = React.memo(function GlobeScene({
         };
 
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '0'; b.style.transform = 'translateY(-4px)'; }
         });
         el.addEventListener('touchstart', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
@@ -2445,11 +2419,12 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'thunderstorm-disaster-marker group';
+        el.title = `${storm.title} (${strikeRate} strikes/min)`;
         el.style.cssText = `
           position: relative;
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
           cursor: pointer;
           pointer-events: none;
           user-select: none;
@@ -2483,27 +2458,6 @@ const GlobeScene = React.memo(function GlobeScene({
               ⚡
             </div>
           </div>
-          <!-- Storm label badge (reveals on hover/tap to keep 3D Earth clean) -->
-          <div class="disaster-label-badge" style="
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: rgba(8, 10, 26, 0.92);
-            border: 1px solid rgba(250, 204, 21, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-4px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-          ">
-            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${storm.title}</span>
-            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(250, 204, 21, 0.3); color: #fef08a;">${strikeRate}/min</span>
-          </div>
         `;
 
         const triggerStormSelect = (e: Event) => {
@@ -2515,19 +2469,13 @@ const GlobeScene = React.memo(function GlobeScene({
         };
 
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '0'; b.style.transform = 'translateY(-4px)'; }
         });
         el.addEventListener('touchstart', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
@@ -2557,11 +2505,12 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'seismic-disaster-marker group';
+        el.title = `${quake.title} (M ${mag.toFixed(1)})`;
         el.style.cssText = `
           position: relative;
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
           cursor: pointer;
           pointer-events: none;
           user-select: none;
@@ -2595,27 +2544,6 @@ const GlobeScene = React.memo(function GlobeScene({
               🌋
             </div>
           </div>
-          <!-- Quake label badge (reveals on hover/tap to keep 3D Earth clean) -->
-          <div class="disaster-label-badge" style="
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: rgba(15, 8, 12, 0.92);
-            border: 1px solid rgba(244, 63, 94, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-4px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-          ">
-            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${quake.title.split('-')[0].trim()}</span>
-            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(244, 63, 94, 0.35); color: #fda4af;">M ${mag.toFixed(1)}</span>
-          </div>
         `;
 
         const triggerQuakeSelect = (e: Event) => {
@@ -2627,19 +2555,13 @@ const GlobeScene = React.memo(function GlobeScene({
         };
 
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '0'; b.style.transform = 'translateY(-4px)'; }
         });
         el.addEventListener('touchstart', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
@@ -2669,11 +2591,12 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'wildfire-disaster-marker group';
+        el.title = `${fire.title} (${frp} MW)`;
         el.style.cssText = `
           position: relative;
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
           cursor: pointer;
           pointer-events: none;
           user-select: none;
@@ -2707,27 +2630,6 @@ const GlobeScene = React.memo(function GlobeScene({
               🔥
             </div>
           </div>
-          <!-- Fire label badge (reveals on hover/tap to keep 3D Earth clean) -->
-          <div class="disaster-label-badge" style="
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: rgba(18, 10, 5, 0.92);
-            border: 1px solid rgba(249, 115, 22, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-4px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-          ">
-            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${fire.title.split('-')[0].trim()}</span>
-            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(249, 115, 22, 0.35); color: #fed7aa;">${frp} MW</span>
-          </div>
         `;
 
         const triggerFireSelect = (e: Event) => {
@@ -2739,19 +2641,13 @@ const GlobeScene = React.memo(function GlobeScene({
         };
 
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '0'; b.style.transform = 'translateY(-4px)'; }
         });
         el.addEventListener('touchstart', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();
@@ -2781,11 +2677,12 @@ const GlobeScene = React.memo(function GlobeScene({
 
         const el = document.createElement('div');
         el.className = 'space-weather-disaster-marker group';
+        el.title = `${sw.title} (Kp ${kp.toFixed(1)})`;
         el.style.cssText = `
           position: relative;
           display: flex;
-          flex-direction: column;
           align-items: center;
+          justify-content: center;
           cursor: pointer;
           pointer-events: none;
           user-select: none;
@@ -2819,27 +2716,6 @@ const GlobeScene = React.memo(function GlobeScene({
               🌌
             </div>
           </div>
-          <!-- Space weather label badge (reveals on hover/tap to keep 3D Earth clean) -->
-          <div class="disaster-label-badge" style="
-            margin-top: 4px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            background: rgba(10, 8, 22, 0.92);
-            border: 1px solid rgba(168, 85, 247, 0.6);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-4px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
-          ">
-            <span style="font-size: 9px; font-weight: 800; color: #ffffff; letter-spacing: 0.2px;">${sw.title.split('-')[0].trim()}</span>
-            <span style="font-size: 8px; font-weight: 900; padding: 1px 4px; border-radius: 4px; background: rgba(168, 85, 247, 0.35); color: #e9d5ff;">Kp ${kp.toFixed(1)}</span>
-          </div>
         `;
 
         const triggerSpaceSelect = (e: Event) => {
@@ -2851,19 +2727,13 @@ const GlobeScene = React.memo(function GlobeScene({
         };
 
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         });
         el.addEventListener('mouseleave', () => {
           el.style.transform = 'translateY(-50%) scale(1)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '0'; b.style.transform = 'translateY(-4px)'; }
         });
         el.addEventListener('touchstart', () => {
-          el.style.transform = 'translateY(-50%) scale(1.18)';
-          const b = el.querySelector('.disaster-label-badge') as HTMLElement | null;
-          if (b) { b.style.opacity = '1'; b.style.transform = 'translateY(0)'; }
+          el.style.transform = 'translateY(-50%) scale(1.25)';
         }, { passive: true });
 
         const stopProp = (e: Event) => e.stopPropagation();

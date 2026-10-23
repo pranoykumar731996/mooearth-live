@@ -2,7 +2,7 @@
 // MooEarth Live — PWA Service Worker
 // ============================================================
 
-const CACHE_NAME = 'mooearth-live-v21';
+const CACHE_NAME = 'mooearth-live-v22';
 
 // Assets to precache immediately on install
 const PRECACHE_ASSETS = [
@@ -44,6 +44,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // In local development, bypass Service Worker cache entirely to prevent stale code
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return;
+  }
 
   // Ignore non-GET requests (like Firebase Firestore POST/writes or auth state updates)
   if (event.request.method !== 'GET') {
