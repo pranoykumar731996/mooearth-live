@@ -189,6 +189,9 @@ export default function WeatherDashboard() {
   // Multi-hazard filter tab state: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'
   const [disasterCategoryFilter, setDisasterCategoryFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
 
+  // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
+  const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
+
   // Unified multi-hazard disaster feed based on active filter
   const displayedDisasters = useMemo(() => {
     switch (disasterCategoryFilter) {
@@ -986,109 +989,139 @@ export default function WeatherDashboard() {
                 </div>
               )}
 
-            {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar */}
+            {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar (Collapsible to keep 3D Earth completely visible) */}
             {displayedDisasters.length > 0 && (
-              <div className="absolute top-16 sm:top-4 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 z-20 pointer-events-auto sm:w-auto max-w-2xl">
-                <div className="flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)]">
-                  {/* Category Filter Chips */}
-                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none px-1 pt-0.5">
-                    <span className="text-[10px] font-mono font-bold text-white/50 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
-                      <span>🚨</span>
-                      <span className="hidden sm:inline">Hazards:</span>
+              <div className="absolute top-16 sm:top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center">
+                {!isHazardBarExpanded ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsHazardBarExpanded(true)}
+                    className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#060818]/85 hover:bg-[#060818] backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group"
+                    title="Click to view live multi-hazard disaster tracker"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="animate-pulse text-xs">🚨</span>
+                      <span className="text-[11px] font-medium tracking-wide">Hazards</span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
+                        {allDisasters.length}
+                      </span>
                     </span>
-                    {[
-                      { id: 'all', label: 'All', icon: '🌐' },
-                      { id: 'cyclones', label: 'Cyclones', icon: '🌀' },
-                      { id: 'seismic', label: 'Quakes', icon: '🌋' },
-                      { id: 'wildfires', label: 'Fires', icon: '🔥' },
-                      { id: 'thunderstorms', label: 'Storms', icon: '⚡' },
-                      { id: 'space_weather', label: 'Space', icon: '🌌' },
-                    ].map((tab) => {
-                      const isActive = disasterCategoryFilter === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setDisasterCategoryFilter(tab.id as any)}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-                            isActive
-                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                              : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
-                          }`}
-                        >
-                          <span>{tab.icon}</span>
-                          <span>{tab.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                    <span className="text-[10px] text-white/50 group-hover:text-white/80 transition-colors">▼</span>
+                  </button>
+                ) : (
+                  <div className="w-[calc(100vw-24px)] sm:w-auto max-w-2xl flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header with Category Filter Chips and Collapse Button */}
+                    <div className="flex items-center justify-between gap-1 px-1 pt-0.5">
+                      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                        <span className="text-[10px] font-mono font-bold text-white/50 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
+                          <span>🚨</span>
+                          <span className="hidden sm:inline">Hazards:</span>
+                        </span>
+                        {[
+                          { id: 'all', label: 'All', icon: '🌐' },
+                          { id: 'cyclones', label: 'Cyclones', icon: '🌀' },
+                          { id: 'seismic', label: 'Quakes', icon: '🌋' },
+                          { id: 'wildfires', label: 'Fires', icon: '🔥' },
+                          { id: 'thunderstorms', label: 'Storms', icon: '⚡' },
+                          { id: 'space_weather', label: 'Space', icon: '🌌' },
+                        ].map((tab) => {
+                          const isActive = disasterCategoryFilter === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setDisasterCategoryFilter(tab.id as any)}
+                              className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                                isActive
+                                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                                  : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
+                              }`}
+                            >
+                              <span>{tab.icon}</span>
+                              <span>{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                  {/* Disaster Cards Track */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
-                    {displayedDisasters.map((disaster) => {
-                      const isSelected = selectedDisasterEvent?.id === disaster.id;
-                      const icon =
-                        disaster.category === 'seismic' || (disaster.title && disaster.title.toLowerCase().includes('magnitude'))
-                          ? '🌋'
-                          : disaster.category === 'wildfires'
-                          ? '🔥'
-                          : disaster.category === 'space_weather'
-                          ? '🌌'
-                          : (disaster.title || '').toLowerCase().includes('cyclone') || (disaster.title || '').toLowerCase().includes('hurricane')
-                          ? '🌀'
-                          : '⚡';
+                      {/* Collapse button */}
+                      <button
+                        type="button"
+                        onClick={() => setIsHazardBarExpanded(false)}
+                        className="px-1.5 py-0.5 rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer shrink-0 ml-1 text-[11px]"
+                        title="Collapse hazards bar to reveal full Earth"
+                      >
+                        ▲
+                      </button>
+                    </div>
 
-                      return (
-                        <button
-                          key={disaster.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedDisasterEvent(disaster);
-                            if (viewMode === 'globe') {
-                              globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
-                            }
-                          }}
-                          className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
-                              : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
-                          }`}
-                          title={`Click to inspect live telemetry dossier for ${disaster.title}`}
-                        >
-                          <span>{icon}</span>
-                          <span className="whitespace-nowrap font-medium text-[11px] max-w-[120px] sm:max-w-[160px] truncate">
-                            {disaster.title.split('(')[0].split('-')[0].trim()}
-                          </span>
-                          {disaster.planetaryTelemetry?.magnitude && (
-                            <span className="text-[9px] font-mono font-bold text-rose-300 px-1 py-0.2 rounded bg-rose-500/20">
-                              M {disaster.planetaryTelemetry.magnitude.toFixed(1)}
+                    {/* Disaster Cards Track */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                      {displayedDisasters.map((disaster) => {
+                        const isSelected = selectedDisasterEvent?.id === disaster.id;
+                        const icon =
+                          disaster.category === 'seismic' || (disaster.title && disaster.title.toLowerCase().includes('magnitude'))
+                            ? '🌋'
+                            : disaster.category === 'wildfires'
+                            ? '🔥'
+                            : disaster.category === 'space_weather'
+                            ? '🌌'
+                            : (disaster.title || '').toLowerCase().includes('cyclone') || (disaster.title || '').toLowerCase().includes('hurricane')
+                            ? '🌀'
+                            : '⚡';
+
+                        return (
+                          <button
+                            key={disaster.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedDisasterEvent(disaster);
+                              if (viewMode === 'globe') {
+                                globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
+                              }
+                            }}
+                            className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
+                            }`}
+                            title={`Click to inspect live telemetry dossier for ${disaster.title}`}
+                          >
+                            <span>{icon}</span>
+                            <span className="whitespace-nowrap font-medium text-[11px] max-w-[120px] sm:max-w-[160px] truncate">
+                              {disaster.title.split('(')[0].split('-')[0].trim()}
                             </span>
-                          )}
-                          {disaster.planetaryTelemetry?.fireRadiativePowerMw && (
-                            <span className="text-[9px] font-mono font-bold text-amber-300 px-1 py-0.2 rounded bg-amber-500/20">
-                              {disaster.planetaryTelemetry.fireRadiativePowerMw} MW
-                            </span>
-                          )}
-                          {disaster.planetaryTelemetry?.windSpeedKph && (
-                            <span className="text-[9px] font-mono font-bold text-cyan-300 px-1 py-0.2 rounded bg-cyan-500/20">
-                              {disaster.planetaryTelemetry.windSpeedKph} km/h
-                            </span>
-                          )}
-                          {disaster.planetaryTelemetry?.lightningStrikeRatePerMin && (
-                            <span className="text-[9px] font-mono font-bold text-yellow-300 px-1 py-0.2 rounded bg-yellow-500/20">
-                              {disaster.planetaryTelemetry.lightningStrikeRatePerMin}/min
-                            </span>
-                          )}
-                          {disaster.planetaryTelemetry?.kpIndex && (
-                            <span className="text-[9px] font-mono font-bold text-purple-300 px-1 py-0.2 rounded bg-purple-500/20">
-                              Kp {disaster.planetaryTelemetry.kpIndex}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                            {disaster.planetaryTelemetry?.magnitude && (
+                              <span className="text-[9px] font-mono font-bold text-rose-300 px-1 py-0.2 rounded bg-rose-500/20">
+                                M {disaster.planetaryTelemetry.magnitude.toFixed(1)}
+                              </span>
+                            )}
+                            {disaster.planetaryTelemetry?.fireRadiativePowerMw && (
+                              <span className="text-[9px] font-mono font-bold text-amber-300 px-1 py-0.2 rounded bg-amber-500/20">
+                                {disaster.planetaryTelemetry.fireRadiativePowerMw} MW
+                              </span>
+                            )}
+                            {disaster.planetaryTelemetry?.windSpeedKph && (
+                              <span className="text-[9px] font-mono font-bold text-cyan-300 px-1 py-0.2 rounded bg-cyan-500/20">
+                                {disaster.planetaryTelemetry.windSpeedKph} km/h
+                              </span>
+                            )}
+                            {disaster.planetaryTelemetry?.lightningStrikeRatePerMin && (
+                              <span className="text-[9px] font-mono font-bold text-yellow-300 px-1 py-0.2 rounded bg-yellow-500/20">
+                                {disaster.planetaryTelemetry.lightningStrikeRatePerMin}/min
+                              </span>
+                            )}
+                            {disaster.planetaryTelemetry?.kpIndex && (
+                              <span className="text-[9px] font-mono font-bold text-purple-300 px-1 py-0.2 rounded bg-purple-500/20">
+                                Kp {disaster.planetaryTelemetry.kpIndex}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
