@@ -1316,8 +1316,8 @@ export default function WeatherDashboard() {
           />
 
           {/* Universal Mobile "Open Weather Sheet" floating CTA */}
-          {/* Visible in BOTH 3D Earth and 2D City Map */}
-          {!isPanelOpen && (
+          {/* Only shown in 3D Earth globe mode (in 2D City Map, top badge handles telemetry) */}
+          {!isPanelOpen && viewMode !== 'city-map' && (
             <button
               type="button"
               data-testid="open-mobile-sheet"

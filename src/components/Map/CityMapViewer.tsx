@@ -1197,80 +1197,7 @@ export default function CityMapViewer({
         </div>
       )}
 
-      {/* ── Windy Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {(activeLayer === 'satellite' || activeLayer === 'clouds') && (
-        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
-          <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
-            {/* Top row: Sensor Pass + Live Time Pill */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base shrink-0">🛰️</span>
-                <span className="font-bold text-white text-[11px] tracking-wide">
-                  Geostationary Satellite Clouds
-                </span>
-                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/30">
-                  REAL CLOUDS
-                </span>
-              </div>
 
-              {/* Amber Live Latency Pill matching Windy */}
-              <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                <span>Live • 11m ago</span>
-              </div>
-            </div>
-
-            {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
-              <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
-                {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
-                  const isActive = (spectralMode || 'visible') === mode;
-                  const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => onSelectSpectralMode?.(mode)}
-                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                          : 'text-white/60 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Nowcast Lightning Toggle Button */}
-              {lightningFeed && (
-                <button
-                  type="button"
-                  onClick={() => setShowLightning(!showLightning)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all border cursor-pointer ${
-                    showLightning
-                      ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
-                  }`}
-                  title="Toggle Nowcast Lightning strikes overlay"
-                >
-                  <span className="animate-pulse">⚡</span>
-                  <span>Nowcast Lightning</span>
-                  <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
-                    {lightningFeed.totalCount}
-                  </span>
-                </button>
-              )}
-            </div>
-
-            {/* Bottom Subtitle */}
-            <div className="text-[9px] font-mono text-white/40 truncate">
-              {satelliteObservationUtc || 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain'}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Top Floating Navigation HUD ──────────────── */}
       <div className="absolute top-3 left-2.5 right-2.5 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
@@ -1333,19 +1260,41 @@ export default function CityMapViewer({
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
         <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
-          {/* Style Selector Dropdown Pill */}
-          <div className="relative">
-            <button
-              type="button"
-              data-testid="map-style-selector-btn"
-              onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-              className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[10px] sm:text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer"
-              title="Change Map Tiles & Styling"
-            >
-              <span className="text-cyan-400">🗺️</span>
-              <span className="font-semibold truncate max-w-[80px] sm:max-w-none">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
-              <span className="text-[8px] sm:text-[9px] text-white/40">▼</span>
-            </button>
+          {/* Top Controls Row: Style Selector Dropdown + Optional Nowcast Lightning Toggle */}
+          <div className="flex items-center gap-1.5">
+            {/* Nowcast Lightning Toggle (sleek pill when satellite/clouds active) */}
+            {(activeLayer === 'satellite' || activeLayer === 'clouds') && lightningFeed && (
+              <button
+                type="button"
+                onClick={() => setShowLightning(!showLightning)}
+                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all border cursor-pointer flex items-center gap-1 shadow-lg ${
+                  showLightning
+                    ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                    : 'bg-[#050512]/90 border-white/10 text-white/50 hover:text-white'
+                }`}
+                title="Toggle Nowcast Lightning strikes"
+              >
+                <span className="text-xs">⚡</span>
+                <span className="hidden sm:inline">Lightning</span>
+                <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
+                  {lightningFeed.totalCount}
+                </span>
+              </button>
+            )}
+
+            {/* Style Selector Dropdown Pill */}
+            <div className="relative">
+              <button
+                type="button"
+                data-testid="map-style-selector-btn"
+                onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
+                className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[10px] sm:text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer"
+                title="Change Map Tiles & Styling"
+              >
+                <span className="text-cyan-400">🗺️</span>
+                <span className="font-semibold truncate max-w-[80px] sm:max-w-none">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
+                <span className="text-[8px] sm:text-[9px] text-white/40">▼</span>
+              </button>
 
             {isStyleMenuOpen && (
               <div className="absolute right-0 top-full mt-1.5 w-52 rounded-2xl bg-[#070718]/98 backdrop-blur-2xl border border-white/10 shadow-2xl p-1.5 z-40 space-y-1">
@@ -1379,6 +1328,7 @@ export default function CityMapViewer({
               </div>
             )}
           </div>
+        </div>
 
           {/* Live Weather Summary Badge & Mobile Weather Telemetry Option */}
           {weatherSummary ? (
@@ -1451,9 +1401,9 @@ export default function CityMapViewer({
         </div>
       </div>
 
-      {/* ── 2D Map Active Disasters Floating HUD & Quick Selector ── */}
-      {disasters && disasters.length > 0 && (
-        <div className="absolute bottom-11 sm:bottom-12 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
+      {/* ── 2D Map Active Disasters Floating HUD & Quick Selector (World Map mode only) ── */}
+      {cityName === 'World Map' && disasters && disasters.length > 0 && (
+        <div className="absolute bottom-20 sm:bottom-22 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
           <div className="pointer-events-auto max-w-full w-auto flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-2xl bg-[#050512]/92 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
             {/* Category Filter Chips & Eye Visibility Toggle */}
             <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none max-w-full">
