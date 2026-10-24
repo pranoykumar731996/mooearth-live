@@ -171,7 +171,7 @@ console.log('\n--- 2. Default Style Resolution & Failover Contracts ---');
 
 const defaultKey = getDefaultMapStyleKey();
 assert(
-  defaultKey === 'satellite' || defaultKey === 'esri-street' || defaultKey === 'maptiler-streets',
+  defaultKey === 'windy-satellite' || defaultKey === 'satellite' || defaultKey === 'esri-street' || defaultKey === 'maptiler-streets',
   `Default style key resolves cleanly to reliable provider (${defaultKey})`
 );
 

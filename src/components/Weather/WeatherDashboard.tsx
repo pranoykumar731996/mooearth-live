@@ -1139,79 +1139,26 @@ export default function WeatherDashboard() {
               </div>
             )}
 
-            {/* Windy Map Controls & 3D/2D Toggle (Offset to avoid overlapping side panel) */}
-            <WindyMapControls
-              viewMode={viewMode}
-              onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onToggleHazards={() => setIsHazardBarExpanded((prev) => !prev)}
-              isHazardsOpen={isHazardBarExpanded}
-              hazardsCount={allDisasters.length}
-              className={hasData ? 'lg:right-[396px]' : ''}
-              onGeolocate={(c) => {
-                weather.fetchWeatherForLocation({
-                  name: 'My Location',
-                  latitude: c.lat,
-                  longitude: c.lng,
-                  timezone: 'auto',
-                  source: 'search',
-                });
-              }}
-            />
-
-            {/* Windy Meteorological Dynamic Scale Legend (Offset to avoid overlapping side panel) */}
-            <WindyLegendBar
-              activeLayer={weather.activeLayer}
-              spectralMode={spectralMode}
-              units={weather.units}
-              className={hasData ? 'lg:right-[396px]' : ''}
-            />
-
-            {/* Windy Cinematic Bottom Time Scrubber & Player Bar */}
-            <WindyTimeScrubber
-              activeLayer={weather.activeLayer}
-              spectralMode={spectralMode}
-              onSelectSpectralMode={setSpectralMode}
-              overlayRadar={overlayRadar}
-              onToggleOverlayRadar={setOverlayRadar}
-              showPressureIsobars={showPressureIsobars}
-              onTogglePressureIsobars={setShowPressureIsobars}
-              particlesEnabled={particlesEnabled}
-              onToggleParticles={setParticlesEnabled}
-              showGraticules={showGraticules}
-              onToggleGraticules={setShowGraticules}
-              timelineIndex={timelineIndex}
-              onSelectIndex={setTimelineIndex}
-              isPlaying={isTimelinePlaying}
-              onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
-              timestamps={gridData?.timestamps}
-              radarFrames={radarMetadata?.frames || []}
-              activeRadarFrameIndex={radarFrameIndex}
-              onSelectRadarFrameIndex={setRadarFrameIndex}
-              radarAttribution={radarMetadata?.attribution}
-              satelliteObservationUtc={satelliteMeta.observationUtc}
-              className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
-            />
-
           </div>
 
-          {/* Dedicated Interactive 2D City Map (MapLibre GL JS) */}
+          {/* Dedicated Interactive 2D City & Satellite Map (MapLibre GL JS) */}
           {viewMode === 'city-map' && (
-            <div className="absolute inset-0 w-full h-full z-20">
+            <div className="absolute inset-0 w-full h-full z-10">
               <CityMapViewer
                 latitude={weather.selectedLocation?.latitude ?? resolveInitialLocation().latitude}
                 longitude={weather.selectedLocation?.longitude ?? resolveInitialLocation().longitude}
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
                 initialZoom={
-                  weather.selectedLocation?.source === 'search' && (searchParams.get('city') || weather.selectedLocation?.country)
+                  weather.activeLayer === 'satellite' || weather.activeLayer === 'clouds'
+                    ? 3.3
+                    : weather.selectedLocation?.source === 'search' && (searchParams.get('city') || weather.selectedLocation?.country)
                     ? 12.8
                     : searchParams.get('lat') || searchParams.get('city')
                     ? 4.5
-                    : 2.8
+                    : 3.3
                 }
-                initialMapStyle="satellite"
+                initialMapStyle="windy-satellite"
                 activeLayer={weather.activeLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
@@ -1272,6 +1219,61 @@ export default function WeatherDashboard() {
               />
             </div>
           )}
+
+          {/* Windy Map Controls & 3D/2D Toggle (Floating, active across BOTH 3D Earth and 2D Satellite views) */}
+          <WindyMapControls
+            viewMode={viewMode}
+            onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onToggleHazards={() => setIsHazardBarExpanded((prev) => !prev)}
+            isHazardsOpen={isHazardBarExpanded}
+            hazardsCount={allDisasters.length}
+            className={hasData ? 'lg:right-[396px]' : ''}
+            onGeolocate={(c) => {
+              weather.fetchWeatherForLocation({
+                name: 'My Location',
+                latitude: c.lat,
+                longitude: c.lng,
+                timezone: 'auto',
+                source: 'search',
+              });
+            }}
+          />
+
+          {/* Windy Meteorological Dynamic Scale Legend (Offset to avoid overlapping side panel) */}
+          <WindyLegendBar
+            activeLayer={weather.activeLayer}
+            spectralMode={spectralMode}
+            units={weather.units}
+            className={hasData ? 'lg:right-[396px]' : ''}
+          />
+
+          {/* Windy Cinematic Bottom Time Scrubber & Player Bar */}
+          <WindyTimeScrubber
+            activeLayer={weather.activeLayer}
+            spectralMode={spectralMode}
+            onSelectSpectralMode={setSpectralMode}
+            overlayRadar={overlayRadar}
+            onToggleOverlayRadar={setOverlayRadar}
+            showPressureIsobars={showPressureIsobars}
+            onTogglePressureIsobars={setShowPressureIsobars}
+            particlesEnabled={particlesEnabled}
+            onToggleParticles={setParticlesEnabled}
+            showGraticules={showGraticules}
+            onToggleGraticules={setShowGraticules}
+            timelineIndex={timelineIndex}
+            onSelectIndex={setTimelineIndex}
+            isPlaying={isTimelinePlaying}
+            onTogglePlay={() => setIsTimelinePlaying(!isTimelinePlaying)}
+            timestamps={gridData?.timestamps}
+            radarFrames={radarMetadata?.frames || []}
+            activeRadarFrameIndex={radarFrameIndex}
+            onSelectRadarFrameIndex={setRadarFrameIndex}
+            radarAttribution={radarMetadata?.attribution}
+            satelliteObservationUtc={satelliteMeta.observationUtc}
+            className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
+          />
 
           {/* Universal Mobile "Open Weather Sheet" floating CTA */}
           {/* Visible in BOTH 3D Earth and 2D City Map */}

@@ -57,7 +57,7 @@ async function runPhaseETests() {
   assert(vis.license.includes('NASA Earth Science Open Data') || vis.license.includes('Public Domain'), 'Visible mode declares NASA Earth Science Open Data license');
 
   const blue = SATELLITE_PRODUCTS.blue;
-  assert(blue.layerName.includes('DayNightBand'), 'Blue mode uses VIIRS Day/Night Band');
+  assert(blue.layerName.includes('DayNightBand') || blue.layerName.includes('Clean_Infrared'), 'Blue mode uses VIIRS Day/Night Band or Geostationary Clean Infrared');
   assert(blue.spectralMode === 'blue', 'Blue mode spectralMode property matches "blue"');
 
   const infra = SATELLITE_PRODUCTS.infra;

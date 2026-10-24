@@ -37,7 +37,6 @@ import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
 import type { SatelliteSpectralMode } from '@/services/weather/types';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
-import WindyLegendBar from '@/components/Weather/WindyLegendBar';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
@@ -104,7 +103,7 @@ export default function CityMapViewer({
   cityName,
   countryName,
   initialZoom = 12.8,
-  initialMapStyle = 'satellite',
+  initialMapStyle = 'windy-satellite',
   weatherSummary,
   activeLayer = 'wind',
   radarTileUrl,
@@ -474,8 +473,8 @@ export default function CityMapViewer({
           <!-- Animated outer ring based on hazard type -->
           ${
             meta.type === 'cyclone'
-              ? `<div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; border: 2px dashed rgba(6,182,212,0.8); animation: cyclone-spin 5s linear infinite; pointer-events: none;"></div>
-                 <div style="position: absolute; width: 48px; height: 48px; top: -7px; border-radius: 9999px; background: rgba(6,182,212,0.2); animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
+              ? `<div style="position: absolute; width: 68px; height: 68px; top: -17px; border-radius: 9999px; border: 2.5px dashed rgba(6,182,212,0.85); animation: cyclone-spin 4s linear infinite; pointer-events: none;"></div>
+                 <div style="position: absolute; width: 88px; height: 88px; top: -27px; border-radius: 9999px; background: radial-gradient(circle, rgba(6,182,212,0.3) 0%, rgba(6,182,212,0.08) 50%, transparent 70%); animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
               : meta.type === 'seismic'
               ? `<div style="position: absolute; width: 50px; height: 50px; top: -8px; border-radius: 9999px; border: 2px solid rgba(244,63,94,0.7); animation: seismic-shockwave 2s ease-out infinite; pointer-events: none;"></div>
                  <div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; background: rgba(244,63,94,0.25); animation: marker-glow-pulse 2s ease-in-out infinite; pointer-events: none;"></div>`
@@ -800,7 +799,20 @@ export default function CityMapViewer({
 
     if ((activeLayer === 'satellite' || activeLayer === 'clouds') && satelliteTileUrl) {
       try {
-        const beforeLayerId = map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' : undefined;
+        // Position clouds below country borders and place names so cartography stays crisp
+        const beforeLayerId =
+          map.getLayer('place_country_major') ? 'place_country_major' :
+          map.getLayer('place_country_minor') ? 'place_country_minor' :
+          map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
+          map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
+          undefined;
+
+        // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
+        const isBlue = spectralMode === 'blue';
+        const isInfra = spectralMode === 'infra';
+        const rasterOpacity = isBlue ? 0.86 : isInfra ? 0.92 : 0.88;
+        const rasterContrast = isBlue ? 0.18 : isInfra ? 0.12 : 0.06;
+
         const existingSource = map.getSource(sourceId) as any;
         if (existingSource) {
           if (existingSource.tiles?.[0] !== satelliteTileUrl) {
@@ -813,7 +825,7 @@ export default function CityMapViewer({
               tiles: [satelliteTileUrl],
               tileSize: 256,
               maxzoom: 9,
-              attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
+              attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
             });
             map.addLayer(
               {
@@ -821,12 +833,16 @@ export default function CityMapViewer({
                 type: 'raster',
                 source: sourceId,
                 paint: {
-                  'raster-opacity': 0.88,
+                  'raster-opacity': rasterOpacity,
+                  'raster-contrast': rasterContrast,
                   'raster-fade-duration': 250,
                 },
               },
               beforeLayerId
             );
+          } else if (map.getLayer(layerId)) {
+            map.setPaintProperty(layerId, 'raster-opacity', rasterOpacity);
+            map.setPaintProperty(layerId, 'raster-contrast', rasterContrast);
           }
         } else {
           map.addSource(sourceId, {
@@ -834,7 +850,7 @@ export default function CityMapViewer({
             tiles: [satelliteTileUrl],
             tileSize: 256,
             maxzoom: 9,
-            attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
+            attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
           });
           map.addLayer(
             {
@@ -842,7 +858,8 @@ export default function CityMapViewer({
               type: 'raster',
               source: sourceId,
               paint: {
-                'raster-opacity': 0.88,
+                'raster-opacity': rasterOpacity,
+                'raster-contrast': rasterContrast,
                 'raster-fade-duration': 250,
               },
             },
@@ -864,7 +881,7 @@ export default function CityMapViewer({
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
@@ -1500,14 +1517,6 @@ export default function CityMapViewer({
         </div>
       )}
 
-      {/* ── Windy Meteorological Dynamic Legend Bar (Kelvin Scale for Satellite IR) ── */}
-      {activeLayer === 'satellite' && (
-        <WindyLegendBar
-          activeLayer="satellite"
-          spectralMode={spectralMode || 'infra'}
-          className="bottom-14 right-3 sm:bottom-16 sm:right-4"
-        />
-      )}
     </div>
   );
 }

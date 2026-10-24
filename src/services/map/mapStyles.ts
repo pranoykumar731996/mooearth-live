@@ -9,9 +9,11 @@
 // - CARTO Voyager / Dark (Raster): Basemaps under CC BY 4.0 / Carto Free (configurable via NEXT_PUBLIC_CARTO_API_KEY).
 // - Full attribution to OpenStreetMap contributors and respective data providers.
 
+import { WINDY_MAP_STYLE } from './windyMapStyle';
+
 export type MapStyleKey =
-  | 'satellite'
   | 'windy-satellite'
+  | 'satellite'
   | 'esri-street'
   | 'terrain'
   | 'maptiler-streets'
@@ -102,56 +104,9 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       key: 'windy-satellite',
       label: 'Windy Satellite',
       badge: 'Windy',
-      style: {
-        version: 8,
-        sources: {
-          'esri-satellite-imagery': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-            attribution:
-              'Tiles &copy; Esri &mdash; Earthstar Geographics, USGS, NASA, OpenStreetMap contributors',
-          },
-          'esri-satellite-labels': {
-            type: 'raster',
-            tiles: [
-              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-            ],
-            tileSize: 256,
-          },
-        },
-        layers: [
-          {
-            id: 'windy-ocean-background',
-            type: 'background',
-            paint: {
-              'background-color': '#152e55',
-            },
-          },
-          {
-            id: 'esri-satellite-imagery-layer',
-            type: 'raster',
-            source: 'esri-satellite-imagery',
-            minzoom: 0,
-            maxzoom: 19,
-            paint: {
-              'raster-contrast': 0.12,
-              'raster-saturation': -0.15,
-            },
-          },
-          {
-            id: 'esri-satellite-labels-layer',
-            type: 'raster',
-            source: 'esri-satellite-labels',
-            minzoom: 0,
-            maxzoom: 19,
-          },
-        ],
-      },
-      type: 'raster',
-      attribution: 'Tiles © Esri, Maxar, OpenStreetMap contributors',
+      style: WINDY_MAP_STYLE,
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',
     },
     'esri-street': {
       key: 'esri-street',
@@ -301,8 +256,8 @@ export const MAX_CITY_ZOOM = 18;
  * Determine default style based on environment configuration
  */
 export function getDefaultMapStyleKey(): MapStyleKey {
-  // Directly default to Satellite HD 2D photography for real Earth imagery
-  return 'satellite';
+  // Directly default to Windy Satellite aesthetic for authentic meteorological cloud exploration
+  return 'windy-satellite';
 }
 
 /**

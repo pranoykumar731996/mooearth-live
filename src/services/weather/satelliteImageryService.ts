@@ -57,6 +57,76 @@ export interface SatelliteMetadataResponse {
  * Verified NASA GIBS open data satellite layers:
  * https://wiki.earthdata.nasa.gov/display/GIBS/GIBS+Available+Imagery+Products
  */
+export interface GeostationarySector {
+  id: string;
+  name: string;
+  layerName: string;
+  tileMatrixSet: string;
+  format: 'image/png' | 'image/jpeg';
+  bounds?: [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+}
+
+export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationarySector[]> = {
+  infra: [
+    {
+      id: 'himawari-ir',
+      name: 'Himawari Asia-Pacific & Indian Ocean IR',
+      layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [55.0, -60.0, 160.0, 60.0],
+    },
+    {
+      id: 'goes-east-ir',
+      name: 'GOES-East Americas & Atlantic IR',
+      layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-140.0, -60.0, -20.0, 60.0],
+    },
+    {
+      id: 'goes-west-ir',
+      name: 'GOES-West Pacific & Hawaii IR',
+      layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-180.0, -60.0, -100.0, 60.0],
+    },
+  ],
+  blue: [
+    {
+      id: 'himawari-blue',
+      name: 'Himawari Asia-Pacific & Indian Ocean Moisture',
+      layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [55.0, -60.0, 160.0, 60.0],
+    },
+    {
+      id: 'goes-east-blue',
+      name: 'GOES-East Americas & Atlantic Moisture',
+      layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-140.0, -60.0, -20.0, 60.0],
+    },
+  ],
+  visible: [
+    {
+      id: 'viirs-truecolor',
+      name: 'VIIRS Global True Color',
+      layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
+      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      format: 'image/jpeg',
+    },
+  ],
+};
+
+export function buildSectorTileUrl(sector: GeostationarySector, dateStr: string): string {
+  const ext = sector.format === 'image/jpeg' ? 'jpg' : 'png';
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sector.layerName}/default/${dateStr}/${sector.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
+}
+
 export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct> = {
   visible: {
     id: 'nasa-gibs-viirs-truecolor',
@@ -75,36 +145,36 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
     layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
   },
   blue: {
-    id: 'nasa-gibs-viirs-dnb',
-    name: 'VIIRS Day/Night Band (Nighttime City Lights & Aurora)',
-    agency: 'NASA EOSDIS / NOAA',
-    instrument: 'VIIRS',
-    platform: 'Suomi NPP',
+    id: 'nasa-gibs-himawari-blue',
+    name: 'Geostationary Clean Infrared & Moisture (Blue Band)',
+    agency: 'JMA / NOAA / NASA EOSDIS',
+    instrument: 'AHI / ABI',
+    platform: 'Himawari-8/9 & GOES-16/18',
     spectralMode: 'blue',
-    format: 'image/jpeg',
-    tileMatrixSet: 'GoogleMapsCompatible_Level8',
-    resolution: '500m',
-    description: 'High-sensitivity panchromatic nocturnal visible band showing moonlight on cloud tops, aurora, and city glow.',
-    attribution: 'NASA GIBS / NOAA Suomi NPP Nighttime Imagery',
-    license: 'NASA Earth Science Open Data Policy (Public Domain)',
+    format: 'image/png',
+    tileMatrixSet: 'GoogleMapsCompatible_Level6',
+    resolution: '2km',
+    description: 'Upper-tropospheric moisture and cloud structure showing translucent white and blue-white cloud tops with transparent background.',
+    attribution: 'JMA Himawari / NOAA GOES / NASA GIBS Earth Science Open Data',
+    license: 'Open Meteorological Satellite Data Policy (Public Domain)',
     licenseUrl: 'https://earthdata.nasa.gov/collaborate/open-data-services-and-software/data-information-policy',
-    layerName: 'VIIRS_SNPP_DayNightBand_ENCC',
+    layerName: 'Himawari_AHI_Band13_Clean_Infrared',
   },
   infra: {
-    id: 'nasa-gibs-viirs-thermal-ir',
-    name: 'VIIRS Brightness Temperature (Thermal Infrared)',
-    agency: 'NASA EOSDIS / NOAA',
-    instrument: 'VIIRS',
-    platform: 'Suomi NPP',
+    id: 'nasa-gibs-himawari-ir',
+    name: 'Himawari-9 / GOES Clean Infrared (Thermal Cloud Tops)',
+    agency: 'JMA / NOAA / NASA EOSDIS',
+    instrument: 'AHI / ABI Band 13',
+    platform: 'Himawari-8/9 & GOES-16/18',
     spectralMode: 'infra',
     format: 'image/png',
-    tileMatrixSet: 'GoogleMapsCompatible_Level9',
-    resolution: '375m',
-    description: 'Clean infrared window (Band I5 / 11.45 µm) measuring cloud-top brightness temperatures to highlight convective storm cores.',
-    attribution: 'NASA Global Imagery Browse Services (GIBS) / NOAA VIIRS Thermal IR',
-    license: 'NASA Earth Science Open Data Policy (Public Domain)',
+    tileMatrixSet: 'GoogleMapsCompatible_Level6',
+    resolution: '2km',
+    description: 'Clean infrared window (Band 13 / 10.4 µm) measuring cloud-top brightness temperatures to highlight convective storm cores and cyclone vortices.',
+    attribution: 'JMA Himawari / NOAA GOES / NASA GIBS Earth Science Open Data',
+    license: 'Open Meteorological Satellite Data Policy (Public Domain)',
     licenseUrl: 'https://earthdata.nasa.gov/collaborate/open-data-services-and-software/data-information-policy',
-    layerName: 'VIIRS_SNPP_Thermal_Anomalies_375m_All',
+    layerName: 'Himawari_AHI_Band13_Clean_Infrared',
   },
 };
 
