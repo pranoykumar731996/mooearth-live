@@ -125,7 +125,7 @@ async function runTestSuite() {
       {
         magnitudeValue: 450,
         magnitudeUnit: 'MW',
-        date: '2026-10-15T12:00:00Z',
+        date: new Date(Date.now() - 3600000).toISOString(),
         type: 'Point',
         coordinates: [-119.25, 37.15],
       },

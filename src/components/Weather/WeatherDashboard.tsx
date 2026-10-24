@@ -135,14 +135,26 @@ export default function WeatherDashboard() {
   const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
   const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
 
+  // 24-Hour Event Window & Freshness Check (Past 24 Hours)
+  const isEventWithin24Hours = useCallback((event: WorldEvent): boolean => {
+    // Active tropical cyclones remain tracked by official meteorological agencies until dissipated
+    if (isTropicalCycloneEvent(event) || event.planetaryTelemetry?.stormWarningType === 'tropical_cyclone') {
+      return true;
+    }
+    const publishedTime = new Date(event.publishedAt).getTime();
+    if (isNaN(publishedTime)) return true;
+    return Date.now() - publishedTime <= 24 * 60 * 60 * 1000;
+  }, []);
+
   // Active cyclones list for quick-tracking (official NOAA NHC, JTWC, and IMD feeds)
   const activeCyclones = useMemo(() => {
     return getActiveTropicalCyclonesAsEvents(events);
   }, [events]);
 
-  // Active thunderstorms list for quick-tracking (severe convective cells and squalls, excluding cyclones)
+  // Active thunderstorms list for quick-tracking (severe convective cells and squalls within past 24h)
   const activeThunderstorms = useMemo(() => {
     const fromEvents = events.filter((e) => {
+      if (!isEventWithin24Hours(e)) return false;
       if (isTropicalCycloneEvent(e)) return false;
       const t = (e.title || '').toLowerCase();
       return (
@@ -154,40 +166,51 @@ export default function WeatherDashboard() {
       );
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_LIGHTNING_EVENTS;
-  }, [events]);
+  }, [events, isEventWithin24Hours]);
 
-  // Active earthquakes list for quick-tracking (USGS standards)
+  // Active earthquakes list for quick-tracking (USGS standards within past 24h)
   const activeEarthquakes = useMemo(() => {
     const fromEvents = events.filter((e) => {
+      if (!isEventWithin24Hours(e)) return false;
       if (e.category === 'seismic') return true;
       const t = (e.title || '').toLowerCase();
       return t.includes('earthquake') || t.includes('richter') || t.includes('magnitude');
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_SEISMIC_EVENTS;
-  }, [events]);
+  }, [events, isEventWithin24Hours]);
 
-  // Active wildfires list for quick-tracking (NASA FIRMS / VIIRS)
+  // Active wildfires list for quick-tracking (NASA FIRMS / VIIRS within past 24h)
   const activeWildfires = useMemo(() => {
     const fromEvents = events.filter((e) => {
+      if (!isEventWithin24Hours(e)) return false;
       if (e.category === 'wildfires') return true;
       const t = (e.title || '').toLowerCase();
       return t.includes('wildfire') || t.includes('bushfire') || t.includes('forest fire');
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_WILDFIRE_EVENTS;
-  }, [events]);
+  }, [events, isEventWithin24Hours]);
 
-  // Active space weather list for quick-tracking (NOAA SWPC)
+  // Active space weather list for quick-tracking (NOAA SWPC within past 24h)
   const activeSpaceWeather = useMemo(() => {
     const fromEvents = events.filter((e) => {
+      if (!isEventWithin24Hours(e)) return false;
       if (e.category === 'space_weather') return true;
       const t = (e.title || '').toLowerCase();
       return t.includes('geomagnetic') || t.includes('aurora') || t.includes('solar storm');
     });
     return fromEvents.length > 0 ? fromEvents : BASELINE_SPACE_WEATHER_EVENTS;
-  }, [events]);
+  }, [events, isEventWithin24Hours]);
 
   // Multi-hazard filter tab state: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'
   const [disasterCategoryFilter, setDisasterCategoryFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
+
+  // Automatically synchronize hurricane weather layer with cyclone hazard filter
+  useEffect(() => {
+    if (weather.activeLayer === 'hurricane') {
+      setDisasterCategoryFilter('cyclones');
+      setIsHazardBarExpanded(true);
+    }
+  }, [weather.activeLayer]);
 
   // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
   const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
@@ -224,15 +247,15 @@ export default function WeatherDashboard() {
     const map = new Map<string, WorldEvent>();
     // 1. Live tropical cyclones & hurricanes (strictly live real-time events, zero stale/historical data)
     activeCyclones.forEach((c) => map.set(c.id, c));
-    // 2. Earthquakes
+    // 2. Earthquakes (past 24h)
     activeEarthquakes.forEach((e) => map.set(e.id, e));
-    // 3. Wildfires
+    // 3. Wildfires (past 24h)
     activeWildfires.forEach((w) => map.set(w.id, w));
-    // 4. Thunderstorms
+    // 4. Thunderstorms (past 24h)
     activeThunderstorms.forEach((t) => map.set(t.id, t));
-    // 5. Space weather
+    // 5. Space weather (past 24h)
     activeSpaceWeather.forEach((s) => map.set(s.id, s));
-    // 6. Additional events from events feed (if not already mapped)
+    // 6. Additional events from events feed (if not already mapped and within 24h)
     events.forEach((ev) => {
       if (
         ev.category === 'severe_weather' ||
@@ -240,11 +263,11 @@ export default function WeatherDashboard() {
         ev.category === 'wildfires' ||
         ev.category === 'space_weather'
       ) {
-        if (!map.has(ev.id)) map.set(ev.id, ev);
+        if (!map.has(ev.id) && isEventWithin24Hours(ev)) map.set(ev.id, ev);
       }
     });
     return Array.from(map.values());
-  }, [activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather, events]);
+  }, [activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather, events, isEventWithin24Hours]);
 
   // Genuine satellite metadata & observation timestamp (NASA GIBS / NOAA GOES)
   const satelliteMeta = useMemo(() => {
@@ -365,16 +388,26 @@ export default function WeatherDashboard() {
     weather.setActiveLayer('radar');
   }, [viewMode, weather, updateUrlParams]);
 
-  // Fetch live global events for radar/atmosphere integration
+  // Fetch live global events for radar/atmosphere integration with continuous 60s auto-refresh
   useEffect(() => {
-    fetch('/api/events')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.events && Array.isArray(data.events)) {
-          setEvents(data.events);
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const fetchLatestEvents = () => {
+      fetch('/api/events?refresh=true')
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled && data.events && Array.isArray(data.events)) {
+            setEvents(data.events);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchLatestEvents();
+    const intervalTimer = setInterval(fetchLatestEvents, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalTimer);
+    };
   }, []);
 
   // Fetch global meteorological grid telemetry (48h wind vectors, temperature, precipitation)
@@ -854,6 +887,7 @@ export default function WeatherDashboard() {
               <GlobeScene
                 events={events}
                 allEvents={allDisasters}
+                hazardFilter={disasterCategoryFilter}
                 selectedEvent={selectedDisasterEvent}
                 onSelectEvent={setSelectedDisasterEvent}
                 selectedCountry={weather.selectedLocation?.country}
@@ -1012,6 +1046,9 @@ export default function WeatherDashboard() {
                       <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
                         {allDisasters.length}
                       </span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[8px] font-mono text-emerald-300 font-bold tracking-tight">
+                        24H LIVE
+                      </span>
                     </span>
                     <span className="text-[10px] text-cyan-300/80 group-hover:text-cyan-300 font-mono hidden sm:inline">
                       • Click to view
@@ -1026,6 +1063,7 @@ export default function WeatherDashboard() {
                         <span className="text-[10px] font-mono font-bold text-white/50 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
                           <span>🚨</span>
                           <span className="hidden sm:inline">Hazards:</span>
+                          <span className="px-1 py-0.2 rounded bg-emerald-500/20 text-[8px] font-mono text-emerald-300 font-bold">24H</span>
                         </span>
                         {[
                           { id: 'all', label: 'All', icon: '🌐' },
@@ -1167,6 +1205,8 @@ export default function WeatherDashboard() {
                 onSelectSpectralMode={setSpectralMode}
                 particlesEnabled={particlesEnabled}
                 disasters={allDisasters}
+                disasterFilter={disasterCategoryFilter}
+                onSelectDisasterFilter={setDisasterCategoryFilter}
                 selectedDisaster={selectedDisasterEvent}
                 onSelectDisaster={setSelectedDisasterEvent}
                 weatherSummary={

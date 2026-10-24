@@ -21,7 +21,7 @@ function stripXmlTags(str: string): string {
     .trim();
 }
 
-function resolveCoordinates(text: string): { country: string; city: string; lat: number; lng: number } {
+function resolveCoordinates(text: string): { country: string; city: string; lat: number; lng: number } | null {
   const lower = text.toLowerCase();
 
   // Keyword geographic overrides for prominent natural regions
@@ -62,8 +62,8 @@ function resolveCoordinates(text: string): { country: string; city: string; lat:
     }
   }
 
-  // Global default
-  return { country: 'Global Earth', city: 'Planetary Biosphere', lat: 0.0, lng: 0.0 };
+  // Cannot geolocate — return null so this article is excluded from map markers
+  return null;
 }
 
 function mapNasaCategory(catText: string): EventCategory {
@@ -124,7 +124,12 @@ export async function fetchNasaEarthObservatory(timeoutMs = 7000): Promise<Plane
 
       const dateIso = pubDate ? new Date(pubDate).toISOString() : new Date().toISOString();
       const combinedText = `${title} ${description}`;
-      const { country, city, lat, lng } = resolveCoordinates(combinedText);
+      const resolved = resolveCoordinates(combinedText);
+
+      // Skip articles that cannot be geolocated — they would place markers at null-island (0,0)
+      if (!resolved) continue;
+
+      const { country, city, lat, lng } = resolved;
       const category = mapNasaCategory(`${rawCategory} ${title}`);
 
       // Strip trailing boilerplates or HTML previews

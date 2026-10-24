@@ -35,6 +35,7 @@ const Globe = dynamic(() => import('react-globe.gl'), {
 interface GlobeSceneProps {
   events: WorldEvent[];
   allEvents?: WorldEvent[]; // Full unfiltered planetary events feed
+  hazardFilter?: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather';
   selectedEvent: WorldEvent | null;
   onSelectEvent: (event: WorldEvent | null) => void;
   selectedCountry?: string | null;
@@ -187,6 +188,7 @@ const getCountryLatitude = (feat: any) => {
 const GlobeScene = React.memo(function GlobeScene({
   events,
   allEvents,
+  hazardFilter = 'all',
   selectedEvent,
   onSelectEvent,
   selectedCountry,
@@ -1358,43 +1360,70 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // ── Sync Three.js Weather & Geophysical Layer Visibility & Categorical Isolation ──
   useEffect(() => {
-    const isCycloneVisible = !isPlayEarthActive && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null);
+    const isAll = !hazardFilter || hazardFilter === 'all';
+    const isCycloneIsolated = hazardFilter === 'cyclones' || weatherLayerMode === 'hurricane';
+    const isSeismicIsolated = hazardFilter === 'seismic';
+    const isWildfireIsolated = hazardFilter === 'wildfires';
+    const isThunderstormIsolated = hazardFilter === 'thunderstorms';
+    const isSpaceIsolated = hazardFilter === 'space_weather';
+
+    // 1. Cyclone Vortex Layer:
+    const isCycloneVisible = !isPlayEarthActive && (
+      isCycloneIsolated ||
+      (isAll && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null))
+    );
     if (cycloneVortexLayerRef.current) {
       const mesh = cycloneVortexLayerRef.current.getMesh();
       if (mesh) mesh.visible = isCycloneVisible;
     }
 
-    const isLightningVisible = !isPlayEarthActive && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null);
+    // 2. Lightning Network Layer:
+    const isLightningVisible = !isPlayEarthActive && (
+      isThunderstormIsolated ||
+      (isAll && (globeView === 'weather' || activeCategory === 'weather' || activeCategory === 'severe_weather' || activeCategory === null))
+    );
     if (lightningNetworkLayerRef.current) {
       const mesh = lightningNetworkLayerRef.current.getMesh();
       if (mesh) mesh.visible = isLightningVisible;
     }
 
-    const isSeismicVisible = !isPlayEarthActive && globeView !== 'weather' && (activeCategory === 'seismic' || activeCategory === null);
+    // 3. Seismic Shockwave Layer:
+    const isSeismicVisible = !isPlayEarthActive && (
+      isSeismicIsolated ||
+      (isAll && (activeCategory === 'seismic' || activeCategory === null))
+    );
     if (seismicShockwaveLayerRef.current) {
       const mesh = seismicShockwaveLayerRef.current.getMesh();
       if (mesh) mesh.visible = isSeismicVisible;
     }
 
-    const isWildfireVisible = !isPlayEarthActive && globeView !== 'weather' && (activeCategory === 'wildfires' || activeCategory === null);
+    // 4. Wildfire Thermal Plume Layer:
+    const isWildfireVisible = !isPlayEarthActive && (
+      isWildfireIsolated ||
+      (isAll && (activeCategory === 'wildfires' || activeCategory === null))
+    );
     if (wildfireThermalLayerRef.current) {
       const mesh = wildfireThermalLayerRef.current.getMesh();
       if (mesh) mesh.visible = isWildfireVisible;
     }
 
-    // Auroral oval space weather curtain: ONLY visible in space weather mode, NEVER in weather radar or general overview!
-    const isAuroralVisible = !isPlayEarthActive && globeView !== 'weather' && activeCategory === 'space_weather';
+    // 5. Auroral Oval Layer:
+    const isAuroralVisible = !isPlayEarthActive && (
+      isSpaceIsolated ||
+      (isAll && activeCategory === 'space_weather')
+    );
     if (auroralOvalLayerRef.current) {
       const mesh = auroralOvalLayerRef.current.getMesh();
       if (mesh) mesh.visible = isAuroralVisible;
     }
 
-    const isOceanVisible = !isPlayEarthActive && (weatherLayerMode === 'marine' || weatherLayerMode === 'waves' || activeCategory === 'climate_oceans');
+    // 6. Ocean Currents Layer:
+    const isOceanVisible = !isPlayEarthActive && isAll && (weatherLayerMode === 'marine' || weatherLayerMode === 'waves' || activeCategory === 'climate_oceans');
     if (oceanCurrentsLayerRef.current) {
       const mesh = oceanCurrentsLayerRef.current.getMesh();
       if (mesh) mesh.visible = isOceanVisible;
     }
-  }, [globeView, activeCategory, weatherLayerMode, isPlayEarthActive]);
+  }, [globeView, activeCategory, weatherLayerMode, isPlayEarthActive, hazardFilter]);
 
   // When an event dossier report is active, suppress HTML disaster markers so animations never overlap the report
   useEffect(() => {
@@ -2042,8 +2071,16 @@ const GlobeScene = React.memo(function GlobeScene({
 
     const disasterFeed = (allEvents && allEvents.length > 0) ? allEvents : events;
 
+    // Strict categorical isolation: if a specific hazard is chosen, ONLY that hazard is displayed
+    const isAll = !hazardFilter || hazardFilter === 'all';
+    const showCyclones = hazardFilter === 'cyclones' || weatherLayerMode === 'hurricane' || (isAll && (globeView === 'weather' || weatherLayerMode === 'wind'));
+    const showThunderstorms = hazardFilter === 'thunderstorms' || (isAll && globeView === 'weather' && (weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar' || weatherLayerMode === 'overview'));
+    const showSeismic = hazardFilter === 'seismic' || (isAll && (globeView === 'weather' || activeCategory === 'seismic'));
+    const showWildfires = hazardFilter === 'wildfires' || (isAll && (globeView === 'weather' || activeCategory === 'wildfires'));
+    const showSpaceWeather = hazardFilter === 'space_weather' || (isAll && (globeView === 'weather' || activeCategory === 'space_weather'));
+
     // Populate active tropical cyclone & hurricane disaster markers (Windy / NOAA NHC standard)
-    if (globeView === 'weather' || weatherLayerMode === 'hurricane' || weatherLayerMode === 'wind') {
+    if (showCyclones) {
       const cycloneList = disasterFeed.filter((e) => {
         const t = (e.title || '').toLowerCase();
         const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';
@@ -2069,7 +2106,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // Populate active severe thunderstorm & lightning convective complex disaster markers
-    if (globeView === 'weather' && (weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar' || weatherLayerMode === 'overview')) {
+    if (showThunderstorms) {
       const lightningList = disasterFeed.filter((e) => {
         const t = (e.title || '').toLowerCase();
         const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';
@@ -2093,7 +2130,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // Populate active earthquake & seismic rupture disaster markers (USGS standard)
-    if (globeView === 'weather' || activeCategory === 'seismic') {
+    if (showSeismic) {
       const seismicList = disasterFeed.filter((e) => {
         if (e.category === 'seismic') return true;
         const t = (e.title || '').toLowerCase();
@@ -2113,7 +2150,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // Populate active wildfire & thermal hotspot disaster markers (NASA FIRMS / VIIRS standard)
-    if (globeView === 'weather' || activeCategory === 'wildfires') {
+    if (showWildfires) {
       const fireList = disasterFeed.filter((e) => {
         if (e.category === 'wildfires') return true;
         const t = (e.title || '').toLowerCase();
@@ -2133,7 +2170,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     // Populate active space weather & auroral storm disaster markers (NOAA SWPC standard)
-    if (globeView === 'weather' || activeCategory === 'space_weather') {
+    if (showSpaceWeather) {
       const spaceList = disasterFeed.filter((e) => {
         if (e.category === 'space_weather') return true;
         const t = (e.title || '').toLowerCase();
@@ -2153,7 +2190,7 @@ const GlobeScene = React.memo(function GlobeScene({
     }
 
     return data;
-  }, [events, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView, weatherLayerMode, activeCategory]);
+  }, [events, allEvents, celebrations, selectedLocation, isStopTheEarthActive, isPlayEarthActive, stopTheEarthTargetCoord, isMobile, globeView, weatherLayerMode, activeCategory, hazardFilter]);
 
   // HTML marker elements
   const htmlMarkerRenderer = useCallback(

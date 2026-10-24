@@ -12,6 +12,7 @@ import { fetchNoaaSevereStorms, fetchNoaaCurrentStorms } from './noaaSevereStorm
 import { fetchNoaaOceanCurrents } from './noaaOceanCurrentsClient';
 import { fetchJtwcCyclones } from './jtwcClient';
 import { fetchGdacsCyclones } from './gdacsClient';
+import { deduplicatePlanetaryEvents } from './deduplication';
 
 export * from './types';
 export * from './usgsClient';
@@ -22,6 +23,7 @@ export * from './noaaSevereStormsClient';
 export * from './noaaOceanCurrentsClient';
 export * from './jtwcClient';
 export * from './gdacsClient';
+export * from './deduplication';
 export * from './briefingGenerator';
 
 interface CachedPlanetaryStream {
@@ -55,19 +57,20 @@ export async function fetchLivePlanetaryEvents(refresh = false): Promise<Planeta
     fetchGdacsCyclones(7000),
   ]);
 
-  const allEvents: PlanetaryEvent[] = [];
-  const seenIds = new Set<string>();
+  const rawEvents: PlanetaryEvent[] = [];
 
   for (const res of results) {
     if (res.status === 'fulfilled' && Array.isArray(res.value)) {
       for (const ev of res.value) {
-        if (!seenIds.has(ev.id)) {
-          seenIds.add(ev.id);
-          allEvents.push(ev);
-        }
+        rawEvents.push(ev);
       }
     }
   }
+
+  // Cross-agency deduplication: merges multi-agency reports of the same
+  // physical storm/event into a single authoritative entry, and removes
+  // null-island (0,0) fallback coordinates from NASA Earth Observatory.
+  const allEvents = deduplicatePlanetaryEvents(rawEvents);
 
   // Sort by recency (most recent first)
   allEvents.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());

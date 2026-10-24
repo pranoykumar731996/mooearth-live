@@ -99,10 +99,10 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
     titleLower.includes('tropical depression');
 
   // Freshness check: Discard stale historical events left open in NASA EONET
-  // Severe storms / cyclones dissipate within 14 days, wildfires within 45 days.
+  // Severe storms / cyclones dissipate within 14 days, active wildfires within 48 hours.
   if (latestGeo.date) {
     const geoTime = new Date(latestGeo.date).getTime();
-    const maxAgeMs = isCyclone ? 14 * 24 * 3600 * 1000 : 45 * 24 * 3600 * 1000;
+    const maxAgeMs = isCyclone ? 14 * 24 * 3600 * 1000 : 48 * 3600 * 1000;
     if (Number.isFinite(geoTime) && Date.now() - geoTime > maxAgeMs) {
       return null;
     }

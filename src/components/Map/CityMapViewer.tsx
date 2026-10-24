@@ -90,6 +90,8 @@ export interface CityMapViewerProps {
   onSelectSpectralMode?: (mode: SatelliteSpectralMode) => void;
   particlesEnabled?: boolean;
   disasters?: WorldEvent[];
+  disasterFilter?: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather';
+  onSelectDisasterFilter?: (filter: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather') => void;
   selectedDisaster?: WorldEvent | null;
   onSelectDisaster?: (event: WorldEvent | null) => void;
   onReturnToEarth: () => void;
@@ -114,6 +116,8 @@ export default function CityMapViewer({
   onSelectSpectralMode,
   particlesEnabled = true,
   disasters = [],
+  disasterFilter: disasterFilterProp,
+  onSelectDisasterFilter,
   selectedDisaster = null,
   onSelectDisaster,
   onReturnToEarth,
@@ -139,28 +143,37 @@ export default function CityMapViewer({
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
 
   // Disaster filtering and visibility on 2D map
-  const [disasterFilter, setDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms'>('all');
+  const [internalDisasterFilter, setInternalDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
+  const activeDisasterFilter = disasterFilterProp !== undefined ? disasterFilterProp : internalDisasterFilter;
+  const setDisasterFilter = useCallback((val: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather') => {
+    setInternalDisasterFilter(val);
+    onSelectDisasterFilter?.(val);
+  }, [onSelectDisasterFilter]);
   const [showDisasters, setShowDisasters] = useState(true);
 
-  // Filtered disaster list
+  // Filtered disaster list: strictly isolates selected hazard (no unwanted hazard markers)
   const filteredDisasters = useMemo(() => {
     if (!disasters || disasters.length === 0) return [];
-    if (activeLayer === 'satellite' || activeLayer === 'clouds') {
-      // In satellite/cloud view: strictly limit markers to cyclones & convective storm cores so clouds remain unobstructed
-      return disasters.filter((d) => {
-        const type = getDisasterMeta(d).type;
-        return type === 'cyclone' || type === 'thunderstorms';
-      });
-    }
-    if (disasterFilter === 'all') return disasters;
-    return disasters.filter((d) => getDisasterMeta(d).type === disasterFilter);
-  }, [disasters, disasterFilter, activeLayer]);
+    if (activeDisasterFilter === 'all') return disasters;
+    return disasters.filter((d) => {
+      const type = getDisasterMeta(d).type;
+      if (activeDisasterFilter === 'cyclones') return type === 'cyclone';
+      if (activeDisasterFilter === 'seismic') return type === 'seismic';
+      if (activeDisasterFilter === 'wildfires') return type === 'wildfires';
+      if (activeDisasterFilter === 'thunderstorms') return type === 'thunderstorms';
+      if (activeDisasterFilter === 'space_weather') return type === 'space_weather' || d.category === 'space_weather';
+      return type === activeDisasterFilter;
+    });
+  }, [disasters, activeDisasterFilter]);
 
   // Disaster counts
-  const cycloneCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'cyclone').length, [disasters]);
+  const cycloneCount = useMemo(() => (disasters || []).filter((d) => {
+    return getDisasterMeta(d).type === 'cyclone';
+  }).length, [disasters]);
   const quakeCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'seismic').length, [disasters]);
   const wildfireCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'wildfires').length, [disasters]);
   const stormCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'thunderstorms').length, [disasters]);
+  const spaceCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'space_weather' || d.category === 'space_weather').length, [disasters]);
 
   // Real-time Nowcast Lightning feed matching Windy
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
@@ -1469,9 +1482,10 @@ export default function CityMapViewer({
                   { key: 'seismic', label: 'Quakes', icon: '🌋', count: quakeCount },
                   { key: 'wildfires', label: 'Fires', icon: '🔥', count: wildfireCount },
                   { key: 'thunderstorms', label: 'Storms', icon: '⚡', count: stormCount },
+                  { key: 'space_weather', label: 'Space', icon: '🌌', count: spaceCount },
                 ] as const
               ).map((tab) => {
-                const isActive = disasterFilter === tab.key;
+                const isActive = activeDisasterFilter === tab.key;
                 return (
                   <button
                     key={tab.key}
