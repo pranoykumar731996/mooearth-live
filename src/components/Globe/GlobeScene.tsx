@@ -1683,16 +1683,8 @@ const GlobeScene = React.memo(function GlobeScene({
     }
   }, [selectedEvent, pauseRotation, resumeRotation]);
 
-  // Auto focus loop — only when idle
-  useEffect(() => {
-    if (!introDone || isFocusMode) return;
-    const interval = setInterval(() => {
-      if (Date.now() - lastInteractionTime.current < 30000) return;
-      const randomEvent = events[Math.floor(Math.random() * events.length)];
-      if (randomEvent) onSelectEvent(randomEvent);
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [events, onSelectEvent, introDone, isFocusMode]);
+  // Automatic focus loop removed: Hazard and disaster popups are strictly user-initiated on explicit click
+
 
   // Major countries always visible at all zoom levels (Feature 7)
   const MAJOR_COUNTRIES = useMemo(() => [
@@ -3374,33 +3366,13 @@ const GlobeScene = React.memo(function GlobeScene({
       return;
     }
 
-    // Direct 3D Surface Proximity Tap: if user clicks near an active natural disaster (cyclone, earthquake, wildfire, storm, auroral center)
-    if (coords && combinedHtmlData.length > 0) {
-      const hitDisaster = combinedHtmlData.find((item: any) => {
-        if (!item.event || (!item.isCycloneDisaster && !item.isThunderstormDisaster && !item.isSeismicDisaster && !item.isWildfireDisaster && !item.isSpaceWeatherDisaster)) return false;
-        const dLat = Math.abs(item.lat - coords.lat);
-        let dLng = Math.abs(item.lng - coords.lng);
-        if (dLng > 180) dLng = 360 - dLng;
-        // Cyclones have large gale envelopes (~7 deg / ~770km), other disasters ~4.5 deg (~500km)
-        const maxDistSq = item.isCycloneDisaster ? 49.0 : 20.25;
-        return (dLat * dLat + dLng * dLng) < maxDistSq;
-      });
-
-      if (hitDisaster && hitDisaster.event) {
-        pauseRotation();
-        recordInteraction();
-        flyTo({ lat: hitDisaster.lat, lng: hitDisaster.lng, altitude: 1.15 }, 1200);
-        onSelectEvent(hitDisaster.event);
-        return;
-      }
-    }
-
+    // Surface click: deselect open event dossier and report clicked geographic coordinates
     onSelectEvent(null);
     if (onSelectCountry) onSelectCountry(null);
     if (onGlobeClick && coords) onGlobeClick(coords);
     resumeRotation();
     recordInteraction();
-  }, [onSelectEvent, onSelectCountry, onGlobeClick, resumeRotation, recordInteraction, handleStopTheEarthPointer, combinedHtmlData, pauseRotation, flyTo]);
+  }, [onSelectEvent, onSelectCountry, onGlobeClick, resumeRotation, recordInteraction, handleStopTheEarthPointer]);
 
   // Constrain tooltip position to prevent clipping off-screen or overlapping mobile elements
   const constrainedTooltipPos = useMemo(() => {

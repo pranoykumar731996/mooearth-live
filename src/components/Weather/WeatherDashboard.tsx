@@ -996,15 +996,15 @@ export default function WeatherDashboard() {
                 </div>
               )}
 
-            {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar (Collapsible to keep 3D Earth completely visible) */}
+            {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar (Collapsible, strictly on-demand) */}
             {displayedDisasters.length > 0 && (
               <div className="absolute top-16 sm:top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center">
                 {!isHazardBarExpanded ? (
                   <button
                     type="button"
                     onClick={() => setIsHazardBarExpanded(true)}
-                    className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#060818]/85 hover:bg-[#060818] backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group"
-                    title="Click to view live multi-hazard disaster tracker"
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#060818]/90 hover:bg-[#060818] backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group"
+                    title="Click to view active planetary hazards and dossiers"
                   >
                     <span className="flex items-center gap-1.5">
                       <span className="animate-pulse text-xs">🚨</span>
@@ -1012,6 +1012,9 @@ export default function WeatherDashboard() {
                       <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
                         {allDisasters.length}
                       </span>
+                    </span>
+                    <span className="text-[10px] text-cyan-300/80 group-hover:text-cyan-300 font-mono hidden sm:inline">
+                      • Click to view
                     </span>
                     <span className="text-[10px] text-white/50 group-hover:text-white/80 transition-colors">▼</span>
                   </button>
@@ -1087,12 +1090,12 @@ export default function WeatherDashboard() {
                                 globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
                               }
                             }}
-                            className={`shrink-0 px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                            className={`shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer group ${
                               isSelected
                                 ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]'
                                 : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20'
                             }`}
-                            title={`Click to inspect live telemetry dossier for ${disaster.title}`}
+                            title={`Click to open full telemetry dossier for ${disaster.title}`}
                           >
                             <span>{icon}</span>
                             <span className="whitespace-nowrap font-medium text-[11px] max-w-[120px] sm:max-w-[160px] truncate">
@@ -1123,6 +1126,10 @@ export default function WeatherDashboard() {
                                 Kp {disaster.planetaryTelemetry.kpIndex}
                               </span>
                             )}
+                            <span className="text-[9px] font-mono text-cyan-400/80 group-hover:text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-1 py-0.2 rounded flex items-center gap-0.5">
+                              <span>📄</span>
+                              <span>Dossier</span>
+                            </span>
                           </button>
                         );
                       })}
@@ -1138,6 +1145,9 @@ export default function WeatherDashboard() {
               onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
+              onToggleHazards={() => setIsHazardBarExpanded((prev) => !prev)}
+              isHazardsOpen={isHazardBarExpanded}
+              hazardsCount={allDisasters.length}
               className={hasData ? 'lg:right-[396px]' : ''}
               onGeolocate={(c) => {
                 weather.fetchWeatherForLocation({

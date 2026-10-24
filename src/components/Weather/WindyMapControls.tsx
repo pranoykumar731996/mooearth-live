@@ -17,6 +17,9 @@ interface WindyMapControlsProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onGeolocate?: (coords: { lat: number; lng: number }) => void;
+  onToggleHazards?: () => void;
+  isHazardsOpen?: boolean;
+  hazardsCount?: number;
   className?: string;
 }
 
@@ -26,6 +29,9 @@ export default function WindyMapControls({
   onZoomIn,
   onZoomOut,
   onGeolocate,
+  onToggleHazards,
+  isHazardsOpen,
+  hazardsCount,
   className = '',
 }: WindyMapControlsProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -140,6 +146,32 @@ export default function WindyMapControls({
         >
           <span>{isFullscreen ? '⤢' : '⛶'}</span>
         </button>
+
+        {/* Hazards Quick View Toggle */}
+        {onToggleHazards && (
+          <>
+            <div className="h-[1px] bg-white/10 mx-1" />
+            <button
+              type="button"
+              onClick={onToggleHazards}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs transition-all cursor-pointer active:scale-95 relative
+                ${
+                  isHazardsOpen
+                    ? 'bg-rose-500/25 text-rose-300 border border-rose-400/50 shadow-md shadow-rose-500/20'
+                    : 'text-white/70 hover:text-rose-300 hover:bg-white/10'
+                }`}
+              title={isHazardsOpen ? 'Hide active hazards list' : 'View active hazards & dossiers'}
+              aria-label="Toggle active hazards"
+            >
+              <span>🚨</span>
+              {typeof hazardsCount === 'number' && hazardsCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1 py-0.2 rounded-full bg-rose-600 text-[8px] font-mono text-white font-black leading-none shadow">
+                  {hazardsCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
