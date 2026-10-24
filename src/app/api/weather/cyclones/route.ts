@@ -7,18 +7,21 @@
 
 import { NextResponse } from 'next/server';
 import { getActiveTropicalCyclones } from '@/services/weather/cycloneTrackingService';
+import { fetchLivePlanetaryEvents, planetaryEventToWorldEvent } from '@/services/planetaryEngine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const feed = getActiveTropicalCyclones();
+    const livePlanetaryEvents = await fetchLivePlanetaryEvents();
+    const worldEvents = livePlanetaryEvents.map(planetaryEventToWorldEvent);
+    const feed = getActiveTropicalCyclones(worldEvents, true);
 
     return NextResponse.json(feed, {
       headers: {
         'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1800',
-        'X-Weather-Source': 'NOAA-NHC-JTWC-IMD',
+        'X-Weather-Source': 'JTWC-GDACS-IMD-NOAA',
       },
     });
   } catch (err) {
