@@ -245,12 +245,8 @@ export const MAX_CITY_ZOOM = 18;
  * Determine default style based on environment configuration
  */
 export function getDefaultMapStyleKey(): MapStyleKey {
-  const maptilerKey = getMapTilerKey();
-  if (maptilerKey) {
-    return 'maptiler-streets';
-  }
-  // Fast, zero-watermark, highly available default
-  return 'esri-street';
+  // Directly default to Satellite HD 2D photography for real Earth imagery
+  return 'satellite';
 }
 
 /**

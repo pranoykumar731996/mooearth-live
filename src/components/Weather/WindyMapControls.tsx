@@ -86,10 +86,11 @@ export default function WindyMapControls({
           className={`w-9 h-9 rounded-xl flex items-center justify-center font-mono font-black text-xs transition-all cursor-pointer active:scale-95
             ${
               viewMode === 'globe'
-                ? 'bg-gradient-to-tr from-cyan-500/30 to-blue-600/30 text-cyan-300 border border-cyan-400/50 shadow-md shadow-cyan-500/20'
-                : 'bg-gradient-to-tr from-amber-500/30 to-orange-600/30 text-amber-300 border border-amber-400/50 shadow-md shadow-amber-500/20'
+                ? 'bg-gradient-to-tr from-cyan-500/30 to-blue-600/30 text-cyan-300 border border-cyan-400/50 shadow-md shadow-cyan-500/20 hover:border-cyan-300'
+                : 'bg-gradient-to-tr from-emerald-500/30 to-teal-600/30 text-emerald-300 border border-emerald-400/50 shadow-md shadow-emerald-500/20 hover:border-emerald-300'
             }`}
-          title={viewMode === 'globe' ? 'Switch to 2D Flat Map (Windy style)' : 'Switch to 3D Earth Globe'}
+          title={viewMode === 'globe' ? 'Switch to 2D Satellite Flat Map' : 'Switch to 3D Earth Globe'}
+          aria-label={viewMode === 'globe' ? 'Switch to 2D Satellite Flat Map' : 'Switch to 3D Earth Globe'}
         >
           <span>{viewMode === 'globe' ? '3D' : '2D'}</span>
         </button>

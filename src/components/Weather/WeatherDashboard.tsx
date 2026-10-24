@@ -1205,10 +1205,13 @@ export default function WeatherDashboard() {
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
                 initialZoom={
-                  searchParams.get('city') || searchParams.get('lat')
+                  weather.selectedLocation?.source === 'search' && (searchParams.get('city') || weather.selectedLocation?.country)
                     ? 12.8
+                    : searchParams.get('lat') || searchParams.get('city')
+                    ? 4.5
                     : 2.8
                 }
+                initialMapStyle="satellite"
                 activeLayer={weather.activeLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}

@@ -77,6 +77,7 @@ export interface CityMapViewerProps {
   cityName: string;
   countryName?: string;
   initialZoom?: number;
+  initialMapStyle?: MapStyleKey;
   weatherSummary?: CityWeatherSummary | null;
   activeLayer?: string;
   radarTileUrl?: string;
@@ -98,6 +99,7 @@ export default function CityMapViewer({
   cityName,
   countryName,
   initialZoom = 12.8,
+  initialMapStyle = 'satellite',
   weatherSummary,
   activeLayer = 'wind',
   radarTileUrl,
@@ -119,7 +121,7 @@ export default function CityMapViewer({
   const disasterMarkersRef = useRef<{ marker: Marker; event: WorldEvent; popup: Popup }[]>([]);
   const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>(() => getDefaultMapStyleKey());
+  const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>(() => initialMapStyle || getDefaultMapStyleKey());
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [hasMapError, setHasMapError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -184,7 +186,7 @@ export default function CityMapViewer({
           style: styleDef.style,
           center: [initCoords.longitude, initCoords.latitude],
           zoom: initCoords.initialZoom,
-          pitch: 35,
+          pitch: 0,
           bearing: 0,
           attributionControl: {
             compact: true,
@@ -843,7 +845,7 @@ export default function CityMapViewer({
       mapRef.current.flyTo({
         center: [longitude, latitude],
         zoom: initialZoom,
-        pitch: 35,
+        pitch: 0,
         bearing: 0,
         speed: 1.2,
       });
