@@ -341,6 +341,10 @@ export default function CityMapViewer({
 
           if (isCritical) {
             console.warn(`[CityMapViewer] MapLibre error encountered on style "${styleKey}":`, e.error);
+            if (styleKey === 'satellite' || styleKey === 'windy-satellite') {
+              // Atmospheric satellite has multiple fallback tile sources; do not trigger disruptive failover
+              return;
+            }
             const failoverKey = getFailoverStyle(styleKey, true);
             if (failoverKey !== styleKey) {
               setFallbackNotice(
@@ -855,10 +859,10 @@ export default function CityMapViewer({
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // Global seamless TrueColor VIIRS layer (100% full-earth coverage, zero rainbow limbs)
+          // Global seamless TrueColor VIIRS layer with transparent clear skies (real clouds only over cyclonic & storm formations)
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+          const trueColorUrl = `/api/weather/satellite/tile?mode=visible&date=${dateStr}&z={z}&x={x}&y={y}`;
 
           const existingSource = map.getSource(visibleSourceId) as any;
           if (existingSource) {
@@ -944,7 +948,7 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${dateStr}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+            const tileUrl = `/api/weather/satellite/tile?mode=infra&sector=${sec.id}&date=${dateStr}&z={z}&x={x}&y={y}`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {

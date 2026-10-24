@@ -120,7 +120,7 @@ export default function WeatherDashboard() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
-  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('infra');
+  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('visible');
   const [overlayRadar, setOverlayRadar] = useState(false);
   const [showPressureIsobars, setShowPressureIsobars] = useState(false);
   const [particlesEnabled, setParticlesEnabled] = useState(true);
