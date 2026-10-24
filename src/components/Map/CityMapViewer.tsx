@@ -177,7 +177,7 @@ export default function CityMapViewer({
       setHasMapError(false);
       setErrorMessage(null);
 
-      const styleDef = MAP_STYLES[styleKey] || MAP_STYLES['esri-street'];
+      const styleDef = MAP_STYLES[styleKey] || MAP_STYLES['satellite'];
       const initCoords = currentLocationRef.current;
 
       try {
@@ -283,6 +283,7 @@ export default function CityMapViewer({
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
+          if (styleKey === 'satellite') return; // Satellite raster tiles stream continuously, do not trigger false timeout
           const isLoaded = mapRef.current.loaded();
           if (!isLoaded) {
             console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);

@@ -762,9 +762,9 @@ export default function WeatherDashboard() {
                       ? 'bg-cyan-500 text-black shadow-md'
                       : 'text-white/60 hover:text-white'
                   }`}
-                  title="Explore detailed high-resolution 2D city map"
+                  title="Explore high-resolution 2D satellite map"
                 >
-                  🗺️ <span className="hidden sm:inline">City Map</span>
+                  🛰️ <span className="hidden sm:inline">2D Satellite</span>
                 </button>
               </div>
             )}

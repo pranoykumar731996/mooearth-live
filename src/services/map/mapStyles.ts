@@ -308,7 +308,7 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
     return 'esri-street';
   }
   if (currentKey === 'satellite' || currentKey === 'terrain') {
-    return 'esri-street';
+    return 'satellite';
   }
   if (currentKey === 'esri-street') {
     return 'osm';
