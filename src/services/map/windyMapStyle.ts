@@ -11,7 +11,7 @@
 
 export const WINDY_MAP_STYLE: any = {
   version: 8,
-  name: 'Windy Satellite Base',
+  name: 'Atmospheric Satellite Base',
   sources: {
     ne2_shaded: {
       type: 'raster',
@@ -22,7 +22,8 @@ export const WINDY_MAP_STYLE: any = {
     },
     openmaptiles: {
       type: 'vector',
-      url: 'https://tiles.openfreemap.org/planet',
+      tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
+      maxzoom: 14,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
     },
   },

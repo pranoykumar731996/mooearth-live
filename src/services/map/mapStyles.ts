@@ -102,8 +102,8 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     'windy-satellite': {
       key: 'windy-satellite',
-      label: 'Windy Satellite',
-      badge: 'Windy',
+      label: 'Atmospheric Satellite',
+      badge: 'NASA / NOAA',
       style: WINDY_MAP_STYLE,
       type: 'vector',
       attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',

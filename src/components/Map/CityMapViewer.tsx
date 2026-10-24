@@ -37,6 +37,7 @@ import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
 import type { SatelliteSpectralMode } from '@/services/weather/types';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
+import { getSatelliteObservationDate } from '@/services/weather/satelliteImageryService';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
@@ -144,9 +145,16 @@ export default function CityMapViewer({
   // Filtered disaster list
   const filteredDisasters = useMemo(() => {
     if (!disasters || disasters.length === 0) return [];
+    if (activeLayer === 'satellite' || activeLayer === 'clouds') {
+      // In satellite/cloud view: strictly limit markers to cyclones & convective storm cores so clouds remain unobstructed
+      return disasters.filter((d) => {
+        const type = getDisasterMeta(d).type;
+        return type === 'cyclone' || type === 'thunderstorms';
+      });
+    }
     if (disasterFilter === 'all') return disasters;
     return disasters.filter((d) => getDisasterMeta(d).type === disasterFilter);
-  }, [disasters, disasterFilter]);
+  }, [disasters, disasterFilter, activeLayer]);
 
   // Disaster counts
   const cycloneCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'cyclone').length, [disasters]);
@@ -204,6 +212,9 @@ export default function CityMapViewer({
           style: styleDef.style,
           center: [initCoords.longitude, initCoords.latitude],
           zoom: initCoords.initialZoom,
+          minZoom: 1.8,
+          maxZoom: 18,
+          renderWorldCopies: false,
           pitch: 0,
           bearing: 0,
           attributionControl: {
@@ -301,7 +312,7 @@ export default function CityMapViewer({
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
-          if (styleKey === 'satellite') return; // Satellite raster tiles stream continuously, do not trigger false timeout
+          if (styleKey === 'satellite' || styleKey === 'windy-satellite') return; // Do not trigger false timeout on satellite base styles
           const isLoaded = mapRef.current.loaded();
           if (!isLoaded) {
             console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);
@@ -502,34 +513,38 @@ export default function CityMapViewer({
             ${meta.type === 'cyclone' ? `<span style="display: inline-block; animation: cyclone-spin 4s linear infinite;">${meta.icon}</span>` : meta.icon}
           </div>
 
-          <!-- Instant Name & Telemetry Label Pill (Always visible on 2D map!) -->
-          <div style="
-            margin-top: 4px;
-            padding: 2.5px 7px;
-            border-radius: 8px;
-            background: rgba(5, 5, 18, 0.95);
-            border: 1px solid ${isSelected ? '#ffffff' : `${meta.colorHex}66`};
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            pointer-events: none;
-            font-family: monospace;
-            font-size: 10px;
-            backdrop-filter: blur(8px);
-          ">
-            <span style="font-weight: 700; color: #ffffff;">${meta.cleanTitle}</span>
-            <span style="
-              padding: 1px 4px;
-              border-radius: 4px;
-              background: ${meta.badgeBg};
-              border: 1px solid ${meta.badgeBorder};
-              color: ${meta.colorHex};
-              font-weight: 800;
-              font-size: 9px;
-            ">${meta.categoryLabel}</span>
-          </div>
+          <!-- Instant Name & Telemetry Label Pill (Prominent for Cyclones or active selection) -->
+          ${
+            meta.type === 'cyclone' || isSelected
+              ? `<div style="
+                  margin-top: 4px;
+                  padding: 2.5px 7px;
+                  border-radius: 8px;
+                  background: rgba(5, 5, 18, 0.95);
+                  border: 1px solid ${isSelected ? '#ffffff' : `${meta.colorHex}66`};
+                  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+                  white-space: nowrap;
+                  display: flex;
+                  align-items: center;
+                  gap: 4px;
+                  pointer-events: none;
+                  font-family: monospace;
+                  font-size: 10px;
+                  backdrop-filter: blur(8px);
+                ">
+                  <span style="font-weight: 700; color: #ffffff;">${meta.cleanTitle}</span>
+                  <span style="
+                    padding: 1px 4px;
+                    border-radius: 4px;
+                    background: ${meta.badgeBg};
+                    border: 1px solid ${meta.badgeBorder};
+                    color: ${meta.colorHex};
+                    font-weight: 800;
+                    font-size: 9px;
+                  ">${meta.categoryLabel}</span>
+                </div>`
+              : ''
+          }
         </div>
       `;
 
@@ -789,15 +804,27 @@ export default function CityMapViewer({
     }
   }, [activeLayer, isMapLoaded, radarTileUrl]);
 
-  // Synchronize NASA GIBS Satellite Raster Layer with MapLibre
+  // Synchronize NASA GIBS Satellite Multi-Sector Raster Layers with MapLibre
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded) return;
 
-    const sourceId = 'nasa-gibs-satellite-source';
-    const layerId = 'nasa-gibs-satellite-layer';
+    const sectorSourceIds = [
+      'nasa-gibs-visible-source',
+      'nasa-gibs-himawari-source',
+      'nasa-gibs-goes-east-source',
+      'nasa-gibs-goes-west-source',
+      'nasa-gibs-satellite-source',
+    ];
+    const sectorLayerIds = [
+      'nasa-gibs-visible-layer',
+      'nasa-gibs-himawari-layer',
+      'nasa-gibs-goes-east-layer',
+      'nasa-gibs-goes-west-layer',
+      'nasa-gibs-satellite-layer',
+    ];
 
-    if ((activeLayer === 'satellite' || activeLayer === 'clouds') && satelliteTileUrl) {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -808,30 +835,73 @@ export default function CityMapViewer({
           undefined;
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
+        const isVisibleMode = spectralMode === 'visible';
         const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterOpacity = isBlue ? 0.86 : isInfra ? 0.92 : 0.88;
-        const rasterContrast = isBlue ? 0.18 : isInfra ? 0.12 : 0.06;
+        const rasterOpacity = isVisibleMode ? 0.90 : isBlue ? 0.86 : 0.90;
+        const rasterContrast = isVisibleMode ? 0.05 : isBlue ? 0.16 : 0.10;
 
-        const existingSource = map.getSource(sourceId) as any;
-        if (existingSource) {
-          if (existingSource.tiles?.[0] !== satelliteTileUrl) {
-            if (map.getLayer(layerId)) {
-              map.removeLayer(layerId);
+        // Observation date string (YYYY-MM-DD)
+        const dateStr = satelliteObservationUtc
+          ? satelliteObservationUtc.slice(0, 10)
+          : getSatelliteObservationDate().dateStr;
+
+        if (isVisibleMode) {
+          // Clean up infrared sectors
+          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
+            if (map.getLayer(id)) map.removeLayer(id);
+          });
+          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-satellite-source'].forEach((id) => {
+            if (map.getSource(id)) map.removeSource(id);
+          });
+
+          // Global seamless TrueColor VIIRS layer (100% full-earth coverage, zero rainbow limbs)
+          const visibleSourceId = 'nasa-gibs-visible-source';
+          const visibleLayerId = 'nasa-gibs-visible-layer';
+          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+
+          const existingSource = map.getSource(visibleSourceId) as any;
+          if (existingSource) {
+            if (existingSource.tiles?.[0] !== trueColorUrl) {
+              if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
+              map.removeSource(visibleSourceId);
+              map.addSource(visibleSourceId, {
+                type: 'raster',
+                tiles: [trueColorUrl],
+                tileSize: 256,
+                maxzoom: 9,
+                attribution: 'NASA GIBS / EOSDIS True Color',
+              });
+              map.addLayer(
+                {
+                  id: visibleLayerId,
+                  type: 'raster',
+                  source: visibleSourceId,
+                  paint: {
+                    'raster-opacity': rasterOpacity,
+                    'raster-contrast': rasterContrast,
+                    'raster-fade-duration': 250,
+                  },
+                },
+                beforeLayerId
+              );
+            } else if (map.getLayer(visibleLayerId)) {
+              map.setPaintProperty(visibleLayerId, 'raster-opacity', rasterOpacity);
+              map.setPaintProperty(visibleLayerId, 'raster-contrast', rasterContrast);
             }
-            map.removeSource(sourceId);
-            map.addSource(sourceId, {
+          } else {
+            map.addSource(visibleSourceId, {
               type: 'raster',
-              tiles: [satelliteTileUrl],
+              tiles: [trueColorUrl],
               tileSize: 256,
               maxzoom: 9,
-              attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+              attribution: 'NASA GIBS / EOSDIS True Color',
             });
             map.addLayer(
               {
-                id: layerId,
+                id: visibleLayerId,
                 type: 'raster',
-                source: sourceId,
+                source: visibleSourceId,
                 paint: {
                   'raster-opacity': rasterOpacity,
                   'raster-contrast': rasterContrast,
@@ -840,48 +910,113 @@ export default function CityMapViewer({
               },
               beforeLayerId
             );
-          } else if (map.getLayer(layerId)) {
-            map.setPaintProperty(layerId, 'raster-opacity', rasterOpacity);
-            map.setPaintProperty(layerId, 'raster-contrast', rasterContrast);
           }
         } else {
-          map.addSource(sourceId, {
-            type: 'raster',
-            tiles: [satelliteTileUrl],
-            tileSize: 256,
-            maxzoom: 9,
-            attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
-          });
-          map.addLayer(
+          // Infrared / Blue geostationary sectors
+          // Clean up visible layer if present
+          if (map.getLayer('nasa-gibs-visible-layer')) map.removeLayer('nasa-gibs-visible-layer');
+          if (map.getSource('nasa-gibs-visible-source')) map.removeSource('nasa-gibs-visible-source');
+          if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
+          if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
+
+          // Multi-sector geostationary constellation with strict bounds clipping the space limb
+          const sectors = [
             {
-              id: layerId,
-              type: 'raster',
-              source: sourceId,
-              paint: {
-                'raster-opacity': rasterOpacity,
-                'raster-contrast': rasterContrast,
-                'raster-fade-duration': 250,
-              },
+              id: 'himawari',
+              layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+              // Bounds clip the outer space limb: 55°E to 160°E, 52°S to 52°N
+              bounds: [55.0, -52.0, 160.0, 52.0] as [number, number, number, number],
             },
-            beforeLayerId
-          );
+            {
+              id: 'goes-east',
+              layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+              // Bounds over Americas & Atlantic
+              bounds: [-135.0, -52.0, -20.0, 52.0] as [number, number, number, number],
+            },
+            {
+              id: 'goes-west',
+              layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+              // Bounds over East Pacific & Hawaii
+              bounds: [-175.0, -52.0, -95.0, 52.0] as [number, number, number, number],
+            },
+          ];
+
+          sectors.forEach((sec) => {
+            const sId = `nasa-gibs-${sec.id}-source`;
+            const lId = `nasa-gibs-${sec.id}-layer`;
+            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${dateStr}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+
+            const existingSource = map.getSource(sId) as any;
+            if (existingSource) {
+              if (existingSource.tiles?.[0] !== tileUrl) {
+                if (map.getLayer(lId)) map.removeLayer(lId);
+                map.removeSource(sId);
+                map.addSource(sId, {
+                  type: 'raster',
+                  tiles: [tileUrl],
+                  tileSize: 256,
+                  maxzoom: 6,
+                  bounds: sec.bounds,
+                  attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+                });
+                map.addLayer(
+                  {
+                    id: lId,
+                    type: 'raster',
+                    source: sId,
+                    paint: {
+                      'raster-opacity': rasterOpacity,
+                      'raster-contrast': rasterContrast,
+                      'raster-fade-duration': 250,
+                    },
+                  },
+                  beforeLayerId
+                );
+              } else if (map.getLayer(lId)) {
+                map.setPaintProperty(lId, 'raster-opacity', rasterOpacity);
+                map.setPaintProperty(lId, 'raster-contrast', rasterContrast);
+              }
+            } else {
+              map.addSource(sId, {
+                type: 'raster',
+                tiles: [tileUrl],
+                tileSize: 256,
+                maxzoom: 6,
+                bounds: sec.bounds,
+                attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+              });
+              map.addLayer(
+                {
+                  id: lId,
+                  type: 'raster',
+                  source: sId,
+                  paint: {
+                    'raster-opacity': rasterOpacity,
+                    'raster-contrast': rasterContrast,
+                    'raster-fade-duration': 250,
+                  },
+                },
+                beforeLayerId
+              );
+            }
+          });
         }
       } catch (err) {
         console.warn('[MapLibre Satellite] Layer sync notice:', err);
       }
     } else {
       try {
-        if (map.getLayer(layerId)) {
-          map.removeLayer(layerId);
-        }
-        if (map.getSource(sourceId)) {
-          map.removeSource(sourceId);
-        }
+        sectorLayerIds.forEach((id) => {
+          if (map.getLayer(id)) map.removeLayer(id);
+        });
+        sectorSourceIds.forEach((id) => {
+          if (map.getSource(id)) map.removeSource(id);
+        });
       } catch {
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
