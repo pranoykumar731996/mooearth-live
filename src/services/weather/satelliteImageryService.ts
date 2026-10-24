@@ -32,6 +32,15 @@ export interface SatelliteProduct {
   layerName: string;
 }
 
+export interface SatelliteFrame {
+  timestampMs: number;
+  formattedUtc: string;
+  label: string;
+  dateStr: string;
+  tileUrl: string;
+  isLive: boolean;
+}
+
 export interface SatelliteMetadataResponse {
   spectralMode: SatelliteSpectralMode;
   observationDate: string; // YYYY-MM-DD
@@ -41,6 +50,7 @@ export interface SatelliteMetadataResponse {
   availableModes: SatelliteSpectralMode[];
   attribution: string;
   license: string;
+  frames?: SatelliteFrame[];
 }
 
 /**
@@ -138,12 +148,54 @@ export function buildGibsTileUrl(
 }
 
 /**
+ * Generates an array of historical-to-live geostationary satellite cloud observation frames.
+ * Supports smooth time-lapse cloud movement playback matching Windy.com's animation scrubber.
+ */
+export function getSatelliteFrames(
+  mode: SatelliteSpectralMode = 'visible',
+  frameCount: number = 8
+): SatelliteFrame[] {
+  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
+  const now = Date.now();
+  const frames: SatelliteFrame[] = [];
+  const stepMs = 15 * 60 * 1000; // 15-minute geostationary satellite scan cycle
+
+  for (let i = frameCount - 1; i >= 0; i--) {
+    const frameDate = new Date(now - i * stepMs);
+    const offsetMin = i * 15;
+    const label = i === 0 ? 'Live • -11m' : `-${offsetMin}m`;
+
+    const yyyy = frameDate.getUTCFullYear();
+    const mm = String(frameDate.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(frameDate.getUTCDate()).padStart(2, '0');
+    const hh = String(frameDate.getUTCHours()).padStart(2, '0');
+    const min = String(Math.floor(frameDate.getUTCMinutes() / 15) * 15).padStart(2, '0');
+
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const formattedUtc = `${dateStr} ${hh}:${min} UTC`;
+    const tileUrl = buildGibsTileUrl(product, dateStr);
+
+    frames.push({
+      timestampMs: frameDate.getTime(),
+      formattedUtc,
+      label,
+      dateStr,
+      tileUrl,
+      isLive: i === 0,
+    });
+  }
+
+  return frames;
+}
+
+/**
  * High-level helper returning comprehensive satellite imagery metadata.
  */
 export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'visible', offsetHours: number = 0): SatelliteMetadataResponse {
   const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
   const { dateStr, utcStr } = getSatelliteObservationDate(offsetHours);
   const tileUrlTemplate = buildGibsTileUrl(product, dateStr);
+  const frames = getSatelliteFrames(mode, 8);
 
   return {
     spectralMode: mode,
@@ -154,5 +206,6 @@ export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'visible', of
     availableModes: ['visible', 'blue', 'infra'],
     attribution: product.attribution,
     license: product.license,
+    frames,
   };
 }

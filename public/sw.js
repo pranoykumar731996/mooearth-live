@@ -2,7 +2,7 @@
 // MooEarth Live — PWA Service Worker
 // ============================================================
 
-const CACHE_NAME = 'mooearth-live-v28';
+const CACHE_NAME = 'mooearth-live-v29';
 
 // Assets to precache immediately on install
 const PRECACHE_ASSETS = [
@@ -204,4 +204,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Build Timestamp: 2026-10-24T18:49:02.885Z
+// Build Timestamp: 2026-10-24T19:43:18.535Z

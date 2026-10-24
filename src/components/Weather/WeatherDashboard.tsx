@@ -1216,6 +1216,8 @@ export default function WeatherDashboard() {
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
                 satelliteObservationUtc={satelliteMeta.observationUtc}
+                spectralMode={spectralMode}
+                onSelectSpectralMode={setSpectralMode}
                 particlesEnabled={particlesEnabled}
                 disasters={allDisasters}
                 selectedDisaster={selectedDisasterEvent}

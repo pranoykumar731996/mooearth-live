@@ -35,6 +35,9 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
+import type { SatelliteSpectralMode } from '@/services/weather/types';
+import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
+import WindyLegendBar from '@/components/Weather/WindyLegendBar';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
@@ -83,6 +86,8 @@ export interface CityMapViewerProps {
   radarTileUrl?: string;
   satelliteTileUrl?: string;
   satelliteObservationUtc?: string;
+  spectralMode?: SatelliteSpectralMode;
+  onSelectSpectralMode?: (mode: SatelliteSpectralMode) => void;
   particlesEnabled?: boolean;
   disasters?: WorldEvent[];
   selectedDisaster?: WorldEvent | null;
@@ -105,6 +110,8 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
+  spectralMode = 'visible',
+  onSelectSpectralMode,
   particlesEnabled = true,
   disasters = [],
   selectedDisaster = null,
@@ -147,6 +154,18 @@ export default function CityMapViewer({
   const quakeCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'seismic').length, [disasters]);
   const wildfireCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'wildfires').length, [disasters]);
   const stormCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'thunderstorms').length, [disasters]);
+
+  // Real-time Nowcast Lightning feed matching Windy
+  const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
+  const [showLightning, setShowLightning] = useState(true);
+
+  useEffect(() => {
+    setLightningFeed(getNowcastLightningFeed(disasters));
+    const interval = setInterval(() => {
+      setLightningFeed(getNowcastLightningFeed(disasters));
+    }, 45000);
+    return () => clearInterval(interval);
+  }, [disasters]);
 
   // Persistent ref tracking latest city coordinates & metadata without triggering map re-initialization
   const currentLocationRef = useRef({ latitude, longitude, cityName, countryName, initialZoom });
@@ -779,8 +798,9 @@ export default function CityMapViewer({
     const sourceId = 'nasa-gibs-satellite-source';
     const layerId = 'nasa-gibs-satellite-layer';
 
-    if (activeLayer === 'satellite' && satelliteTileUrl) {
+    if ((activeLayer === 'satellite' || activeLayer === 'clouds') && satelliteTileUrl) {
       try {
+        const beforeLayerId = map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' : undefined;
         const existingSource = map.getSource(sourceId) as any;
         if (existingSource) {
           if (existingSource.tiles?.[0] !== satelliteTileUrl) {
@@ -795,15 +815,18 @@ export default function CityMapViewer({
               maxzoom: 9,
               attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
             });
-            map.addLayer({
-              id: layerId,
-              type: 'raster',
-              source: sourceId,
-              paint: {
-                'raster-opacity': 0.85,
-                'raster-fade-duration': 200,
+            map.addLayer(
+              {
+                id: layerId,
+                type: 'raster',
+                source: sourceId,
+                paint: {
+                  'raster-opacity': 0.88,
+                  'raster-fade-duration': 250,
+                },
               },
-            });
+              beforeLayerId
+            );
           }
         } else {
           map.addSource(sourceId, {
@@ -813,15 +836,18 @@ export default function CityMapViewer({
             maxzoom: 9,
             attribution: 'NASA GIBS / EOSDIS Earth Science Open Data',
           });
-          map.addLayer({
-            id: layerId,
-            type: 'raster',
-            source: sourceId,
-            paint: {
-              'raster-opacity': 0.85,
-              'raster-fade-duration': 300,
+          map.addLayer(
+            {
+              id: layerId,
+              type: 'raster',
+              source: sourceId,
+              paint: {
+                'raster-opacity': 0.88,
+                'raster-fade-duration': 250,
+              },
             },
-          });
+            beforeLayerId
+          );
         }
       } catch (err) {
         console.warn('[MapLibre Satellite] Layer sync notice:', err);
@@ -839,6 +865,97 @@ export default function CityMapViewer({
       }
     }
   }, [activeLayer, isMapLoaded, satelliteTileUrl]);
+
+  // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const sourceId = 'nowcast-lightning-source';
+    const glowLayerId = 'nowcast-lightning-glow';
+    const coreLayerId = 'nowcast-lightning-core';
+
+    if (showLightning && lightningFeed && lightningFeed.features.length > 0) {
+      try {
+        const existingSource = map.getSource(sourceId) as any;
+        if (existingSource) {
+          existingSource.setData(lightningFeed);
+        } else {
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: lightningFeed as any,
+          });
+
+          // Soft ambient neon glow
+          map.addLayer({
+            id: glowLayerId,
+            type: 'circle',
+            source: sourceId,
+            paint: {
+              'circle-radius': [
+                'interpolate',
+                ['linear'],
+                ['get', 'intensityKa'],
+                15, 6,
+                110, 15,
+              ],
+              'circle-color': ['get', 'colorHex'],
+              'circle-opacity': 0.55,
+              'circle-blur': 0.65,
+            },
+          });
+
+          // Intense core spark
+          map.addLayer({
+            id: coreLayerId,
+            type: 'circle',
+            source: sourceId,
+            paint: {
+              'circle-radius': 3.5,
+              'circle-color': '#ffffff',
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': ['get', 'colorHex'],
+            },
+          });
+
+          // Click popup showing lightning details
+          map.on('click', coreLayerId, (e: any) => {
+            const feat = e.features?.[0];
+            if (!feat) return;
+            const props = feat.properties;
+            const coords = (feat.geometry as any).coordinates.slice();
+            new Popup({ className: 'city-map-popup', closeButton: true })
+              .setLngLat(coords)
+              .setHTML(`
+                <div style="background:#070718; color:#fff; padding:10px; border-radius:12px; font-family:monospace; font-size:11px; border:1px solid #e879f9;">
+                  <div style="font-weight:bold; color:#f43f5e; margin-bottom:4px;">⚡ Nowcast Lightning Strike</div>
+                  <div>Peak Current: <b>${props?.polarity ?? ''}${props?.intensityKa ?? 45} kA</b></div>
+                  <div style="color:rgba(255,255,255,0.6); font-size:10px;">Detected ${props?.ageSeconds ?? 15}s ago</div>
+                </div>
+              `)
+              .addTo(map);
+          });
+
+          map.on('mouseenter', coreLayerId, () => {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', coreLayerId, () => {
+            map.getCanvas().style.cursor = '';
+          });
+        }
+      } catch (err) {
+        console.warn('[MapLibre Lightning] Sync notice:', err);
+      }
+    } else {
+      try {
+        if (map.getLayer(coreLayerId)) map.removeLayer(coreLayerId);
+        if (map.getLayer(glowLayerId)) map.removeLayer(glowLayerId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+      } catch {
+        // Silently ignore cleanup
+      }
+    }
+  }, [showLightning, lightningFeed, isMapLoaded]);
 
   // Center map on city marker
   const handleRecenter = () => {
@@ -911,21 +1028,76 @@ export default function CityMapViewer({
         </div>
       )}
 
-      {/* ── Satellite Genuine Observation Pass Badge (NASA GIBS) ── */}
-      {activeLayer === 'satellite' && (
-        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[90%] sm:max-w-md">
-          <div className="rounded-2xl bg-[#060818]/92 backdrop-blur-xl border border-cyan-500/30 shadow-[0_8px_30px_rgba(0,0,0,0.6)] px-3 py-2 flex items-center gap-2.5 text-xs">
-            <span className="text-base shrink-0">🛰️</span>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-white text-[11px] flex items-center gap-1.5 flex-wrap">
-                <span>NASA GIBS Global Satellite Observation</span>
-                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1 py-0.2 rounded bg-emerald-500/20">
-                  REAL SENSOR PASS
+      {/* ── Windy Satellite & Nowcast Lightning Telemetry HUD ── */}
+      {(activeLayer === 'satellite' || activeLayer === 'clouds') && (
+        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
+          <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
+            {/* Top row: Sensor Pass + Live Time Pill */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base shrink-0">🛰️</span>
+                <span className="font-bold text-white text-[11px] tracking-wide">
+                  Geostationary Satellite Clouds
                 </span>
-              </span>
-              <span className="text-[10px] text-white/50 font-mono truncate">
-                {satelliteObservationUtc || 'Daily Planetary Composite • NASA EOSDIS'}
-              </span>
+                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/30">
+                  REAL CLOUDS
+                </span>
+              </div>
+
+              {/* Amber Live Latency Pill matching Windy */}
+              <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                <span>Live • 11m ago</span>
+              </div>
+            </div>
+
+            {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
+              <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
+                  const isActive = (spectralMode || 'visible') === mode;
+                  const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => onSelectSpectralMode?.(mode)}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Nowcast Lightning Toggle Button */}
+              {lightningFeed && (
+                <button
+                  type="button"
+                  onClick={() => setShowLightning(!showLightning)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                    showLightning
+                      ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                  }`}
+                  title="Toggle Nowcast Lightning strikes overlay"
+                >
+                  <span className="animate-pulse">⚡</span>
+                  <span>Nowcast Lightning</span>
+                  <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
+                    {lightningFeed.totalCount}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Subtitle */}
+            <div className="text-[9px] font-mono text-white/40 truncate">
+              {satelliteObservationUtc || 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain'}
             </div>
           </div>
         </div>
@@ -1326,6 +1498,15 @@ export default function CityMapViewer({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Windy Meteorological Dynamic Legend Bar (Kelvin Scale for Satellite IR) ── */}
+      {activeLayer === 'satellite' && (
+        <WindyLegendBar
+          activeLayer="satellite"
+          spectralMode={spectralMode || 'infra'}
+          className="bottom-14 right-3 sm:bottom-16 sm:right-4"
+        />
       )}
     </div>
   );

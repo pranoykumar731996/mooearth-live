@@ -11,6 +11,7 @@
 
 export type MapStyleKey =
   | 'satellite'
+  | 'windy-satellite'
   | 'esri-street'
   | 'terrain'
   | 'maptiler-streets'
@@ -96,6 +97,61 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       },
       type: 'raster',
       attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS',
+    },
+    'windy-satellite': {
+      key: 'windy-satellite',
+      label: 'Windy Satellite',
+      badge: 'Windy',
+      style: {
+        version: 8,
+        sources: {
+          'esri-satellite-imagery': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution:
+              'Tiles &copy; Esri &mdash; Earthstar Geographics, USGS, NASA, OpenStreetMap contributors',
+          },
+          'esri-satellite-labels': {
+            type: 'raster',
+            tiles: [
+              'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: 'windy-ocean-background',
+            type: 'background',
+            paint: {
+              'background-color': '#152e55',
+            },
+          },
+          {
+            id: 'esri-satellite-imagery-layer',
+            type: 'raster',
+            source: 'esri-satellite-imagery',
+            minzoom: 0,
+            maxzoom: 19,
+            paint: {
+              'raster-contrast': 0.12,
+              'raster-saturation': -0.15,
+            },
+          },
+          {
+            id: 'esri-satellite-labels-layer',
+            type: 'raster',
+            source: 'esri-satellite-labels',
+            minzoom: 0,
+            maxzoom: 19,
+          },
+        ],
+      },
+      type: 'raster',
+      attribution: 'Tiles © Esri, Maxar, OpenStreetMap contributors',
     },
     'esri-street': {
       key: 'esri-street',
@@ -307,7 +363,7 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
   if (currentKey === 'maptiler-streets' || currentKey === 'liberty' || currentKey === 'bright') {
     return 'esri-street';
   }
-  if (currentKey === 'satellite' || currentKey === 'terrain') {
+  if (currentKey === 'satellite' || currentKey === 'windy-satellite' || currentKey === 'terrain') {
     return 'satellite';
   }
   if (currentKey === 'esri-street') {
