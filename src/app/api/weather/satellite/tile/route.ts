@@ -55,12 +55,37 @@ export async function GET(request: NextRequest) {
       upstreamUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layerName}/default/${date}/GoogleMapsCompatible_Level6/${z}/${y}/${x}.png`;
     }
 
-    const upstreamRes = await fetch(upstreamUrl, {
+    let upstreamRes = await fetch(upstreamUrl, {
       signal: AbortSignal.timeout(6000),
       headers: {
         'User-Agent': 'MooEarth-Live-WeatherEngine/1.0',
       },
     });
+
+    // If today's composite tile is not yet ready in NASA GIBS, fallback to yesterday's complete scan
+    if (!upstreamRes.ok) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      let fallbackUrl = '';
+      if (mode === 'visible') {
+        fallbackUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/${z}/${y}/${x}.jpg`;
+      } else {
+        let layerName = 'Himawari_AHI_Band13_Clean_Infrared';
+        if (sector === 'goes-east') layerName = 'GOES-East_ABI_Band13_Clean_Infrared';
+        else if (sector === 'goes-west') layerName = 'GOES-West_ABI_Band13_Clean_Infrared';
+        fallbackUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layerName}/default/${yesterday}/GoogleMapsCompatible_Level6/${z}/${y}/${x}.png`;
+      }
+      try {
+        const fallbackRes = await fetch(fallbackUrl, {
+          signal: AbortSignal.timeout(6000),
+          headers: { 'User-Agent': 'MooEarth-Live-WeatherEngine/1.0' },
+        });
+        if (fallbackRes.ok) {
+          upstreamRes = fallbackRes;
+        }
+      } catch {
+        // Continue to fallback check below
+      }
+    }
 
     if (!upstreamRes.ok) {
       return new NextResponse(new Uint8Array(TRANSPARENT_1X1_PNG), {
@@ -80,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     if (mode === 'visible') {
       // Visible daylight TrueColor cloud extractor:
-      // Real clouds are non-saturated (white/light gray) with high brightness
+      // Real clouds are non-saturated (white/light gray) with brightness > 90
       for (let i = 0; i < len; i += 4) {
         const r = data[i];
         const g = data[i + 1];
@@ -88,14 +113,14 @@ export async function GET(request: NextRequest) {
 
         const brightness = (r + g + b) / 3;
 
-        // True clouds have low color saturation (neutral white/silver) and brightness > 125
-        // Exclude warm desert sand (r > b + 28) and vegetation
-        const isNeutral = Math.abs(r - g) < 22 && Math.abs(g - b) < 22 && Math.abs(r - b) < 24;
+        // True clouds have low color saturation (neutral white/silver)
+        // Exclude warm desert sand (r > b + 28) and lush green vegetation (g > r + 15)
+        const isNeutral = Math.abs(r - g) < 25 && Math.abs(g - b) < 25 && Math.abs(r - b) < 25;
         const isNotSand = !(r > b + 28 && r > 140);
-        const isCloud = isNeutral && isNotSand && brightness > 125;
+        const isCloud = isNeutral && isNotSand && brightness > 90;
 
         if (isCloud) {
-          const alpha = Math.min(240, Math.max(40, Math.floor((brightness - 125) * 2.2)));
+          const alpha = Math.min(235, Math.max(35, Math.floor((brightness - 90) * 1.6)));
           data[i] = 255;
           data[i + 1] = 255;
           data[i + 2] = 255;

@@ -791,8 +791,8 @@ const GlobeScene = React.memo(function GlobeScene({
       scene.add(ambientLight);
     }
 
-    // Show clouds on desktop standard, weather, and satellite views, and NOT in failsafe mode (Rule 1 & Rule 11)
-    const showClouds = !isMobile && (globeView === 'standard' || globeView === 'weather' || globeView === 'satellite') && !failsafeActive;
+    // Show clouds on standard, weather, and satellite views, and NOT in failsafe mode
+    const showClouds = (globeView === 'standard' || globeView === 'weather' || globeView === 'satellite') && !failsafeActive;
 
     if (!showClouds) {
       const existingClouds = scene.children.find((c: any) => c.name === 'clouds');

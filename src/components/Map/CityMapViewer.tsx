@@ -841,7 +841,7 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds') {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =

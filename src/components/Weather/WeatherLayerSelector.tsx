@@ -88,18 +88,16 @@ export default function WeatherLayerSelector({
                 ${isActive
                   ? isRadar
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black border-cyan-300 shadow-lg shadow-cyan-500/30'
-                    : 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300 shadow-lg shadow-cyan-500/10'
-                  : isRadar
-                  ? 'bg-cyan-500/10 border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/20 hover:text-white hover:border-cyan-400 shadow-sm shadow-cyan-500/10'
+                    : 'bg-cyan-500/20 border-cyan-400/40 text-cyan-300 shadow-lg shadow-cyan-500/10 font-bold'
                   : 'bg-white/[0.03] border-white/5 text-white/60 hover:bg-white/[0.08] hover:text-white/90 hover:border-white/15'
                 }`}
               aria-pressed={isActive}
               title={layer.description}
             >
               <span className="text-base">{layer.icon}</span>
-              <span className={isRadar ? 'font-bold' : ''}>{layer.name}</span>
+              <span className={isActive && isRadar ? 'font-bold' : ''}>{layer.name}</span>
               {isRadar && (
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-slate-950 animate-ping' : 'bg-cyan-400 animate-pulse'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-slate-950 animate-ping' : 'bg-white/20'}`} />
               )}
             </button>
           );
