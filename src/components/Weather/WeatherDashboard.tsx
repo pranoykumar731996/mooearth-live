@@ -355,7 +355,7 @@ export default function WeatherDashboard() {
     }
   }, [weather.selectedLocation, updateUrlParams, getFlyDuration]);
 
-  // Action: Switch to Weather view and return to 3D Earth globe if in city-map
+  // Action: Switch to Weather view and return to 3D Earth globe if in city-map, or toggle telemetry panel on mobile
   const handleSwitchToWeather = useCallback(() => {
     if (viewMode === 'city-map') {
       setViewMode('globe');
@@ -368,6 +368,10 @@ export default function WeatherDashboard() {
           'globe'
         );
       }
+    } else {
+      // If already in 3D globe mode, tapping Weather opens/reveals the weather telemetry sheet on mobile
+      setIsPanelOpen((prev) => !prev);
+      setIsPanelMinimized(false);
     }
   }, [viewMode, weather, updateUrlParams]);
 
@@ -606,6 +610,10 @@ export default function WeatherDashboard() {
         result.country,
         viewMode
       );
+      // Auto-open weather panel on mobile when user searches for a location
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsPanelOpen(true);
+      }
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
@@ -974,17 +982,40 @@ export default function WeatherDashboard() {
               <div className="absolute top-4 left-4 z-20 pointer-events-auto flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsPanelOpen(!isPanelOpen)}
-                  className="px-3.5 py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl hover:border-cyan-400/60 transition-colors text-left cursor-pointer"
-                  title="Click to view detailed meteorological panel"
+                  data-testid="hud-selected-location-btn"
+                  onClick={() => {
+                    setIsPanelOpen(!isPanelOpen);
+                    setIsPanelMinimized(false);
+                  }}
+                  className="px-3.5 py-2 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 text-xs font-mono text-cyan-300 flex items-center gap-2.5 shadow-2xl hover:border-cyan-400/60 transition-colors text-left cursor-pointer group"
+                  title="Click to view detailed meteorological telemetry panel"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  {displayedForecast?.current ? (
+                    <span className="text-xl shrink-0">
+                      {displayedForecast.current.weatherEmoji || '🌤️'}
+                    </span>
+                  ) : (
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  )}
                   <div>
-                    <div className="font-bold text-white text-xs">
-                      {weather.selectedLocation.name}
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white text-xs group-hover:text-cyan-300 transition-colors">
+                        {weather.selectedLocation.name}
+                      </span>
+                      {displayedForecast?.current && typeof displayedForecast.current.temperature === 'number' && (
+                        <span className="font-black text-cyan-300 text-xs font-mono">
+                          {Math.round(displayedForecast.current.temperature)}°{weather.units === 'fahrenheit' ? 'F' : 'C'}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[10px] text-white/50">
-                      {weather.selectedLocation.country || 'Target Coordinates'}
+                    <div className="text-[10px] text-white/50 flex items-center gap-1.5">
+                      {displayedForecast?.current?.weatherDescription && (
+                        <span>{displayedForecast.current.weatherDescription}</span>
+                      )}
+                      {displayedForecast?.current?.weatherDescription && weather.selectedLocation.country && (
+                        <span>·</span>
+                      )}
+                      <span>{weather.selectedLocation.country || 'Target Coordinates'}</span>
                     </div>
                   </div>
                 </button>
@@ -1336,12 +1367,21 @@ export default function WeatherDashboard() {
                 setIsPanelOpen(true);
                 setIsPanelMinimized(false);
               }}
-              className="lg:hidden absolute bottom-36 right-4 z-40 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold shadow-2xl shadow-cyan-500/40 border border-cyan-400/40 flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer pointer-events-auto"
+              className="lg:hidden absolute bottom-36 right-4 z-40 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold shadow-2xl shadow-cyan-500/40 border border-cyan-400/40 flex items-center gap-2 active:scale-95 transition-all cursor-pointer pointer-events-auto"
               title="Open real-time meteorological telemetry & forecast sheet"
               aria-label="Open Weather Telemetry"
             >
-              <span className="text-sm">📊</span>
-              <span>Weather Telemetry →</span>
+              <span className="text-base shrink-0">
+                {displayedForecast?.current?.weatherEmoji || '📊'}
+              </span>
+              <span className="flex items-center gap-1.5">
+                {displayedForecast?.current && typeof displayedForecast.current.temperature === 'number' && (
+                  <span className="font-black text-white text-xs font-mono">
+                    {Math.round(displayedForecast.current.temperature)}°{weather.units === 'fahrenheit' ? 'F' : 'C'}
+                  </span>
+                )}
+                <span>Weather Telemetry →</span>
+              </span>
             </button>
           )}
         </div>
