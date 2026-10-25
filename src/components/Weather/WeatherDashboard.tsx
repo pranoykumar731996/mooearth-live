@@ -204,6 +204,9 @@ export default function WeatherDashboard() {
   // Multi-hazard filter tab state: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'
   const [disasterCategoryFilter, setDisasterCategoryFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
 
+  // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
+  const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
+
   // Automatically synchronize hurricane weather layer with cyclone hazard filter
   useEffect(() => {
     if (weather.activeLayer === 'hurricane') {
@@ -211,9 +214,6 @@ export default function WeatherDashboard() {
       setIsHazardBarExpanded(true);
     }
   }, [weather.activeLayer]);
-
-  // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
-  const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
 
   // Unified multi-hazard disaster feed based on active filter
   const displayedDisasters = useMemo(() => {
@@ -1239,6 +1239,9 @@ export default function WeatherDashboard() {
                 disasterFilter={disasterCategoryFilter}
                 onSelectDisasterFilter={setDisasterCategoryFilter}
                 selectedDisaster={selectedDisasterEvent}
+                onInspectDossier={(disaster) => {
+                  setSelectedDisasterEvent(disaster);
+                }}
                 onSelectDisaster={(disaster) => {
                   setSelectedDisasterEvent(disaster);
                   if (disaster && typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {

@@ -423,6 +423,157 @@ assert(
   'Geostationary infrared is completely zero at monument zoom (zoom 12.8)'
 );
 
+// ── 9. Anti-Regression: 2D Hazards Feature Parity & Categorical Isolation ────────
+console.log('\n--- 9. Anti-Regression: 2D Hazards Feature Parity & Categorical Isolation ---');
+
+import { getDisasterMeta } from '../src/services/map/disasterMapUtils';
+import type { WorldEvent } from '../src/types';
+
+const sampleDisasters: WorldEvent[] = [
+  {
+    id: 'cyclone-nargis',
+    title: 'Tropical Cyclone Nargis',
+    summary: 'Category 4 Cyclone making landfall in Bay of Bengal with 215 km/h sustained winds.',
+    category: 'severe_weather',
+    lat: 16.0,
+    lng: 94.5,
+    city: 'Yangon',
+    country: 'Myanmar',
+    publishedAt: new Date().toISOString(),
+    source: 'JTWC / IMD',
+    planetaryTelemetry: {
+      windSpeedKph: 215,
+      pressureHpa: 935,
+      stormWarningType: 'tropical_cyclone',
+    },
+  },
+  {
+    id: 'quake-sendai',
+    title: 'M 7.2 - Off the Coast of Sendai',
+    summary: 'Submarine earthquake at 25km depth triggering regional tsunami advisory.',
+    category: 'seismic',
+    lat: 38.3,
+    lng: 142.4,
+    city: 'Sendai',
+    country: 'Japan',
+    publishedAt: new Date().toISOString(),
+    source: 'USGS',
+    planetaryTelemetry: {
+      magnitude: 7.2,
+      depthKm: 25,
+      tsunamiWarning: true,
+    },
+  },
+  {
+    id: 'fire-california',
+    title: 'Sierra Wildfire Complex',
+    summary: 'Rapidly spreading wildfire detected by VIIRS sensor with 1450 MW fire radiative power.',
+    category: 'wildfires',
+    lat: 39.5,
+    lng: -121.5,
+    city: 'Oroville',
+    country: 'United States',
+    publishedAt: new Date().toISOString(),
+    source: 'NASA FIRMS',
+    planetaryTelemetry: {
+      fireRadiativePowerMw: 1450,
+      brightnessTempKelvin: 385,
+    },
+  },
+  {
+    id: 'storm-dallas',
+    title: 'Severe Convective Squall Line',
+    summary: 'Intense thunderstorm cluster producing 85 lightning flashes per minute.',
+    category: 'severe_weather',
+    lat: 32.8,
+    lng: -96.8,
+    city: 'Dallas',
+    country: 'United States',
+    publishedAt: new Date().toISOString(),
+    source: 'NOAA SPC',
+    planetaryTelemetry: {
+      lightningStrikeRatePerMin: 85,
+      stormWarningType: 'severe_thunderstorm',
+    },
+  },
+  {
+    id: 'space-aurora',
+    title: 'Kp 7 Strong Geomagnetic Storm',
+    summary: 'CME impact causing auroral visibility across mid-latitudes.',
+    category: 'space_weather',
+    lat: 65.0,
+    lng: -18.0,
+    city: 'Akureyri',
+    country: 'Iceland',
+    publishedAt: new Date().toISOString(),
+    source: 'NOAA SWPC',
+    planetaryTelemetry: {
+      kpIndex: 7,
+      solarWindSpeedKms: 650,
+    },
+  },
+];
+
+// Test 1: Disaster Meta Classification
+const cycloneMeta = getDisasterMeta(sampleDisasters[0]);
+assert(cycloneMeta.type === 'cyclone', 'Tropical Cyclone correctly classifies as cyclone');
+assert(cycloneMeta.categoryLabel === 'Cat 4-5', '215 km/h wind maps to Cat 4-5 label');
+assert(cycloneMeta.metricLabel === '215 km/h', 'Cyclone metric shows 215 km/h');
+
+const quakeMeta = getDisasterMeta(sampleDisasters[1]);
+assert(quakeMeta.type === 'seismic', 'M 7.2 Earthquake correctly classifies as seismic');
+assert(quakeMeta.categoryLabel === 'M 7.2', 'Seismic category label displays M 7.2');
+assert(quakeMeta.metricLabel.includes('25 km depth'), 'Seismic metric shows 25 km depth');
+
+const fireMeta = getDisasterMeta(sampleDisasters[2]);
+assert(fireMeta.type === 'wildfires', 'NASA FIRMS fire correctly classifies as wildfires');
+assert(fireMeta.categoryLabel === '1450 MW', 'Wildfire category label displays 1450 MW');
+
+// Test 2: Categorical Filter Isolation
+function filterDisasters(disasters: WorldEvent[], filter: string) {
+  if (filter === 'all') return disasters;
+  return disasters.filter((d) => {
+    const meta = getDisasterMeta(d);
+    if (filter === 'cyclones') return meta.type === 'cyclone';
+    if (filter === 'seismic') return meta.type === 'seismic';
+    if (filter === 'wildfires') return meta.type === 'wildfires';
+    if (filter === 'thunderstorms') return meta.type === 'thunderstorms';
+    if (filter === 'space_weather') return meta.type === 'space_weather' || d.category === 'space_weather';
+    return meta.type === filter;
+  });
+}
+
+const allFiltered = filterDisasters(sampleDisasters, 'all');
+assert(allFiltered.length === 5, 'All filter retains all 5 sample planetary hazards');
+
+const cycloneFiltered = filterDisasters(sampleDisasters, 'cyclones');
+assert(cycloneFiltered.length === 1 && cycloneFiltered[0].id === 'cyclone-nargis', 'Cyclones filter strictly isolates cyclone');
+
+const seismicFiltered = filterDisasters(sampleDisasters, 'seismic');
+assert(seismicFiltered.length === 1 && seismicFiltered[0].id === 'quake-sendai', 'Seismic filter strictly isolates earthquake');
+
+const fireFiltered = filterDisasters(sampleDisasters, 'wildfires');
+assert(fireFiltered.length === 1 && fireFiltered[0].id === 'fire-california', 'Wildfire filter strictly isolates thermal fire');
+
+const stormFiltered = filterDisasters(sampleDisasters, 'thunderstorms');
+assert(stormFiltered.length === 1 && stormFiltered[0].id === 'storm-dallas', 'Thunderstorms filter strictly isolates convective storm');
+
+const spaceFiltered = filterDisasters(sampleDisasters, 'space_weather');
+assert(spaceFiltered.length === 1 && spaceFiltered[0].id === 'space-aurora', 'Space weather filter strictly isolates geomagnetic event');
+
+// Test 3: GeoJSON Feature Conversion Invariants
+const seismicGeoJson = {
+  type: 'FeatureCollection',
+  features: seismicFiltered.map((d) => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
+    properties: { id: d.id, magnitude: d.planetaryTelemetry?.magnitude },
+  })),
+};
+assert(seismicGeoJson.features.length === 1, 'Seismic GeoJSON feature collection created');
+assert(seismicGeoJson.features[0].geometry.coordinates[0] === 142.4, 'Seismic GeoJSON longitude correct');
+assert(seismicGeoJson.features[0].geometry.coordinates[1] === 38.3, 'Seismic GeoJSON latitude correct');
+
 // Final Summary
 console.log('\n============================================================');
 console.log(`📊 Test Results: ${passedTests} passed, ${failedTests} failed (${totalTests} total)`);

@@ -196,6 +196,85 @@ export default function StopTheEarthClient() {
     fitBoundsSafely(mapRef.current, currentQuestion.bounds);
   }, [currentQuestion]);
 
+  // ---- Show Answer on Satellite Map ----
+
+  const showAnswerOnMap = useCallback(async (
+    guess: { lat: number; lng: number },
+    answer: { lat: number; lng: number },
+    placeName: string
+  ) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const maplibregl = await import('maplibre-gl');
+
+    // 1. Add target marker
+    if (answerMarkerRef.current) {
+      answerMarkerRef.current.remove();
+    }
+    const el = document.createElement('div');
+    el.className = 'ste-target-marker';
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;">
+        <div style="background:#10b981;color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,0.6);margin-bottom:2px;white-space:nowrap;letter-spacing:0.3px;display:flex;align-items:center;gap:4px;">
+          <span>🎯</span><span>${placeName}</span>
+        </div>
+        <div style="font-size:34px;filter:drop-shadow(0 0 12px rgba(16,185,129,0.9));line-height:1;">
+          📍
+        </div>
+      </div>
+    `;
+
+    answerMarkerRef.current = new maplibregl.Marker({
+      element: el,
+      anchor: 'bottom',
+    })
+      .setLngLat([answer.lng, answer.lat])
+      .addTo(map);
+
+    // 2. Add connecting distance line
+    const lineId = 'ste-distance-line';
+    const geojsonData: any = {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [guess.lng, guess.lat],
+          [answer.lng, answer.lat],
+        ],
+      },
+    };
+
+    if (map.getSource(lineId)) {
+      (map.getSource(lineId) as any).setData(geojsonData);
+    } else {
+      map.addSource(lineId, {
+        type: 'geojson',
+        data: geojsonData,
+      });
+      map.addLayer({
+        id: lineId,
+        type: 'line',
+        source: lineId,
+        paint: {
+          'line-color': '#f43f5e',
+          'line-width': 3.5,
+          'line-dasharray': [3, 2],
+        },
+      });
+    }
+
+    // 3. Fit bounds smoothly to show both markers with comfortable margin
+    const bounds = new maplibregl.LngLatBounds();
+    bounds.extend([guess.lng, guess.lat]);
+    bounds.extend([answer.lng, answer.lat]);
+    map.fitBounds(bounds, {
+      padding: { top: 90, bottom: 90, left: 90, right: 90 },
+      duration: 1400,
+      maxZoom: 14,
+    });
+  }, []);
+
   // ---- Gameplay Actions ----
 
   const handleSubmitGuess = async () => {
@@ -391,84 +470,7 @@ export default function StopTheEarthClient() {
     setGameSummary(null);
   };
 
-  // ---- Show Answer on Satellite Map ----
 
-  const showAnswerOnMap = useCallback(async (
-    guess: { lat: number; lng: number },
-    answer: { lat: number; lng: number },
-    placeName: string
-  ) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const maplibregl = await import('maplibre-gl');
-
-    // 1. Add target marker
-    if (answerMarkerRef.current) {
-      answerMarkerRef.current.remove();
-    }
-    const el = document.createElement('div');
-    el.className = 'ste-target-marker';
-    el.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;">
-        <div style="background:#10b981;color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,0.6);margin-bottom:2px;white-space:nowrap;letter-spacing:0.3px;display:flex;align-items:center;gap:4px;">
-          <span>🎯</span><span>${placeName}</span>
-        </div>
-        <div style="font-size:34px;filter:drop-shadow(0 0 12px rgba(16,185,129,0.9));line-height:1;">
-          📍
-        </div>
-      </div>
-    `;
-
-    answerMarkerRef.current = new maplibregl.Marker({
-      element: el,
-      anchor: 'bottom',
-    })
-      .setLngLat([answer.lng, answer.lat])
-      .addTo(map);
-
-    // 2. Add connecting distance line
-    const lineId = 'ste-distance-line';
-    const geojsonData: any = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: [
-          [guess.lng, guess.lat],
-          [answer.lng, answer.lat],
-        ],
-      },
-    };
-
-    if (map.getSource(lineId)) {
-      (map.getSource(lineId) as any).setData(geojsonData);
-    } else {
-      map.addSource(lineId, {
-        type: 'geojson',
-        data: geojsonData,
-      });
-      map.addLayer({
-        id: lineId,
-        type: 'line',
-        source: lineId,
-        paint: {
-          'line-color': '#f43f5e',
-          'line-width': 3.5,
-          'line-dasharray': [3, 2],
-        },
-      });
-    }
-
-    // 3. Fit bounds smoothly to show both markers with comfortable margin
-    const bounds = new maplibregl.LngLatBounds();
-    bounds.extend([guess.lng, guess.lat]);
-    bounds.extend([answer.lng, answer.lat]);
-    map.fitBounds(bounds, {
-      padding: { top: 90, bottom: 90, left: 90, right: 90 },
-      duration: 1400,
-      maxZoom: 14,
-    });
-  }, []);
 
   // ---- Persistent Satellite Map Initialization ----
 

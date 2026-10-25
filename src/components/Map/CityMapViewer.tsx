@@ -94,6 +94,7 @@ export interface CityMapViewerProps {
   onSelectDisasterFilter?: (filter: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather') => void;
   selectedDisaster?: WorldEvent | null;
   onSelectDisaster?: (event: WorldEvent | null) => void;
+  onInspectDossier?: (event: WorldEvent) => void;
   onReturnToEarth: () => void;
   onOpenWeather?: () => void;
   onMapClick?: (coords: { lat: number; lng: number }) => void;
@@ -154,6 +155,7 @@ export default function CityMapViewer({
   onSelectDisasterFilter,
   selectedDisaster = null,
   onSelectDisaster,
+  onInspectDossier,
   onReturnToEarth,
   onOpenWeather,
   onMapClick,
@@ -177,7 +179,7 @@ export default function CityMapViewer({
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isSatelliteHudDismissed, setIsSatelliteHudDismissed] = useState(false);
 
-  // Disaster filtering and visibility on 2D map
+  // Disaster filtering, visibility and collapsible bar state on 2D map
   const [internalDisasterFilter, setInternalDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
   const activeDisasterFilter = disasterFilterProp !== undefined ? disasterFilterProp : internalDisasterFilter;
   const setDisasterFilter = useCallback((val: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather') => {
@@ -185,6 +187,14 @@ export default function CityMapViewer({
     onSelectDisasterFilter?.(val);
   }, [onSelectDisasterFilter]);
   const [showDisasters, setShowDisasters] = useState(true);
+  const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
+
+  // Automatically expand hazard tracker bar if a specific hazard category is isolated or hurricane layer is selected
+  useEffect(() => {
+    if (activeDisasterFilter !== 'all' || activeLayer === 'hurricane') {
+      setIsHazardBarExpanded(true);
+    }
+  }, [activeDisasterFilter, activeLayer]);
 
   // Filtered disaster list: strictly isolates selected hazard (no unwanted hazard markers)
   const filteredDisasters = useMemo(() => {
@@ -722,7 +732,11 @@ export default function CityMapViewer({
           if (btn) {
             btn.addEventListener('click', (ev) => {
               ev.stopPropagation();
-              onSelectDisaster?.(event);
+              if (onInspectDossier) {
+                onInspectDossier(event);
+              } else {
+                onSelectDisaster?.(event);
+              }
             });
           }
         }
@@ -799,6 +813,194 @@ export default function CityMapViewer({
     },
     [onSelectDisaster]
   );
+
+  // Synchronize MapLibre GeoJSON Hazard Vector Layers (Seismic shockwaves, Cyclone gale radii, Wildfire halos)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const beforeLayerId =
+      map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
+      map.getLayer('carto-labels-layer') ? 'carto-labels-layer' :
+      undefined;
+
+    // 1. Quakes FeatureCollection
+    const seismicFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
+      .filter((d) => getDisasterMeta(d).type === 'seismic' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
+      .map((d) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
+        properties: {
+          id: d.id,
+          magnitude: d.planetaryTelemetry?.magnitude || 5.0,
+          depth: d.planetaryTelemetry?.depthKm || 10,
+        },
+      }));
+
+    const seismicData = { type: 'FeatureCollection', features: seismicFeatures };
+    const seismicSourceId = 'hazard-seismic-pulse-source';
+    const seismicOuterLayerId = 'hazard-seismic-pulse-outer';
+    const seismicInnerLayerId = 'hazard-seismic-pulse-inner';
+
+    try {
+      const existingSeismicSource = map.getSource(seismicSourceId) as any;
+      if (existingSeismicSource && typeof existingSeismicSource.setData === 'function') {
+        existingSeismicSource.setData(seismicData);
+      } else if (!existingSeismicSource) {
+        map.addSource(seismicSourceId, { type: 'geojson', data: seismicData as any });
+        map.addLayer(
+          {
+            id: seismicOuterLayerId,
+            type: 'circle',
+            source: seismicSourceId,
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, ['*', ['get', 'magnitude'], 3.5], 6, ['*', ['get', 'magnitude'], 8], 10, ['*', ['get', 'magnitude'], 16]],
+              'circle-color': '#f43f5e',
+              'circle-opacity': 0.16,
+              'circle-stroke-width': 1.8,
+              'circle-stroke-color': '#fb7185',
+              'circle-stroke-opacity': 0.75,
+            },
+          },
+          beforeLayerId
+        );
+        map.addLayer(
+          {
+            id: seismicInnerLayerId,
+            type: 'circle',
+            source: seismicSourceId,
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 4, 6, 8, 10, 14],
+              'circle-color': '#e11d48',
+              'circle-opacity': 0.6,
+              'circle-stroke-width': 1.2,
+              'circle-stroke-color': '#ffffff',
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback if style is reloading
+    }
+
+    // 2. Cyclone Wind Radii FeatureCollection
+    const cycloneFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
+      .filter((d) => getDisasterMeta(d).type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
+      .map((d) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
+        properties: {
+          id: d.id,
+          wind: d.planetaryTelemetry?.windSpeedKph || 120,
+        },
+      }));
+
+    const cycloneData = { type: 'FeatureCollection', features: cycloneFeatures };
+    const cycloneSourceId = 'hazard-cyclone-radii-source';
+    const cycloneOuterLayerId = 'hazard-cyclone-gale-outer';
+    const cycloneInnerLayerId = 'hazard-cyclone-core-inner';
+
+    try {
+      const existingCycloneSource = map.getSource(cycloneSourceId) as any;
+      if (existingCycloneSource && typeof existingCycloneSource.setData === 'function') {
+        existingCycloneSource.setData(cycloneData);
+      } else if (!existingCycloneSource) {
+        map.addSource(cycloneSourceId, { type: 'geojson', data: cycloneData as any });
+        map.addLayer(
+          {
+            id: cycloneOuterLayerId,
+            type: 'circle',
+            source: cycloneSourceId,
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 14, 5, 38, 8, 90, 11, 240],
+              'circle-color': 'rgba(6, 182, 212, 0.08)',
+              'circle-stroke-width': 1.8,
+              'circle-stroke-color': '#00e5ff',
+              'circle-stroke-opacity': 0.75,
+            },
+          },
+          beforeLayerId
+        );
+        map.addLayer(
+          {
+            id: cycloneInnerLayerId,
+            type: 'circle',
+            source: cycloneSourceId,
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 5, 5, 14, 8, 35, 11, 90],
+              'circle-color': 'rgba(6, 182, 212, 0.22)',
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#38bdf8',
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    // 3. Wildfire Thermal Halo FeatureCollection
+    const wildfireFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
+      .filter((d) => getDisasterMeta(d).type === 'wildfires' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
+      .map((d) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
+        properties: {
+          id: d.id,
+          frp: d.planetaryTelemetry?.fireRadiativePowerMw || 50,
+        },
+      }));
+
+    const wildfireData = { type: 'FeatureCollection', features: wildfireFeatures };
+    const wildfireSourceId = 'hazard-wildfire-source';
+    const wildfireLayerId = 'hazard-wildfire-halo';
+
+    try {
+      const existingWildfireSource = map.getSource(wildfireSourceId) as any;
+      if (existingWildfireSource && typeof existingWildfireSource.setData === 'function') {
+        existingWildfireSource.setData(wildfireData);
+      } else if (!existingWildfireSource) {
+        map.addSource(wildfireSourceId, { type: 'geojson', data: wildfireData as any });
+        map.addLayer(
+          {
+            id: wildfireLayerId,
+            type: 'circle',
+            source: wildfireSourceId,
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 6, 6, 15, 10, 30],
+              'circle-color': '#f97316',
+              'circle-opacity': 0.22,
+              'circle-stroke-width': 1.5,
+              'circle-stroke-color': '#f59e0b',
+              'circle-stroke-opacity': 0.7,
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    return () => {
+      ['hazard-seismic-pulse-inner', 'hazard-seismic-pulse-outer', 'hazard-cyclone-core-inner', 'hazard-cyclone-gale-outer', 'hazard-wildfire-halo'].forEach((lId) => {
+        try {
+          if (map.getLayer(lId)) map.removeLayer(lId);
+        } catch {
+          // ignore
+        }
+      });
+      ['hazard-seismic-pulse-source', 'hazard-cyclone-radii-source', 'hazard-wildfire-source'].forEach((sId) => {
+        try {
+          if (map.getSource(sId)) map.removeSource(sId);
+        } catch {
+          // ignore
+        }
+      });
+    };
+  }, [filteredDisasters, showDisasters, isMapLoaded]);
 
   // Synchronize NOAA Radar Raster Layer with MapLibre
   useEffect(() => {
@@ -1589,84 +1791,142 @@ export default function CityMapViewer({
         </div>
       </div>
 
-      {/* ── 2D Map Active Disasters Floating HUD & Quick Selector (World Map mode only) ── */}
-      {cityName === 'World Map' && disasters && disasters.length > 0 && (
-        <div className="absolute bottom-20 sm:bottom-22 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
-          <div className="pointer-events-auto max-w-full w-auto flex flex-col items-center gap-1.5 p-1.5 sm:p-2 rounded-2xl bg-[#050512]/92 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
-            {/* Category Filter Chips & Eye Visibility Toggle */}
-            <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none max-w-full">
+      {/* ── 2D Map Active Disasters Universal Floating HUD & Quick Selector ── */}
+      {disasters && disasters.length > 0 && !isHazardBarExpanded && (
+        <div className="absolute bottom-12 sm:bottom-14 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <button
+            type="button"
+            data-testid="toggle-hazards-bar-btn"
+            onClick={() => setIsHazardBarExpanded(true)}
+            className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-[#050512]/92 hover:bg-[#07071c] backdrop-blur-xl border border-white/15 text-white/90 text-xs font-mono font-semibold shadow-[0_6px_25px_rgba(0,0,0,0.7)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group active:scale-95"
+            title="Click to view planetary hazards and telemetry dossiers"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="animate-pulse text-xs">🚨</span>
+              <span className="text-[11px] font-medium tracking-wide">Hazards</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
+                {filteredDisasters.length}
+              </span>
+              {activeDisasterFilter !== 'all' && (
+                <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-[9px] font-mono text-cyan-300 font-bold uppercase">
+                  {activeDisasterFilter}
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] text-white/50 group-hover:text-white/80 transition-colors">▲</span>
+          </button>
+        </div>
+      )}
+
+      {disasters && disasters.length > 0 && isHazardBarExpanded && (
+        <div className="absolute bottom-12 sm:bottom-14 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
+          <div className="pointer-events-auto max-w-full w-auto flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-[#050512]/94 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200">
+            {/* Header Row: Filter Chips, Eye Visibility, and Collapse Button */}
+            <div className="flex items-center justify-between gap-1.5 w-full">
+              <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none max-w-[calc(100vw-110px)] sm:max-w-none">
+                <button
+                  type="button"
+                  onClick={() => setShowDisasters(!showDisasters)}
+                  className={`px-2 py-0.8 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                    showDisasters
+                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                  }`}
+                  title="Toggle hazard markers and vector layers on 2D map"
+                >
+                  <span>{showDisasters ? '👁️' : '🕶️'}</span>
+                  <span className="hidden sm:inline">Layers</span>
+                  <span className="text-[9px] px-1 rounded bg-white/10 font-bold">{filteredDisasters.length}</span>
+                </button>
+
+                <div className="h-3 w-px bg-white/15" />
+
+                {/* Filter Pills */}
+                {(
+                  [
+                    { key: 'all', label: 'All Hazards', icon: '🌐', count: disasters.length },
+                    { key: 'cyclones', label: 'Cyclones', icon: '🌀', count: cycloneCount },
+                    { key: 'seismic', label: 'Quakes', icon: '🌋', count: quakeCount },
+                    { key: 'wildfires', label: 'Fires', icon: '🔥', count: wildfireCount },
+                    { key: 'thunderstorms', label: 'Storms', icon: '⚡', count: stormCount },
+                    { key: 'space_weather', label: 'Space', icon: '🌌', count: spaceCount },
+                  ] as const
+                ).map((tab) => {
+                  const isActive = activeDisasterFilter === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDisasterFilter(tab.key)}
+                      className={`shrink-0 px-2 py-0.8 rounded-xl text-[10px] font-mono font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                          : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      <span className="text-[9px] font-bold opacity-60">({tab.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Collapse button */}
               <button
                 type="button"
-                onClick={() => setShowDisasters(!showDisasters)}
-                className={`px-2 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1 border transition-all cursor-pointer ${
-                  showDisasters
-                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                    : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
-                }`}
-                title="Toggle disaster markers on 2D map"
+                data-testid="collapse-hazards-bar-btn"
+                onClick={() => setIsHazardBarExpanded(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer shrink-0 ml-1 text-xs"
+                title="Collapse hazards bar to clear 2D map view"
               >
-                <span>{showDisasters ? '👁️' : '🕶️'}</span>
-                <span className="hidden sm:inline">Disasters</span>
-                <span className="text-[9px] px-1 rounded bg-white/10 font-bold">{filteredDisasters.length}</span>
+                ▼
               </button>
-
-              <div className="h-3 w-px bg-white/15" />
-
-              {/* Filter Pills */}
-              {(
-                [
-                  { key: 'all', label: 'All Hazards', icon: '🌐', count: disasters.length },
-                  { key: 'cyclones', label: 'Cyclones', icon: '🌀', count: cycloneCount },
-                  { key: 'seismic', label: 'Quakes', icon: '🌋', count: quakeCount },
-                  { key: 'wildfires', label: 'Fires', icon: '🔥', count: wildfireCount },
-                  { key: 'thunderstorms', label: 'Storms', icon: '⚡', count: stormCount },
-                  { key: 'space_weather', label: 'Space', icon: '🌌', count: spaceCount },
-                ] as const
-              ).map((tab) => {
-                const isActive = activeDisasterFilter === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setDisasterFilter(tab.key)}
-                    className={`shrink-0 px-2 py-0.8 rounded-xl text-[10px] font-mono font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span>{tab.label}</span>
-                    <span className="text-[9px] font-bold opacity-60">({tab.count})</span>
-                  </button>
-                );
-              })}
             </div>
 
-            {/* Horizontal Carousel of Disasters for Quick-Fly */}
+            {/* Horizontal Carousel of Disasters for Quick-Fly & Direct Dossier Inspection */}
             {showDisasters && filteredDisasters.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[92vw] sm:max-w-2xl py-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[94vw] sm:max-w-2xl py-0.5">
                 {filteredDisasters.map((ev) => {
                   const meta = getDisasterMeta(ev);
                   const isSelected = selectedDisaster?.id === ev.id;
                   return (
-                    <button
+                    <div
                       key={ev.id}
-                      type="button"
-                      onClick={() => handleFlyToDisaster(ev)}
-                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5 border transition-all ${
                         isSelected
                           ? 'bg-cyan-500/30 border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.6)]'
                           : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
                       }`}
-                      title={`Fly to ${ev.title}`}
                     >
-                      <span>{meta.icon}</span>
-                      <span className="truncate max-w-[120px]">{meta.cleanTitle}</span>
-                      <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 font-bold" style={{ color: meta.colorHex }}>
-                        {meta.categoryLabel}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleFlyToDisaster(ev)}
+                        className="flex items-center gap-1.5 hover:text-white cursor-pointer"
+                        title={`Fly camera to ${ev.title}`}
+                      >
+                        <span>{meta.icon}</span>
+                        <span className="truncate max-w-[110px] sm:max-w-[140px]">{meta.cleanTitle}</span>
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 font-bold" style={{ color: meta.colorHex }}>
+                          {meta.categoryLabel}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onInspectDossier) {
+                            onInspectDossier(ev);
+                          } else {
+                            handleFlyToDisaster(ev);
+                          }
+                        }}
+                        className="p-0.8 rounded hover:bg-white/15 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer"
+                        title="Open Telemetry Dossier"
+                      >
+                        📊
+                      </button>
+                    </div>
                   );
                 })}
               </div>
