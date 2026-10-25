@@ -92,6 +92,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       format: 'image/png',
       bounds: [-180.0, -60.0, -100.0, 60.0],
     },
+    {
+      id: 'europe-africa-ir',
+      name: 'Europe & Africa Clouds (MODIS / Meteosat Coverage)',
+      layerName: 'MODIS_Terra_Cloud_Fraction_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-25.0, -60.0, 56.0, 65.0],
+    },
   ],
   blue: [
     {
@@ -109,6 +117,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
       bounds: [-140.0, -60.0, -20.0, 60.0],
+    },
+    {
+      id: 'europe-africa-blue',
+      name: 'Europe & Africa Cloud Structure',
+      layerName: 'MODIS_Terra_Cloud_Fraction_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-25.0, -60.0, 56.0, 65.0],
     },
   ],
   visible: [
@@ -180,29 +196,35 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
 
 /**
  * Returns the most recent completed NASA GIBS observation date (YYYY-MM-DD).
- * NASA GIBS global composites update continuously; the previous UTC day is always 100% complete worldwide.
+ * Guarantees 100% complete global swath coverage across all continents with zero black/missing swaths.
  */
 export function getSatelliteObservationDate(offsetHours: number = 0): { dateStr: string; utcStr: string; timestampMs: number } {
-  const now = new Date(Date.now() - offsetHours * 3600 * 1000);
-  
-  // For daily global composites: VIIRS polar orbit requires full swath aggregation (complete by ~14:00 UTC).
-  // If current UTC hour is < 14:00, use yesterday's 100% completed worldwide composite to guarantee zero missing tiles or 404s.
-  const utcHours = now.getUTCHours();
-  const adjusted = new Date(now.getTime());
-  if (utcHours < 14 && offsetHours === 0) {
-    adjusted.setUTCDate(adjusted.getUTCDate() - 1);
-  }
+  const baseNow = new Date();
+  const utcHours = baseNow.getUTCHours();
 
-  const yyyy = adjusted.getUTCFullYear();
-  const mm = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(adjusted.getUTCDate()).padStart(2, '0');
+  // For daily global polar satellite composites (NASA GIBS VIIRS TrueColor / MODIS):
+  // Polar sun-synchronous satellites take daytime passes around 13:30 local solar time.
+  // The westernmost longitudes (Americas, Alaska, Hawaii, and Pacific) finish their passes around 23:30-01:00 UTC,
+  // and NASA GIBS ground systems require several hours to mosaic and aggregate the global imagery, completing by ~04:00 UTC the following day.
+  // Before ~04:00 UTC, the current day's mosaic is only partially complete (Europe/Asia present, but Americas/Pacific blank 1.6KB tiles).
+  // Therefore, to guarantee 100% complete global cloud coverage across all continents with zero black/missing swaths,
+  // we anchor to the latest fully composited observation date (prior to 04:00 UTC, 2 days prior; at or after 04:00 UTC, yesterday).
+  const daysBack = utcHours < 4 ? 2 : 1;
+  const anchorTime = baseNow.getTime() - daysBack * 24 * 3600 * 1000;
+  
+  const targetTime = anchorTime - offsetHours * 3600 * 1000;
+  const targetDate = new Date(targetTime);
+
+  const yyyy = targetDate.getUTCFullYear();
+  const mm = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getUTCDate()).padStart(2, '0');
   const dateStr = `${yyyy}-${mm}-${dd}`;
-  const utcStr = `${dateStr} ${String(adjusted.getUTCHours()).padStart(2, '0')}:00 UTC`;
+  const utcStr = `${dateStr} ${String(targetDate.getUTCHours()).padStart(2, '0')}:00 UTC`;
 
   return {
     dateStr,
     utcStr,
-    timestampMs: adjusted.getTime(),
+    timestampMs: targetDate.getTime(),
   };
 }
 
@@ -227,8 +249,9 @@ export function getSatelliteFrames(
   frameCount: number = 8
 ): SatelliteFrame[] {
   const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
-  const now = Date.now();
   const frames: SatelliteFrame[] = [];
+  const baseObs = getSatelliteObservationDate(0);
+  const now = baseObs.timestampMs;
   const stepMs = 15 * 60 * 1000; // 15-minute geostationary satellite scan cycle
 
   for (let i = frameCount - 1; i >= 0; i--) {

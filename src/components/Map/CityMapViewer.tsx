@@ -1060,6 +1060,7 @@ export default function CityMapViewer({
       'nasa-gibs-himawari-source',
       'nasa-gibs-goes-east-source',
       'nasa-gibs-goes-west-source',
+      'nasa-gibs-europe-africa-source',
       'nasa-gibs-satellite-source',
     ];
     const sectorLayerIds = [
@@ -1067,6 +1068,7 @@ export default function CityMapViewer({
       'nasa-gibs-himawari-layer',
       'nasa-gibs-goes-east-layer',
       'nasa-gibs-goes-west-layer',
+      'nasa-gibs-europe-africa-layer',
       'nasa-gibs-satellite-layer',
     ];
 
@@ -1120,10 +1122,10 @@ export default function CityMapViewer({
 
         if (isVisibleMode) {
           // Clean up infrared sectors
-          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
+          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-europe-africa-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
             if (map.getLayer(id)) map.removeLayer(id);
           });
-          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-satellite-source'].forEach((id) => {
+          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-europe-africa-source', 'nasa-gibs-satellite-source'].forEach((id) => {
             if (map.getSource(id)) map.removeSource(id);
           });
 
@@ -1212,6 +1214,12 @@ export default function CityMapViewer({
               layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
               // Bounds over East Pacific & Hawaii
               bounds: [-175.0, -52.0, -95.0, 52.0] as [number, number, number, number],
+            },
+            {
+              id: 'europe-africa',
+              layerName: 'MODIS_Terra_Cloud_Fraction_Day',
+              // Bounds over Europe, Atlantic, Mediterranean & Africa (-25°W to 55°E)
+              bounds: [-25.0, -52.0, 55.0, 65.0] as [number, number, number, number],
             },
           ];
 
