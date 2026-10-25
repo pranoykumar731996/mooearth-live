@@ -342,7 +342,7 @@ export const WEATHER_LAYER_REGISTRY: Record<WeatherLayerMode, WeatherLayerDefini
   hurricane: {
     id: 'hurricane',
     name: 'Tropical Cyclones & Severe Storms',
-    shortName: 'Storm Tracker',
+    shortName: 'Cyclone Tracker',
     icon: '🌀',
     category: 'severe',
     provider: 'NOAA NHC / JTWC / IMD',

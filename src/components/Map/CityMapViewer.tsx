@@ -36,6 +36,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
 import type { SatelliteSpectralMode } from '@/services/weather/types';
+import {
+  type TropicalCyclone,
+  interpolateForecastPosition,
+} from '@/services/weather/cycloneTrackingService';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
 import { getSatelliteObservationDate } from '@/services/weather/satelliteImageryService';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
@@ -95,6 +99,10 @@ export interface CityMapViewerProps {
   selectedDisaster?: WorldEvent | null;
   onSelectDisaster?: (event: WorldEvent | null) => void;
   onInspectDossier?: (event: WorldEvent) => void;
+  cyclones?: TropicalCyclone[];
+  timelineHoursAhead?: number;
+  selectedCyclone?: TropicalCyclone | null;
+  onSelectCyclone?: (cyclone: TropicalCyclone | null) => void;
   onReturnToEarth: () => void;
   onOpenWeather?: () => void;
   onMapClick?: (coords: { lat: number; lng: number }) => void;
@@ -156,6 +164,10 @@ export default function CityMapViewer({
   selectedDisaster = null,
   onSelectDisaster,
   onInspectDossier,
+  cyclones = [],
+  timelineHoursAhead = 0,
+  selectedCyclone = null,
+  onSelectCyclone,
   onReturnToEarth,
   onOpenWeather,
   onMapClick,
@@ -545,7 +557,30 @@ export default function CityMapViewer({
       if (isNaN(event.lat) || isNaN(event.lng)) return;
 
       const meta = getDisasterMeta(event);
-      const isSelected = selectedDisaster?.id === event.id;
+      const isSelected = selectedDisaster?.id === event.id || (selectedCyclone && (selectedCyclone.id === event.id || selectedCyclone.name.toLowerCase() === event.title.toLowerCase()));
+
+      // Check if this event corresponds to an active tracked tropical cyclone
+      const matchingCyclone = meta.type === 'cyclone'
+        ? (cyclones.find((c) => c.id === event.id || c.name.toLowerCase() === event.title.toLowerCase()) || (cyclones.length > 0 ? cyclones[0] : null))
+        : null;
+
+      // Position computation: interpolate along official forecast/observed path when timeline scrubber moves
+      let markerLat = event.lat;
+      let markerLng = event.lng;
+      let markerWind = event.planetaryTelemetry?.windSpeedKph || 120;
+      let markerCategory = meta.categoryLabel;
+      let isForecast = false;
+      let leadHours = 0;
+
+      if (matchingCyclone) {
+        const interpolated = interpolateForecastPosition(matchingCyclone, timelineHoursAhead);
+        markerLat = interpolated.lat;
+        markerLng = interpolated.lng;
+        markerWind = interpolated.windSpeedKph;
+        markerCategory = interpolated.stageName || meta.categoryLabel;
+        isForecast = interpolated.isForecast;
+        leadHours = interpolated.leadHours;
+      }
 
       // Build marker DOM element
       const el = document.createElement('div');
@@ -553,7 +588,7 @@ export default function CityMapViewer({
       el.setAttribute('data-disaster-id', event.id);
       el.setAttribute('role', 'button');
       el.setAttribute('tabindex', '0');
-      el.setAttribute('aria-label', `${event.title} - ${meta.categoryLabel}`);
+      el.setAttribute('aria-label', `${event.title} - ${markerCategory}`);
 
       el.innerHTML = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; user-select: none;">
@@ -617,7 +652,20 @@ export default function CityMapViewer({
                     color: ${meta.colorHex};
                     font-weight: 800;
                     font-size: 9px;
-                  ">${meta.categoryLabel}</span>
+                  ">${markerCategory}</span>
+                  ${
+                    matchingCyclone && timelineHoursAhead !== 0
+                      ? `<span style="
+                          padding: 1px 4px;
+                          border-radius: 4px;
+                          background: ${isForecast ? 'rgba(244,63,94,0.3)' : 'rgba(56,189,248,0.3)'};
+                          border: 1px solid ${isForecast ? '#f43f5e' : '#38bdf8'};
+                          color: #ffffff;
+                          font-weight: 800;
+                          font-size: 8px;
+                        ">${isForecast ? `+${leadHours}h FCST` : `${timelineHoursAhead}h OBS`}</span>`
+                      : ''
+                  }
                 </div>`
               : ''
           }
@@ -651,7 +699,7 @@ export default function CityMapViewer({
               </span>
             </div>
             <span style="font-family: monospace; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: ${meta.badgeBg}; border: 1px solid ${meta.badgeBorder}; color: ${meta.colorHex};">
-              ${meta.categoryLabel}
+              ${markerCategory}
             </span>
           </div>
 
@@ -660,8 +708,16 @@ export default function CityMapViewer({
           </div>
 
           <div style="font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-bottom: 8px; font-family: monospace;">
-            📍 ${event.city ? `${event.city}` : ''}${event.country ? ` · ${event.country}` : ''} (${event.lat.toFixed(2)}°, ${event.lng.toFixed(2)}°)
+            📍 ${event.city ? `${event.city}` : ''}${event.country ? ` · ${event.country}` : ''} (${markerLat.toFixed(2)}°, ${markerLng.toFixed(2)}°)
           </div>
+
+          ${
+            matchingCyclone && isForecast
+              ? `<div style="margin-bottom: 6px; padding: 4px 8px; border-radius: 6px; background: rgba(244,63,94,0.18); border: 1px solid rgba(244,63,94,0.4); font-size: 10px; font-weight: 700; color: #fca5a5;">
+                  🔮 Official Forecast Position (+${leadHours}h)
+                </div>`
+              : ''
+          }
 
           <div style="font-size: 11px; line-height: 1.45; color: rgba(255, 255, 255, 0.8); margin-bottom: 10px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
             ${event.summary}
@@ -669,8 +725,8 @@ export default function CityMapViewer({
 
           <!-- Telemetry Badge Grid -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); font-family: monospace; font-size: 10px; margin-bottom: 10px;">
-            ${event.planetaryTelemetry?.windSpeedKph ? `
-              <div><span style="color: rgba(255,255,255,0.4);">WIND:</span> <strong style="color: #67e8f9;">${Math.round(event.planetaryTelemetry.windSpeedKph)} km/h</strong></div>
+            ${markerWind ? `
+              <div><span style="color: rgba(255,255,255,0.4);">WIND:</span> <strong style="color: #67e8f9;">${Math.round(markerWind)} km/h</strong></div>
             ` : ''}
             ${event.planetaryTelemetry?.pressureHpa ? `
               <div><span style="color: rgba(255,255,255,0.4);">PRES:</span> <strong style="color: #67e8f9;">${event.planetaryTelemetry.pressureHpa} hPa</strong></div>
@@ -702,7 +758,7 @@ export default function CityMapViewer({
             justify-content: center;
             gap: 6px;
           ">
-            <span>📊 Inspect Telemetry Dossier</span>
+            <span>📊 Inspect Cyclone Dossier</span>
             <span>↗</span>
           </button>
         </div>
@@ -712,8 +768,11 @@ export default function CityMapViewer({
       const handleSelect = (e: Event) => {
         e.stopPropagation();
         onSelectDisaster?.(event);
+        if (matchingCyclone) {
+          onSelectCyclone?.(matchingCyclone);
+        }
         map.flyTo({
-          center: [event.lng, event.lat],
+          center: [markerLng, markerLat],
           zoom: Math.max(map.getZoom(), 5.5),
           speed: 1.2,
           essential: true,
@@ -732,6 +791,9 @@ export default function CityMapViewer({
           if (btn) {
             btn.addEventListener('click', (ev) => {
               ev.stopPropagation();
+              if (matchingCyclone) {
+                onSelectCyclone?.(matchingCyclone);
+              }
               if (onInspectDossier) {
                 onInspectDossier(event);
               } else {
@@ -743,7 +805,7 @@ export default function CityMapViewer({
       });
 
       const marker = new Marker({ element: el, anchor: 'center' })
-        .setLngLat([event.lng, event.lat])
+        .setLngLat([markerLng, markerLat])
         .setPopup(popup)
         .addTo(map);
 
@@ -769,7 +831,7 @@ export default function CityMapViewer({
       });
       disasterMarkersRef.current = [];
     };
-  }, [filteredDisasters, showDisasters, isMapLoaded, onSelectDisaster, selectedDisaster?.id]);
+  }, [filteredDisasters, showDisasters, isMapLoaded, onSelectDisaster, selectedDisaster?.id, cyclones, timelineHoursAhead, selectedCyclone?.id, onSelectCyclone]);
 
   // Handle outside selectedDisaster updates (e.g. from top dashboard pills)
   useEffect(() => {
@@ -962,15 +1024,230 @@ export default function CityMapViewer({
       // Safe fallback
     }
 
+    // 4. Tropical Cyclone Uncertainty Cone & Track Geometry
+    const shouldRenderCycloneTracks = showDisasters && (
+      activeLayer === 'hurricane' ||
+      activeDisasterFilter === 'cyclones' ||
+      activeDisasterFilter === 'all'
+    );
+
+    const activeConeFeatures: any[] = [];
+    const activeHistoryTrackFeatures: any[] = [];
+    const activeForecastTrackFeatures: any[] = [];
+    const activeForecastNodeFeatures: any[] = [];
+
+    if (shouldRenderCycloneTracks && cyclones.length > 0) {
+      cyclones.forEach((c) => {
+        // A. Uncertainty Cone Polygon
+        if (c.uncertaintyConeGeoJson) {
+          activeConeFeatures.push({
+            type: 'Feature',
+            geometry: c.uncertaintyConeGeoJson,
+            properties: { id: c.id, name: c.name },
+          });
+        }
+
+        // B. Observed Historical Track LineString
+        if (c.historicalTrack && c.historicalTrack.length > 1) {
+          const coords = c.historicalTrack
+            .filter((p) => typeof p.lng === 'number' && typeof p.lat === 'number')
+            .map((p) => [p.lng, p.lat]);
+          if (coords.length > 1) {
+            activeHistoryTrackFeatures.push({
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: coords },
+              properties: { id: c.id, name: c.name },
+            });
+          }
+        }
+
+        // C. Official Forecast Track LineString
+        if (c.forecastPoints && c.forecastPoints.length > 0) {
+          const coords = [[c.lng, c.lat], ...c.forecastPoints.map((p) => [p.lng, p.lat])];
+          activeForecastTrackFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: coords },
+            properties: { id: c.id, name: c.name },
+          });
+
+          // D. Forecast Nodes
+          c.forecastPoints.forEach((p) => {
+            activeForecastNodeFeatures.push({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+              properties: {
+                id: c.id,
+                name: c.name,
+                leadHours: p.leadHours || 0,
+                windSpeedKph: p.windSpeedKph,
+                stageName: p.stageName,
+              },
+            });
+          });
+        }
+      });
+    }
+
+    // Add / Update Uncertainty Cone
+    const coneData = { type: 'FeatureCollection', features: activeConeFeatures };
+    const coneSourceId = 'hazard-cyclone-cone-source';
+    const coneFillLayerId = 'hazard-cyclone-cone-fill';
+    const coneOutlineLayerId = 'hazard-cyclone-cone-outline';
+
+    try {
+      const existingConeSource = map.getSource(coneSourceId) as any;
+      if (existingConeSource && typeof existingConeSource.setData === 'function') {
+        existingConeSource.setData(coneData);
+      } else if (!existingConeSource) {
+        map.addSource(coneSourceId, { type: 'geojson', data: coneData as any });
+        map.addLayer(
+          {
+            id: coneFillLayerId,
+            type: 'fill',
+            source: coneSourceId,
+            paint: {
+              'fill-color': '#06b6d4',
+              'fill-opacity': 0.12,
+            },
+          },
+          beforeLayerId
+        );
+        map.addLayer(
+          {
+            id: coneOutlineLayerId,
+            type: 'line',
+            source: coneSourceId,
+            paint: {
+              'line-color': '#22d3ee',
+              'line-width': 1.6,
+              'line-dasharray': [2, 2],
+              'line-opacity': 0.75,
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    // Add / Update Historical Observed Track
+    const historyData = { type: 'FeatureCollection', features: activeHistoryTrackFeatures };
+    const historySourceId = 'hazard-cyclone-history-track-source';
+    const historyLayerId = 'hazard-cyclone-history-track-line';
+
+    try {
+      const existingHistorySource = map.getSource(historySourceId) as any;
+      if (existingHistorySource && typeof existingHistorySource.setData === 'function') {
+        existingHistorySource.setData(historyData);
+      } else if (!existingHistorySource) {
+        map.addSource(historySourceId, { type: 'geojson', data: historyData as any });
+        map.addLayer(
+          {
+            id: historyLayerId,
+            type: 'line',
+            source: historySourceId,
+            paint: {
+              'line-color': '#38bdf8',
+              'line-width': 2.6,
+              'line-opacity': 0.85,
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    // Add / Update Forecast Track
+    const forecastData = { type: 'FeatureCollection', features: activeForecastTrackFeatures };
+    const forecastSourceId = 'hazard-cyclone-forecast-track-source';
+    const forecastLayerId = 'hazard-cyclone-forecast-track-line';
+
+    try {
+      const existingForecastSource = map.getSource(forecastSourceId) as any;
+      if (existingForecastSource && typeof existingForecastSource.setData === 'function') {
+        existingForecastSource.setData(forecastData);
+      } else if (!existingForecastSource) {
+        map.addSource(forecastSourceId, { type: 'geojson', data: forecastData as any });
+        map.addLayer(
+          {
+            id: forecastLayerId,
+            type: 'line',
+            source: forecastSourceId,
+            paint: {
+              'line-color': '#f43f5e',
+              'line-width': 2.4,
+              'line-dasharray': [2, 2],
+              'line-opacity': 0.9,
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    // Add / Update Forecast Nodes
+    const nodesData = { type: 'FeatureCollection', features: activeForecastNodeFeatures };
+    const nodesSourceId = 'hazard-cyclone-forecast-nodes-source';
+    const nodesLayerId = 'hazard-cyclone-forecast-nodes-circle';
+
+    try {
+      const existingNodesSource = map.getSource(nodesSourceId) as any;
+      if (existingNodesSource && typeof existingNodesSource.setData === 'function') {
+        existingNodesSource.setData(nodesData);
+      } else if (!existingNodesSource) {
+        map.addSource(nodesSourceId, { type: 'geojson', data: nodesData as any });
+        map.addLayer(
+          {
+            id: nodesLayerId,
+            type: 'circle',
+            source: nodesSourceId,
+            paint: {
+              'circle-radius': 5.5,
+              'circle-color': '#f43f5e',
+              'circle-stroke-width': 1.8,
+              'circle-stroke-color': '#ffffff',
+            },
+          },
+          beforeLayerId
+        );
+      }
+    } catch {
+      // Safe fallback
+    }
+
     return () => {
-      ['hazard-seismic-pulse-inner', 'hazard-seismic-pulse-outer', 'hazard-cyclone-core-inner', 'hazard-cyclone-gale-outer', 'hazard-wildfire-halo'].forEach((lId) => {
+      [
+        'hazard-seismic-pulse-inner',
+        'hazard-seismic-pulse-outer',
+        'hazard-cyclone-core-inner',
+        'hazard-cyclone-gale-outer',
+        'hazard-wildfire-halo',
+        'hazard-cyclone-cone-fill',
+        'hazard-cyclone-cone-outline',
+        'hazard-cyclone-history-track-line',
+        'hazard-cyclone-forecast-track-line',
+        'hazard-cyclone-forecast-nodes-circle',
+      ].forEach((lId) => {
         try {
           if (map.getLayer(lId)) map.removeLayer(lId);
         } catch {
           // ignore
         }
       });
-      ['hazard-seismic-pulse-source', 'hazard-cyclone-radii-source', 'hazard-wildfire-source'].forEach((sId) => {
+      [
+        'hazard-seismic-pulse-source',
+        'hazard-cyclone-radii-source',
+        'hazard-wildfire-source',
+        'hazard-cyclone-cone-source',
+        'hazard-cyclone-history-track-source',
+        'hazard-cyclone-forecast-track-source',
+        'hazard-cyclone-forecast-nodes-source',
+      ].forEach((sId) => {
         try {
           if (map.getSource(sId)) map.removeSource(sId);
         } catch {
@@ -978,7 +1255,7 @@ export default function CityMapViewer({
         }
       });
     };
-  }, [filteredDisasters, showDisasters, isMapLoaded]);
+  }, [filteredDisasters, showDisasters, isMapLoaded, cyclones, activeLayer, activeDisasterFilter]);
 
   // Synchronize NOAA Radar Raster Layer with MapLibre
   useEffect(() => {

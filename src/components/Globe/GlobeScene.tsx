@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
 import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, PlanetaryGraticuleLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
+import { CYCLONE_TIMELINE_STEPS } from '@/components/Weather/WindyTimeScrubber';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 import type { GoalCelebration } from '@/hooks/useGoalCelebration';
@@ -1357,6 +1358,17 @@ const GlobeScene = React.memo(function GlobeScene({
       oceanCurrentsLayerRef.current.setEvents(planetaryFeed);
     }
   }, [planetaryFeed]);
+
+  // ── Sync Cyclone Forecast Timeline into CycloneVortexLayer ──
+  useEffect(() => {
+    if (cycloneVortexLayerRef.current) {
+      const hoursAhead =
+        weatherLayerMode === 'hurricane'
+          ? CYCLONE_TIMELINE_STEPS[weatherTimelineIndex % CYCLONE_TIMELINE_STEPS.length]
+          : weatherTimelineIndex;
+      cycloneVortexLayerRef.current.setTimelineHoursAhead(hoursAhead);
+    }
+  }, [weatherTimelineIndex, weatherLayerMode]);
 
   // ── Sync Three.js Weather & Geophysical Layer Visibility & Categorical Isolation ──
   useEffect(() => {

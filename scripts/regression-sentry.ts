@@ -441,6 +441,47 @@ function runWeatherLayersSuite(issues: SentryIssue[]): { pass: boolean; healed: 
 }
 
 // ────────────────────────────────────────────────────────────
+// Suite 9: Tropical Cyclone Forecast Timeline & Landfall Intelligence Invariants
+// ────────────────────────────────────────────────────────────
+function runCycloneForecastSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
+  process.stdout.write(' [9/9] Verifying Cyclone Forecast Timeline & Landfall Intelligence... ');
+  try {
+    const output = execSync('npx tsx scripts/test-cyclone-forecast-suite.ts', {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      timeout: 90000,
+      encoding: 'utf-8',
+    });
+    if (output.includes('ALL CYCLONE FORECAST & TRACKING INVARIANTS VERIFIED')) {
+      console.log('✅ PASSED (24/24 cyclone forecast & tracking invariants verified)');
+      return {
+        pass: true,
+        healed: false,
+        message: 'All 24 cyclone forecast cone, timeline interpolation, and landfall intelligence contracts verified',
+      };
+    } else {
+      throw new Error('Cyclone forecast test reported failures');
+    }
+  } catch (err: any) {
+    const errorOutput = (err.stdout || '') + '\n' + (err.stderr || '') + '\n' + err.message;
+    console.log('❌ FAILED: Cyclone forecast tracking regression detected');
+    issues.push({
+      id: `CYCLONE-FORECAST-FAIL-${Date.now()}`,
+      suite: 'Cyclone Forecast Timeline Invariants',
+      severity: 'CRITICAL',
+      message: errorOutput.slice(0, 300),
+      autoFixAttempted: false,
+      autoFixSucceeded: false,
+    });
+    return {
+      pass: false,
+      healed: false,
+      message: 'Cyclone forecast timeline regression detected',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 // Optional Suite 9: Full Production Build Verification
 // ────────────────────────────────────────────────────────────
 function runProductionBuildSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
@@ -566,11 +607,16 @@ async function main() {
   const s8 = runWeatherLayersSuite(issues);
   suites.push({ name: '3D Weather Layers & Atmospheric Invariants', status: s8.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s8Start, details: s8.message });
 
-  // Optional Suite 9: Full Build
+  // Suite 9: Cyclone Forecast Timeline & Landfall Intelligence Invariants
+  const s9Start = Date.now();
+  const s9 = runCycloneForecastSuite(issues);
+  suites.push({ name: 'Cyclone Forecast Timeline & Landfall Intelligence', status: s9.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s9Start, details: s9.message });
+
+  // Optional Suite 10: Full Build
   if (includeFullBuild) {
-    const s9Start = Date.now();
-    const s9 = runProductionBuildSuite(issues);
-    suites.push({ name: 'Production Build Compilation', status: s9.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s9Start, details: s9.message });
+    const s10Start = Date.now();
+    const s10 = runProductionBuildSuite(issues);
+    suites.push({ name: 'Production Build Compilation', status: s10.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s10Start, details: s10.message });
   }
 
   const durationMs = Date.now() - startTime;

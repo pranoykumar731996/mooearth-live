@@ -241,6 +241,8 @@ export class CycloneVortexLayer {
   private rootGroup: THREE.Group;
   private particleTexture: THREE.CanvasTexture | null = null;
   private storms: Map<string, StormVortexInstance> = new Map();
+  private currentEvents: WorldEvent[] = [];
+  private currentHoursAhead: number = 0;
 
   constructor(options: CycloneVortexLayerOptions = {}) {
     this.radius = options.radius ?? 100;
@@ -257,10 +259,58 @@ export class CycloneVortexLayer {
   }
 
   /**
+   * Synchronizes cyclone vortex position with the forecast timeline scrubber.
+   */
+  public setTimelineHoursAhead(hoursAhead: number): void {
+    this.currentHoursAhead = Math.max(0, hoursAhead);
+    for (const [eventId, storm] of Array.from(this.storms.entries())) {
+      const event = this.currentEvents.find((e) => e.id === eventId);
+      if (!event) continue;
+
+      if (
+        this.currentHoursAhead === 0 ||
+        !Array.isArray(event.planetaryTelemetry?.forecastCone) ||
+        event.planetaryTelemetry.forecastCone.length === 0
+      ) {
+        this.updateStormPosition(storm, event);
+      } else {
+        const nodes = event.planetaryTelemetry.forecastCone;
+        const allNodes = [
+          { timeHours: 0, centerLat: event.lat, centerLng: event.lng },
+          ...nodes,
+        ];
+        let p1 = allNodes[0];
+        let p2 = allNodes[allNodes.length - 1];
+        for (let i = 0; i < allNodes.length - 1; i++) {
+          if (
+            this.currentHoursAhead >= allNodes[i].timeHours &&
+            this.currentHoursAhead <= allNodes[i + 1].timeHours
+          ) {
+            p1 = allNodes[i];
+            p2 = allNodes[i + 1];
+            break;
+          }
+        }
+        const span = p2.timeHours - p1.timeHours;
+        const t = span <= 0 ? 0 : (this.currentHoursAhead - p1.timeHours) / span;
+        const interpLat = p1.centerLat + (p2.centerLat - p1.centerLat) * t;
+        const interpLng = p1.centerLng + (p2.centerLng - p1.centerLng) * t;
+
+        const worldPos = geoToVector3(interpLat, interpLng, this.radius * 1.0016);
+        storm.group.position.copy(worldPos);
+        const surfaceNormal = worldPos.clone().normalize();
+        const defaultNormal = new THREE.Vector3(0, 0, 1);
+        storm.group.quaternion.setFromUnitVectors(defaultNormal, surfaceNormal);
+      }
+    }
+  }
+
+  /**
    * Filter and populate active tropical cyclones / severe storms.
    * Strictly live data: never injects stale historical baselines like Cyclone Dana (2024).
    */
   public setEvents(events: WorldEvent[]): void {
+    this.currentEvents = [...events];
     const cycloneEvents = events.filter((e) => {
       const titleLower = (e.title || '').toLowerCase();
       const isExplicitCyclone = e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone';

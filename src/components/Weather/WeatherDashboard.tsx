@@ -30,9 +30,14 @@ import {
 } from '@/services/weather/radarAdapter';
 import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService';
 import {
+  getActiveTropicalCyclones,
   getActiveTropicalCyclonesAsEvents,
+  cycloneToWorldEvent,
   isTropicalCycloneEvent,
+  type TropicalCyclone,
 } from '@/services/weather/cycloneTrackingService';
+import CycloneDossierPanel from './CycloneDossierPanel';
+import { CYCLONE_TIMELINE_STEPS, CYCLONE_LIVE_STEP_INDEX } from './WindyTimeScrubber';
 import { BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
 import { WEATHER_LAYERS, type WeatherLayerMode, type GeocodingResult, type UnitPreferences, type ForecastResponse, type SatelliteSpectralMode } from '@/services/weather/types';
@@ -132,6 +137,7 @@ export default function WeatherDashboard() {
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
   const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
+  const [selectedCyclone, setSelectedCyclone] = useState<TropicalCyclone | null>(null);
   const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
   const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
 
@@ -146,10 +152,18 @@ export default function WeatherDashboard() {
     return Date.now() - publishedTime <= 24 * 60 * 60 * 1000;
   }, []);
 
-  // Active cyclones list for quick-tracking (official NOAA NHC, JTWC, and IMD feeds)
-  const activeCyclones = useMemo(() => {
-    return getActiveTropicalCyclonesAsEvents(events);
+  // Active cyclones feed and normalized objects (official NOAA NHC, JTWC, and IMD feeds)
+  const activeCycloneFeed = useMemo(() => {
+    return getActiveTropicalCyclones(events);
   }, [events]);
+
+  const rawCyclones: TropicalCyclone[] = useMemo(() => {
+    return activeCycloneFeed.cyclones;
+  }, [activeCycloneFeed]);
+
+  const activeCyclones = useMemo(() => {
+    return rawCyclones.map(cycloneToWorldEvent);
+  }, [rawCyclones]);
 
   // Active thunderstorms list for quick-tracking (severe convective cells and squalls within past 24h)
   const activeThunderstorms = useMemo(() => {
@@ -207,13 +221,25 @@ export default function WeatherDashboard() {
   // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
   const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
 
-  // Automatically synchronize hurricane weather layer with cyclone hazard filter
+  // Active timeline hours ahead for tropical cyclones (interpolates forecast cone & tracks)
+  const cycloneHoursAhead = useMemo(() => {
+    if (weather.activeLayer === 'hurricane') {
+      return CYCLONE_TIMELINE_STEPS[timelineIndex % CYCLONE_TIMELINE_STEPS.length] ?? 0;
+    }
+    return timelineIndex;
+  }, [weather.activeLayer, timelineIndex]);
+
+  // Automatically synchronize hurricane weather layer with cyclone hazard filter, live frame & auto-selection
   useEffect(() => {
     if (weather.activeLayer === 'hurricane') {
       setDisasterCategoryFilter('cyclones');
       setIsHazardBarExpanded(true);
+      setTimelineIndex(CYCLONE_LIVE_STEP_INDEX);
+      if (!selectedCyclone && rawCyclones.length > 0) {
+        setSelectedCyclone(rawCyclones[0]);
+      }
     }
-  }, [weather.activeLayer]);
+  }, [weather.activeLayer, rawCyclones, selectedCyclone]);
 
   // Unified multi-hazard disaster feed based on active filter
   const displayedDisasters = useMemo(() => {
@@ -774,24 +800,36 @@ export default function WeatherDashboard() {
   // Memoized handlers for CityMapViewer to prevent re-initialization and rendering loops
   const handleInspectDossierFromMap = useCallback((disaster: WorldEvent | null) => {
     setSelectedDisasterEvent(disaster);
-  }, []);
+    if (disaster) {
+      const matching = rawCyclones.find((c) => c.id === disaster.id || c.name.toLowerCase() === disaster.title.toLowerCase());
+      if (matching) {
+        setSelectedCyclone(matching);
+      }
+    }
+  }, [rawCyclones]);
 
   const handleSelectDisasterFromMap = useCallback(
     (disaster: WorldEvent | null) => {
       setSelectedDisasterEvent(disaster);
-      if (disaster && typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
-        const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
-        weather.fetchWeatherForLocation({
-          name: cleanName,
-          country: disaster.country || 'Hazard Center',
-          latitude: disaster.lat,
-          longitude: disaster.lng,
-          timezone: 'auto',
-          source: 'globe-click',
-        });
+      if (disaster) {
+        const matching = rawCyclones.find((c) => c.id === disaster.id || c.name.toLowerCase() === disaster.title.toLowerCase());
+        if (matching) {
+          setSelectedCyclone(matching);
+        }
+        if (typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
+          const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
+          weather.fetchWeatherForLocation({
+            name: cleanName,
+            country: disaster.country || 'Hazard Center',
+            latitude: disaster.lat,
+            longitude: disaster.lng,
+            timezone: 'auto',
+            source: 'globe-click',
+          });
+        }
       }
     },
-    [weather]
+    [weather, rawCyclones]
   );
 
   const handleOpenWeatherFromMap = useCallback(() => {
@@ -1180,6 +1218,10 @@ export default function WeatherDashboard() {
                 selectedDisaster={selectedDisasterEvent}
                 onInspectDossier={handleInspectDossierFromMap}
                 onSelectDisaster={handleSelectDisasterFromMap}
+                cyclones={rawCyclones}
+                timelineHoursAhead={cycloneHoursAhead}
+                selectedCyclone={selectedCyclone}
+                onSelectCyclone={setSelectedCyclone}
                 weatherSummary={cityWeatherSummary}
                 onReturnToEarth={handleReturnToEarth}
                 onOpenWeather={handleOpenWeatherFromMap}
@@ -1284,6 +1326,10 @@ export default function WeatherDashboard() {
                           type="button"
                           onClick={() => {
                             setSelectedDisasterEvent(disaster);
+                            const matching = rawCyclones.find((c) => c.id === disaster.id || c.name.toLowerCase() === disaster.title.toLowerCase());
+                            if (matching) {
+                              setSelectedCyclone(matching);
+                            }
                             if (viewMode === 'globe') {
                               globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
                             }
@@ -1328,6 +1374,10 @@ export default function WeatherDashboard() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedDisasterEvent(disaster);
+                              const matching = rawCyclones.find((c) => c.id === disaster.id || c.name.toLowerCase() === disaster.title.toLowerCase());
+                              if (matching) {
+                                setSelectedCyclone(matching);
+                              }
                             }}
                             className="text-[9px] font-mono text-cyan-400/80 group-hover:text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-1 py-0.2 rounded flex items-center gap-0.5 hover:bg-cyan-500/25"
                             title="Inspect Planetary Telemetry Dossier"
@@ -1537,6 +1587,15 @@ export default function WeatherDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Interactive Tropical Cyclone Forecast Dossier & Landfall Intelligence Panel */}
+        {selectedCyclone && (
+          <CycloneDossierPanel
+            cyclone={selectedCyclone}
+            timelineHoursAhead={cycloneHoursAhead}
+            onClose={() => setSelectedCyclone(null)}
+          />
         )}
 
         {/* Interactive Disaster Telemetry Dossier Modal (Hurricanes, Cyclones, Thunderstorms) */}

@@ -315,7 +315,7 @@ export const WEATHER_LAYERS: WeatherLayerConfig[] = [
   { id: 'precipitation', name: 'Rain, thunder', icon: '⛈️', description: 'Precipitation forecast (Open-Meteo GFS/ECMWF)', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'temperature', name: 'Temperature', icon: '🌡️', description: 'Temperature & feels-like', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'pressure', name: 'Pressure & Isobars', icon: '🔵', description: 'Mean sea level pressure (MSLP) & 4 hPa isobars', requiresCoordinates: false, refreshIntervalMs: 600_000 },
-  { id: 'hurricane', name: 'Hurricane tracker', icon: '🌀', description: 'Active tropical cyclones & tracks', requiresCoordinates: false, refreshIntervalMs: 600_000 },
+  { id: 'hurricane', name: 'Cyclone Tracker', icon: '🌀', description: 'Tropical cyclone forecast timeline, tracks & cones (IMD, NOAA NHC, JTWC)', requiresCoordinates: false, refreshIntervalMs: 600_000 },
   { id: 'clouds', name: 'Clouds', icon: '☁️', description: 'Cloud cover fraction & base', requiresCoordinates: true, refreshIntervalMs: 600_000 },
   { id: 'marine', name: 'Waves & Currents', icon: '🌊', description: 'Wave height, swell & ocean gyres', requiresCoordinates: true, refreshIntervalMs: 1_800_000 },
   { id: 'overview', name: 'Overview', icon: '🌤️', description: 'Current conditions & forecast', requiresCoordinates: true, refreshIntervalMs: 600_000 },

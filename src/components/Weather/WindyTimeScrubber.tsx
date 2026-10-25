@@ -40,6 +40,9 @@ interface WindyTimeScrubberProps {
   satelliteObservationUtc?: string;
 }
 
+export const CYCLONE_TIMELINE_STEPS = [-24, -18, -12, -6, 0, 6, 12, 18, 24, 30, 36, 42, 48, 60, 72, 84, 96, 108, 120];
+export const CYCLONE_LIVE_STEP_INDEX = 4; // Index 4 represents 0h (Live / Current Observed Position)
+
 export default function WindyTimeScrubber({
   activeLayer,
   spectralMode,
@@ -68,11 +71,15 @@ export default function WindyTimeScrubber({
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isRadarMode = activeLayer === 'radar' && radarFrames.length > 0;
-  const totalSteps = isRadarMode ? radarFrames.length : 24;
+  const isCycloneMode = activeLayer === 'hurricane';
+  const totalSteps = isRadarMode ? radarFrames.length : isCycloneMode ? CYCLONE_TIMELINE_STEPS.length : 24;
   const currentStep = isRadarMode
     ? Math.min(totalSteps - 1, Math.max(0, activeRadarFrameIndex ?? (timelineIndex % totalSteps)))
+    : isCycloneMode
+    ? Math.min(totalSteps - 1, Math.max(0, timelineIndex % totalSteps))
     : Math.min(totalSteps - 1, Math.max(0, timelineIndex % totalSteps));
 
+  const cycloneHours = isCycloneMode ? CYCLONE_TIMELINE_STEPS[currentStep] : 0;
   const selectedRadarFrame = isRadarMode ? radarFrames[currentStep] : null;
   const isLiveRadar = isRadarMode && currentStep === totalSteps - 1;
 
@@ -142,10 +149,32 @@ export default function WindyTimeScrubber({
           </div>
 
           {/* Mini Live Pill */}
-          <div className="px-1.5 py-0.5 rounded-full bg-amber-400/90 text-black font-extrabold text-[9px] tracking-wide flex items-center gap-1 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-            <span className="truncate max-w-[85px] sm:max-w-none">
-              {isRadarMode && selectedRadarFrame ? selectedRadarFrame.label : liveTimeString || 'Live'}
+          <div
+            className={`px-1.5 py-0.5 rounded-full text-black font-extrabold text-[9px] tracking-wide flex items-center gap-1 shrink-0 ${
+              isCycloneMode
+                ? cycloneHours < 0
+                  ? 'bg-cyan-400/90'
+                  : cycloneHours === 0
+                  ? 'bg-amber-400/90 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+                  : 'bg-emerald-400/90'
+                : 'bg-amber-400/90'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isCycloneMode && cycloneHours > 0 ? 'bg-emerald-800' : 'bg-red-600'
+              } ${currentStep === (isCycloneMode ? CYCLONE_LIVE_STEP_INDEX : totalSteps - 1) ? 'animate-pulse' : ''}`}
+            />
+            <span className="truncate max-w-[95px] sm:max-w-none">
+              {isRadarMode && selectedRadarFrame
+                ? selectedRadarFrame.label
+                : isCycloneMode
+                ? cycloneHours < 0
+                  ? `Observed (-${Math.abs(cycloneHours)}h)`
+                  : cycloneHours === 0
+                  ? 'Observed · Live'
+                  : `Forecast (+${cycloneHours}h)`
+                : liveTimeString || 'Live'}
             </span>
           </div>
 
@@ -183,7 +212,7 @@ export default function WindyTimeScrubber({
                   ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-rose-500/50 ring-2 ring-rose-400 animate-pulse'
                   : 'bg-gradient-to-tr from-red-600 to-rose-500 text-white hover:from-red-500 hover:to-rose-400 shadow-red-500/30'
               }`}
-            title={isPlaying ? 'Pause animation' : isRadarMode ? 'Play radar loop' : 'Play 24h loop'}
+            title={isPlaying ? 'Pause animation' : isRadarMode ? 'Play radar loop' : isCycloneMode ? 'Play 5-day forecast track' : 'Play 24h loop'}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? (
@@ -217,6 +246,36 @@ export default function WindyTimeScrubber({
                   </span>
                 </div>
               </div>
+            ) : isCycloneMode ? (
+              <div className="flex justify-between items-center text-[9px] font-mono text-white/50 px-1 mb-0.5">
+                <span className="text-cyan-400/90 font-bold">-24h</span>
+                <span className="hidden sm:inline text-cyan-400/60">-12h</span>
+                {/* Cyclone Status Pill Badge */}
+                <div
+                  className={`px-2 py-0.5 rounded-full font-mono font-extrabold text-[9px] tracking-wide flex items-center gap-1.5 shadow-sm transition-all ${
+                    cycloneHours < 0
+                      ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/40'
+                      : cycloneHours === 0
+                      ? 'bg-amber-400 text-black shadow-[0_0_10px_rgba(251,191,36,0.8)] font-black animate-pulse'
+                      : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      cycloneHours === 0 ? 'bg-red-600 animate-ping' : cycloneHours < 0 ? 'bg-cyan-400' : 'bg-emerald-400'
+                    }`}
+                  />
+                  <span>
+                    {cycloneHours < 0
+                      ? `Observed (-${Math.abs(cycloneHours)}h)`
+                      : cycloneHours === 0
+                      ? 'Observed Eye · Live'
+                      : `Official Forecast (+${cycloneHours}h)`}
+                  </span>
+                </div>
+                <span className="hidden sm:inline text-emerald-400/60">+48h</span>
+                <span className="text-emerald-400/90 font-bold">+120h (5d)</span>
+              </div>
             ) : (
               <div className="flex justify-between items-center text-[9px] font-mono text-white/50 px-1 mb-0.5">
                 <span>-24h</span>
@@ -249,6 +308,10 @@ export default function WindyTimeScrubber({
                 <span className="text-cyan-300/80 truncate">📡 {radarAttribution || 'NOAA NEXRAD Doppler'} · Frame {currentStep + 1}/{totalSteps}</span>
               ) : activeLayer === 'satellite' ? (
                 <span className="text-cyan-300/80 truncate">🛰️ NASA GIBS / NOAA GOES · {satelliteObservationUtc || 'UTC Active'}</span>
+              ) : activeLayer === 'hurricane' ? (
+                <span className="text-cyan-300/90 truncate">
+                  🌀 Official Forecast Track & Uncertainty Cone · NOAA NHC / JTWC / IMD · Frame {currentStep + 1}/{totalSteps}
+                </span>
               ) : activeLayer === 'pressure' ? (
                 <span className="text-cyan-300/80 truncate">🔵 Surface Pressure MSLP · 4 hPa Isobars</span>
               ) : activeLayer === 'marine' ? (
