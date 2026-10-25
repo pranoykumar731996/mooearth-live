@@ -159,7 +159,14 @@ export default function WeatherPanel({
           )}
 
           {/* ── Current Conditions ────────────────── */}
-          {(activeLayer === 'overview' || activeLayer === 'temperature' || activeLayer === 'wind' || activeLayer === 'precipitation') && (
+          {(activeLayer === 'overview' ||
+            activeLayer === 'temperature' ||
+            activeLayer === 'wind' ||
+            activeLayer === 'precipitation' ||
+            activeLayer === 'satellite' ||
+            activeLayer === 'clouds' ||
+            activeLayer === 'radar' ||
+            activeLayer === 'hurricane') && (
             <>
               {loading.forecast ? (
                 <LoadingSkeleton />

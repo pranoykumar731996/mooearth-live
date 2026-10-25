@@ -1239,7 +1239,20 @@ export default function WeatherDashboard() {
                 disasterFilter={disasterCategoryFilter}
                 onSelectDisasterFilter={setDisasterCategoryFilter}
                 selectedDisaster={selectedDisasterEvent}
-                onSelectDisaster={setSelectedDisasterEvent}
+                onSelectDisaster={(disaster) => {
+                  setSelectedDisasterEvent(disaster);
+                  if (disaster && typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
+                    const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
+                    weather.fetchWeatherForLocation({
+                      name: cleanName,
+                      country: disaster.country || 'Hazard Center',
+                      latitude: disaster.lat,
+                      longitude: disaster.lng,
+                      timezone: 'auto',
+                      source: 'globe-click',
+                    });
+                  }
+                }}
                 weatherSummary={
                   displayedForecast?.current
                     ? {

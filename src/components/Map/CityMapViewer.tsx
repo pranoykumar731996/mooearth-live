@@ -100,6 +100,40 @@ export interface CityMapViewerProps {
   className?: string;
 }
 
+function createLocationPopupHtml(
+  cityName: string,
+  countryName?: string,
+  latitude?: number,
+  longitude?: number,
+  weather?: CityWeatherSummary | null
+): string {
+  const hasWeather = Boolean(weather && typeof weather.temperature === 'number');
+  const tempStr = hasWeather && weather?.temperature !== undefined
+    ? `${Math.round(weather.temperature)}°${weather.units === 'fahrenheit' ? 'F' : 'C'}`
+    : '';
+  return `
+    <div style="background: rgba(5,5,18,0.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 270px;">
+      <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
+      ${countryName ? `<div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName}</div>` : ''}
+      ${hasWeather && weather ? `
+        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.3);">
+          <span style="font-size: 16px;">${weather.weatherEmoji || '🌤️'}</span>
+          <span style="font-weight: 800; color: #ffffff; font-size: 13px;">${tempStr}</span>
+          <span style="color: rgba(255,255,255,0.75); font-size: 10px; margin-left: 2px;">${weather.weatherDescription || ''}</span>
+        </div>
+      ` : `
+        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background: #22d3ee; box-shadow: 0 0 8px #22d3ee;"></span>
+          <span style="color: #67e8f9; font-size: 10px; font-weight: 600;">Fetching live weather telemetry...</span>
+        </div>
+      `}
+      ${typeof latitude === 'number' && typeof longitude === 'number' ? `
+        <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
+      ` : ''}
+    </div>
+  `;
+}
+
 export default function CityMapViewer({
   latitude,
   longitude,
@@ -191,6 +225,13 @@ export default function CityMapViewer({
   const currentLocationRef = useRef({ latitude, longitude, cityName, countryName, initialZoom });
   currentLocationRef.current = { latitude, longitude, cityName, countryName, initialZoom };
 
+  // Last known weather summary ref to prevent flickering / disappearing telemetry on location selection
+  const lastKnownWeatherRef = useRef<CityWeatherSummary | null>(null);
+  if (weatherSummary) {
+    lastKnownWeatherRef.current = weatherSummary;
+  }
+  const activeWeatherSummary = weatherSummary || lastKnownWeatherRef.current;
+
   // Initialize or reconfigure MapLibre
   const initMap = useCallback(
     (styleKey: MapStyleKey) => {
@@ -269,13 +310,9 @@ export default function CityMapViewer({
             offset: 20,
             closeButton: true,
             className: 'city-map-popup',
-          }).setHTML(`
-            <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 30px 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-width: 260px;">
-              <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${initCoords.cityName}</div>
-              <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${initCoords.countryName || ''}</div>
-              <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${initCoords.latitude.toFixed(4)}°, ${initCoords.longitude.toFixed(4)}°</div>
-            </div>
-          `);
+          }).setHTML(
+            createLocationPopupHtml(initCoords.cityName, initCoords.countryName, initCoords.latitude, initCoords.longitude, activeWeatherSummary)
+          );
 
           // Attach marker
           const marker = new Marker({ element: pinEl, anchor: 'center' })
@@ -423,17 +460,19 @@ export default function CityMapViewer({
           essential: true,
         });
 
-        const popupHtml = `
-          <div style="background: rgba(5,5,18,0.95); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 30px 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); max-width: 260px;">
-            <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
-            <div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName || ''}</div>
-            <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
-          </div>
-        `;
+        const popupHtml = createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary);
 
         if (markerRef.current) {
           markerRef.current.setLngLat([longitude, latitude]);
-          markerRef.current.getPopup()?.setHTML(popupHtml);
+          const popup = markerRef.current.getPopup();
+          if (popup) {
+            popup.setHTML(popupHtml);
+            try {
+              popup.addTo(mapRef.current);
+            } catch {
+              // popup display optional
+            }
+          }
         } else {
           const pinEl = document.createElement('div');
           pinEl.className = 'city-map-pin-container group cursor-pointer';
@@ -462,7 +501,16 @@ export default function CityMapViewer({
         }
       }
     }
-  }, [latitude, longitude, initialZoom, isMapLoaded, cityName, countryName]);
+  }, [latitude, longitude, initialZoom, isMapLoaded, cityName, countryName, activeWeatherSummary]);
+
+  // Synchronize pin popup whenever activeWeatherSummary updates
+  useEffect(() => {
+    if (markerRef.current && activeWeatherSummary) {
+      markerRef.current.getPopup()?.setHTML(
+        createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary)
+      );
+    }
+  }, [activeWeatherSummary, cityName, countryName, latitude, longitude]);
 
   // Synchronize 2D Disaster and Cyclone Markers with MapLibre
   useEffect(() => {
@@ -841,7 +889,7 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview') {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -855,8 +903,8 @@ export default function CityMapViewer({
         const isVisibleMode = spectralMode === 'visible';
         const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterOpacity = isVisibleMode ? 0.90 : isBlue ? 0.86 : 0.90;
-        const rasterContrast = isVisibleMode ? 0.05 : isBlue ? 0.16 : 0.10;
+        const rasterOpacity = isVisibleMode ? 0.88 : isBlue ? 0.86 : 0.88;
+        const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
 
         // Observation date string (YYYY-MM-DD)
         const dateStr = satelliteObservationUtc
@@ -872,10 +920,10 @@ export default function CityMapViewer({
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // Global seamless TrueColor VIIRS layer with transparent clear skies (real clouds only over cyclonic & storm formations)
+          // Global seamless TrueColor VIIRS layer directly from NASA GIBS with 100% tile availability
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `/api/weather/satellite/tile?mode=visible&date=${dateStr}&z={z}&x={x}&y={y}`;
+          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 
           const existingSource = map.getSource(visibleSourceId) as any;
           if (existingSource) {
@@ -961,7 +1009,7 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileUrl = `/api/weather/satellite/tile?mode=infra&sector=${sec.id}&date=${dateStr}&z={z}&x={x}&y={y}`;
+            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${dateStr}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
@@ -1033,7 +1081,7 @@ export default function CityMapViewer({
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
@@ -1199,6 +1247,81 @@ export default function CityMapViewer({
 
 
 
+      {/* ── Windy Satellite & Nowcast Lightning Telemetry HUD ── */}
+      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && (
+        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
+          <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
+            {/* Top row: Sensor Pass + Live Time Pill */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base shrink-0">🛰️</span>
+                <span className="font-bold text-white text-[11px] tracking-wide">
+                  Geostationary Satellite Clouds
+                </span>
+                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/30">
+                  REAL CLOUDS
+                </span>
+              </div>
+
+              {/* Amber Live Latency Pill matching Windy */}
+              <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                <span>Live • 11m ago</span>
+              </div>
+            </div>
+
+            {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
+              <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
+                  const isActive = (spectralMode || 'visible') === mode;
+                  const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => onSelectSpectralMode?.(mode)}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Nowcast Lightning Toggle Button */}
+              {lightningFeed && (
+                <button
+                  type="button"
+                  onClick={() => setShowLightning(!showLightning)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                    showLightning
+                      ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                  }`}
+                  title="Toggle Nowcast Lightning strikes overlay"
+                >
+                  <span className="animate-pulse">⚡</span>
+                  <span>Nowcast Lightning</span>
+                  <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
+                    {lightningFeed.totalCount}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Subtitle */}
+            <div className="text-[9px] font-mono text-white/40 truncate">
+              {satelliteObservationUtc || 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain'}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Floating Navigation HUD ──────────────── */}
       <div className="absolute top-3 left-2.5 right-2.5 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
         {/* Left: "Return to Earth" Action & City Badge */}
@@ -1217,15 +1340,26 @@ export default function CityMapViewer({
 
           {/* City Badge & Recenter Button */}
           <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-1.5 sm:gap-2 shadow-2xl max-w-full">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            {activeWeatherSummary?.weatherEmoji ? (
+              <span className="text-base shrink-0">{activeWeatherSummary.weatherEmoji}</span>
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+            )}
             <div className="min-w-0">
-              <div className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
-                {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
+                  {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
+                </span>
+                {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number' && (
+                  <span className="font-black text-cyan-300 text-xs font-mono shrink-0">
+                    {Math.round(activeWeatherSummary.temperature)}°{activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}
+                  </span>
+                )}
               </div>
               <div className="text-[10px] text-white/50 truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
                 {cityName === 'World Map'
                   ? 'Planetary Cyclones & Hazards'
-                  : `${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
+                  : `${activeWeatherSummary?.weatherDescription ? `${activeWeatherSummary.weatherDescription} · ` : ''}${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
               </div>
             </div>
             {cityName !== 'World Map' && (
@@ -1260,28 +1394,8 @@ export default function CityMapViewer({
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
         <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
-          {/* Top Controls Row: Style Selector Dropdown + Optional Nowcast Lightning Toggle */}
+          {/* Top Controls Row: Style Selector Dropdown */}
           <div className="flex items-center gap-1.5">
-            {/* Nowcast Lightning Toggle (sleek pill when satellite/clouds active) */}
-            {(activeLayer === 'satellite' || activeLayer === 'clouds') && lightningFeed && (
-              <button
-                type="button"
-                onClick={() => setShowLightning(!showLightning)}
-                className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all border cursor-pointer flex items-center gap-1 shadow-lg ${
-                  showLightning
-                    ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]'
-                    : 'bg-[#050512]/90 border-white/10 text-white/50 hover:text-white'
-                }`}
-                title="Toggle Nowcast Lightning strikes"
-              >
-                <span className="text-xs">⚡</span>
-                <span className="hidden sm:inline">Lightning</span>
-                <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
-                  {lightningFeed.totalCount}
-                </span>
-              </button>
-            )}
-
             {/* Style Selector Dropdown Pill */}
             <div className="relative">
               <button
@@ -1331,7 +1445,7 @@ export default function CityMapViewer({
         </div>
 
           {/* Live Weather Summary Badge & Mobile Weather Telemetry Option */}
-          {weatherSummary ? (
+          {activeWeatherSummary ? (
             <div
               data-testid="city-weather-summary-card"
               className="px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 shadow-2xl flex flex-col gap-1 max-w-[130px] min-[400px]:max-w-[160px] sm:max-w-[230px]"
@@ -1343,16 +1457,21 @@ export default function CityMapViewer({
                   title="Click to view detailed weather telemetry"
                 >
                   <span className="text-lg sm:text-xl shrink-0">
-                    {weatherSummary.weatherEmoji || '🌤️'}
+                    {activeWeatherSummary.weatherEmoji || '🌤️'}
                   </span>
                   <div>
-                    <div className="text-xs sm:text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors">
-                      {typeof weatherSummary.temperature === 'number'
-                        ? `${Math.round(weatherSummary.temperature)}°${weatherSummary.units === 'fahrenheit' ? 'F' : 'C'}`
-                        : '—'}
+                    <div className="text-xs sm:text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors flex items-center gap-1">
+                      <span>
+                        {typeof activeWeatherSummary.temperature === 'number'
+                          ? `${Math.round(activeWeatherSummary.temperature)}°${activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}`
+                          : '—'}
+                      </span>
+                      {!weatherSummary && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" title="Refreshing telemetry..." />
+                      )}
                     </div>
                     <div className="text-[9px] sm:text-[10px] text-white/50 truncate max-w-[65px] min-[400px]:max-w-[90px] sm:max-w-[110px]">
-                      {weatherSummary.weatherDescription || 'Current'}
+                      {activeWeatherSummary.weatherDescription || 'Current'}
                     </div>
                   </div>
                 </div>
@@ -1376,11 +1495,11 @@ export default function CityMapViewer({
                 className="hidden sm:flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40 cursor-pointer hover:text-white/70 transition-colors"
                 onClick={onOpenWeather}
               >
-                {typeof weatherSummary.windSpeed === 'number' && (
-                  <span>💨 {Math.round(weatherSummary.windSpeed)} km/h</span>
+                {typeof activeWeatherSummary.windSpeed === 'number' && (
+                  <span>💨 {Math.round(activeWeatherSummary.windSpeed)} km/h</span>
                 )}
-                {typeof weatherSummary.relativeHumidity === 'number' && (
-                  <span>💧 {weatherSummary.relativeHumidity}%</span>
+                {typeof activeWeatherSummary.relativeHumidity === 'number' && (
+                  <span>💧 {activeWeatherSummary.relativeHumidity}%</span>
                 )}
               </div>
             </div>

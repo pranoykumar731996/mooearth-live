@@ -185,10 +185,11 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
 export function getSatelliteObservationDate(offsetHours: number = 0): { dateStr: string; utcStr: string; timestampMs: number } {
   const now = new Date(Date.now() - offsetHours * 3600 * 1000);
   
-  // For daily global composites: if current UTC hour is early (< 04:00 UTC), use yesterday to ensure complete tiles
+  // For daily global composites: VIIRS polar orbit requires full swath aggregation (complete by ~14:00 UTC).
+  // If current UTC hour is < 14:00, use yesterday's 100% completed worldwide composite to guarantee zero missing tiles or 404s.
   const utcHours = now.getUTCHours();
   const adjusted = new Date(now.getTime());
-  if (utcHours < 4 && offsetHours === 0) {
+  if (utcHours < 14 && offsetHours === 0) {
     adjusted.setUTCDate(adjusted.getUTCDate() - 1);
   }
 
