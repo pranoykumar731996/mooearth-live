@@ -187,15 +187,6 @@ export default function CityMapViewer({
     onSelectDisasterFilter?.(val);
   }, [onSelectDisasterFilter]);
   const [showDisasters, setShowDisasters] = useState(true);
-  const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
-
-  // Automatically expand hazard tracker bar if a specific hazard category is isolated or hurricane layer is selected
-  useEffect(() => {
-    if (activeDisasterFilter !== 'all' || activeLayer === 'hurricane') {
-      setIsHazardBarExpanded(true);
-    }
-  }, [activeDisasterFilter, activeLayer]);
-
   // Filtered disaster list: strictly isolates selected hazard (no unwanted hazard markers)
   const filteredDisasters = useMemo(() => {
     if (!disasters || disasters.length === 0) return [];
@@ -210,15 +201,6 @@ export default function CityMapViewer({
       return type === activeDisasterFilter;
     });
   }, [disasters, activeDisasterFilter]);
-
-  // Disaster counts
-  const cycloneCount = useMemo(() => (disasters || []).filter((d) => {
-    return getDisasterMeta(d).type === 'cyclone';
-  }).length, [disasters]);
-  const quakeCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'seismic').length, [disasters]);
-  const wildfireCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'wildfires').length, [disasters]);
-  const stormCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'thunderstorms').length, [disasters]);
-  const spaceCount = useMemo(() => (disasters || []).filter((d) => getDisasterMeta(d).type === 'space_weather' || d.category === 'space_weather').length, [disasters]);
 
   // Real-time Nowcast Lightning feed matching Windy
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
@@ -791,28 +773,6 @@ export default function CityMapViewer({
     }
   }, [selectedDisaster, isMapLoaded]);
 
-  // Action: Fly to disaster when selected from 2D disaster tray
-  const handleFlyToDisaster = useCallback(
-    (event: WorldEvent) => {
-      if (!mapRef.current) return;
-      onSelectDisaster?.(event);
-      mapRef.current.flyTo({
-        center: [event.lng, event.lat],
-        zoom: Math.max(mapRef.current.getZoom(), 5.5),
-        speed: 1.2,
-        essential: true,
-      });
-      const entry = disasterMarkersRef.current.find((m) => m.event.id === event.id);
-      if (entry) {
-        try {
-          entry.popup.addTo(mapRef.current);
-        } catch {
-          // ignore
-        }
-      }
-    },
-    [onSelectDisaster]
-  );
 
   // Synchronize MapLibre GeoJSON Hazard Vector Layers (Seismic shockwaves, Cyclone gale radii, Wildfire halos)
   useEffect(() => {
@@ -1791,149 +1751,7 @@ export default function CityMapViewer({
         </div>
       </div>
 
-      {/* ── 2D Map Active Disasters Universal Floating HUD & Quick Selector ── */}
-      {disasters && disasters.length > 0 && !isHazardBarExpanded && (
-        <div className="absolute bottom-12 sm:bottom-14 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-          <button
-            type="button"
-            data-testid="toggle-hazards-bar-btn"
-            onClick={() => setIsHazardBarExpanded(true)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-[#050512]/92 hover:bg-[#07071c] backdrop-blur-xl border border-white/15 text-white/90 text-xs font-mono font-semibold shadow-[0_6px_25px_rgba(0,0,0,0.7)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group active:scale-95"
-            title="Click to view planetary hazards and telemetry dossiers"
-          >
-            <span className="flex items-center gap-1.5">
-              <span className="animate-pulse text-xs">🚨</span>
-              <span className="text-[11px] font-medium tracking-wide">Hazards</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
-                {filteredDisasters.length}
-              </span>
-              {activeDisasterFilter !== 'all' && (
-                <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-[9px] font-mono text-cyan-300 font-bold uppercase">
-                  {activeDisasterFilter}
-                </span>
-              )}
-            </span>
-            <span className="text-[10px] text-white/50 group-hover:text-white/80 transition-colors">▲</span>
-          </button>
-        </div>
-      )}
 
-      {disasters && disasters.length > 0 && isHazardBarExpanded && (
-        <div className="absolute bottom-12 sm:bottom-14 left-2 right-2 sm:left-4 sm:right-4 z-30 pointer-events-none flex flex-col items-center gap-1.5">
-          <div className="pointer-events-auto max-w-full w-auto flex flex-col items-center gap-1.5 p-2 rounded-2xl bg-[#050512]/94 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200">
-            {/* Header Row: Filter Chips, Eye Visibility, and Collapse Button */}
-            <div className="flex items-center justify-between gap-1.5 w-full">
-              <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none max-w-[calc(100vw-110px)] sm:max-w-none">
-                <button
-                  type="button"
-                  onClick={() => setShowDisasters(!showDisasters)}
-                  className={`px-2 py-0.8 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1 border transition-all cursor-pointer ${
-                    showDisasters
-                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
-                  }`}
-                  title="Toggle hazard markers and vector layers on 2D map"
-                >
-                  <span>{showDisasters ? '👁️' : '🕶️'}</span>
-                  <span className="hidden sm:inline">Layers</span>
-                  <span className="text-[9px] px-1 rounded bg-white/10 font-bold">{filteredDisasters.length}</span>
-                </button>
-
-                <div className="h-3 w-px bg-white/15" />
-
-                {/* Filter Pills */}
-                {(
-                  [
-                    { key: 'all', label: 'All Hazards', icon: '🌐', count: disasters.length },
-                    { key: 'cyclones', label: 'Cyclones', icon: '🌀', count: cycloneCount },
-                    { key: 'seismic', label: 'Quakes', icon: '🌋', count: quakeCount },
-                    { key: 'wildfires', label: 'Fires', icon: '🔥', count: wildfireCount },
-                    { key: 'thunderstorms', label: 'Storms', icon: '⚡', count: stormCount },
-                    { key: 'space_weather', label: 'Space', icon: '🌌', count: spaceCount },
-                  ] as const
-                ).map((tab) => {
-                  const isActive = activeDisasterFilter === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      type="button"
-                      onClick={() => setDisasterFilter(tab.key)}
-                      className={`shrink-0 px-2 py-0.8 rounded-xl text-[10px] font-mono font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-rose-500/25 border-rose-400 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <span>{tab.icon}</span>
-                      <span>{tab.label}</span>
-                      <span className="text-[9px] font-bold opacity-60">({tab.count})</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Collapse button */}
-              <button
-                type="button"
-                data-testid="collapse-hazards-bar-btn"
-                onClick={() => setIsHazardBarExpanded(false)}
-                className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer shrink-0 ml-1 text-xs"
-                title="Collapse hazards bar to clear 2D map view"
-              >
-                ▼
-              </button>
-            </div>
-
-            {/* Horizontal Carousel of Disasters for Quick-Fly & Direct Dossier Inspection */}
-            {showDisasters && filteredDisasters.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none max-w-[94vw] sm:max-w-2xl py-0.5">
-                {filteredDisasters.map((ev) => {
-                  const meta = getDisasterMeta(ev);
-                  const isSelected = selectedDisaster?.id === ev.id;
-                  return (
-                    <div
-                      key={ev.id}
-                      className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5 border transition-all ${
-                        isSelected
-                          ? 'bg-cyan-500/30 border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.6)]'
-                          : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleFlyToDisaster(ev)}
-                        className="flex items-center gap-1.5 hover:text-white cursor-pointer"
-                        title={`Fly camera to ${ev.title}`}
-                      >
-                        <span>{meta.icon}</span>
-                        <span className="truncate max-w-[110px] sm:max-w-[140px]">{meta.cleanTitle}</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 font-bold" style={{ color: meta.colorHex }}>
-                          {meta.categoryLabel}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onInspectDossier) {
-                            onInspectDossier(ev);
-                          } else {
-                            handleFlyToDisaster(ev);
-                          }
-                        }}
-                        className="p-0.8 rounded hover:bg-white/15 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer"
-                        title="Open Telemetry Dossier"
-                      >
-                        📊
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Scoped Disaster Animations & MapLibre Popup Styling ── */}
       <style>{`
