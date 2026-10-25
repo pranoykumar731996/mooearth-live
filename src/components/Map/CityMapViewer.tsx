@@ -904,8 +904,34 @@ export default function CityMapViewer({
         const isVisibleMode = spectralMode === 'visible';
         const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterOpacity = isVisibleMode ? 0.88 : isBlue ? 0.86 : 0.88;
         const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
+
+        // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
+        // - Planetary/Regional (zoom <= 8.5): Clouds remain 88% opaque showing real cyclone spirals & storms.
+        // - District/Metropolitan (zoom 9.0 to 11.5): Clouds smoothly dissolve as the camera approaches city level.
+        // - Street/Monuments/Landmarks (zoom >= 12.0): Clouds reach 0.0 opacity, revealing 100% razor-sharp, crisp 4K/HD satellite photography of places with ZERO fog.
+        const visibleOpacityExpression: any = [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          7.0, 0.88,
+          8.5, 0.84,
+          9.5, 0.65,
+          10.5, 0.35,
+          11.5, 0.10,
+          12.0, 0.0,
+        ];
+
+        const geostationaryOpacityExpression: any = [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          4.0, isBlue ? 0.86 : 0.88,
+          6.5, isBlue ? 0.80 : 0.82,
+          7.5, 0.45,
+          8.5, 0.15,
+          9.0, 0.0,
+        ];
 
         // Observation date string (YYYY-MM-DD)
         const dateStr = satelliteObservationUtc
@@ -943,16 +969,17 @@ export default function CityMapViewer({
                   id: visibleLayerId,
                   type: 'raster',
                   source: visibleSourceId,
+                  maxzoom: 12,
                   paint: {
-                    'raster-opacity': rasterOpacity,
+                    'raster-opacity': visibleOpacityExpression,
                     'raster-contrast': rasterContrast,
-                    'raster-fade-duration': 250,
+                    'raster-fade-duration': 300,
                   },
                 },
                 beforeLayerId
               );
             } else if (map.getLayer(visibleLayerId)) {
-              map.setPaintProperty(visibleLayerId, 'raster-opacity', rasterOpacity);
+              map.setPaintProperty(visibleLayerId, 'raster-opacity', visibleOpacityExpression);
               map.setPaintProperty(visibleLayerId, 'raster-contrast', rasterContrast);
             }
           } else {
@@ -968,10 +995,11 @@ export default function CityMapViewer({
                 id: visibleLayerId,
                 type: 'raster',
                 source: visibleSourceId,
+                maxzoom: 12,
                 paint: {
-                  'raster-opacity': rasterOpacity,
+                  'raster-opacity': visibleOpacityExpression,
                   'raster-contrast': rasterContrast,
-                  'raster-fade-duration': 250,
+                  'raster-fade-duration': 300,
                 },
               },
               beforeLayerId
@@ -1030,16 +1058,17 @@ export default function CityMapViewer({
                     id: lId,
                     type: 'raster',
                     source: sId,
+                    maxzoom: 9,
                     paint: {
-                      'raster-opacity': rasterOpacity,
+                      'raster-opacity': geostationaryOpacityExpression,
                       'raster-contrast': rasterContrast,
-                      'raster-fade-duration': 250,
+                      'raster-fade-duration': 300,
                     },
                   },
                   beforeLayerId
                 );
               } else if (map.getLayer(lId)) {
-                map.setPaintProperty(lId, 'raster-opacity', rasterOpacity);
+                map.setPaintProperty(lId, 'raster-opacity', geostationaryOpacityExpression);
                 map.setPaintProperty(lId, 'raster-contrast', rasterContrast);
               }
             } else {
@@ -1056,10 +1085,11 @@ export default function CityMapViewer({
                   id: lId,
                   type: 'raster',
                   source: sId,
+                  maxzoom: 9,
                   paint: {
-                    'raster-opacity': rasterOpacity,
+                    'raster-opacity': geostationaryOpacityExpression,
                     'raster-contrast': rasterContrast,
-                    'raster-fade-duration': 250,
+                    'raster-fade-duration': 300,
                   },
                 },
                 beforeLayerId
@@ -1265,11 +1295,18 @@ export default function CityMapViewer({
               </div>
 
               <div className="flex items-center gap-1.5 ml-auto">
-                {/* Amber Live Latency Pill matching Windy */}
-                <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>Live • 11m ago</span>
-                </div>
+                {/* Amber Live Latency Pill or HD Ground Detail indicator */}
+                {currentZoom >= 11.8 ? (
+                  <div className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-mono font-bold text-[10px] tracking-wide flex items-center gap-1 shrink-0">
+                    <span>✨</span>
+                    <span>HD Places Active</span>
+                  </div>
+                ) : (
+                  <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                    <span>Live • 11m ago</span>
+                  </div>
+                )}
 
                 {/* Crossbar to hide the HUD */}
                 <button
@@ -1690,8 +1727,13 @@ export default function CityMapViewer({
       {/* ── Bottom Telemetry & Attribution Bar ───────── */}
       <div className="absolute bottom-1.5 sm:bottom-2 left-2 right-2 sm:left-4 sm:right-4 z-20 pointer-events-none flex items-end justify-between text-[10px] font-mono text-white/40 pb-[env(safe-area-inset-bottom)]">
         {/* Telemetry coords */}
-        <div className="bg-[#050512]/80 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-white/5 pointer-events-auto">
+        <div className="bg-[#050512]/80 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-white/5 pointer-events-auto flex items-center gap-1.5">
           <span>ZOOM: {currentZoom}</span>
+          {currentZoom >= 11.8 && (
+            <span className="text-[9px] text-cyan-300 font-bold bg-cyan-500/20 px-1 py-0.2 rounded border border-cyan-400/30">
+              HD GROUND
+            </span>
+          )}
           <span className="hidden sm:inline">
             <span className="mx-1.5 text-white/20">|</span>
             <span>PITCH: {currentPitch}°</span>

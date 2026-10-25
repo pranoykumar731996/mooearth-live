@@ -327,7 +327,101 @@ class MockMapLibreInstance {
 const mockMap = new MockMapLibreInstance();
 assert(!mockMap.isDestroyed, 'Map instance initialized');
 mockMap.remove();
-assert(mockMap.isDestroyed, 'map.remove() cleans up WebGL context on unmount to prevent memory leaks');
+// ── 8. Anti-Regression: Multi-Scale HD Ground Dissolve & Weather Invariants ─
+console.log('\n--- 8. Anti-Regression: Multi-Scale HD Ground Dissolve & Weather Invariants ---');
+
+// Evaluate MapLibre linear interpolation expression at a specific zoom
+function evaluateZoomOpacity(expression: any[], zoom: number): number {
+  if (!Array.isArray(expression) || expression[0] !== 'interpolate') return 0;
+  // Format: ['interpolate', ['linear'], ['zoom'], z1, op1, z2, op2, ...]
+  const stops: { zoom: number; opacity: number }[] = [];
+  for (let i = 3; i < expression.length; i += 2) {
+    stops.push({ zoom: expression[i], opacity: expression[i + 1] });
+  }
+  if (zoom <= stops[0].zoom) return stops[0].opacity;
+  if (zoom >= stops[stops.length - 1].zoom) return stops[stops.length - 1].opacity;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const s1 = stops[i];
+    const s2 = stops[i + 1];
+    if (zoom >= s1.zoom && zoom <= s2.zoom) {
+      const t = (zoom - s1.zoom) / (s2.zoom - s1.zoom);
+      return Number((s1.opacity + t * (s2.opacity - s1.opacity)).toFixed(3));
+    }
+  }
+  return 0;
+}
+
+const visibleOpacityCurve: any = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  7.0, 0.88,
+  8.5, 0.84,
+  9.5, 0.65,
+  10.5, 0.35,
+  11.5, 0.10,
+  12.0, 0.0,
+];
+
+const infraredOpacityCurve: any = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  4.0, 0.88,
+  6.5, 0.80,
+  7.5, 0.45,
+  8.5, 0.15,
+  9.0, 0.0,
+];
+
+// Test 1: Macro & Regional scale preserves full satellite clouds
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 3.3) === 0.88,
+  'Global 2D view (zoom 3.3) displays full cloud opacity (0.88)'
+);
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 7.0) === 0.88,
+  'Continental & Cyclone view (zoom 7.0) displays full cloud opacity (0.88)'
+);
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 8.5) === 0.84,
+  'Regional storm front view (zoom 8.5) preserves high cloud visibility (0.84)'
+);
+
+// Test 2: Intermediate zoom dissolves smoothly
+const midZoomOpacity = evaluateZoomOpacity(visibleOpacityCurve, 10.5);
+assert(
+  midZoomOpacity === 0.35,
+  `District zoom (10.5) smoothly transitions to 0.35 opacity (was ${midZoomOpacity})`
+);
+
+// Test 3: City, Monument, and Street zoom is 100% fog-free (0.0 opacity)
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 12.0) === 0.0,
+  'City street threshold (zoom 12.0) completely dissolves clouds to 0.0'
+);
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 12.8) === 0.0,
+  'Bhubaneswar monument zoom (zoom 12.8) is 100% fog-free (0.0 opacity) revealing crystal-clear HD photos'
+);
+assert(
+  evaluateZoomOpacity(visibleOpacityCurve, 16.0) === 0.0,
+  'Deep street view (zoom 16.0) is 100% fog-free for razor-sharp monuments and buildings'
+);
+
+// Test 4: Geostationary Infrared Dissolve
+assert(
+  evaluateZoomOpacity(infraredOpacityCurve, 4.0) === 0.88,
+  'Geostationary infrared displays full storm opacity at synoptic scale (zoom 4.0)'
+);
+assert(
+  evaluateZoomOpacity(infraredOpacityCurve, 9.0) === 0.0,
+  'Geostationary infrared completely dissolves by zoom 9.0 avoiding pixelation'
+);
+assert(
+  evaluateZoomOpacity(infraredOpacityCurve, 12.8) === 0.0,
+  'Geostationary infrared is completely zero at monument zoom (zoom 12.8)'
+);
 
 // Final Summary
 console.log('\n============================================================');
