@@ -747,6 +747,90 @@ export default function WeatherDashboard() {
   const windDirection = displayedForecast?.current?.windDirection ?? 45;
   const windGusts = displayedForecast?.current?.windGusts;
 
+  // Stable memoized weather summary to avoid re-triggering CityMapViewer camera effects
+  const cityWeatherSummary = useMemo(() => {
+    if (!displayedForecast?.current) return null;
+    return {
+      temperature: displayedForecast.current.temperature,
+      apparentTemperature: displayedForecast.current.apparentTemperature,
+      weatherDescription: displayedForecast.current.weatherDescription,
+      weatherEmoji: displayedForecast.current.weatherEmoji,
+      windSpeed: displayedForecast.current.windSpeed,
+      relativeHumidity: displayedForecast.current.relativeHumidity,
+      precipitation: displayedForecast.current.precipitation,
+      units: weather.units,
+    };
+  }, [
+    displayedForecast?.current?.temperature,
+    displayedForecast?.current?.apparentTemperature,
+    displayedForecast?.current?.weatherDescription,
+    displayedForecast?.current?.weatherEmoji,
+    displayedForecast?.current?.windSpeed,
+    displayedForecast?.current?.relativeHumidity,
+    displayedForecast?.current?.precipitation,
+    weather.units,
+  ]);
+
+  // Memoized handlers for CityMapViewer to prevent re-initialization and rendering loops
+  const handleInspectDossierFromMap = useCallback((disaster: WorldEvent | null) => {
+    setSelectedDisasterEvent(disaster);
+  }, []);
+
+  const handleSelectDisasterFromMap = useCallback(
+    (disaster: WorldEvent | null) => {
+      setSelectedDisasterEvent(disaster);
+      if (disaster && typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
+        const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
+        weather.fetchWeatherForLocation({
+          name: cleanName,
+          country: disaster.country || 'Hazard Center',
+          latitude: disaster.lat,
+          longitude: disaster.lng,
+          timezone: 'auto',
+          source: 'globe-click',
+        });
+      }
+    },
+    [weather]
+  );
+
+  const handleOpenWeatherFromMap = useCallback(() => {
+    if (!hasData) {
+      const fallback = resolveInitialLocation();
+      weather.fetchWeatherForLocation({
+        latitude: fallback.latitude,
+        longitude: fallback.longitude,
+        name: fallback.name,
+        country: fallback.country,
+        timezone: fallback.timezone || 'auto',
+        source: 'search',
+      });
+    }
+    setIsPanelOpen(true);
+    setIsPanelMinimized(false);
+  }, [hasData, weather]);
+
+  const handleMapLibreClick = useCallback(
+    (coords: { lat: number; lng: number }) => {
+      const clickName = `${coords.lat >= 0 ? coords.lat.toFixed(1) + '°N' : Math.abs(coords.lat).toFixed(1) + '°S'}, ${coords.lng >= 0 ? coords.lng.toFixed(1) + '°E' : Math.abs(coords.lng).toFixed(1) + '°W'}`;
+      weather.fetchWeatherForLocation({
+        name: clickName,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        timezone: 'auto',
+        source: 'globe-click',
+      });
+      saveUserLocation({
+        latitude: coords.lat,
+        longitude: coords.lng,
+        name: clickName,
+      });
+      setIsPanelOpen(true);
+      setIsPanelMinimized(false);
+    },
+    [weather]
+  );
+
   return (
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
@@ -1094,70 +1178,12 @@ export default function WeatherDashboard() {
                 disasterFilter={disasterCategoryFilter}
                 onSelectDisasterFilter={setDisasterCategoryFilter}
                 selectedDisaster={selectedDisasterEvent}
-                onInspectDossier={(disaster) => {
-                  setSelectedDisasterEvent(disaster);
-                }}
-                onSelectDisaster={(disaster) => {
-                  setSelectedDisasterEvent(disaster);
-                  if (disaster && typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
-                    const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
-                    weather.fetchWeatherForLocation({
-                      name: cleanName,
-                      country: disaster.country || 'Hazard Center',
-                      latitude: disaster.lat,
-                      longitude: disaster.lng,
-                      timezone: 'auto',
-                      source: 'globe-click',
-                    });
-                  }
-                }}
-                weatherSummary={
-                  displayedForecast?.current
-                    ? {
-                        temperature: displayedForecast.current.temperature,
-                        apparentTemperature: displayedForecast.current.apparentTemperature,
-                        weatherDescription: displayedForecast.current.weatherDescription,
-                        weatherEmoji: displayedForecast.current.weatherEmoji,
-                        windSpeed: displayedForecast.current.windSpeed,
-                        relativeHumidity: displayedForecast.current.relativeHumidity,
-                        precipitation: displayedForecast.current.precipitation,
-                        units: weather.units,
-                      }
-                    : null
-                }
+                onInspectDossier={handleInspectDossierFromMap}
+                onSelectDisaster={handleSelectDisasterFromMap}
+                weatherSummary={cityWeatherSummary}
                 onReturnToEarth={handleReturnToEarth}
-                onOpenWeather={() => {
-                  if (!hasData) {
-                    const fallback = resolveInitialLocation();
-                    weather.fetchWeatherForLocation({
-                      latitude: fallback.latitude,
-                      longitude: fallback.longitude,
-                      name: fallback.name,
-                      country: fallback.country,
-                      timezone: fallback.timezone || 'auto',
-                      source: 'search',
-                    });
-                  }
-                  setIsPanelOpen(true);
-                  setIsPanelMinimized(false);
-                }}
-                onMapClick={(coords) => {
-                  const clickName = `${coords.lat >= 0 ? coords.lat.toFixed(1) + '°N' : Math.abs(coords.lat).toFixed(1) + '°S'}, ${coords.lng >= 0 ? coords.lng.toFixed(1) + '°E' : Math.abs(coords.lng).toFixed(1) + '°W'}`;
-                  weather.fetchWeatherForLocation({
-                    name: clickName,
-                    latitude: coords.lat,
-                    longitude: coords.lng,
-                    timezone: 'auto',
-                    source: 'globe-click',
-                  });
-                  saveUserLocation({
-                    latitude: coords.lat,
-                    longitude: coords.lng,
-                    name: clickName,
-                  });
-                  setIsPanelOpen(true);
-                  setIsPanelMinimized(false);
-                }}
+                onOpenWeather={handleOpenWeatherFromMap}
+                onMapClick={handleMapLibreClick}
               />
             </div>
           )}

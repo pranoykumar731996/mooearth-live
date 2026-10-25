@@ -225,6 +225,14 @@ export default function CityMapViewer({
   }
   const activeWeatherSummary = weatherSummary || lastKnownWeatherRef.current;
 
+  // Stable ref for onMapClick to prevent recreating initMap on parent re-renders
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
+
+  // Track last flown location target to prevent resetting user's free map exploration
+  const lastFlownTargetRef = useRef<string>('');
+  const userMapClickCoordRef = useRef<string>('');
+
   // Initialize or reconfigure MapLibre
   const initMap = useCallback(
     (styleKey: MapStyleKey) => {
@@ -349,7 +357,8 @@ export default function CityMapViewer({
           }
           const lat = Number(e.lngLat.lat.toFixed(4));
           const lng = Number(e.lngLat.lng.toFixed(4));
-          onMapClick?.({ lat, lng });
+          userMapClickCoordRef.current = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+          onMapClickRef.current?.({ lat, lng });
         });
 
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
@@ -408,10 +417,10 @@ export default function CityMapViewer({
         setErrorMessage(err?.message || 'Unable to initialize WebGL city map.');
       }
     },
-    [onMapClick]
+    []
   );
 
-  // Mount effect
+  // Mount effect (strictly on mount or explicit styleKey change)
   useEffect(() => {
     initMap(activeStyleKey);
 
@@ -443,60 +452,69 @@ export default function CityMapViewer({
     };
   }, [initMap, activeStyleKey]);
 
-  // Handle fly-to coordinate updates if parent changes props without destroying map instance
+  // Handle fly-to coordinate updates ONLY when the destination actually changes
   useEffect(() => {
-    if (mapRef.current && isMapLoaded) {
-      if (cityName && cityName !== 'World Map') {
-        mapRef.current.flyTo({
-          center: [longitude, latitude],
-          zoom: initialZoom,
-          essential: true,
-        });
+    if (!mapRef.current || !isMapLoaded) return;
+    if (!cityName || cityName === 'World Map') return;
 
-        const popupHtml = createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary);
+    const targetKey = `${cityName}:${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    if (lastFlownTargetRef.current === targetKey) {
+      // Already at this target - DO NOT disrupt user's free panning or zooming!
+      return;
+    }
+    lastFlownTargetRef.current = targetKey;
 
-        if (markerRef.current) {
-          markerRef.current.setLngLat([longitude, latitude]);
-          const popup = markerRef.current.getPopup();
-          if (popup) {
-            popup.setHTML(popupHtml);
-            try {
-              popup.addTo(mapRef.current);
-            } catch {
-              // popup display optional
-            }
-          }
-        } else {
-          const pinEl = document.createElement('div');
-          pinEl.className = 'city-map-pin-container group cursor-pointer';
-          pinEl.innerHTML = `
-            <div class="relative flex items-center justify-center">
-              <span class="absolute w-8 h-8 rounded-full bg-cyan-400/30 animate-ping"></span>
-              <span class="absolute w-5 h-5 rounded-full bg-cyan-500/50"></span>
-              <div class="relative w-3.5 h-3.5 rounded-full bg-cyan-300 border-2 border-white shadow-[0_0_12px_rgba(6,182,212,1)]"></div>
-            </div>
-          `;
-          const popup = new Popup({
-            offset: 20,
-            closeButton: true,
-            className: 'city-map-popup',
-          }).setHTML(popupHtml);
+    const isFromMapClick = userMapClickCoordRef.current === `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    const targetZoom = isFromMapClick ? mapRef.current.getZoom() : initialZoom;
 
-          markerRef.current = new Marker({ element: pinEl, anchor: 'center' })
-            .setLngLat([longitude, latitude])
-            .setPopup(popup)
-            .addTo(mapRef.current);
-          try {
-            popup.addTo(mapRef.current);
-          } catch {
-            // popup display optional
-          }
+    mapRef.current.flyTo({
+      center: [longitude, latitude],
+      zoom: targetZoom,
+      essential: true,
+    });
+
+    const popupHtml = createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary);
+
+    if (markerRef.current) {
+      markerRef.current.setLngLat([longitude, latitude]);
+      const popup = markerRef.current.getPopup();
+      if (popup) {
+        popup.setHTML(popupHtml);
+        try {
+          popup.addTo(mapRef.current);
+        } catch {
+          // popup display optional
         }
       }
-    }
-  }, [latitude, longitude, initialZoom, isMapLoaded, cityName, countryName, activeWeatherSummary]);
+    } else {
+      const pinEl = document.createElement('div');
+      pinEl.className = 'city-map-pin-container group cursor-pointer';
+      pinEl.innerHTML = `
+        <div class="relative flex items-center justify-center">
+          <span class="absolute w-8 h-8 rounded-full bg-cyan-400/30 animate-ping"></span>
+          <span class="absolute w-5 h-5 rounded-full bg-cyan-500/50"></span>
+          <div class="relative w-3.5 h-3.5 rounded-full bg-cyan-300 border-2 border-white shadow-[0_0_12px_rgba(6,182,212,1)]"></div>
+        </div>
+      `;
+      const popup = new Popup({
+        offset: 20,
+        closeButton: true,
+        className: 'city-map-popup',
+      }).setHTML(popupHtml);
 
-  // Synchronize pin popup whenever activeWeatherSummary updates
+      markerRef.current = new Marker({ element: pinEl, anchor: 'center' })
+        .setLngLat([longitude, latitude])
+        .setPopup(popup)
+        .addTo(mapRef.current);
+      try {
+        popup.addTo(mapRef.current);
+      } catch {
+        // popup display optional
+      }
+    }
+  }, [latitude, longitude, cityName, countryName, initialZoom, isMapLoaded]);
+
+  // Synchronize pin popup whenever activeWeatherSummary updates WITHOUT touching map camera
   useEffect(() => {
     if (markerRef.current && activeWeatherSummary) {
       markerRef.current.getPopup()?.setHTML(

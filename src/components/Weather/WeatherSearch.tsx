@@ -101,6 +101,10 @@ export default function WeatherSearch({
   // Sync external initialQuery changes (e.g. globe click or URL change)
   useEffect(() => {
     if (initialQuery !== undefined) {
+      if (document.activeElement === inputRef.current) {
+        // User is currently typing in the search box - do not stomp over their typed text!
+        return;
+      }
       setQuery(initialQuery);
     }
   }, [initialQuery]);
