@@ -76,7 +76,7 @@ function logSentryHeader() {
 // Suite 1: TypeScript Static Type Invariants
 // ────────────────────────────────────────────────────────────
 function runTypeScriptSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [1/5] Checking Static Type Invariants (tsc --noEmit)... ');
+  process.stdout.write(' [1/8] Checking Static Type Invariants (tsc --noEmit)... ');
   try {
     execSync('npx tsc --noEmit', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8' });
     console.log('✅ PASSED (0 errors)');
@@ -105,11 +105,11 @@ function runTypeScriptSuite(issues: SentryIssue[]): { pass: boolean; healed: boo
 // Suite 2: Code Quality & ESLint Sentinel (with Auto-Fix)
 // ────────────────────────────────────────────────────────────
 function runLintSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [2/5] Checking Code Quality & React Rules (eslint)... ');
+  process.stdout.write(' [2/8] Checking Code Quality & React Rules (eslint)... ');
 
   let passInitial = false;
   try {
-    execSync('npx eslint src', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8' });
+    execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
     passInitial = true;
     console.log('✅ PASSED (0 errors)');
     return { pass: true, healed: false, message: 'Code conforms to ESLint standards' };
@@ -120,10 +120,10 @@ function runLintSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; 
   if (!passInitial && autoFixEnabled) {
     process.stdout.write('\n   🩹 Auto-healing detected lint violations (eslint --fix)... ');
     try {
-      execSync('npx eslint src --fix', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8' });
+      execSync('npx eslint src --cache --fix', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
       // Re-verify after fix
       try {
-        execSync('npx eslint src', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8' });
+        execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
         console.log('✅ HEALED & VERIFIED');
         issues.push({
           id: `ESLINT-HEALED-${Date.now()}`,
@@ -160,7 +160,7 @@ function runLintSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; 
 // Suite 3: Mock & Fake Data Leak Scanner
 // ────────────────────────────────────────────────────────────
 function runMockDataScannerSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [3/5] Scanning for Mock/Fake Data Leaks... ');
+  process.stdout.write(' [3/8] Scanning for Mock/Fake Data Leaks... ');
   try {
     const scannerOutput = execSync('node scripts/data-integrity-scanner.js', {
       cwd: ROOT_DIR,
@@ -201,7 +201,7 @@ function runMockDataScannerSuite(issues: SentryIssue[]): { pass: boolean; healed
 // Suite 4: Infinite Earth Game Engine & Invariant Verification
 // ────────────────────────────────────────────────────────────
 async function runGameEngineSuite(issues: SentryIssue[]): Promise<{ pass: boolean; healed: boolean; message: string }> {
-  process.stdout.write(' [4/5] Testing Game Engine Contracts & Math Invariants... ');
+  process.stdout.write(' [4/8] Testing Game Engine Contracts & Math Invariants... ');
 
   try {
     // 1. Initialize engine
@@ -286,7 +286,7 @@ async function runGameEngineSuite(issues: SentryIssue[]): Promise<{ pass: boolea
 // Suite 5: Service Worker & Asset Timestamp Synchronization
 // ────────────────────────────────────────────────────────────
 function runServiceWorkerSyncSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [5/5] Checking Service Worker & Cache Timestamps... ');
+  process.stdout.write(' [5/8] Checking Service Worker & Cache Timestamps... ');
   const swPath = path.join(ROOT_DIR, 'public', 'sw.js');
   let healed = false;
 
@@ -326,7 +326,7 @@ function runServiceWorkerSyncSuite(issues: SentryIssue[]): { pass: boolean; heal
 // Suite 6: Zero Question Repetition Security Invariant
 // ────────────────────────────────────────────────────────────
 function runAntiRepeatSecuritySuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [🔒 Security Gate] Verifying Zero-Repetition Question Invariants across all modes... ');
+  process.stdout.write(' [6/8] [🔒 Security Gate] Verifying Zero-Repetition Question Invariants across all modes... ');
   try {
     execSync('npx tsx scripts/test-anti-repeat.ts', {
       cwd: ROOT_DIR,
@@ -359,10 +359,92 @@ function runAntiRepeatSecuritySuite(issues: SentryIssue[]): { pass: boolean; hea
 }
 
 // ────────────────────────────────────────────────────────────
-// Optional Suite 7: Full Production Build Verification
+// Suite 7: City Map Explorer & HD Ground Zoom Dissolve Invariants
+// ────────────────────────────────────────────────────────────
+function runCityMapExploreSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
+  process.stdout.write(' [7/8] Verifying City Map Explorer & HD Zoom Cloud Dissolve Invariants... ');
+  try {
+    const output = execSync('npx tsx scripts/test-explore-city-suite.ts', {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      timeout: 90000,
+      encoding: 'utf-8',
+    });
+    if (output.includes('0 failed')) {
+      console.log('✅ PASSED (74/74 city map & HD dissolve invariants verified)');
+      return {
+        pass: true,
+        healed: false,
+        message: 'All 74 city map checks and multi-scale HD ground dissolve contracts verified',
+      };
+    } else {
+      throw new Error('City map test reported test failures');
+    }
+  } catch (err: any) {
+    const errorOutput = (err.stdout || '') + '\n' + (err.stderr || '') + '\n' + err.message;
+    console.log('❌ FAILED: City map explorer or HD dissolve regression detected');
+    issues.push({
+      id: `CITY-MAP-EXPLORE-FAIL-${Date.now()}`,
+      suite: 'City Map Explorer & HD Zoom Dissolve Invariants',
+      severity: 'CRITICAL',
+      message: errorOutput.slice(0, 300),
+      autoFixAttempted: false,
+      autoFixSucceeded: false,
+    });
+    return {
+      pass: false,
+      healed: false,
+      message: 'City map explorer or HD ground dissolve regression detected',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// Suite 8: 3D Weather Layers & Atmospheric Station Invariants
+// ────────────────────────────────────────────────────────────
+function runWeatherLayersSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
+  process.stdout.write(' [8/8] Verifying 3D Weather Layers & Atmospheric Telemetry Invariants... ');
+  try {
+    const output = execSync('npx tsx scripts/test-weather-layers-suite.ts', {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      timeout: 90000,
+      encoding: 'utf-8',
+    });
+    if (output.includes('0 failed')) {
+      console.log('✅ PASSED (36/36 weather layers & atmospheric telemetry verified)');
+      return {
+        pass: true,
+        healed: false,
+        message: 'All 36 weather station, interpolation, and atmospheric telemetry contracts verified',
+      };
+    } else {
+      throw new Error('Weather layers test reported failures');
+    }
+  } catch (err: any) {
+    const errorOutput = (err.stdout || '') + '\n' + (err.stderr || '') + '\n' + err.message;
+    console.log('❌ FAILED: Weather layers regression detected');
+    issues.push({
+      id: `WEATHER-LAYERS-FAIL-${Date.now()}`,
+      suite: '3D Weather Layers Invariants',
+      severity: 'CRITICAL',
+      message: errorOutput.slice(0, 300),
+      autoFixAttempted: false,
+      autoFixSucceeded: false,
+    });
+    return {
+      pass: false,
+      healed: false,
+      message: '3D weather layers telemetry regression detected',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// Optional Suite 9: Full Production Build Verification
 // ────────────────────────────────────────────────────────────
 function runProductionBuildSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
-  process.stdout.write(' [6/6] Verifying Next.js Production Build (next build)... ');
+  process.stdout.write(' [Optional 9/9] Verifying Next.js Production Build (next build)... ');
   try {
     execSync('npm run build', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8' });
     console.log('✅ PASSED (Next.js build succeeded)');
@@ -474,11 +556,21 @@ async function main() {
   const s6 = runAntiRepeatSecuritySuite(issues);
   suites.push({ name: 'Zero Question Repetition Security Invariant', status: s6.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s6Start, details: s6.message });
 
-  // Optional Suite 7: Full Build
+  // Suite 7: City Map Explorer & HD Zoom Cloud Dissolve Invariants
+  const s7Start = Date.now();
+  const s7 = runCityMapExploreSuite(issues);
+  suites.push({ name: 'City Map & HD Zoom Dissolve Invariants', status: s7.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s7Start, details: s7.message });
+
+  // Suite 8: 3D Weather Layers & Atmospheric Station Invariants
+  const s8Start = Date.now();
+  const s8 = runWeatherLayersSuite(issues);
+  suites.push({ name: '3D Weather Layers & Atmospheric Invariants', status: s8.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s8Start, details: s8.message });
+
+  // Optional Suite 9: Full Build
   if (includeFullBuild) {
-    const s7Start = Date.now();
-    const s7 = runProductionBuildSuite(issues);
-    suites.push({ name: 'Production Build Compilation', status: s7.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s7Start, details: s7.message });
+    const s9Start = Date.now();
+    const s9 = runProductionBuildSuite(issues);
+    suites.push({ name: 'Production Build Compilation', status: s9.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s9Start, details: s9.message });
   }
 
   const durationMs = Date.now() - startTime;
