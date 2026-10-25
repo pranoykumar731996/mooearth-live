@@ -175,6 +175,7 @@ export default function CityMapViewer({
   const [currentPitch, setCurrentPitch] = useState(0);
   const [currentBearing, setCurrentBearing] = useState(0);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [isSatelliteHudDismissed, setIsSatelliteHudDismissed] = useState(false);
 
   // Disaster filtering and visibility on 2D map
   const [internalDisasterFilter, setInternalDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
@@ -1248,10 +1249,10 @@ export default function CityMapViewer({
 
 
       {/* ── Windy Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && (
+      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
           <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
-            {/* Top row: Sensor Pass + Live Time Pill */}
+            {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="text-base shrink-0">🛰️</span>
@@ -1263,10 +1264,24 @@ export default function CityMapViewer({
                 </span>
               </div>
 
-              {/* Amber Live Latency Pill matching Windy */}
-              <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                <span>Live • 11m ago</span>
+              <div className="flex items-center gap-1.5 ml-auto">
+                {/* Amber Live Latency Pill matching Windy */}
+                <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>Live • 11m ago</span>
+                </div>
+
+                {/* Crossbar to hide the HUD */}
+                <button
+                  type="button"
+                  data-testid="close-satellite-hud-btn"
+                  onClick={() => setIsSatelliteHudDismissed(true)}
+                  className="w-6 h-6 rounded-lg bg-white/10 hover:bg-rose-500/30 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold transition-all border border-white/10 hover:border-rose-400/50 cursor-pointer shrink-0 active:scale-95"
+                  title="Hide Satellite Clouds HUD"
+                  aria-label="Hide Satellite Clouds HUD"
+                >
+                  ✕
+                </button>
               </div>
             </div>
 
@@ -1394,8 +1409,25 @@ export default function CityMapViewer({
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
         <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
-          {/* Top Controls Row: Style Selector Dropdown */}
+          {/* Top Controls Row: Style Selector Dropdown + Optional Satellite HUD Restore Pill */}
           <div className="flex items-center gap-1.5">
+            {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
+            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && isSatelliteHudDismissed && (
+              <button
+                type="button"
+                data-testid="show-satellite-hud-btn"
+                onClick={() => setIsSatelliteHudDismissed(false)}
+                className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer"
+                title="Show Geostationary Satellite Clouds controls"
+              >
+                <span>🛰️</span>
+                <span className="hidden sm:inline">Clouds</span>
+                <span className="text-[9px] px-1 rounded bg-cyan-500/20 text-cyan-300 font-bold">
+                  {spectralMode ? spectralMode.toUpperCase() : 'VIS'}
+                </span>
+              </button>
+            )}
+
             {/* Style Selector Dropdown Pill */}
             <div className="relative">
               <button
