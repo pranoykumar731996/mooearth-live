@@ -1482,7 +1482,7 @@ const GlobeScene = React.memo(function GlobeScene({
       geostationarySatelliteLayerRef.current.setSpectralMode(satelliteSpectralMode);
       geostationarySatelliteLayerRef.current.setOverlayRadar(overlayRadar);
       geostationarySatelliteLayerRef.current.setTimeOffsetHours(weatherTimelineIndex);
-      geostationarySatelliteLayerRef.current.setEvents(events || []);
+      geostationarySatelliteLayerRef.current.setEvents(planetaryFeed);
     } else if (geostationarySatelliteLayerRef.current) {
       const m = geostationarySatelliteLayerRef.current.getMesh();
       if (m) scene.remove(m);

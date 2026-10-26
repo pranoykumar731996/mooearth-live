@@ -195,10 +195,78 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
 };
 
 /**
- * Returns the most recent completed NASA GIBS observation date (YYYY-MM-DD).
- * Guarantees 100% complete global swath coverage across all continents with zero black/missing swaths.
+ * Returns the optimal geostationary satellite sector based on coordinates.
+ * Covers Indian Ocean/Bay of Bengal (Himawari), Atlantic/Americas (GOES-East), and Pacific (GOES-West).
  */
-export function getSatelliteObservationDate(offsetHours: number = 0): { dateStr: string; utcStr: string; timestampMs: number } {
+export function getGeostationarySectorForCoords(
+  lat: number,
+  lng: number,
+  mode: SatelliteSpectralMode = 'infra'
+): GeostationarySector {
+  const sectors = GEOSTATIONARY_SECTORS[mode] || GEOSTATIONARY_SECTORS.infra;
+  const normLng = ((((lng % 360) + 540) % 360) - 180);
+
+  // 1. Asia-Pacific & Indian Ocean / Bay of Bengal (55°E to 160°E) -> Himawari
+  if (normLng >= 50 && normLng <= 165) {
+    return sectors.find((s) => s.id.includes('himawari')) || sectors[0];
+  }
+  // 2. Americas & Atlantic Ocean (-140°W to -20°W) -> GOES-East
+  if (normLng >= -140 && normLng <= -20) {
+    return sectors.find((s) => s.id.includes('goes-east')) || sectors[0];
+  }
+  // 3. Central & East Pacific / Hawaii (-180°W to -100°W) -> GOES-West
+  if (normLng < -100 || normLng > 165) {
+    return sectors.find((s) => s.id.includes('goes-west')) || sectors[0];
+  }
+  // 4. Europe & Africa (-25°W to 55°E) -> Europe/Africa
+  return sectors.find((s) => s.id.includes('europe-africa')) || sectors[0];
+}
+
+/**
+ * Returns real-time geostationary satellite observation date and timestamp (UTC).
+ * Geostationary satellites (GOES-16/18, Himawari-9) stream fresh 10-15m imagery 24/7 on TODAY's date.
+ */
+export function getGeostationaryObservationDate(offsetHours: number = 0): {
+  dateStr: string;
+  utcStr: string;
+  timestampMs: number;
+  isLive: boolean;
+} {
+  const baseNow = new Date();
+  const targetTime = baseNow.getTime() - Math.max(0, offsetHours) * 3600 * 1000;
+  const targetDate = new Date(targetTime);
+
+  const yyyy = targetDate.getUTCFullYear();
+  const mm = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getUTCDate()).padStart(2, '0');
+  const hh = String(targetDate.getUTCHours()).padStart(2, '0');
+  const min = String(Math.floor(targetDate.getUTCMinutes() / 15) * 15).padStart(2, '0');
+
+  const dateStr = `${yyyy}-${mm}-${dd}`;
+  const utcStr = `${dateStr} ${hh}:${min} UTC`;
+
+  return {
+    dateStr,
+    utcStr,
+    timestampMs: targetDate.getTime(),
+    isLive: offsetHours === 0,
+  };
+}
+
+/**
+ * Returns the most recent completed NASA GIBS observation date (YYYY-MM-DD).
+ * For polar composites (Visible TrueColor), anchors to yesterday/2 days ago for complete 100% swath.
+ * For geostationary infrared/moisture, anchors directly to today's live real-time observation date.
+ */
+export function getSatelliteObservationDate(
+  offsetHours: number = 0,
+  mode: SatelliteSpectralMode = 'visible'
+): { dateStr: string; utcStr: string; timestampMs: number } {
+  // If requesting geostationary infrared or moisture, use today's real-time stream
+  if (mode === 'infra' || mode === 'blue') {
+    return getGeostationaryObservationDate(offsetHours);
+  }
+
   const baseNow = new Date();
   const utcHours = baseNow.getUTCHours();
 
@@ -287,7 +355,7 @@ export function getSatelliteFrames(
  */
 export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'visible', offsetHours: number = 0): SatelliteMetadataResponse {
   const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
-  const { dateStr, utcStr } = getSatelliteObservationDate(offsetHours);
+  const { dateStr, utcStr } = getSatelliteObservationDate(offsetHours, mode);
   const tileUrlTemplate = buildGibsTileUrl(product, dateStr);
   const frames = getSatelliteFrames(mode, 8);
 

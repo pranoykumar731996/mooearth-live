@@ -18,6 +18,10 @@
 import * as THREE from 'three';
 import type { SatelliteSpectralMode } from '@/services/weather/types';
 import type { WorldEvent } from '@/types';
+import {
+  OFFICIAL_CYCLONE_BASELINES,
+  interpolateForecastPosition,
+} from '@/services/weather/cycloneTrackingService';
 
 export interface GeostationarySatelliteLayerOptions {
   radius?: number; // Globe radius (default 100)
@@ -40,6 +44,8 @@ export class GeostationarySatelliteLayer {
   private cloudTexture: THREE.Texture | null = null;
 
   private activeStormCenters: THREE.Vector4[] = []; // (lat, lng, radiusDeg, intensity)
+  private currentEvents: WorldEvent[] = [];
+  private currentHoursAhead: number = 0;
 
   constructor(options: GeostationarySatelliteLayerOptions = {}) {
     this.radius = options.radius ?? 100;
@@ -73,10 +79,12 @@ export class GeostationarySatelliteLayer {
     }
   }
 
-  public setTimeOffsetHours(hoursAgo: number): void {
+  public setTimeOffsetHours(hoursAhead: number): void {
+    this.currentHoursAhead = hoursAhead;
     if (this.shaderMaterial) {
-      this.shaderMaterial.uniforms.uTimeOffset.value = hoursAgo;
+      this.shaderMaterial.uniforms.uTimeOffset.value = hoursAhead;
     }
+    this.updateStormCenters();
   }
 
   public setReducedMotion(reduced: boolean): void {
@@ -87,17 +95,42 @@ export class GeostationarySatelliteLayer {
    * Updates real-world storm centers from live cyclone & severe storm events
    */
   public setEvents(events: WorldEvent[]): void {
-    const stormEvents = events.filter((e) => {
+    this.currentEvents = [...events];
+    this.updateStormCenters();
+  }
+
+  /**
+   * Dynamically interpolates storm centers along official forecast & observed tracks
+   */
+  private updateStormCenters(): void {
+    const stormEvents = this.currentEvents.filter((e) => {
       if (e.category === 'severe_weather') return true;
       const t = e.title.toLowerCase();
       return t.includes('cyclone') || t.includes('hurricane') || t.includes('typhoon') || t.includes('tropical storm');
     });
 
     this.activeStormCenters = stormEvents.slice(0, 4).map((e) => {
-      const windKph = e.planetaryTelemetry?.windSpeedKph || 85;
+      let lat = e.lat;
+      let lng = e.lng;
+      let windKph = e.planetaryTelemetry?.windSpeedKph || 85;
+
+      const matchingCyclone = OFFICIAL_CYCLONE_BASELINES.find(
+        (c) =>
+          c.id === e.id ||
+          c.name.toLowerCase() === e.title.toLowerCase() ||
+          e.title.toLowerCase().includes(c.name.toLowerCase())
+      );
+
+      if (matchingCyclone && this.currentHoursAhead !== 0) {
+        const interp = interpolateForecastPosition(matchingCyclone, this.currentHoursAhead);
+        lat = interp.lat;
+        lng = interp.lng;
+        windKph = interp.windSpeedKph;
+      }
+
       const radiusDeg = Math.min(8.0, Math.max(3.0, (windKph / 250) * 8.0));
       const intensity = Math.min(1.0, Math.max(0.4, windKph / 200));
-      return new THREE.Vector4(e.lat, e.lng, radiusDeg, intensity);
+      return new THREE.Vector4(lat, lng, radiusDeg, intensity);
     });
 
     if (this.shaderMaterial) {

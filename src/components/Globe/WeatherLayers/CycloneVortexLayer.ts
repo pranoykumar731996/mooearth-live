@@ -15,7 +15,12 @@
 import * as THREE from 'three';
 import type { WorldEvent } from '@/types';
 import { geoToVector3 } from './WindParticleSystem';
-import { OFFICIAL_CYCLONE_BASELINES, cycloneToWorldEvent } from '@/services/weather/cycloneTrackingService';
+import {
+  OFFICIAL_CYCLONE_BASELINES,
+  cycloneToWorldEvent,
+  interpolateForecastPosition,
+  type TropicalCyclone,
+} from '@/services/weather/cycloneTrackingService';
 
 export interface CycloneVortexLayerOptions {
   radius?: number; // Globe radius (default 100)
@@ -134,21 +139,38 @@ export class CycloneVortexLayer {
   }
 
   /**
-   * Synchronizes cyclone vortex position with the forecast timeline scrubber.
+   * Synchronizes cyclone vortex position and wind dynamics with the forecast timeline scrubber.
+   * Handles historical observed hours (-24h to 0h) and forecast lead hours (+1h to +120h).
    */
   public setTimelineHoursAhead(hoursAhead: number): void {
-    this.currentHoursAhead = Math.max(0, hoursAhead);
+    this.currentHoursAhead = hoursAhead;
     for (const [eventId, storm] of Array.from(this.storms.entries())) {
       const event = this.currentEvents.find((e) => e.id === eventId);
       if (!event) continue;
 
-      if (
-        this.currentHoursAhead === 0 ||
-        !Array.isArray(event.planetaryTelemetry?.forecastCone) ||
-        event.planetaryTelemetry.forecastCone.length === 0
+      let interpLat = event.lat;
+      let interpLng = event.lng;
+      let interpWind = event.planetaryTelemetry?.windSpeedKph || 140;
+
+      // 1. Check if event maps to a verified cyclone in official registry
+      const matchingCyclone = OFFICIAL_CYCLONE_BASELINES.find(
+        (c) =>
+          c.id === event.id ||
+          c.name.toLowerCase() === event.title.toLowerCase() ||
+          event.title.toLowerCase().includes(c.name.toLowerCase())
+      );
+
+      if (matchingCyclone) {
+        const interp = interpolateForecastPosition(matchingCyclone, this.currentHoursAhead);
+        interpLat = interp.lat;
+        interpLng = interp.lng;
+        interpWind = interp.windSpeedKph;
+      } else if (
+        Array.isArray(event.planetaryTelemetry?.forecastCone) &&
+        event.planetaryTelemetry.forecastCone.length > 0 &&
+        this.currentHoursAhead > 0
       ) {
-        this.updateStormPosition(storm, event);
-      } else {
+        // Fallback: interpolate along custom forecast cone nodes if present
         const nodes = event.planetaryTelemetry.forecastCone;
         const allNodes = [
           { timeHours: 0, centerLat: event.lat, centerLng: event.lng },
@@ -168,15 +190,22 @@ export class CycloneVortexLayer {
         }
         const span = p2.timeHours - p1.timeHours;
         const t = span <= 0 ? 0 : (this.currentHoursAhead - p1.timeHours) / span;
-        const interpLat = p1.centerLat + (p2.centerLat - p1.centerLat) * t;
-        const interpLng = p1.centerLng + (p2.centerLng - p1.centerLng) * t;
-
-        const worldPos = geoToVector3(interpLat, interpLng, this.radius * 1.0016);
-        storm.group.position.copy(worldPos);
-        const surfaceNormal = worldPos.clone().normalize();
-        const defaultNormal = new THREE.Vector3(0, 0, 1);
-        storm.group.quaternion.setFromUnitVectors(defaultNormal, surfaceNormal);
+        interpLat = p1.centerLat + (p2.centerLat - p1.centerLat) * t;
+        interpLng = p1.centerLng + (p2.centerLng - p1.centerLng) * t;
+      } else if (this.currentHoursAhead === 0) {
+        interpLat = event.lat;
+        interpLng = event.lng;
       }
+
+      // Update 3D world position and Earth normal orientation
+      const worldPos = geoToVector3(interpLat, interpLng, this.radius * 1.0016);
+      storm.group.position.copy(worldPos);
+      const surfaceNormal = worldPos.clone().normalize();
+      const defaultNormal = new THREE.Vector3(0, 0, 1);
+      storm.group.quaternion.setFromUnitVectors(defaultNormal, surfaceNormal);
+
+      // Dynamically update spin velocity based on predicted wind speed
+      storm.spinVelocity = 0.012 + (Math.min(interpWind, 280) / 280) * 0.028;
     }
   }
 

@@ -41,7 +41,7 @@ import {
   interpolateForecastPosition,
 } from '@/services/weather/cycloneTrackingService';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
-import { getSatelliteObservationDate } from '@/services/weather/satelliteImageryService';
+import { getSatelliteObservationDate, getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
@@ -956,14 +956,26 @@ export default function CityMapViewer({
     // 2. Cyclone Wind Radii FeatureCollection
     const cycloneFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
       .filter((d) => getDisasterMeta(d).type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
-      .map((d) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [d.lng, d.lat] },
-        properties: {
-          id: d.id,
-          wind: d.planetaryTelemetry?.windSpeedKph || 120,
-        },
-      }));
+      .map((d) => {
+        let ptLng = d.lng;
+        let ptLat = d.lat;
+        let ptWind = d.planetaryTelemetry?.windSpeedKph || 120;
+        const matchingCyclone = cyclones.find((c) => c.id === d.id || c.name.toLowerCase() === d.title.toLowerCase());
+        if (matchingCyclone && timelineHoursAhead !== 0) {
+          const interp = interpolateForecastPosition(matchingCyclone, timelineHoursAhead);
+          ptLng = interp.lng;
+          ptLat = interp.lat;
+          ptWind = interp.windSpeedKph;
+        }
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [ptLng, ptLat] },
+          properties: {
+            id: d.id,
+            wind: ptWind,
+          },
+        };
+      });
 
     const cycloneData = { type: 'FeatureCollection', features: cycloneFeatures };
     const cycloneSourceId = 'hazard-cyclone-radii-source';
@@ -1458,10 +1470,11 @@ export default function CityMapViewer({
           9.0, 0.0,
         ];
 
-        // Observation date string (YYYY-MM-DD)
-        const dateStr = satelliteObservationUtc
-          ? satelliteObservationUtc.slice(0, 10)
-          : getSatelliteObservationDate().dateStr;
+        // Observation date string: for geostationary infrared & moisture, stream today's live real-time frames
+        const geoObs = getGeostationaryObservationDate(timelineHoursAhead < 0 ? Math.abs(timelineHoursAhead) : 0);
+        const dateStr = isVisibleMode
+          ? (satelliteObservationUtc ? satelliteObservationUtc.slice(0, 10) : getSatelliteObservationDate().dateStr)
+          : geoObs.dateStr;
 
         if (isVisibleMode) {
           // Clean up infrared sectors

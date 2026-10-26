@@ -309,8 +309,12 @@ export default function WindyTimeScrubber({
               ) : activeLayer === 'satellite' ? (
                 <span className="text-cyan-300/80 truncate">🛰️ NASA GIBS / NOAA GOES · {satelliteObservationUtc || 'UTC Active'}</span>
               ) : activeLayer === 'hurricane' ? (
-                <span className="text-cyan-300/90 truncate">
-                  🌀 Official Forecast Track & Uncertainty Cone · NOAA NHC / JTWC / IMD · Frame {currentStep + 1}/{totalSteps}
+                <span className="text-cyan-300/90 truncate flex items-center gap-1.5">
+                  <span className="hidden sm:inline">🌀 Cyclone Track & Cone</span>
+                  <span className={`px-1 rounded text-[8px] font-bold ${currentStep <= 4 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'}`}>
+                    {currentStep <= 4 ? '🛰️ SATELLITE [OBS]' : '🔮 ECMWF MODEL [FCST]'}
+                  </span>
+                  <span>· Frame {currentStep + 1}/{totalSteps}</span>
                 </span>
               ) : activeLayer === 'pressure' ? (
                 <span className="text-cyan-300/80 truncate">🔵 Surface Pressure MSLP · 4 hPa Isobars</span>

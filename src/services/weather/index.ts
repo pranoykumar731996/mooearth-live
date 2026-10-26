@@ -136,12 +136,17 @@ export type {
 // Satellite Imagery Service (NASA GIBS & NOAA GOES)
 export {
   SATELLITE_PRODUCTS,
+  GEOSTATIONARY_SECTORS,
   getSatelliteObservationDate,
+  getGeostationaryObservationDate,
+  getGeostationarySectorForCoords,
   buildGibsTileUrl,
+  buildSectorTileUrl,
   getSatelliteMetadata,
 } from './satelliteImageryService';
 export type {
   SatelliteProduct,
+  GeostationarySector,
   SatelliteMetadataResponse,
 } from './satelliteImageryService';
 
