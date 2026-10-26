@@ -266,7 +266,7 @@ export const MAX_CITY_ZOOM = 18;
  */
 export function getDefaultMapStyleKey(): MapStyleKey {
   // Directly default to Atmospheric Satellite aesthetic for authentic meteorological cloud exploration
-  return 'windy-satellite';
+  return 'atmospheric-satellite';
 }
 
 /**

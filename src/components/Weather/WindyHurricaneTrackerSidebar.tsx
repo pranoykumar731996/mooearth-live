@@ -26,7 +26,7 @@ export default function WindyHurricaneTrackerSidebar({
   onClose,
   className = '',
 }: WindyHurricaneTrackerSidebarProps) {
-  const [selectedModel, setSelectedModel] = useState<'OFFICIAL' | 'IMD' | 'ECMWF' | 'GFS'>('OFFICIAL');
+  const [selectedModel, setSelectedModel] = useState<'OFFICIAL' | 'IMD' | 'ECMWF' | 'GFS' | 'UKM'>('OFFICIAL');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (cyclones.length === 0) return null;
@@ -140,7 +140,7 @@ export default function WindyHurricaneTrackerSidebar({
                         <div className="flex items-center justify-between text-[10px] font-mono">
                           <span className="text-white/50">Forecast model:</span>
                           <div className="flex items-center gap-1">
-                            {(['OFFICIAL', 'IMD', 'ECMWF', 'GFS'] as const).map((model) => (
+                            {(['OFFICIAL', 'IMD', 'ECMWF', 'GFS', 'UKM'] as const).map((model) => (
                               <button
                                 key={model}
                                 type="button"

@@ -39,6 +39,7 @@ import type { SatelliteSpectralMode } from '@/services/weather/types';
 import {
   type TropicalCyclone,
   interpolateForecastPosition,
+  getSaffirSimpsonCategoryNumber,
 } from '@/services/weather/cycloneTrackingService';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
 import { getSatelliteObservationDate, getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
@@ -141,6 +142,31 @@ function createLocationPopupHtml(
       ` : ''}
     </div>
   `;
+}
+
+function formatMilestoneDate(timestamp?: string, leadHours: number = 0): string {
+  if (!timestamp) return `+${leadHours}h`;
+  try {
+    const targetDate = new Date(timestamp);
+    const now = new Date();
+    const isToday =
+      targetDate.getDate() === now.getDate() &&
+      targetDate.getMonth() === now.getMonth() &&
+      targetDate.getFullYear() === now.getFullYear();
+    const tomorrow = new Date(now.getTime() + 86400000);
+    const isTomorrow =
+      targetDate.getDate() === tomorrow.getDate() &&
+      targetDate.getMonth() === tomorrow.getMonth() &&
+      targetDate.getFullYear() === tomorrow.getFullYear();
+    const timeStr = targetDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(':00', '');
+    if (isToday) return `Today - ${timeStr}`;
+    if (isTomorrow) return `Tomorrow - ${timeStr}`;
+    const weekday = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+    const day = targetDate.getDate();
+    return `${weekday} ${day} - ${timeStr}`;
+  } catch {
+    return `+${leadHours}h`;
+  }
 }
 
 export default function CityMapViewer({
@@ -376,7 +402,7 @@ export default function CityMapViewer({
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
-          if (styleKey === 'satellite' || styleKey === 'windy-satellite') return; // Do not trigger false timeout on satellite base styles
+          if (styleKey === 'satellite' || styleKey === 'atmospheric-satellite') return; // Do not trigger false timeout on satellite base styles
           const isLoaded = mapRef.current.loaded();
           if (!isLoaded) {
             console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);
@@ -1169,18 +1195,12 @@ export default function CityMapViewer({
           // D. Forecast Nodes
           c.forecastPoints.forEach((p) => {
             const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
-            let dateHeader = `+${p.leadHours}h`;
-            if (p.timestamp) {
-              try {
-                const d = new Date(p.timestamp);
-                const dayName = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
-                dateHeader = `${dayName} - ${timeStr}`;
-              } catch {
-                dateHeader = `+${p.leadHours}h`;
-              }
-            }
-            const labelText = `${dateHeader}\n${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}hPa` : ''}`;
+            const milestoneTitle = formatMilestoneDate(p.timestamp, p.leadHours);
+            const sshwsScale = getSaffirSimpsonCategoryNumber(p.windSpeedKph);
+            const sshwsText = sshwsScale > 0 ? `SSHWS category ${sshwsScale}` : (p.stageName || 'Tropical Cyclone');
+            const cardSubtitle = `${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}hPa` : ''}`;
+            const labelText = `${milestoneTitle}\n${cardSubtitle}`;
+            const nodeBadge = sshwsScale > 0 ? `${sshwsScale}` : (p.stageName?.toLowerCase().includes('depression') ? 'D' : 'S');
 
             activeForecastNodeFeatures.push({
               type: 'Feature',
@@ -1192,8 +1212,12 @@ export default function CityMapViewer({
                 windSpeedKph: p.windSpeedKph,
                 windSpeedKnots: windKt,
                 pressureHpa: p.pressureHpa || '',
-                stageName: p.stageName,
+                stageName: p.stageName || sshwsText,
+                sshwsText,
+                milestoneTitle,
+                cardSubtitle,
                 labelText,
+                nodeBadge,
               },
             });
           });
@@ -1321,17 +1345,18 @@ export default function CityMapViewer({
             type: 'circle',
             source: nodesSourceId,
             paint: {
-              'circle-radius': 6,
+              'circle-radius': 9,
               'circle-color': [
                 'step',
                 ['get', 'windSpeedKph'],
-                '#38bdf8',
-                63, '#eab308',
-                119, '#f97316',
-                178, '#f43f5e',
-                210, '#e11d48',
+                '#64748b',
+                63, '#0284c7',
+                119, '#dc2626',
+                154, '#b91c1c',
+                178, '#991b1b',
+                210, '#7f1d1d',
               ],
-              'circle-stroke-width': 1.8,
+              'circle-stroke-width': 2.2,
               'circle-stroke-color': '#ffffff',
             },
           },
@@ -1345,19 +1370,51 @@ export default function CityMapViewer({
             layout: {
               'text-field': ['get', 'labelText'],
               'text-size': 9.5,
-              'text-offset': [0, 1.6],
+              'text-offset': [0, 1.8],
               'text-anchor': 'top',
               'text-justify': 'center',
-              'text-allow-overlap': false,
+              'text-allow-overlap': true,
             },
             paint: {
               'text-color': '#ffffff',
               'text-halo-color': 'rgba(6, 8, 24, 0.95)',
-              'text-halo-width': 2,
+              'text-halo-width': 2.5,
             },
           },
           beforeLayerId
         );
+
+        // Click popup displaying the reference-grade milestone card
+        map.on('click', nodesLayerId, (e: any) => {
+          const feat = e.features?.[0];
+          if (!feat) return;
+          const props = feat.properties;
+          const coords = (feat.geometry as any).coordinates.slice();
+          new Popup({ className: 'city-map-popup', closeButton: true, offset: 12 })
+            .setLngLat(coords)
+            .setHTML(`
+              <div style="background: rgba(6, 8, 24, 0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 10px 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,0.85); min-width: 175px;">
+                <div style="font-size: 11px; font-weight: 800; color: #ffffff; margin-bottom: 3px;">${props?.milestoneTitle || 'Forecast Milestone'}</div>
+                <div style="font-size: 12px; font-family: monospace; font-weight: 700; color: #38bdf8; margin-bottom: 3px;">
+                  ${props?.windSpeedKnots || '--'}kt ${props?.pressureHpa ? `<span style="color: rgba(255,255,255,0.4);">|</span> ${props.pressureHpa}hPa` : ''}
+                </div>
+                <div style="font-size: 10px; font-weight: 700; color: #f43f5e; text-transform: uppercase; letter-spacing: 0.05em;">
+                  ${props?.sshwsText || ''}
+                </div>
+                <div style="font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 4px; font-family: monospace;">
+                  ${props?.name || ''} • Official Forecast (+${props?.leadHours || 0}h)
+                </div>
+              </div>
+            `)
+            .addTo(map);
+        });
+
+        map.on('mouseenter', nodesLayerId, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', nodesLayerId, () => {
+          map.getCanvas().style.cursor = '';
+        });
       }
     } catch {
       // Safe fallback
@@ -1493,7 +1550,7 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'windy-satellite') {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -1504,9 +1561,10 @@ export default function CityMapViewer({
           undefined;
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
-        const isVisibleMode = spectralMode === 'visible' && activeLayer !== 'hurricane';
+        const isCycloneActive = activeLayer === 'hurricane' || Boolean(selectedCyclone);
+        const isVisibleMode = spectralMode === 'visible' && !isCycloneActive;
         const isBlue = spectralMode === 'blue';
-        const isInfra = spectralMode === 'infra' || activeLayer === 'hurricane';
+        const isInfra = spectralMode === 'infra' || isCycloneActive;
         const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
@@ -1655,30 +1713,34 @@ export default function CityMapViewer({
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
               if (existingSource.tiles?.[0] !== tileUrl) {
-                if (map.getLayer(lId)) map.removeLayer(lId);
-                map.removeSource(sId);
-                map.addSource(sId, {
-                  type: 'raster',
-                  tiles: [tileUrl],
-                  tileSize: 256,
-                  maxzoom: 6,
-                  bounds: sec.bounds,
-                  attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
-                });
-                map.addLayer(
-                  {
-                    id: lId,
+                if (typeof existingSource.setTiles === 'function') {
+                  existingSource.setTiles([tileUrl]);
+                } else {
+                  if (map.getLayer(lId)) map.removeLayer(lId);
+                  map.removeSource(sId);
+                  map.addSource(sId, {
                     type: 'raster',
-                    source: sId,
-                    maxzoom: 9,
-                    paint: {
-                      'raster-opacity': geostationaryOpacityExpression,
-                      'raster-contrast': rasterContrast,
-                      'raster-fade-duration': 300,
+                    tiles: [tileUrl],
+                    tileSize: 256,
+                    maxzoom: 6,
+                    bounds: sec.bounds,
+                    attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+                  });
+                  map.addLayer(
+                    {
+                      id: lId,
+                      type: 'raster',
+                      source: sId,
+                      maxzoom: 9,
+                      paint: {
+                        'raster-opacity': geostationaryOpacityExpression,
+                        'raster-contrast': rasterContrast,
+                        'raster-fade-duration': 250,
+                      },
                     },
-                  },
-                  beforeLayerId
-                );
+                    beforeLayerId
+                  );
+                }
               } else if (map.getLayer(lId)) {
                 map.setPaintProperty(lId, 'raster-opacity', geostationaryOpacityExpression);
                 map.setPaintProperty(lId, 'raster-contrast', rasterContrast);
@@ -1724,7 +1786,7 @@ export default function CityMapViewer({
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey, timelineHoursAhead]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey, timelineHoursAhead, selectedCyclone]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
@@ -1891,7 +1953,7 @@ export default function CityMapViewer({
 
 
       {/* ── Geostationary Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
+      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
           <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
             {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
@@ -2061,7 +2123,7 @@ export default function CityMapViewer({
           {/* Top Controls Row: Style Selector Dropdown + Optional Satellite HUD Restore Pill */}
           <div className="flex items-center gap-1.5">
             {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
-            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && isSatelliteHudDismissed && (
+            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && isSatelliteHudDismissed && (
               <button
                 type="button"
                 data-testid="show-satellite-hud-btn"
