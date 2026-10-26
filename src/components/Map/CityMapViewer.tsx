@@ -149,7 +149,7 @@ export default function CityMapViewer({
   cityName,
   countryName,
   initialZoom = 12.8,
-  initialMapStyle = 'windy-satellite',
+  initialMapStyle = 'atmospheric-satellite',
   weatherSummary,
   activeLayer = 'wind',
   radarTileUrl,
@@ -573,9 +573,40 @@ export default function CityMapViewer({
     });
     disasterMarkersRef.current = [];
 
-    if (!showDisasters || filteredDisasters.length === 0) return;
+    if (!showDisasters && activeLayer !== 'hurricane') return;
 
-    filteredDisasters.forEach((event) => {
+    // Guarantee that every tracked tropical cyclone has a representation when cyclones or hurricane layer are active
+    const eventsToRender: WorldEvent[] = [...(showDisasters ? filteredDisasters : [])];
+    if (activeLayer === 'hurricane' || activeDisasterFilter === 'cyclones' || activeDisasterFilter === 'all') {
+      cyclones.forEach((c) => {
+        const alreadyExists = eventsToRender.some(
+          (e) => e.id === c.id || e.title.toLowerCase().includes(c.name.toLowerCase())
+        );
+        if (!alreadyExists) {
+          eventsToRender.push({
+            id: c.id,
+            title: `Cyclone ${c.name}`,
+            category: 'severe_weather',
+            lat: c.lat,
+            lng: c.lng,
+            city: c.basin,
+            country: c.agency,
+            summary: c.summary,
+            publishedAt: c.advisoryIssuedAt || new Date().toISOString(),
+            source: c.attribution,
+            planetaryTelemetry: {
+              windSpeedKph: c.windSpeedKph,
+              pressureHpa: c.pressureHpa,
+              stormWarningType: 'tropical_cyclone',
+            },
+          });
+        }
+      });
+    }
+
+    if (eventsToRender.length === 0) return;
+
+    eventsToRender.forEach((event) => {
       if (typeof event.lat !== 'number' || typeof event.lng !== 'number') return;
       if (isNaN(event.lat) || isNaN(event.lng)) return;
 
@@ -615,11 +646,44 @@ export default function CityMapViewer({
 
       el.innerHTML = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; user-select: none;">
-          <!-- Animated outer ring based on hazard type -->
+          <!-- Animated outer ring & rotating cyclone cloud vortex -->
           ${
             meta.type === 'cyclone'
-              ? `<div style="position: absolute; width: 68px; height: 68px; top: -17px; border-radius: 9999px; border: 2.5px dashed rgba(6,182,212,0.85); animation: cyclone-spin 4s linear infinite; pointer-events: none;"></div>
-                 <div style="position: absolute; width: 88px; height: 88px; top: -27px; border-radius: 9999px; background: radial-gradient(circle, rgba(6,182,212,0.3) 0%, rgba(6,182,212,0.08) 50%, transparent 70%); animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
+              ? `<!-- Real-time Rotating Cyclone Swirling Cloud Shield & Eyewall -->
+                 <div style="position: absolute; width: 280px; height: 280px; top: -121px; left: -121px; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: -1;">
+                   <!-- Sweeping Outer Convective Cloud Arms -->
+                   <svg viewBox="0 0 200 200" style="position: absolute; width: 100%; height: 100%; animation: cyclone-cloud-spin 10s linear infinite; filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.4)); opacity: 0.88;">
+                     <defs>
+                       <radialGradient id="cycloneCloudGrad-${event.id}" cx="50%" cy="50%" r="50%">
+                         <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
+                         <stop offset="25%" stop-color="#f0fdf4" stop-opacity="0.8" />
+                         <stop offset="55%" stop-color="#bae6fd" stop-opacity="0.45" />
+                         <stop offset="85%" stop-color="#38bdf8" stop-opacity="0.15" />
+                         <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+                       </radialGradient>
+                       <radialGradient id="cycloneEyeGrad-${event.id}" cx="50%" cy="50%" r="50%">
+                         <stop offset="0%" stop-color="#020617" stop-opacity="0.95" />
+                         <stop offset="70%" stop-color="#0f172a" stop-opacity="0.5" />
+                         <stop offset="100%" stop-color="transparent" stop-opacity="0" />
+                       </radialGradient>
+                     </defs>
+                     <!-- 4 Logarithmic Spiral Cloud Arms -->
+                     <path d="M 100 100 Q 115 65 155 55 T 195 72 Q 170 102 135 110 Z" fill="url(#cycloneCloudGrad-${event.id})" />
+                     <path d="M 100 100 Q 85 135 45 145 T 5 128 Q 30 98 65 90 Z" fill="url(#cycloneCloudGrad-${event.id})" />
+                     <path d="M 100 100 Q 135 115 145 155 T 128 195 Q 98 170 90 135 Z" fill="url(#cycloneCloudGrad-${event.id})" />
+                     <path d="M 100 100 Q 65 85 55 45 T 72 5 Q 102 30 110 65 Z" fill="url(#cycloneCloudGrad-${event.id})" />
+                     <!-- Secondary outer convective feeder bands -->
+                     <path d="M 100 100 Q 145 75 175 95 T 192 145 Q 150 135 122 115 Z" fill="url(#cycloneCloudGrad-${event.id})" opacity="0.65" />
+                     <path d="M 100 100 Q 55 125 25 105 T 8 55 Q 50 65 78 85 Z" fill="url(#cycloneCloudGrad-${event.id})" opacity="0.65" />
+                     <!-- Dense Convective Eyewall Ring -->
+                     <circle cx="100" cy="100" r="32" fill="none" stroke="#ffffff" stroke-width="5" stroke-dasharray="16 6" opacity="0.95" style="animation: cyclone-cloud-spin 5s linear infinite reverse;" />
+                     <circle cx="100" cy="100" r="26" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.85" />
+                     <!-- Cyclone Eye Center (Calm, dark center) -->
+                     <circle cx="100" cy="100" r="18" fill="url(#cycloneEyeGrad-${event.id})" />
+                   </svg>
+                   <!-- Pulsing Gale Radii Atmospheric Glow -->
+                   <div style="position: absolute; width: 150px; height: 150px; border-radius: 9999px; background: radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(6,182,212,0.08) 55%, transparent 75%); animation: marker-glow-pulse 3s ease-in-out infinite;"></div>
+                 </div>`
               : meta.type === 'seismic'
               ? `<div style="position: absolute; width: 50px; height: 50px; top: -8px; border-radius: 9999px; border: 2px solid rgba(244,63,94,0.7); animation: seismic-shockwave 2s ease-out infinite; pointer-events: none;"></div>
                  <div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; background: rgba(244,63,94,0.25); animation: marker-glow-pulse 2s ease-in-out infinite; pointer-events: none;"></div>`
@@ -628,23 +692,47 @@ export default function CityMapViewer({
               : `<div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; border: 1.5px solid ${meta.colorHex}; opacity: 0.6; animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
           }
 
-          <!-- Core Badge -->
+          <!-- Core Badge: Central Cyclone Eye or Hazard Icon -->
           <div style="
             position: relative;
-            width: 34px;
-            height: 34px;
+            width: ${meta.type === 'cyclone' ? '38px' : '34px'};
+            height: ${meta.type === 'cyclone' ? '38px' : '34px'};
             border-radius: 9999px;
-            background: #060818;
+            background: ${meta.type === 'cyclone' ? 'radial-gradient(circle at 35% 35%, #0f172a 0%, #020617 100%)' : '#060818'};
             border: 2px solid ${isSelected ? '#ffffff' : meta.colorHex};
             box-shadow: 0 0 ${isSelected ? '22px' : '14px'} ${meta.glowRgba};
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: ${meta.type === 'cyclone' ? '20px' : '16px'};
             transform: ${isSelected ? 'scale(1.25)' : 'scale(1)'};
             transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
           ">
-            ${meta.type === 'cyclone' ? `<span style="display: inline-block; animation: cyclone-spin 4s linear infinite;">${meta.icon}</span>` : meta.icon}
+            ${
+              meta.type === 'cyclone'
+                ? `<span style="display: inline-block; animation: cyclone-spin 3s linear infinite; filter: drop-shadow(0 0 6px ${meta.colorHex});">${meta.icon}</span>
+                   <span style="
+                     position: absolute;
+                     bottom: -4px;
+                     right: -4px;
+                     width: 17px;
+                     height: 17px;
+                     border-radius: 9999px;
+                     background: ${meta.badgeBg};
+                     border: 1.5px solid ${meta.badgeBorder};
+                     color: #ffffff;
+                     font-family: monospace;
+                     font-size: 9px;
+                     font-weight: 900;
+                     display: flex;
+                     align-items: center;
+                     justify-content: center;
+                     box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+                   ">
+                     ${matchingCyclone ? (matchingCyclone.saffirSimpsonScale > 0 ? matchingCyclone.saffirSimpsonScale : (matchingCyclone.category.toLowerCase().includes('typhoon') ? 'T' : 'S')) : '1'}
+                   </span>`
+                : meta.icon
+            }
           </div>
 
           <!-- Instant Name & Telemetry Label Pill (Prominent for Cyclones or active selection) -->
@@ -1114,7 +1202,18 @@ export default function CityMapViewer({
           // D. Forecast Nodes
           c.forecastPoints.forEach((p) => {
             const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
-            const labelText = `+${p.leadHours}h\n${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}mb` : ''}`;
+            let dateHeader = `+${p.leadHours}h`;
+            if (p.timestamp) {
+              try {
+                const d = new Date(p.timestamp);
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+                dateHeader = `${dayName} - ${timeStr}`;
+              } catch {
+                dateHeader = `+${p.leadHours}h`;
+              }
+            }
+            const labelText = `${dateHeader}\n${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}hPa` : ''}`;
 
             activeForecastNodeFeatures.push({
               type: 'Feature',
@@ -1153,8 +1252,8 @@ export default function CityMapViewer({
             type: 'fill',
             source: coneSourceId,
             paint: {
-              'fill-color': '#06b6d4',
-              'fill-opacity': 0.12,
+              'fill-color': 'rgba(255, 255, 255, 0.16)',
+              'fill-opacity': 0.85,
             },
           },
           beforeLayerId
@@ -1165,10 +1264,10 @@ export default function CityMapViewer({
             type: 'line',
             source: coneSourceId,
             paint: {
-              'line-color': '#22d3ee',
-              'line-width': 1.6,
-              'line-dasharray': [2, 2],
-              'line-opacity': 0.75,
+              'line-color': '#ffffff',
+              'line-width': 2.0,
+              'line-dasharray': [4, 3],
+              'line-opacity': 0.85,
             },
           },
           beforeLayerId
@@ -1224,10 +1323,10 @@ export default function CityMapViewer({
             type: 'line',
             source: forecastSourceId,
             paint: {
-              'line-color': '#f43f5e',
-              'line-width': 2.4,
-              'line-dasharray': [2, 2],
-              'line-opacity': 0.9,
+              'line-color': '#ffffff',
+              'line-width': 2.5,
+              'line-dasharray': [3, 2],
+              'line-opacity': 0.95,
             },
           },
           beforeLayerId
@@ -1333,7 +1432,7 @@ export default function CityMapViewer({
         }
       });
     };
-  }, [filteredDisasters, showDisasters, isMapLoaded, cyclones, activeLayer, activeDisasterFilter]);
+  }, [filteredDisasters, showDisasters, isMapLoaded, cyclones, activeLayer, activeDisasterFilter, timelineHoursAhead]);
 
   // Synchronize NOAA Radar Raster Layer with MapLibre
   useEffect(() => {
@@ -1427,7 +1526,7 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'windy-satellite') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -1583,7 +1682,8 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${dateStr}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+            const tileTime = sec.layerName === 'MODIS_Terra_Cloud_Fraction_Day' ? geoObs.dateStr : geoObs.isoTimestamp;
+            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
@@ -1657,7 +1757,7 @@ export default function CityMapViewer({
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey, timelineHoursAhead]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
@@ -2139,6 +2239,10 @@ export default function CityMapViewer({
       {/* ── Scoped Disaster Animations & MapLibre Popup Styling ── */}
       <style>{`
         @keyframes cyclone-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes cyclone-cloud-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }

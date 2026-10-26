@@ -229,6 +229,7 @@ export function getGeostationarySectorForCoords(
 export function getGeostationaryObservationDate(offsetHours: number = 0): {
   dateStr: string;
   utcStr: string;
+  isoTimestamp: string;
   timestampMs: number;
   isLive: boolean;
 } {
@@ -240,13 +241,15 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
   const mm = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(targetDate.getUTCDate()).padStart(2, '0');
   const hh = String(targetDate.getUTCHours()).padStart(2, '0');
-  const min = String(Math.floor(targetDate.getUTCMinutes() / 15) * 15).padStart(2, '0');
+  const min = String(Math.floor(targetDate.getUTCMinutes() / 10) * 10).padStart(2, '0');
 
   const dateStr = `${yyyy}-${mm}-${dd}`;
+  const isoTimestamp = `${dateStr}T${hh}:${min}:00Z`;
   const utcStr = `${dateStr} ${hh}:${min} UTC`;
 
   return {
     dateStr,
+    isoTimestamp,
     utcStr,
     timestampMs: targetDate.getTime(),
     isLive: offsetHours === 0,

@@ -1267,7 +1267,7 @@ export default function WeatherDashboard() {
                     ? 4.5
                     : 3.3
                 }
-                initialMapStyle="windy-satellite"
+                initialMapStyle="atmospheric-satellite"
                 activeLayer={weather.activeLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
