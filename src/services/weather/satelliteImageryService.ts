@@ -233,8 +233,9 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
   timestampMs: number;
   isLive: boolean;
 } {
-  const baseNow = new Date();
-  const targetTime = baseNow.getTime() - Math.max(0, offsetHours) * 3600 * 1000;
+  // NASA GIBS sub-hourly geostationary processing latency is ~50 minutes from orbit scan to WMTS tile ingestion
+  const SATELLITE_PROCESSING_LATENCY_MS = 50 * 60 * 1000;
+  const targetTime = Date.now() - SATELLITE_PROCESSING_LATENCY_MS - Math.max(0, offsetHours) * 3600 * 1000;
   const targetDate = new Date(targetTime);
 
   const yyyy = targetDate.getUTCFullYear();

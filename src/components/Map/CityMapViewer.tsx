@@ -646,44 +646,11 @@ export default function CityMapViewer({
 
       el.innerHTML = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; user-select: none;">
-          <!-- Animated outer ring & rotating cyclone cloud vortex -->
+          <!-- Animated outer ring based on hazard type -->
           ${
             meta.type === 'cyclone'
-              ? `<!-- Real-time Rotating Cyclone Swirling Cloud Shield & Eyewall -->
-                 <div style="position: absolute; width: 280px; height: 280px; top: -121px; left: -121px; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: -1;">
-                   <!-- Sweeping Outer Convective Cloud Arms -->
-                   <svg viewBox="0 0 200 200" style="position: absolute; width: 100%; height: 100%; animation: cyclone-cloud-spin 10s linear infinite; filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.4)); opacity: 0.88;">
-                     <defs>
-                       <radialGradient id="cycloneCloudGrad-${event.id}" cx="50%" cy="50%" r="50%">
-                         <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
-                         <stop offset="25%" stop-color="#f0fdf4" stop-opacity="0.8" />
-                         <stop offset="55%" stop-color="#bae6fd" stop-opacity="0.45" />
-                         <stop offset="85%" stop-color="#38bdf8" stop-opacity="0.15" />
-                         <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
-                       </radialGradient>
-                       <radialGradient id="cycloneEyeGrad-${event.id}" cx="50%" cy="50%" r="50%">
-                         <stop offset="0%" stop-color="#020617" stop-opacity="0.95" />
-                         <stop offset="70%" stop-color="#0f172a" stop-opacity="0.5" />
-                         <stop offset="100%" stop-color="transparent" stop-opacity="0" />
-                       </radialGradient>
-                     </defs>
-                     <!-- 4 Logarithmic Spiral Cloud Arms -->
-                     <path d="M 100 100 Q 115 65 155 55 T 195 72 Q 170 102 135 110 Z" fill="url(#cycloneCloudGrad-${event.id})" />
-                     <path d="M 100 100 Q 85 135 45 145 T 5 128 Q 30 98 65 90 Z" fill="url(#cycloneCloudGrad-${event.id})" />
-                     <path d="M 100 100 Q 135 115 145 155 T 128 195 Q 98 170 90 135 Z" fill="url(#cycloneCloudGrad-${event.id})" />
-                     <path d="M 100 100 Q 65 85 55 45 T 72 5 Q 102 30 110 65 Z" fill="url(#cycloneCloudGrad-${event.id})" />
-                     <!-- Secondary outer convective feeder bands -->
-                     <path d="M 100 100 Q 145 75 175 95 T 192 145 Q 150 135 122 115 Z" fill="url(#cycloneCloudGrad-${event.id})" opacity="0.65" />
-                     <path d="M 100 100 Q 55 125 25 105 T 8 55 Q 50 65 78 85 Z" fill="url(#cycloneCloudGrad-${event.id})" opacity="0.65" />
-                     <!-- Dense Convective Eyewall Ring -->
-                     <circle cx="100" cy="100" r="32" fill="none" stroke="#ffffff" stroke-width="5" stroke-dasharray="16 6" opacity="0.95" style="animation: cyclone-cloud-spin 5s linear infinite reverse;" />
-                     <circle cx="100" cy="100" r="26" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.85" />
-                     <!-- Cyclone Eye Center (Calm, dark center) -->
-                     <circle cx="100" cy="100" r="18" fill="url(#cycloneEyeGrad-${event.id})" />
-                   </svg>
-                   <!-- Pulsing Gale Radii Atmospheric Glow -->
-                   <div style="position: absolute; width: 150px; height: 150px; border-radius: 9999px; background: radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(6,182,212,0.08) 55%, transparent 75%); animation: marker-glow-pulse 3s ease-in-out infinite;"></div>
-                 </div>`
+              ? `<div style="position: absolute; width: 62px; height: 62px; top: -12px; border-radius: 9999px; border: 2px dashed rgba(6,182,212,0.85); animation: cyclone-spin 4s linear infinite; pointer-events: none;"></div>
+                 <div style="position: absolute; width: 82px; height: 82px; top: -22px; border-radius: 9999px; background: radial-gradient(circle, rgba(6,182,212,0.3) 0%, rgba(6,182,212,0.06) 55%, transparent 75%); animation: marker-glow-pulse 2.5s ease-in-out infinite; pointer-events: none;"></div>`
               : meta.type === 'seismic'
               ? `<div style="position: absolute; width: 50px; height: 50px; top: -8px; border-radius: 9999px; border: 2px solid rgba(244,63,94,0.7); animation: seismic-shockwave 2s ease-out infinite; pointer-events: none;"></div>
                  <div style="position: absolute; width: 44px; height: 44px; top: -5px; border-radius: 9999px; background: rgba(244,63,94,0.25); animation: marker-glow-pulse 2s ease-in-out infinite; pointer-events: none;"></div>`
@@ -1537,9 +1504,9 @@ export default function CityMapViewer({
           undefined;
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
-        const isVisibleMode = spectralMode === 'visible';
+        const isVisibleMode = spectralMode === 'visible' && activeLayer !== 'hurricane';
         const isBlue = spectralMode === 'blue';
-        const isInfra = spectralMode === 'infra';
+        const isInfra = spectralMode === 'infra' || activeLayer === 'hurricane';
         const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
