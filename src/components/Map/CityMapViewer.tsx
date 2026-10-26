@@ -1561,10 +1561,9 @@ export default function CityMapViewer({
           undefined;
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
-        const isCycloneActive = activeLayer === 'hurricane' || Boolean(selectedCyclone);
-        const isVisibleMode = spectralMode === 'visible' && !isCycloneActive;
+        const isVisibleMode = (spectralMode || 'visible') === 'visible';
         const isBlue = spectralMode === 'blue';
-        const isInfra = spectralMode === 'infra' || isCycloneActive;
+        const isInfra = spectralMode === 'infra';
         const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
@@ -1676,38 +1675,79 @@ export default function CityMapViewer({
           if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
           if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
 
-          // Multi-sector geostationary constellation with strict bounds clipping the space limb
-          const sectors = [
-            {
-              id: 'himawari',
-              layerName: 'Himawari_AHI_Band13_Clean_Infrared',
-              // Bounds clip the outer space limb: 55°E to 160°E, 52°S to 52°N
-              bounds: [55.0, -52.0, 160.0, 52.0] as [number, number, number, number],
-            },
-            {
-              id: 'goes-east',
-              layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
-              // Bounds over Americas & Atlantic
-              bounds: [-135.0, -52.0, -20.0, 52.0] as [number, number, number, number],
-            },
-            {
-              id: 'goes-west',
-              layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
-              // Bounds over East Pacific & Hawaii
-              bounds: [-175.0, -52.0, -95.0, 52.0] as [number, number, number, number],
-            },
-            {
-              id: 'europe-africa',
-              layerName: 'MODIS_Terra_Cloud_Fraction_Day',
-              // Bounds over Europe, Atlantic, Mediterranean & Africa (-25°W to 55°E)
-              bounds: [-25.0, -52.0, 55.0, 65.0] as [number, number, number, number],
-            },
-          ];
+          // Multi-sector geostationary constellation:
+          // Strictly focused on cyclone bounding envelope or clamped to tropical belt (< 32°N)
+          // Eliminates cold-ground thermal false positives over Siberia/Arctic completely!
+          const activeStorm = selectedCyclone || (cyclones && cyclones.length > 0 ? cyclones[0] : null);
+          let sectors: { id: string; layerName: string; bounds: [number, number, number, number] }[] = [];
+
+          if (activeStorm) {
+            const stormBounds: [number, number, number, number] = [
+              activeStorm.lng - 14.0,
+              Math.max(-32.0, activeStorm.lat - 11.0),
+              activeStorm.lng + 14.0,
+              Math.min(32.0, activeStorm.lat + 11.0),
+            ];
+
+            if (activeStorm.lng >= 45.0 && activeStorm.lng <= 180.0) {
+              sectors = [
+                {
+                  id: 'himawari',
+                  layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+                  bounds: stormBounds,
+                },
+              ];
+            } else if (activeStorm.lng >= -145.0 && activeStorm.lng <= -20.0) {
+              sectors = [
+                {
+                  id: 'goes-east',
+                  layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+                  bounds: stormBounds,
+                },
+              ];
+            } else {
+              sectors = [
+                {
+                  id: 'goes-west',
+                  layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+                  bounds: stormBounds,
+                },
+              ];
+            }
+          } else {
+            // General tropical cyclone corridor: capped at 32°N to eliminate high-latitude frozen land
+            sectors = [
+              {
+                id: 'himawari',
+                layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+                bounds: [55.0, -32.0, 160.0, 32.0] as [number, number, number, number],
+              },
+              {
+                id: 'goes-east',
+                layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+                bounds: [-135.0, -32.0, -20.0, 32.0] as [number, number, number, number],
+              },
+              {
+                id: 'goes-west',
+                layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+                bounds: [-175.0, -32.0, -95.0, 32.0] as [number, number, number, number],
+              },
+            ];
+          }
+
+          // Clean up unused sectors
+          const activeSectorIds = new Set(sectors.map((s) => s.id));
+          ['himawari', 'goes-east', 'goes-west', 'europe-africa'].forEach((sId) => {
+            if (!activeSectorIds.has(sId)) {
+              if (map.getLayer(`nasa-gibs-${sId}-layer`)) map.removeLayer(`nasa-gibs-${sId}-layer`);
+              if (map.getSource(`nasa-gibs-${sId}-source`)) map.removeSource(`nasa-gibs-${sId}-source`);
+            }
+          });
 
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileTime = sec.layerName === 'MODIS_Terra_Cloud_Fraction_Day' ? geoObs.dateStr : geoObs.isoTimestamp;
+            const tileTime = geoObs.isoTimestamp;
             const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
 
             const existingSource = map.getSource(sId) as any;

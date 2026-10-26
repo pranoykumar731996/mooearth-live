@@ -108,7 +108,7 @@ export function useWeatherData() {
       marine: null,
     },
     selectedLocation: null,
-    activeLayer: 'overview',
+    activeLayer: 'satellite',
   });
 
   const [units, setUnits] = useState<'celsius' | 'fahrenheit'>('celsius');

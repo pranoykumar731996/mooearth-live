@@ -121,12 +121,12 @@ export default function WeatherDashboard() {
   const weather = useWeatherData();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<'globe' | 'city-map'>('globe');
+  const [viewMode, setViewMode] = useState<'globe' | 'city-map'>('city-map');
   const [isPanelMinimized, setIsPanelMinimized] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
-  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('infra');
+  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('visible');
   const [overlayRadar, setOverlayRadar] = useState(false);
   const [showPressureIsobars, setShowPressureIsobars] = useState(false);
   const [particlesEnabled, setParticlesEnabled] = useState(true);
@@ -568,7 +568,9 @@ export default function WeatherDashboard() {
     const country = searchParams.get('country') || '';
     const view = searchParams.get('view');
 
-    if (view === 'city') {
+    if (view === 'globe' || view === '3d') {
+      setViewMode('globe');
+    } else {
       setViewMode('city-map');
     }
 
