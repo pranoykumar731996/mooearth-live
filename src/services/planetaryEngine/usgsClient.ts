@@ -137,39 +137,56 @@ export function parseUsgsFeature(feature: UsgsGeoJsonResponse['features'][0]): P
 /**
  * Fetches real-time earthquakes from USGS GeoJSON feeds
  */
-export async function fetchUsgsEarthquakes(timeoutMs = 6000): Promise<PlanetaryEvent[]> {
+export async function fetchUsgsEarthquakes(timeoutMs = 7000): Promise<PlanetaryEvent[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(USGS_FEEDS.ALL_2_5_DAY, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'MooEarthLivePlanetaryEngine/1.0',
-      },
-      next: { revalidate: 120 }, // 2-minute Next.js caching
-    });
+    const fetchFeed = async (url: string) => {
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'MooEarthLivePlanetaryEngine/1.0',
+          },
+          next: { revalidate: 120 },
+        });
+        if (!res.ok) return [];
+        const data: UsgsGeoJsonResponse = await res.json();
+        return Array.isArray(data?.features) ? data.features : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const [global45Features, local25Features] = await Promise.all([
+      fetchFeed(USGS_FEEDS.ALL_4_5_DAY),
+      fetchFeed(USGS_FEEDS.ALL_2_5_DAY),
+    ]);
 
     clearTimeout(timer);
 
-    if (!res.ok) {
-      console.warn(`[Planetary USGS] Feed returned HTTP ${res.status}`);
-      return [];
-    }
+    const featureMap = new Map<string, PlanetaryEvent>();
 
-    const data: UsgsGeoJsonResponse = await res.json();
-    if (!data?.features || !Array.isArray(data.features)) {
-      return [];
-    }
-
-    const events: PlanetaryEvent[] = [];
-    for (const feature of data.features) {
-      const event = parseUsgsFeature(feature);
-      if (event) {
-        events.push(event);
+    // Process global M4.5+ earthquakes first
+    for (const f of global45Features) {
+      const event = parseUsgsFeature(f);
+      if (event && !featureMap.has(event.id)) {
+        featureMap.set(event.id, event);
       }
     }
+
+    // Add local M2.5+ earthquakes
+    for (const f of local25Features) {
+      const event = parseUsgsFeature(f);
+      if (event && !featureMap.has(event.id)) {
+        featureMap.set(event.id, event);
+      }
+    }
+
+    const events = Array.from(featureMap.values());
+    events.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
     return events;
   } catch (err: any) {

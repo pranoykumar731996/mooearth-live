@@ -144,7 +144,7 @@ export default function WeatherDashboard() {
   const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
   const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
 
-  // 24-Hour Event Window & Freshness Check (Past 24 Hours)
+  // Event Window & Freshness Check (24h standard, extended for active major disasters)
   const isEventWithin24Hours = useCallback((event: WorldEvent): boolean => {
     // Active tropical cyclones remain tracked by official meteorological agencies until dissipated
     if (isTropicalCycloneEvent(event) || event.planetaryTelemetry?.stormWarningType === 'tropical_cyclone') {
@@ -152,7 +152,28 @@ export default function WeatherDashboard() {
     }
     const publishedTime = new Date(event.publishedAt).getTime();
     if (isNaN(publishedTime)) return true;
-    return Date.now() - publishedTime <= 24 * 60 * 60 * 1000;
+    const ageMs = Date.now() - publishedTime;
+
+    // Major earthquakes (M4.5+ or tsunami warning) remain active for 48 hours
+    if (
+      event.category === 'seismic' &&
+      ((event.planetaryTelemetry?.magnitude && event.planetaryTelemetry.magnitude >= 4.5) ||
+        event.planetaryTelemetry?.tsunamiWarning)
+    ) {
+      return ageMs <= 48 * 60 * 60 * 1000;
+    }
+
+    // Active wildfires tracked by NASA EONET / FIRMS remain active for 48 hours
+    if (event.category === 'wildfires') {
+      return ageMs <= 48 * 60 * 60 * 1000;
+    }
+
+    // Space weather alerts (NOAA SWPC) remain active for 48 hours
+    if (event.category === 'space_weather') {
+      return ageMs <= 48 * 60 * 60 * 1000;
+    }
+
+    return ageMs <= 24 * 60 * 60 * 1000;
   }, []);
 
   // Official live tropical cyclones from NOAA NHC & JTWC/IMD
@@ -1372,6 +1393,17 @@ export default function WeatherDashboard() {
                             }
                             if (viewMode === 'globe') {
                               globeApiRef.current?.flyTo({ lat: disaster.lat, lng: disaster.lng, altitude: 1.18 }, 1400);
+                            }
+                            if (typeof disaster.lat === 'number' && typeof disaster.lng === 'number') {
+                              const cleanName = disaster.title.split('(')[0].split('-')[0].trim();
+                              weather.fetchWeatherForLocation({
+                                name: cleanName,
+                                country: disaster.country || 'Hazard Center',
+                                latitude: disaster.lat,
+                                longitude: disaster.lng,
+                                timezone: 'auto',
+                                source: 'globe-click',
+                              });
                             }
                           }}
                           className={`shrink-0 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer group ${

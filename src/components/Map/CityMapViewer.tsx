@@ -535,6 +535,29 @@ export default function CityMapViewer({
     }
   }, [activeWeatherSummary, cityName, countryName, latitude, longitude]);
 
+  // Synchronize 2D camera with selectedDisaster when user clicks a hazard card or marker
+  useEffect(() => {
+    if (!mapRef.current || !isMapLoaded || !selectedDisaster) return;
+    if (typeof selectedDisaster.lat !== 'number' || typeof selectedDisaster.lng !== 'number') return;
+    if (isNaN(selectedDisaster.lat) || isNaN(selectedDisaster.lng)) return;
+
+    mapRef.current.flyTo({
+      center: [selectedDisaster.lng, selectedDisaster.lat],
+      zoom: Math.max(mapRef.current.getZoom(), 5.5),
+      speed: 1.2,
+      essential: true,
+    });
+
+    const match = disasterMarkersRef.current.find((m) => m.event.id === selectedDisaster.id);
+    if (match) {
+      try {
+        match.popup.addTo(mapRef.current);
+      } catch {
+        // ignore
+      }
+    }
+  }, [selectedDisaster, isMapLoaded]);
+
   // Synchronize 2D Disaster and Cyclone Markers with MapLibre
   useEffect(() => {
     const map = mapRef.current;
@@ -758,7 +781,13 @@ export default function CityMapViewer({
             justify-content: center;
             gap: 6px;
           ">
-            <span>📊 Inspect Cyclone Dossier</span>
+            <span>${
+              meta.type === 'cyclone' ? '📊 Inspect Cyclone Dossier' :
+              meta.type === 'seismic' ? '🌋 Inspect Seismic Dossier' :
+              meta.type === 'wildfires' ? '🔥 Inspect Wildfire Dossier' :
+              meta.type === 'space_weather' ? '🌌 Inspect Space Weather Dossier' :
+              '⚡ Inspect Hazard Dossier'
+            }</span>
             <span>↗</span>
           </button>
         </div>
