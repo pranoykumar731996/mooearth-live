@@ -214,7 +214,7 @@ export default function CityMapViewer({
     });
   }, [disasters, activeDisasterFilter]);
 
-  // Real-time Nowcast Lightning feed matching Windy
+  // Real-time Nowcast Lightning telemetry feed
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
   const [showLightning, setShowLightning] = useState(true);
 
@@ -1822,7 +1822,7 @@ export default function CityMapViewer({
 
 
 
-      {/* ── Windy Satellite & Nowcast Lightning Telemetry HUD ── */}
+      {/* ── Geostationary Satellite & Nowcast Lightning Telemetry HUD ── */}
       {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
           <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">

@@ -1,8 +1,8 @@
 // ============================================================
-// MooEarth Live — Windy-Style Hurricane Tracker Sidebar
+// MooEarth Live — Real-Time Hurricane Tracker Sidebar
 // ============================================================
 // Multi-storm selector and forecast model intelligence panel
-// matching Windy.com & Zoom Earth design aesthetics.
+// for real-time tropical cyclone tracking and analysis.
 
 'use client';
 

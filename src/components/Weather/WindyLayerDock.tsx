@@ -1,7 +1,7 @@
 // ============================================================
-// MooEarth Live — Windy-Style Right Floating Layer Dock
+// MooEarth Live — Floating Weather Layer Navigation Dock
 // ============================================================
-// The signature Windy.com right-side vertical floating navigation dock.
+// Vertical floating layer navigation dock for meteorological layers.
 // Displays circular layer icons with active glowing badges and labels.
 
 'use client';

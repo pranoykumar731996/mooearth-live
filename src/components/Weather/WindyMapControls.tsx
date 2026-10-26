@@ -1,7 +1,7 @@
 // ============================================================
-// MooEarth Live — Windy-Style Map Controls & 3D/2D Toggle
+// MooEarth Live — Floating Map Controls & 3D/2D Toggle
 // ============================================================
-// Floating map control tool cluster matching Windy.com:
+// Floating map control tool cluster:
 // - 3D Globe <-> 2D Flat Map projection switch
 // - Zoom (+ / -)
 // - Geolocation (my position)
@@ -68,7 +68,7 @@ export default function WindyMapControls({
       },
       (err) => {
         setIsLocating(false);
-        console.warn('[WindyControls] Geolocation error:', err);
+        console.warn('[MapControls] Geolocation error:', err);
       },
       { timeout: 8000, enableHighAccuracy: false }
     );

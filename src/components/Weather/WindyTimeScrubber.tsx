@@ -1,7 +1,7 @@
 // ============================================================
-// MooEarth Live — Windy-Style Cinematic Bottom Time Scrubber & Player
+// MooEarth Live — Cinematic Bottom Meteorological Time Scrubber & Player
 // ============================================================
-// Bottom floating time-player matching Windy.com's signature design:
+// Bottom floating time-player for meteorological observations & forecasts:
 // - Circular Red Play/Pause button with smooth loop state
 // - Historical & forecast time scrubber (24h ago -> Live -> Next 24h)
 // - Live yellow pill badge with real-time timestamp

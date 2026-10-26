@@ -9,7 +9,7 @@
 // - CARTO Voyager / Dark (Raster): Basemaps under CC BY 4.0 / Carto Free (configurable via NEXT_PUBLIC_CARTO_API_KEY).
 // - Full attribution to OpenStreetMap contributors and respective data providers.
 
-import { WINDY_MAP_STYLE } from './windyMapStyle';
+import { ATMOSPHERIC_SATELLITE_MAP_STYLE } from './windyMapStyle';
 
 export type MapStyleKey =
   | 'windy-satellite'
@@ -104,7 +104,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       key: 'windy-satellite',
       label: 'Atmospheric Satellite',
       badge: 'NASA / NOAA',
-      style: WINDY_MAP_STYLE,
+      style: ATMOSPHERIC_SATELLITE_MAP_STYLE,
       type: 'vector',
       attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',
     },
@@ -256,7 +256,7 @@ export const MAX_CITY_ZOOM = 18;
  * Determine default style based on environment configuration
  */
 export function getDefaultMapStyleKey(): MapStyleKey {
-  // Directly default to Windy Satellite aesthetic for authentic meteorological cloud exploration
+  // Directly default to Atmospheric Satellite aesthetic for authentic meteorological cloud exploration
   return 'windy-satellite';
 }
 

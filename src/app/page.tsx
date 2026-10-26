@@ -3,7 +3,7 @@
 // ============================================================
 // Destination 1 of 2: Global Weather Intelligence & Live Radar
 // 3D Interactive Earth Globe + MapLibre City Map + 8 Weather Layers +
-// Forecast Timeline + Windy Dock + Meteorological Telemetry.
+// Forecast Timeline + Floating Weather Dock + Meteorological Telemetry.
 
 import { Metadata } from 'next';
 import { generateHreflangs } from '@/lib/i18n';

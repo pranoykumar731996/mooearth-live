@@ -65,7 +65,7 @@ export interface ActiveVortexCenter {
 /**
  * Verified active planetary cyclonic vortices.
  * Ensures the Bay of Bengal, Arabian Sea, Western Pacific, and global hurricane basins
- * exhibit genuine physical spinning streamlines on the 3D globe and 2D map just like Windy.
+ * exhibit genuine physical spinning streamlines on the 3D globe and 2D map.
  */
 export const ACTIVE_PLANETARY_VORTICES: ActiveVortexCenter[] = [
   // 1. North Indian Ocean — Bay of Bengal Cyclonic Storm / Invest 98B

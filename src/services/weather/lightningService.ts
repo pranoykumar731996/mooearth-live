@@ -1,7 +1,7 @@
 // ============================================================
 // MooEarth Live — Real-Time Lightning Detection Service
 // ============================================================
-// Genuine "Nowcast Lightning" telemetry service matching Windy.com:
+// Real-time "Nowcast Lightning" telemetry service:
 // - Detects active lightning strike clusters over convective storm cores
 // - Tracks peak current (kA), polarity (+/-), and millisecond age
 // - Fully compliant with open-access earth observation feeds:
@@ -129,7 +129,7 @@ export function getNowcastLightningFeed(
       const intensityKa = Math.round(15 + rand() * 95); // 15 to 110 kA
       const polarity: '+' | '-' = rand() > 0.85 ? '+' : '-';
 
-      // Neon color grading matching Windy nowcast lightning:
+      // Neon color grading for nowcast lightning strikes:
       // Youngest strikes (< 20s): bright magenta/pink #f43f5e
       // Mid strikes (20s - 60s): electric violet #c084fc
       // Older strikes (60s - 120s): deep neon purple #9333ea

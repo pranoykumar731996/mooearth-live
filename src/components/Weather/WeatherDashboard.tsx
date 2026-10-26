@@ -1467,7 +1467,7 @@ export default function WeatherDashboard() {
             </div>
           )}
 
-          {/* Windy Map Controls & 3D/2D Toggle (Floating, active across BOTH 3D Earth and 2D Satellite views) */}
+          {/* Floating Map Controls & 3D/2D Toggle (Floating, active across BOTH 3D Earth and 2D Satellite views) */}
           <WindyMapControls
             viewMode={viewMode}
             onToggleViewMode={() => setViewMode(viewMode === 'globe' ? 'city-map' : 'globe')}
@@ -1488,7 +1488,7 @@ export default function WeatherDashboard() {
             }}
           />
 
-          {/* Windy Meteorological Dynamic Scale Legend (Offset to avoid overlapping side panel) */}
+          {/* Meteorological Dynamic Scale Legend (Offset to avoid overlapping side panel) */}
           <WindyLegendBar
             activeLayer={weather.activeLayer}
             spectralMode={spectralMode}
@@ -1496,7 +1496,7 @@ export default function WeatherDashboard() {
             className={hasData ? 'lg:right-[396px]' : ''}
           />
 
-          {/* Windy Cinematic Bottom Time Scrubber & Player Bar */}
+          {/* Cinematic Bottom Time Scrubber & Player Bar */}
           <WindyTimeScrubber
             activeLayer={weather.activeLayer}
             spectralMode={spectralMode}
@@ -1662,7 +1662,7 @@ export default function WeatherDashboard() {
           </div>
         )}
 
-        {/* Windy-Style Multi-Storm Hurricane Tracker Sidebar (Active on Hurricane layer) */}
+        {/* Multi-Storm Hurricane Tracker Sidebar (Active on Hurricane layer) */}
         {weather.activeLayer === 'hurricane' && !showFullDossier && (
           <WindyHurricaneTrackerSidebar
             cyclones={rawCyclones}

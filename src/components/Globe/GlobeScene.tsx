@@ -985,12 +985,12 @@ const GlobeScene = React.memo(function GlobeScene({
           }
         }
 
-        // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Windy Satellite)
+        // 13. Live Geostationary Satellite Cloud Cover & Convective Tops Engine (Geostationary Satellite)
         if (geostationarySatelliteLayerRef.current) {
           geostationarySatelliteLayerRef.current.update(time, 0.016);
         }
 
-        // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Windy Isobars)
+        // 14. Mean Sea Level Pressure (MSLP) Isobars & High/Low Synoptic Centers (Atmospheric Pressure Isobars)
         if (atmosphericPressureLayerRef.current) {
           atmosphericPressureLayerRef.current.update(time, 0.016);
         }
@@ -1452,7 +1452,7 @@ const GlobeScene = React.memo(function GlobeScene({
     });
   }, [selectedEvent]);
 
-  // ── 3D Geostationary Satellite Cloud Cover Layer (Windy Satellite Visible / Blue / Infra) ──
+  // ── 3D Geostationary Satellite Cloud Cover Layer (Visible / Blue / Infra) ──
   useEffect(() => {
     if (!globeRef.current || !introDone) return;
     const globe = globeRef.current;
@@ -1502,7 +1502,7 @@ const GlobeScene = React.memo(function GlobeScene({
     };
   }, [globeRef, introDone, globeView, weatherLayerMode, satelliteSpectralMode, overlayRadar, weatherTimelineIndex, events, isMobile, isPlayEarthActive]);
 
-  // ── 3D Mean Sea Level Pressure (MSLP) Isobars & High/Low Layer (Windy Isobars) ──
+  // ── 3D Mean Sea Level Pressure (MSLP) Isobars & High/Low Layer (Atmospheric Pressure Isobars) ──
   useEffect(() => {
     if (!globeRef.current || !introDone) return;
     const globe = globeRef.current;
@@ -2097,7 +2097,7 @@ const GlobeScene = React.memo(function GlobeScene({
     const showWildfires = hazardFilter === 'wildfires' || (isAll && (globeView === 'weather' || activeCategory === 'wildfires'));
     const showSpaceWeather = hazardFilter === 'space_weather' || (isAll && (globeView === 'weather' || activeCategory === 'space_weather'));
 
-    // Populate active tropical cyclone & hurricane disaster markers (Windy / NOAA NHC standard)
+    // Populate active tropical cyclone & hurricane disaster markers (Official JTWC / NOAA NHC / IMD standard)
     if (showCyclones) {
       const cycloneList = disasterFeed.filter((e) => {
         const t = (e.title || '').toLowerCase();

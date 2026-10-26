@@ -3,7 +3,7 @@
 // ============================================================
 // Generates mean sea level pressure (MSLP) isobars (1004, 1008, 1012, 1016, 1020 hPa)
 // and planetary High (H) / Low (L) pressure centers.
-// Matches the signature Windy "pressure isobars" toggle.
+// Authentic meteorological pressure isobars representation.
 
 import * as THREE from 'three';
 import { geoToVector3 } from './WindParticleSystem';

@@ -1,7 +1,7 @@
 // ============================================================
 // MooEarth Live — 3D Geostationary Satellite Cloud Cover Layer
 // ============================================================
-// High-resolution global satellite cloud imagery layer matching Windy.com.
+// High-resolution global satellite cloud imagery layer.
 // Features:
 // - Visible (Natural True Color) daylight cloud decks & storm shadows
 // - Blue (Water Vapor / Upper Tropospheric moisture band)
@@ -241,7 +241,7 @@ export class GeostationarySatelliteLayer {
           return v;
         }
 
-        // Authentic Windy Infrared Cloud-Top Brightness Temperature Color Ramp (Kelvin scale)
+        // Authentic Infrared Cloud-Top Brightness Temperature Color Ramp (Kelvin scale)
         // Cloud-free sky is 100% transparent. Only cold storm cloud decks show thermal colors.
         vec4 getInfraredColor(float density, float altitude) {
           if (density < 0.10) {

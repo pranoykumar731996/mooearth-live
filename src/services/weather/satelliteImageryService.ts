@@ -310,7 +310,7 @@ export function buildGibsTileUrl(
 
 /**
  * Generates an array of historical-to-live geostationary satellite cloud observation frames.
- * Supports smooth time-lapse cloud movement playback matching Windy.com's animation scrubber.
+ * Supports smooth time-lapse cloud movement playback for the animation scrubber.
  */
 export function getSatelliteFrames(
   mode: SatelliteSpectralMode = 'visible',

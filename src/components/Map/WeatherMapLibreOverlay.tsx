@@ -7,7 +7,7 @@
 //
 // Features:
 // - Zoom-adaptive particle density and streak lengths.
-// - Smooth trailing alpha fades matching Windy.com aesthetic.
+// - Smooth trailing alpha fades and aerodynamic streamline curves.
 // - Hardware-accelerated Canvas 2D with requestAnimationFrame.
 // - Battery-conscious: pauses when tab is hidden or reduced-motion is requested.
 

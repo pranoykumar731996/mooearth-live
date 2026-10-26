@@ -1,5 +1,5 @@
 // ============================================================
-// MooEarth Live — Windy-Style Dynamic Meteorological Legend Bar
+// MooEarth Live — Dynamic Meteorological Legend Bar
 // ============================================================
 // Bottom-right floating color scale legend dynamically matching
 // the active layer (Infrared Kelvin scale, Radar dBZ, Wind knots, etc.)

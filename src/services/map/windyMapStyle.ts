@@ -1,7 +1,7 @@
 // ============================================================
-// MooEarth Live — Windy Satellite Basemap Style Specification
+// MooEarth Live — Atmospheric Satellite Basemap Style Specification
 // ============================================================
-// Authentic Windy.com cartographic aesthetic for 2D satellite view:
+// Professional meteorological cartographic aesthetic for 2D satellite view:
 // - Land: Rich olive green (#486028)
 // - Oceans & Water: Deep marine navy (#162d4e)
 // - Sovereign Borders: Crisp dark border lines (#16240d)
@@ -9,7 +9,7 @@
 // - Reference Labels: High-contrast white glyphs with dark halo (#121e0b)
 // - Fully open-source: OpenFreeMap / OpenMapTiles / Natural Earth (ODbL / Public Domain)
 
-export const WINDY_MAP_STYLE: any = {
+export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
   version: 8,
   name: 'Atmospheric Satellite Base',
   sources: {
@@ -183,3 +183,5 @@ export const WINDY_MAP_STYLE: any = {
     },
   ],
 };
+
+export const WINDY_MAP_STYLE = ATMOSPHERIC_SATELLITE_MAP_STYLE;
