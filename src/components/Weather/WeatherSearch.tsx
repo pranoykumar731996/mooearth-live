@@ -13,6 +13,7 @@ import type { GeocodingResult, GeocodingResponse, GeographicFeatureType } from '
 
 interface WeatherSearchProps {
   onSelectLocation: (result: GeocodingResult) => void;
+  onClear?: () => void;
   placeholder?: string;
   initialQuery?: string;
 }
@@ -80,6 +81,7 @@ const FEATURE_CONFIG: Record<
 
 export default function WeatherSearch({
   onSelectLocation,
+  onClear,
   placeholder = 'Search cities, streets, landmarks, airports...',
   initialQuery,
 }: WeatherSearchProps) {
@@ -181,7 +183,8 @@ export default function WeatherSearch({
     setError(null);
     setHasSearched(false);
     inputRef.current?.focus();
-  }, []);
+    onClear?.();
+  }, [onClear]);
 
   // Handle selection with full display name
   const handleSelect = useCallback(

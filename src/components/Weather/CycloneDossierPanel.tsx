@@ -11,7 +11,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { TropicalCyclone } from '@/services/weather/cycloneTrackingService';
 import { interpolateForecastPosition } from '@/services/weather/cycloneTrackingService';
 import { findNearestCoastline } from '@/services/weather/coastlineProximity';
@@ -30,6 +30,15 @@ export default function CycloneDossierPanel({
   className = '',
 }: CycloneDossierPanelProps) {
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Keyboard Escape listener to dismiss observatory report
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!cyclone) return null;
 
@@ -58,43 +67,65 @@ export default function CycloneDossierPanel({
 
   return (
     <div
-      className={`fixed top-16 right-3 sm:right-5 z-40 max-w-[380px] w-full select-none pointer-events-auto transition-all ${className}`}
+      className={`fixed top-[104px] sm:top-[112px] right-2 sm:right-5 z-40 max-w-[390px] w-[calc(100vw-16px)] sm:w-full select-none pointer-events-auto transition-all ${className}`}
       data-testid="cyclone-dossier-panel"
     >
-      <div className="rounded-2xl bg-[#060818]/96 backdrop-blur-2xl border border-white/15 shadow-[0_12px_45px_rgba(0,0,0,0.85)] p-4 text-white flex flex-col gap-3 font-sans">
-        {/* Header: Title + Status Badge + Close Button */}
-        <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-2.5">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl">🌀</span>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
-                {cyclone.name}
-              </h2>
-            </div>
-            <span className="text-[11px] font-mono text-cyan-300 font-semibold mt-0.5">
-              {cyclone.basin} Basin · {cyclone.agency}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
-              title={isMinimized ? 'Expand panel' : 'Minimize panel'}
-              aria-label={isMinimized ? 'Expand' : 'Minimize'}
-            >
-              {isMinimized ? '▼' : '▲'}
-            </button>
+      <div className="max-h-[calc(100vh-185px)] sm:max-h-[calc(100vh-170px)] rounded-2xl bg-[#060818]/96 backdrop-blur-2xl border border-white/15 shadow-[0_12px_45px_rgba(0,0,0,0.85)] p-3.5 sm:p-4 text-white flex flex-col font-sans overflow-hidden">
+        {/* Sticky Pinned Header: Return Link + Title + Actions (Always visible!) */}
+        <div className="shrink-0 border-b border-white/10 pb-2.5 mb-2.5 flex flex-col gap-1.5">
+          {/* Top row: Return to Map button */}
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={onClose}
-              className="w-7 h-7 rounded-full bg-white/10 hover:bg-rose-500/30 text-white/70 hover:text-rose-200 border border-white/10 flex items-center justify-center text-xs transition-colors cursor-pointer"
-              title="Close cyclone dossier"
-              aria-label="Close"
+              className="text-[11px] font-mono text-cyan-400 hover:text-cyan-200 flex items-center gap-1 transition-colors cursor-pointer group"
+              title="Return to Map"
+              aria-label="Return to Map"
             >
-              ✕
+              <span className="group-hover:-translate-x-0.5 transition-transform text-xs">←</span>
+              <span className="font-semibold underline underline-offset-2">Return to Map</span>
             </button>
+            <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">
+              Observatory Report
+            </span>
+          </div>
+
+          {/* Main header row: Name + Agency + Minimize/Close Crossbar buttons */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-xl shrink-0">🌀</span>
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight truncate">
+                  {cyclone.name}
+                </h2>
+              </div>
+              <span className="text-[11px] font-mono text-cyan-300 font-semibold mt-0.5 truncate">
+                {cyclone.basin} Basin · {cyclone.agency}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white flex items-center justify-center text-xs transition-colors cursor-pointer"
+                title={isMinimized ? 'Expand panel' : 'Minimize panel'}
+                aria-label={isMinimized ? 'Expand' : 'Minimize'}
+              >
+                {isMinimized ? '▼' : '▲'}
+              </button>
+              {/* Functional Crossbar Button */}
+              <button
+                type="button"
+                onClick={onClose}
+                data-testid="close-cyclone-dossier"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-500/30 text-white/80 hover:text-rose-100 border border-white/20 hover:border-rose-400/50 flex items-center justify-center text-sm font-black transition-all cursor-pointer shadow-lg active:scale-90"
+                title="Close observatory report (Esc)"
+                aria-label="Close observatory report"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
 
@@ -107,7 +138,7 @@ export default function CycloneDossierPanel({
             <span className="text-cyan-300 font-bold shrink-0">{frame.windSpeedKph} km/h</span>
           </div>
         ) : (
-          <>
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 space-y-3 touch-pan-y scrollbar-thin scrollbar-thumb-white/20">
             {/* Timeline Frame Status Badge */}
             <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-mono">
               <div className="flex items-center gap-1.5">
@@ -261,22 +292,34 @@ export default function CycloneDossierPanel({
               The cone represents the 67% probability track of the storm center. Hazardous winds, torrential rainfall, and coastal storm surge often extend far outside the cone.
             </div>
 
-            {/* Footer: Official Advisory Links & Emergency Portal */}
-            <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-mono">
-              <span className="text-white/40 truncate">
-                Advisory: {cyclone.advisoryNumber || 'Live Synoptic'}
+            {/* Footer: Official Advisory Links, Dismiss Button & Emergency Portal */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[10px] font-mono gap-2 shrink-0">
+              <span className="text-white/40 truncate text-[9px] sm:text-[10px]">
+                {cyclone.advisoryNumber || 'Live Synoptic'}
               </span>
-              <a
-                href={cyclone.agencyUrl || 'https://www.nhc.noaa.gov'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold transition-colors flex items-center gap-1 shrink-0"
-              >
-                <span>Official Agency Portal</span>
-                <span>↗</span>
-              </a>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Close observatory report"
+                  aria-label="Close report"
+                >
+                  <span>✕</span>
+                  <span>Close</span>
+                </button>
+                <a
+                  href={cyclone.agencyUrl || 'https://www.nhc.noaa.gov'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 font-bold transition-colors flex items-center gap-1"
+                >
+                  <span>Official Portal</span>
+                  <span>↗</span>
+                </a>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

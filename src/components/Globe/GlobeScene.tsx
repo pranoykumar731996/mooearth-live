@@ -235,6 +235,12 @@ const GlobeScene = React.memo(function GlobeScene({
   const [introDone, setIntroDone] = useState(false);
   const [countries, setCountries] = useState<any[]>([]);
   const [globalMood, setGlobalMood] = useState<Record<string, number>>({});
+  const [isCountryCardDismissed, setIsCountryCardDismissed] = useState(false);
+
+  // Reset dismissal state whenever a new selectedCountry is provided
+  useEffect(() => {
+    setIsCountryCardDismissed(false);
+  }, [selectedCountry]);
 
   // ── 3D Weather Layers Refs (Phase 2 Real Weather Visualizations) ──
   const windParticleSystemRef = useRef<WindParticleSystem | null>(null);
@@ -3417,6 +3423,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Surface click: deselect open event dossier and report clicked geographic coordinates
     onSelectEvent(null);
+    setIsCountryCardDismissed(true);
     if (onSelectCountry) onSelectCountry(null);
     if (onGlobeClick && coords) onGlobeClick(coords);
     resumeRotation();
@@ -3659,7 +3666,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
       {/* Floating details card (Feature 2 & Feature 8) */}
       <AnimatePresence>
-        {selectedCountry && countryStats && !isDashboardOpen && !isPlayEarthActive && (
+        {selectedCountry && !isCountryCardDismissed && countryStats && !isDashboardOpen && !isPlayEarthActive && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -3682,11 +3689,16 @@ const GlobeScene = React.memo(function GlobeScene({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  e.preventDefault();
+                  setIsCountryCardDismissed(true);
                   if (onSelectCountry) onSelectCountry(null);
                 }}
-                className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/55 hover:text-white transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-rose-500/25 text-white/70 hover:text-rose-200 border border-white/10 hover:border-rose-400/40 flex items-center justify-center text-xs font-bold transition-all cursor-pointer shrink-0 active:scale-90"
+                title="Close country details"
+                aria-label="Close country details"
               >
                 ✕
               </button>

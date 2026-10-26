@@ -138,6 +138,7 @@ export default function WeatherDashboard() {
   const initialUrlRestoredRef = useRef(false);
   const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
   const [selectedCyclone, setSelectedCyclone] = useState<TropicalCyclone | null>(null);
+  const [selectedCountryOnGlobe, setSelectedCountryOnGlobe] = useState<string | null>(null);
   const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
   const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
 
@@ -605,19 +606,23 @@ export default function WeatherDashboard() {
       let altitude = 1.5;
       if (result.type === 'country') {
         altitude = 2.2;
-      } else if (result.type === 'administrative') {
-        altitude = 1.8;
-      } else if (result.type === 'city') {
-        altitude = 1.4;
-      } else if (
-        result.type === 'street' ||
-        result.type === 'address' ||
-        result.type === 'landmark' ||
-        result.type === 'airport' ||
-        result.type === 'mountain' ||
-        result.type === 'park'
-      ) {
-        altitude = 0.85;
+        setSelectedCountryOnGlobe(result.name);
+      } else {
+        setSelectedCountryOnGlobe(null);
+        if (result.type === 'administrative') {
+          altitude = 1.8;
+        } else if (result.type === 'city') {
+          altitude = 1.4;
+        } else if (
+          result.type === 'street' ||
+          result.type === 'address' ||
+          result.type === 'landmark' ||
+          result.type === 'airport' ||
+          result.type === 'mountain' ||
+          result.type === 'park'
+        ) {
+          altitude = 0.85;
+        }
       }
 
       globeApiRef.current?.flyTo(
@@ -649,7 +654,11 @@ export default function WeatherDashboard() {
   // Globe country tap handler
   const handleCountrySelect = useCallback(
     (countryName: string | null) => {
-      if (!countryName) return;
+      if (!countryName) {
+        setSelectedCountryOnGlobe(null);
+        return;
+      }
+      setSelectedCountryOnGlobe(countryName);
       const coords = getCoordinatesForCountry(countryName);
       if (coords) {
         weather.fetchWeatherForLocation({
@@ -886,6 +895,9 @@ export default function WeatherDashboard() {
           <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-[70px] sm:min-w-[180px]">
             <WeatherSearch
               onSelectLocation={handleSelectLocation}
+              onClear={() => {
+                setSelectedCountryOnGlobe(null);
+              }}
               placeholder="Search..."
               initialQuery={
                 weather.selectedLocation
@@ -1020,7 +1032,7 @@ export default function WeatherDashboard() {
                 hazardFilter={disasterCategoryFilter}
                 selectedEvent={selectedDisasterEvent}
                 onSelectEvent={setSelectedDisasterEvent}
-                selectedCountry={weather.selectedLocation?.country}
+                selectedCountry={selectedCountryOnGlobe}
                 onSelectCountry={handleCountrySelect}
                 selectedLocation={
                   weather.selectedLocation
@@ -1594,7 +1606,10 @@ export default function WeatherDashboard() {
           <CycloneDossierPanel
             cyclone={selectedCyclone}
             timelineHoursAhead={cycloneHoursAhead}
-            onClose={() => setSelectedCyclone(null)}
+            onClose={() => {
+              setSelectedCyclone(null);
+              setSelectedDisasterEvent(null);
+            }}
           />
         )}
 

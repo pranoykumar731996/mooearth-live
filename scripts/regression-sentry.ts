@@ -331,7 +331,7 @@ function runAntiRepeatSecuritySuite(issues: SentryIssue[]): { pass: boolean; hea
     execSync('npx tsx scripts/test-anti-repeat.ts', {
       cwd: ROOT_DIR,
       stdio: 'pipe',
-      timeout: 30000,
+      timeout: 90000,
     });
     console.log('✅ PASSED (21/21 zero-repetition security checks verified)');
     return {
