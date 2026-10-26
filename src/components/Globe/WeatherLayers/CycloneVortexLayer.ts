@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import type { WorldEvent } from '@/types';
 import { geoToVector3 } from './WindParticleSystem';
+import { OFFICIAL_CYCLONE_BASELINES, cycloneToWorldEvent } from '@/services/weather/cycloneTrackingService';
 
 export interface CycloneVortexLayerOptions {
   radius?: number; // Globe radius (default 100)
@@ -86,135 +87,9 @@ function createSoftParticleTexture(): THREE.CanvasTexture {
 }
 
 /**
- * Baseline real-world tropical cyclones to guarantee active severe weather display.
+ * Baseline real-world tropical cyclones synchronized with official forecast registry.
  */
-export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = [
-  {
-    id: 'cyclone-super-typhoon-pacific',
-    title: 'Super Typhoon Kong-rey (Category 4)',
-    summary: 'Massive tropical cyclone with 230 km/h sustained eyewall winds and 800 km gale-force envelope churns across the Philippine Sea.',
-    category: 'severe_weather',
-    lat: 19.5,
-    lng: 126.8,
-    city: 'Philippine Sea',
-    country: 'Philippines',
-    publishedAt: new Date(Date.now() - 3600000).toISOString(),
-    url: 'https://www.nhc.noaa.gov',
-    source: 'NOAA / JTWC',
-    planetaryTelemetry: {
-      windSpeedKph: 230,
-      pressureHpa: 935,
-      stormWarningType: 'tropical_cyclone',
-      cycloneBasin: 'West Pacific',
-      cycloneAgency: 'Joint Typhoon Warning Center (JTWC) / JMA',
-      trackPoints: [
-        { lat: 14.5, lng: 135.0 },
-        { lat: 16.8, lng: 131.5 },
-        { lat: 18.2, lng: 128.8 },
-        { lat: 19.5, lng: 126.8 },
-      ],
-      forecastCone: [
-        { timeHours: 12, centerLat: 20.2, centerLng: 125.8, errorRadiusKm: 60 },
-        { timeHours: 24, centerLat: 21.1, centerLng: 124.6, errorRadiusKm: 110 },
-        { timeHours: 48, centerLat: 22.8, centerLng: 122.5, errorRadiusKm: 180 },
-        { timeHours: 72, centerLat: 24.5, centerLng: 120.2, errorRadiusKm: 260 },
-      ],
-    },
-  },
-  {
-    id: 'cyclone-atlantic-major-hurricane',
-    title: 'Major Hurricane Helene (Category 3)',
-    summary: 'Rapidly intensifying Atlantic hurricane tracking north-northeast through the Gulf of Mexico with dangerous storm surge.',
-    category: 'severe_weather',
-    lat: 25.2,
-    lng: -86.5,
-    city: 'Gulf of Mexico',
-    country: 'United States',
-    publishedAt: new Date(Date.now() - 7200000).toISOString(),
-    url: 'https://www.nhc.noaa.gov',
-    source: 'NOAA National Hurricane Center',
-    planetaryTelemetry: {
-      windSpeedKph: 195,
-      pressureHpa: 948,
-      stormWarningType: 'tropical_cyclone',
-      cycloneBasin: 'Atlantic',
-      cycloneAgency: 'NOAA National Hurricane Center (NHC)',
-      trackPoints: [
-        { lat: 20.0, lng: -85.5 },
-        { lat: 22.8, lng: -86.2 },
-        { lat: 25.2, lng: -86.5 },
-      ],
-      forecastCone: [
-        { timeHours: 12, centerLat: 26.6, centerLng: -85.8, errorRadiusKm: 55 },
-        { timeHours: 24, centerLat: 28.2, centerLng: -84.9, errorRadiusKm: 105 },
-        { timeHours: 48, centerLat: 31.0, centerLng: -83.2, errorRadiusKm: 175 },
-        { timeHours: 72, centerLat: 33.8, centerLng: -82.1, errorRadiusKm: 250 },
-      ],
-    },
-  },
-  {
-    id: 'cyclone-indian-ocean-tropical-cyclone',
-    title: 'Very Severe Cyclonic Storm Dana',
-    summary: 'Intense cyclonic vortex over the East-Central Bay of Bengal generating deep convective cloud bands.',
-    category: 'severe_weather',
-    lat: 17.5,
-    lng: 88.5,
-    city: 'Bay of Bengal',
-    country: 'India',
-    publishedAt: new Date(Date.now() - 10800000).toISOString(),
-    url: 'https://mausam.imd.gov.in',
-    source: 'India Meteorological Department',
-    planetaryTelemetry: {
-      windSpeedKph: 130,
-      pressureHpa: 975,
-      stormWarningType: 'tropical_cyclone',
-      cycloneBasin: 'North Indian',
-      cycloneAgency: 'India Meteorological Department (IMD)',
-      trackPoints: [
-        { lat: 14.0, lng: 91.5 },
-        { lat: 15.8, lng: 90.0 },
-        { lat: 17.5, lng: 88.5 },
-      ],
-      forecastCone: [
-        { timeHours: 12, centerLat: 18.3, centerLng: 87.8, errorRadiusKm: 50 },
-        { timeHours: 24, centerLat: 19.2, centerLng: 87.1, errorRadiusKm: 90 },
-        { timeHours: 48, centerLat: 20.8, centerLng: 86.4, errorRadiusKm: 155 },
-        { timeHours: 72, centerLat: 22.1, centerLng: 85.8, errorRadiusKm: 220 },
-      ],
-    },
-  },
-  {
-    id: 'cyclone-south-pacific-severe-storm',
-    title: 'Tropical Cyclone Jasper (Category 2)',
-    summary: 'Southern hemisphere clockwise rotating cyclone tracking toward the Queensland Coral Sea coast.',
-    category: 'severe_weather',
-    lat: -15.8,
-    lng: 152.5,
-    city: 'Coral Sea',
-    country: 'Australia',
-    publishedAt: new Date(Date.now() - 14400000).toISOString(),
-    url: 'https://www.bom.gov.au',
-    source: 'Bureau of Meteorology',
-    planetaryTelemetry: {
-      windSpeedKph: 160,
-      pressureHpa: 965,
-      stormWarningType: 'tropical_cyclone',
-      cycloneBasin: 'South Pacific',
-      cycloneAgency: 'Bureau of Meteorology (BOM)',
-      trackPoints: [
-        { lat: -12.0, lng: 156.0 },
-        { lat: -14.2, lng: 154.5 },
-        { lat: -15.8, lng: 152.5 },
-      ],
-      forecastCone: [
-        { timeHours: 12, centerLat: -16.2, centerLng: 150.8, errorRadiusKm: 55 },
-        { timeHours: 24, centerLat: -16.5, centerLng: 149.0, errorRadiusKm: 100 },
-        { timeHours: 48, centerLat: -16.8, centerLng: 146.5, errorRadiusKm: 165 },
-        { timeHours: 72, centerLat: -17.2, centerLng: 144.2, errorRadiusKm: 235 },
-      ],
-    },
-  },
-];
+export const BASELINE_CYCLONE_EVENTS: WorldEvent[] = OFFICIAL_CYCLONE_BASELINES.map(cycloneToWorldEvent);
 
 interface StormVortexInstance {
   eventId: string;

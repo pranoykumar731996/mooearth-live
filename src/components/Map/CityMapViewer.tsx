@@ -1072,6 +1072,9 @@ export default function CityMapViewer({
 
           // D. Forecast Nodes
           c.forecastPoints.forEach((p) => {
+            const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
+            const labelText = `+${p.leadHours}h\n${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}mb` : ''}`;
+
             activeForecastNodeFeatures.push({
               type: 'Feature',
               geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
@@ -1080,7 +1083,10 @@ export default function CityMapViewer({
                 name: c.name,
                 leadHours: p.leadHours || 0,
                 windSpeedKph: p.windSpeedKph,
+                windSpeedKnots: windKt,
+                pressureHpa: p.pressureHpa || '',
                 stageName: p.stageName,
+                labelText,
               },
             });
           });
@@ -1194,6 +1200,7 @@ export default function CityMapViewer({
     const nodesData = { type: 'FeatureCollection', features: activeForecastNodeFeatures };
     const nodesSourceId = 'hazard-cyclone-forecast-nodes-source';
     const nodesLayerId = 'hazard-cyclone-forecast-nodes-circle';
+    const nodesLabelLayerId = 'hazard-cyclone-forecast-nodes-label';
 
     try {
       const existingNodesSource = map.getSource(nodesSourceId) as any;
@@ -1207,10 +1214,39 @@ export default function CityMapViewer({
             type: 'circle',
             source: nodesSourceId,
             paint: {
-              'circle-radius': 5.5,
-              'circle-color': '#f43f5e',
+              'circle-radius': 6,
+              'circle-color': [
+                'step',
+                ['get', 'windSpeedKph'],
+                '#38bdf8',
+                63, '#eab308',
+                119, '#f97316',
+                178, '#f43f5e',
+                210, '#e11d48',
+              ],
               'circle-stroke-width': 1.8,
               'circle-stroke-color': '#ffffff',
+            },
+          },
+          beforeLayerId
+        );
+        map.addLayer(
+          {
+            id: nodesLabelLayerId,
+            type: 'symbol',
+            source: nodesSourceId,
+            layout: {
+              'text-field': ['get', 'labelText'],
+              'text-size': 9.5,
+              'text-offset': [0, 1.6],
+              'text-anchor': 'top',
+              'text-justify': 'center',
+              'text-allow-overlap': false,
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': 'rgba(6, 8, 24, 0.95)',
+              'text-halo-width': 2,
             },
           },
           beforeLayerId
@@ -1232,6 +1268,7 @@ export default function CityMapViewer({
         'hazard-cyclone-history-track-line',
         'hazard-cyclone-forecast-track-line',
         'hazard-cyclone-forecast-nodes-circle',
+        'hazard-cyclone-forecast-nodes-label',
       ].forEach((lId) => {
         try {
           if (map.getLayer(lId)) map.removeLayer(lId);

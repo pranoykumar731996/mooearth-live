@@ -4,6 +4,7 @@
 // Returns verified tropical cyclone tracks, intensities, 5-day forecast cones,
 // and landfall intelligence from NOAA National Hurricane Center (NHC), JTWC, and IMD.
 // Caches responses with SWR (10-minute cadence).
+// Strictly zero synthetic or fabricated storm data.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getOfficialActiveCyclones } from '@/services/weather/cycloneForecastAdapter';
@@ -19,16 +20,21 @@ export async function GET(request: NextRequest) {
     const basin = searchParams.get('basin');
     const allowFallback = searchParams.get('baseline') === 'true';
 
-    // 1. Fetch live multi-source cyclones from official adapters
+    // 1. Fetch live multi-source cyclones from official adapters (NHC + JTWC/IMD)
     const feed = await getOfficialActiveCyclones(allowFallback);
 
-    // If empty and baseline fallback permitted, augment with planetary engine
     let cyclones = feed.cyclones;
-    if (cyclones.length === 0 && allowFallback) {
-      const livePlanetaryEvents = await fetchLivePlanetaryEvents();
-      const worldEvents = livePlanetaryEvents.map(planetaryEventToWorldEvent);
-      const fallbackFeed = getActiveTropicalCyclones(worldEvents, true);
-      cyclones = fallbackFeed.cyclones;
+
+    // 2. If empty, check planetary engine live events (still strictly real-time)
+    if (cyclones.length === 0) {
+      try {
+        const livePlanetaryEvents = await fetchLivePlanetaryEvents();
+        const worldEvents = livePlanetaryEvents.map(planetaryEventToWorldEvent);
+        const fallbackFeed = getActiveTropicalCyclones(worldEvents);
+        cyclones = fallbackFeed.cyclones;
+      } catch (subErr) {
+        console.warn('[Cyclones API] Planetary fallback error:', subErr);
+      }
     }
 
     // Filter by basin if requested (e.g. ?basin=Atlantic, ?basin=North Indian)

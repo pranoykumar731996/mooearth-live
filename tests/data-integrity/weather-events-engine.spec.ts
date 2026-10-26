@@ -428,17 +428,17 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
       expect(BASELINE_CYCLONE_EVENTS.length).toBe(4);
       expect(OFFICIAL_CYCLONE_BASELINES.length).toBe(4);
 
-      // Verify Dana in Bay of Bengal (East coast of India)
-      const globeDana = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
-      const serviceDana = OFFICIAL_CYCLONE_BASELINES.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
+      // Verify Arnab in Bay of Bengal (East coast of India)
+      const globeArnab = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
+      const serviceArnab = OFFICIAL_CYCLONE_BASELINES.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone');
 
-      expect(globeDana).toBeDefined();
-      expect(serviceDana).toBeDefined();
-      expect(globeDana!.lat).toBe(17.5);
-      expect(globeDana!.lng).toBe(88.5);
-      expect(serviceDana!.lat).toBe(17.5);
-      expect(serviceDana!.lng).toBe(88.5);
-      expect(serviceDana!.basin).toBe('North Indian');
+      expect(globeArnab).toBeDefined();
+      expect(serviceArnab).toBeDefined();
+      expect(globeArnab!.lat).toBe(15.9);
+      expect(globeArnab!.lng).toBe(87.2);
+      expect(serviceArnab!.lat).toBe(15.9);
+      expect(serviceArnab!.lng).toBe(87.2);
+      expect(serviceArnab!.basin).toBe('North Indian');
     });
 
     test('isTropicalCycloneEvent accurately identifies cyclones and excludes severe thunderstorms', () => {
@@ -506,14 +506,14 @@ test.describe('MOOEARTH LIVE — GLOBAL SEO PHASE 9: WEATHER & WORLD EVENTS ENGI
       expect(feed.cyclones.length).toBe(0);
     });
 
-    test('getDisasterMeta classifies Dana in Bay of Bengal as cyclone with matching telemetry on 2D map', () => {
-      const dana = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone')!;
-      const meta = getDisasterMeta(dana);
+    test('getDisasterMeta classifies Arnab in Bay of Bengal as cyclone with matching telemetry on 2D map', () => {
+      const arnab = BASELINE_CYCLONE_EVENTS.find((c) => c.id === 'cyclone-indian-ocean-tropical-cyclone')!;
+      const meta = getDisasterMeta(arnab);
       expect(meta.type).toBe('cyclone');
       expect(meta.icon).toBe('🌀');
-      expect(meta.cleanTitle).toBe('Very Severe Cyclonic Storm Dana');
+      expect(meta.cleanTitle).toBe('Very Severe Cyclonic Storm Arnab');
       expect(meta.categoryLabel).toBe('Cat 1-2');
-      expect(meta.metricLabel).toBe('130 km/h');
+      expect(meta.metricLabel).toBe('150 km/h');
     });
   });
 

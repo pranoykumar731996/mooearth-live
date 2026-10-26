@@ -37,6 +37,7 @@ import {
   type TropicalCyclone,
 } from '@/services/weather/cycloneTrackingService';
 import CycloneDossierPanel from './CycloneDossierPanel';
+import WindyHurricaneTrackerSidebar from './WindyHurricaneTrackerSidebar';
 import { CYCLONE_TIMELINE_STEPS, CYCLONE_LIVE_STEP_INDEX } from './WindyTimeScrubber';
 import { BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
@@ -138,6 +139,7 @@ export default function WeatherDashboard() {
   const initialUrlRestoredRef = useRef(false);
   const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
   const [selectedCyclone, setSelectedCyclone] = useState<TropicalCyclone | null>(null);
+  const [showFullDossier, setShowFullDossier] = useState(false);
   const [selectedCountryOnGlobe, setSelectedCountryOnGlobe] = useState<string | null>(null);
   const [radarMetadata, setRadarMetadata] = useState<RadarMetadataResponse | null>(null);
   const [radarFrameIndex, setRadarFrameIndex] = useState<number>(11);
@@ -153,14 +155,40 @@ export default function WeatherDashboard() {
     return Date.now() - publishedTime <= 24 * 60 * 60 * 1000;
   }, []);
 
+  // Official live tropical cyclones from NOAA NHC & JTWC/IMD
+  const [officialCyclones, setOfficialCyclones] = useState<TropicalCyclone[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCyclones = () => {
+      fetch('/api/weather/cyclones')
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled && data.cyclones && Array.isArray(data.cyclones) && data.cyclones.length > 0) {
+            setOfficialCyclones(data.cyclones);
+          }
+        })
+        .catch(() => {});
+    };
+    fetchCyclones();
+    const interval = setInterval(fetchCyclones, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
   // Active cyclones feed and normalized objects (official NOAA NHC, JTWC, and IMD feeds)
   const activeCycloneFeed = useMemo(() => {
     return getActiveTropicalCyclones(events);
   }, [events]);
 
   const rawCyclones: TropicalCyclone[] = useMemo(() => {
+    if (officialCyclones.length > 0) {
+      return officialCyclones;
+    }
     return activeCycloneFeed.cyclones;
-  }, [activeCycloneFeed]);
+  }, [officialCyclones, activeCycloneFeed]);
 
   const activeCyclones = useMemo(() => {
     return rawCyclones.map(cycloneToWorldEvent);
@@ -1389,6 +1417,7 @@ export default function WeatherDashboard() {
                               const matching = rawCyclones.find((c) => c.id === disaster.id || c.name.toLowerCase() === disaster.title.toLowerCase());
                               if (matching) {
                                 setSelectedCyclone(matching);
+                                setShowFullDossier(true);
                               }
                             }}
                             className="text-[9px] font-mono text-cyan-400/80 group-hover:text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-1 py-0.2 rounded flex items-center gap-0.5 hover:bg-cyan-500/25"
@@ -1601,14 +1630,37 @@ export default function WeatherDashboard() {
           </div>
         )}
 
+        {/* Windy-Style Multi-Storm Hurricane Tracker Sidebar (Active on Hurricane layer) */}
+        {weather.activeLayer === 'hurricane' && !showFullDossier && (
+          <WindyHurricaneTrackerSidebar
+            cyclones={rawCyclones}
+            selectedCyclone={selectedCyclone}
+            onSelectCyclone={(c) => {
+              setSelectedCyclone(c);
+              const eventMatching = activeCyclones.find(
+                (e) => e.id === c.id || e.title.toLowerCase().includes(c.name.toLowerCase())
+              );
+              if (eventMatching) {
+                setSelectedDisasterEvent(eventMatching);
+              }
+              if (viewMode === 'globe') {
+                globeApiRef.current?.flyTo({ lat: c.lat, lng: c.lng, altitude: 1.18 }, 1400);
+              }
+            }}
+            onOpenDossier={(c) => {
+              setSelectedCyclone(c);
+              setShowFullDossier(true);
+            }}
+          />
+        )}
+
         {/* Interactive Tropical Cyclone Forecast Dossier & Landfall Intelligence Panel */}
-        {selectedCyclone && (
+        {selectedCyclone && showFullDossier && (
           <CycloneDossierPanel
             cyclone={selectedCyclone}
             timelineHoursAhead={cycloneHoursAhead}
             onClose={() => {
-              setSelectedCyclone(null);
-              setSelectedDisasterEvent(null);
+              setShowFullDossier(false);
             }}
           />
         )}

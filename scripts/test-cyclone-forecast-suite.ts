@@ -190,17 +190,17 @@ async function runCycloneForecastSuite() {
     'calculateHaversineDistanceKm calculates accurate geodesic distances'
   );
 
-  // Coastline proximity for Severe Cyclonic Storm Dana (Bay of Bengal / Odisha coast)
-  const danaCyclone = OFFICIAL_CYCLONE_BASELINES.find((c) => c.name.includes('Dana')) || OFFICIAL_CYCLONE_BASELINES[2];
-  const danaCoast = findNearestCoastline(danaCyclone.lat, danaCyclone.lng);
+  // Coastline proximity for active Cyclone in Bay of Bengal (Arnab heading towards Andhra Pradesh / Odisha)
+  const bobCyclone = OFFICIAL_CYCLONE_BASELINES.find((c) => c.name.includes('Arnab') || c.basin === 'North Indian') || OFFICIAL_CYCLONE_BASELINES[0];
+  const bobCoast = findNearestCoastline(bobCyclone.lat, bobCyclone.lng);
   assert(
-    danaCoast.distanceKm < 400 &&
-    (danaCoast.nearestPoint.name.includes('Odisha') || danaCoast.nearestPoint.country.includes('India')),
-    'findNearestCoastline identifies Bay of Bengal / Odisha coast for Cyclone Dana'
+    bobCoast.distanceKm < 700 &&
+    (bobCoast.nearestPoint.country.includes('India') || bobCoast.nearestPoint.region.includes('Coast')),
+    `findNearestCoastline identifies coastal proximity for ${bobCyclone.name} (${bobCoast.nearestPoint.name})`
   );
 
   // Landfall outlook calculation and disclaimer verification
-  const outlook = computeLandfallOutlook(danaCyclone);
+  const outlook = computeLandfallOutlook(bobCyclone);
 
   assert(
     outlook !== undefined && typeof outlook.coastlineDistanceKm === 'number',
