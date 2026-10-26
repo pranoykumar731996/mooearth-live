@@ -1459,9 +1459,9 @@ const GlobeScene = React.memo(function GlobeScene({
     const scene = globe.scene();
     if (!scene) return;
 
-    // Only activate in Weather mode when satellite/radar/clouds layer is explicitly chosen (suppressed in game mode)
+    // Only activate in Weather mode when satellite/radar/clouds/hurricane layer is chosen (suppressed in game mode)
     const isSatOrWeather = !isPlayEarthActive && globeView === 'weather' && 
-      (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds');
+      (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds' || weatherLayerMode === 'hurricane');
 
     if (isSatOrWeather) {
       const radius = globe.getGlobeRadius();

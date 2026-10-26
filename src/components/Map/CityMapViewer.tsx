@@ -1427,7 +1427,7 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') {
+    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -1463,11 +1463,12 @@ export default function CityMapViewer({
           'interpolate',
           ['linear'],
           ['zoom'],
-          4.0, isBlue ? 0.86 : 0.88,
-          6.5, isBlue ? 0.80 : 0.82,
-          7.5, 0.45,
-          8.5, 0.15,
-          9.0, 0.0,
+          7.0, isBlue ? 0.86 : 0.88,
+          8.5, isBlue ? 0.80 : 0.84,
+          9.5, 0.65,
+          10.5, 0.35,
+          11.5, 0.10,
+          12.0, 0.0,
         ];
 
         // Observation date string: for geostationary infrared & moisture, stream today's live real-time frames
@@ -1823,7 +1824,7 @@ export default function CityMapViewer({
 
 
       {/* ── Geostationary Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
+      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
           <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
             {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
@@ -1993,7 +1994,7 @@ export default function CityMapViewer({
           {/* Top Controls Row: Style Selector Dropdown + Optional Satellite HUD Restore Pill */}
           <div className="flex items-center gap-1.5">
             {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
-            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && isSatelliteHudDismissed && (
+            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'windy-satellite') && isSatelliteHudDismissed && (
               <button
                 type="button"
                 data-testid="show-satellite-hud-btn"

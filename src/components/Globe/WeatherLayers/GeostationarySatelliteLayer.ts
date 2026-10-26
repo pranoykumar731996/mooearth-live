@@ -22,6 +22,7 @@ import {
   OFFICIAL_CYCLONE_BASELINES,
   interpolateForecastPosition,
 } from '@/services/weather/cycloneTrackingService';
+import { getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
 
 export interface GeostationarySatelliteLayerOptions {
   radius?: number; // Globe radius (default 100)
@@ -65,10 +66,14 @@ export class GeostationarySatelliteLayer {
   }
 
   public setSpectralMode(mode: SatelliteSpectralMode): void {
+    const prevMode = this.spectralMode;
     this.spectralMode = mode;
     if (this.shaderMaterial) {
       const modeInt = mode === 'visible' ? 0 : mode === 'blue' ? 1 : 2;
       this.shaderMaterial.uniforms.uMode.value = modeInt;
+      if (prevMode !== mode) {
+        this.loadCloudTexture();
+      }
     }
   }
 
@@ -146,6 +151,51 @@ export class GeostationarySatelliteLayer {
   }
 
   /**
+   * Loads real-time geostationary satellite cloud imagery (Clean Infrared or VIIRS TrueColor) from NASA GIBS WMS.
+   */
+  private loadCloudTexture(): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
+
+    const geoObs = getGeostationaryObservationDate(0);
+    const dateStr = geoObs.dateStr;
+
+    // Use live Himawari-9 Clean Infrared for infrared/blue, or VIIRS TrueColor for visible
+    const liveWmsUrl = this.spectralMode === 'visible'
+      ? `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=VIIRS_SNPP_CorrectedReflectance_TrueColor&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=1024&HEIGHT=512&FORMAT=image/png&TIME=${dateStr}`
+      : `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=Himawari_AHI_Band13_Clean_Infrared&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=1024&HEIGHT=512&FORMAT=image/png`;
+
+    textureLoader.load(
+      liveWmsUrl,
+      (tex) => {
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.generateMipmaps = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        this.cloudTexture = tex;
+        if (this.shaderMaterial) {
+          this.shaderMaterial.uniforms.uCloudTexture.value = tex;
+          this.shaderMaterial.uniforms.uTextureReady.value = 1.0;
+        }
+      },
+      undefined,
+      () => {
+        // Fallback to local texture if NASA WMS has network delay
+        textureLoader.load('/textures/clouds.png', (fallbackTex) => {
+          fallbackTex.wrapS = THREE.RepeatWrapping;
+          fallbackTex.wrapT = THREE.ClampToEdgeWrapping;
+          this.cloudTexture = fallbackTex;
+          if (this.shaderMaterial) {
+            this.shaderMaterial.uniforms.uCloudTexture.value = fallbackTex;
+            this.shaderMaterial.uniforms.uTextureReady.value = 1.0;
+          }
+        });
+      }
+    );
+  }
+
+  /**
    * Initializes the Three.js spherical satellite shell mesh with custom GLSL shaders.
    */
   private initSatelliteMesh(): void {
@@ -153,25 +203,8 @@ export class GeostationarySatelliteLayer {
     const segments = this.isMobile ? 48 : 64;
     const geometry = new THREE.SphereGeometry(sphereRadius, segments, segments);
 
-    // Preload cloud texture (client-only)
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      const textureLoader = new THREE.TextureLoader();
-      this.cloudTexture = textureLoader.load(
-        '/textures/clouds.png',
-        (tex) => {
-          tex.wrapS = THREE.RepeatWrapping;
-          tex.wrapT = THREE.ClampToEdgeWrapping;
-          tex.generateMipmaps = true;
-          tex.minFilter = THREE.LinearMipmapLinearFilter;
-          if (this.shaderMaterial) {
-            this.shaderMaterial.uniforms.uCloudTexture.value = tex;
-            this.shaderMaterial.uniforms.uTextureReady.value = 1.0;
-          }
-        },
-        undefined,
-        (err) => console.warn('[GeostationarySatellite] Cloud texture notice:', err)
-      );
-    }
+    // Stream live geostationary satellite imagery texture with fallback
+    this.loadCloudTexture();
 
     const stormCentersInit = [
       new THREE.Vector4(999, 999, 0, 0),

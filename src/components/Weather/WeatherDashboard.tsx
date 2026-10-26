@@ -279,12 +279,14 @@ export default function WeatherDashboard() {
     return timelineIndex;
   }, [weather.activeLayer, timelineIndex]);
 
-  // Automatically synchronize hurricane weather layer with cyclone hazard filter, live frame & auto-selection
+  // Automatically synchronize hurricane weather layer with cyclone hazard filter, live frame, Clean Infrared clouds & auto-selection
   useEffect(() => {
     if (weather.activeLayer === 'hurricane') {
       setDisasterCategoryFilter('cyclones');
       setIsHazardBarExpanded(true);
       setTimelineIndex(CYCLONE_LIVE_STEP_INDEX);
+      // For active tropical cyclones, clean infrared provides sub-hourly 15-minute live scans of the rotating eyewall 24/7
+      setSpectralMode('infra');
       if (!selectedCyclone && rawCyclones.length > 0) {
         setSelectedCyclone(rawCyclones[0]);
       }
