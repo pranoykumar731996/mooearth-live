@@ -305,7 +305,7 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
  */
 export function getSatelliteObservationDate(
   offsetHours: number = 0,
-  mode: SatelliteSpectralMode = 'visible'
+  mode: SatelliteSpectralMode = 'blue'
 ): { dateStr: string; utcStr: string; timestampMs: number } {
   // If requesting geostationary infrared or moisture, use today's real-time stream
   if (mode === 'infra' || mode === 'blue') {
@@ -358,12 +358,12 @@ export function buildGibsTileUrl(
  * Supports smooth time-lapse cloud movement playback for the animation scrubber.
  */
 export function getSatelliteFrames(
-  mode: SatelliteSpectralMode = 'visible',
+  mode: SatelliteSpectralMode = 'blue',
   frameCount: number = 8
 ): SatelliteFrame[] {
-  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
+  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.blue;
   const frames: SatelliteFrame[] = [];
-  const baseObs = getSatelliteObservationDate(0);
+  const baseObs = getSatelliteObservationDate(0, mode);
   const now = baseObs.timestampMs;
   const stepMs = 15 * 60 * 1000; // 15-minute geostationary satellite scan cycle
 
@@ -398,8 +398,8 @@ export function getSatelliteFrames(
 /**
  * High-level helper returning comprehensive satellite imagery metadata.
  */
-export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'visible', offsetHours: number = 0): SatelliteMetadataResponse {
-  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
+export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'blue', offsetHours: number = 0): SatelliteMetadataResponse {
+  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.blue;
   const { dateStr, utcStr } = getSatelliteObservationDate(offsetHours, mode);
   const tileUrlTemplate = buildGibsTileUrl(product, dateStr);
   const frames = getSatelliteFrames(mode, 8);

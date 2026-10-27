@@ -52,7 +52,7 @@ export class GeostationarySatelliteLayer {
     this.radius = options.radius ?? 100;
     this.isMobile = options.isMobile ?? false;
     this.reducedMotion = options.reducedMotion ?? false;
-    this.spectralMode = options.initialMode ?? 'visible';
+    this.spectralMode = options.initialMode ?? 'blue';
     this.overlayRadar = options.overlayRadar ?? false;
 
     this.rootGroup = new THREE.Group();

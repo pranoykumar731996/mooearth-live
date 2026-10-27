@@ -183,7 +183,7 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
-  spectralMode = 'visible',
+  spectralMode = 'blue',
   onSelectSpectralMode,
   particlesEnabled = true,
   disasters = [],
@@ -1574,10 +1574,10 @@ export default function CityMapViewer({
           undefined;
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
-        const isVisibleMode = (spectralMode || 'visible') === 'visible';
-        const isBlue = spectralMode === 'blue';
+        const isVisibleMode = spectralMode === 'visible';
+        const isBlue = (spectralMode || 'blue') === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.10;
+        const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.22 : 0.12;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
         // - Planetary/Regional (zoom <= 8.5): Clouds remain 88% opaque showing real cyclone spirals & storms.
@@ -1622,8 +1622,11 @@ export default function CityMapViewer({
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // 1. Global TrueColor VIIRS layer (sunlit globe up to 62°N)
-          // Clamped to 62°N to prevent opaque black polar night JPEG tiles from covering high latitudes
+          // Clean up polar fill layer if previously active
+          if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
+          if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
+
+          // Global seamless TrueColor VIIRS layer (natural daylight cloud reflectance)
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
           const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
@@ -1638,7 +1641,7 @@ export default function CityMapViewer({
                 tiles: [trueColorUrl],
                 tileSize: 256,
                 maxzoom: 9,
-                bounds: [-180.0, -85.0, 180.0, 62.0],
+                bounds: [-180.0, -85.0, 180.0, 85.0],
                 attribution: 'NASA GIBS / EOSDIS True Color',
               });
               map.addLayer(
@@ -1665,7 +1668,7 @@ export default function CityMapViewer({
               tiles: [trueColorUrl],
               tileSize: 256,
               maxzoom: 9,
-              bounds: [-180.0, -85.0, 180.0, 62.0],
+              bounds: [-180.0, -85.0, 180.0, 85.0],
               attribution: 'NASA GIBS / EOSDIS True Color',
             });
             map.addLayer(
@@ -1677,67 +1680,6 @@ export default function CityMapViewer({
                 paint: {
                   'raster-opacity': visibleOpacityExpression,
                   'raster-contrast': rasterContrast,
-                  'raster-fade-duration': 300,
-                },
-              },
-              beforeLayerId
-            );
-          }
-
-          // 2. High-Latitude Arctic Polar Night Cloud Fill Layer (covers Greenland, Svalbard, Arctic Ocean, Northern Scandinavia & Canada)
-          // Uses VIIRS NOAA-20 Day/Night Band (DNB) with genuine white/gray cloud reflectance, seamlessly layered on top from 58°N to 85°N
-          const polarFillSourceId = 'nasa-gibs-polar-fill-source';
-          const polarFillLayerId = 'nasa-gibs-polar-fill-layer';
-          const polarFillUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_DayNightBand/default/${dateStr}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png`;
-
-          const existingPolarSource = map.getSource(polarFillSourceId) as any;
-          if (existingPolarSource) {
-            if (existingPolarSource.tiles?.[0] !== polarFillUrl) {
-              if (map.getLayer(polarFillLayerId)) map.removeLayer(polarFillLayerId);
-              map.removeSource(polarFillSourceId);
-              map.addSource(polarFillSourceId, {
-                type: 'raster',
-                tiles: [polarFillUrl],
-                tileSize: 256,
-                maxzoom: 7,
-                bounds: [-180.0, 58.0, 180.0, 85.0],
-                attribution: 'NASA GIBS / NOAA-20 Arctic Day/Night Band Cloud Reflectance',
-              });
-              map.addLayer(
-                {
-                  id: polarFillLayerId,
-                  type: 'raster',
-                  source: polarFillSourceId,
-                  maxzoom: 12,
-                  paint: {
-                    'raster-opacity': visibleOpacityExpression,
-                    'raster-contrast': 0.16,
-                    'raster-fade-duration': 300,
-                  },
-                },
-                beforeLayerId
-              );
-            } else if (map.getLayer(polarFillLayerId)) {
-              map.setPaintProperty(polarFillLayerId, 'raster-opacity', visibleOpacityExpression);
-            }
-          } else {
-            map.addSource(polarFillSourceId, {
-              type: 'raster',
-              tiles: [polarFillUrl],
-              tileSize: 256,
-              maxzoom: 7,
-              bounds: [-180.0, 58.0, 180.0, 85.0],
-              attribution: 'NASA GIBS / NOAA-20 Arctic Day/Night Band Cloud Reflectance',
-            });
-            map.addLayer(
-              {
-                id: polarFillLayerId,
-                type: 'raster',
-                source: polarFillSourceId,
-                maxzoom: 12,
-                paint: {
-                  'raster-opacity': visibleOpacityExpression,
-                  'raster-contrast': 0.16,
                   'raster-fade-duration': 300,
                 },
               },
@@ -2262,7 +2204,7 @@ export default function CityMapViewer({
                 <span>🛰️</span>
                 <span className="hidden sm:inline">Clouds</span>
                 <span className="text-[9px] px-1 rounded bg-cyan-500/20 text-cyan-300 font-bold">
-                  {spectralMode ? spectralMode.toUpperCase() : 'VIS'}
+                  {spectralMode ? spectralMode.toUpperCase() : 'BLUE'}
                 </span>
               </button>
             )}
