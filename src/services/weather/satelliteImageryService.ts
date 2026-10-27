@@ -166,6 +166,15 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
       tileMatrixSet: 'GoogleMapsCompatible_Level9',
       format: 'image/jpeg',
+      bounds: [-180.0, -85.0, 180.0, 62.0],
+    },
+    {
+      id: 'arctic-dnb',
+      name: 'Arctic Polar Cloud Reflectance (VIIRS Day/Night Band)',
+      layerName: 'VIIRS_NOAA20_DayNightBand',
+      tileMatrixSet: 'GoogleMapsCompatible_Level7',
+      format: 'image/png',
+      bounds: [-180.0, 58.0, 180.0, 85.0],
     },
   ],
 };

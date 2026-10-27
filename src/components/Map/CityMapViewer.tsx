@@ -1622,72 +1622,15 @@ export default function CityMapViewer({
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // 1. Polar night thermal fill layer (covers Svalbard, Greenland, Arctic Ocean where daylight TrueColor has no reflection)
-          const polarFillSourceId = 'nasa-gibs-polar-fill-source';
-          const polarFillLayerId = 'nasa-gibs-polar-fill-layer';
-          const polarFillUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_Brightness_Temp_BandI5_Night/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
-
-          const existingPolarSource = map.getSource(polarFillSourceId) as any;
-          if (existingPolarSource) {
-            if (existingPolarSource.tiles?.[0] !== polarFillUrl) {
-              if (map.getLayer(polarFillLayerId)) map.removeLayer(polarFillLayerId);
-              map.removeSource(polarFillSourceId);
-              map.addSource(polarFillSourceId, {
-                type: 'raster',
-                tiles: [polarFillUrl],
-                tileSize: 256,
-                maxzoom: 9,
-                attribution: 'NASA GIBS / NOAA-20 Polar Night Thermal Clouds',
-              });
-              map.addLayer(
-                {
-                  id: polarFillLayerId,
-                  type: 'raster',
-                  source: polarFillSourceId,
-                  maxzoom: 12,
-                  paint: {
-                    'raster-opacity': visibleOpacityExpression,
-                    'raster-contrast': 0.12,
-                    'raster-fade-duration': 300,
-                  },
-                },
-                beforeLayerId
-              );
-            } else if (map.getLayer(polarFillLayerId)) {
-              map.setPaintProperty(polarFillLayerId, 'raster-opacity', visibleOpacityExpression);
-            }
-          } else {
-            map.addSource(polarFillSourceId, {
-              type: 'raster',
-              tiles: [polarFillUrl],
-              tileSize: 256,
-              maxzoom: 9,
-              attribution: 'NASA GIBS / NOAA-20 Polar Night Thermal Clouds',
-            });
-            map.addLayer(
-              {
-                id: polarFillLayerId,
-                type: 'raster',
-                source: polarFillSourceId,
-                maxzoom: 12,
-                paint: {
-                  'raster-opacity': visibleOpacityExpression,
-                  'raster-contrast': 0.12,
-                  'raster-fade-duration': 300,
-                },
-              },
-              beforeLayerId
-            );
-          }
-
-          // 2. Global seamless TrueColor VIIRS layer on top (daylight reflectance)
+          // 1. Global TrueColor VIIRS layer (sunlit globe up to 62°N)
+          // Clamped to 62°N to prevent opaque black polar night JPEG tiles from covering high latitudes
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
           const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 
-          const existingSource = map.getSource(visibleSourceId) as any;
-          if (existingSource) {
-            if (existingSource.tiles?.[0] !== trueColorUrl) {
+          const existingVisibleSource = map.getSource(visibleSourceId) as any;
+          if (existingVisibleSource) {
+            if (existingVisibleSource.tiles?.[0] !== trueColorUrl) {
               if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
               map.removeSource(visibleSourceId);
               map.addSource(visibleSourceId, {
@@ -1695,6 +1638,7 @@ export default function CityMapViewer({
                 tiles: [trueColorUrl],
                 tileSize: 256,
                 maxzoom: 9,
+                bounds: [-180.0, -85.0, 180.0, 62.0],
                 attribution: 'NASA GIBS / EOSDIS True Color',
               });
               map.addLayer(
@@ -1721,6 +1665,7 @@ export default function CityMapViewer({
               tiles: [trueColorUrl],
               tileSize: 256,
               maxzoom: 9,
+              bounds: [-180.0, -85.0, 180.0, 62.0],
               attribution: 'NASA GIBS / EOSDIS True Color',
             });
             map.addLayer(
@@ -1732,6 +1677,67 @@ export default function CityMapViewer({
                 paint: {
                   'raster-opacity': visibleOpacityExpression,
                   'raster-contrast': rasterContrast,
+                  'raster-fade-duration': 300,
+                },
+              },
+              beforeLayerId
+            );
+          }
+
+          // 2. High-Latitude Arctic Polar Night Cloud Fill Layer (covers Greenland, Svalbard, Arctic Ocean, Northern Scandinavia & Canada)
+          // Uses VIIRS NOAA-20 Day/Night Band (DNB) with genuine white/gray cloud reflectance, seamlessly layered on top from 58°N to 85°N
+          const polarFillSourceId = 'nasa-gibs-polar-fill-source';
+          const polarFillLayerId = 'nasa-gibs-polar-fill-layer';
+          const polarFillUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_DayNightBand/default/${dateStr}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png`;
+
+          const existingPolarSource = map.getSource(polarFillSourceId) as any;
+          if (existingPolarSource) {
+            if (existingPolarSource.tiles?.[0] !== polarFillUrl) {
+              if (map.getLayer(polarFillLayerId)) map.removeLayer(polarFillLayerId);
+              map.removeSource(polarFillSourceId);
+              map.addSource(polarFillSourceId, {
+                type: 'raster',
+                tiles: [polarFillUrl],
+                tileSize: 256,
+                maxzoom: 7,
+                bounds: [-180.0, 58.0, 180.0, 85.0],
+                attribution: 'NASA GIBS / NOAA-20 Arctic Day/Night Band Cloud Reflectance',
+              });
+              map.addLayer(
+                {
+                  id: polarFillLayerId,
+                  type: 'raster',
+                  source: polarFillSourceId,
+                  maxzoom: 12,
+                  paint: {
+                    'raster-opacity': visibleOpacityExpression,
+                    'raster-contrast': 0.16,
+                    'raster-fade-duration': 300,
+                  },
+                },
+                beforeLayerId
+              );
+            } else if (map.getLayer(polarFillLayerId)) {
+              map.setPaintProperty(polarFillLayerId, 'raster-opacity', visibleOpacityExpression);
+            }
+          } else {
+            map.addSource(polarFillSourceId, {
+              type: 'raster',
+              tiles: [polarFillUrl],
+              tileSize: 256,
+              maxzoom: 7,
+              bounds: [-180.0, 58.0, 180.0, 85.0],
+              attribution: 'NASA GIBS / NOAA-20 Arctic Day/Night Band Cloud Reflectance',
+            });
+            map.addLayer(
+              {
+                id: polarFillLayerId,
+                type: 'raster',
+                source: polarFillSourceId,
+                maxzoom: 12,
+                paint: {
+                  'raster-opacity': visibleOpacityExpression,
+                  'raster-contrast': 0.16,
                   'raster-fade-duration': 300,
                 },
               },
@@ -1836,34 +1842,30 @@ export default function CityMapViewer({
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
               if (existingSource.tiles?.[0] !== tileUrl) {
-                if (typeof existingSource.setTiles === 'function') {
-                  existingSource.setTiles([tileUrl]);
-                } else {
-                  if (map.getLayer(lId)) map.removeLayer(lId);
-                  map.removeSource(sId);
-                  map.addSource(sId, {
+                if (map.getLayer(lId)) map.removeLayer(lId);
+                map.removeSource(sId);
+                map.addSource(sId, {
+                  type: 'raster',
+                  tiles: [tileUrl],
+                  tileSize: 256,
+                  maxzoom: sec.maxzoom,
+                  bounds: sec.bounds,
+                  attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+                });
+                map.addLayer(
+                  {
+                    id: lId,
                     type: 'raster',
-                    tiles: [tileUrl],
-                    tileSize: 256,
-                    maxzoom: sec.maxzoom,
-                    bounds: sec.bounds,
-                    attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
-                  });
-                  map.addLayer(
-                    {
-                      id: lId,
-                      type: 'raster',
-                      source: sId,
-                      maxzoom: 9,
-                      paint: {
-                        'raster-opacity': geostationaryOpacityExpression,
-                        'raster-contrast': rasterContrast,
-                        'raster-fade-duration': 250,
-                      },
+                    source: sId,
+                    maxzoom: 9,
+                    paint: {
+                      'raster-opacity': geostationaryOpacityExpression,
+                      'raster-contrast': rasterContrast,
+                      'raster-fade-duration': 250,
                     },
-                    beforeLayerId
-                  );
-                }
+                  },
+                  beforeLayerId
+                );
               } else if (map.getLayer(lId)) {
                 map.setPaintProperty(lId, 'raster-opacity', geostationaryOpacityExpression);
                 map.setPaintProperty(lId, 'raster-contrast', rasterContrast);

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     let upstreamUrl = '';
     if (mode === 'visible') {
-      upstreamUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/${z}/${y}/${x}.jpg`;
+      upstreamUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/${z}/${y}/${x}.jpg`;
     } else {
       let layerName = 'Himawari_AHI_Band13_Clean_Infrared';
       if (sector === 'goes-east') {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       let fallbackUrl = '';
       if (mode === 'visible') {
-        fallbackUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/${z}/${y}/${x}.jpg`;
+        fallbackUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/${z}/${y}/${x}.jpg`;
       } else {
         let layerName = 'Himawari_AHI_Band13_Clean_Infrared';
         if (sector === 'goes-east') layerName = 'GOES-East_ABI_Band13_Clean_Infrared';
