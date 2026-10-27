@@ -12,7 +12,7 @@ import {
   getCanonicalUrl,
 } from '@/lib/i18n';
 
-export const revalidate = 60; // 60 seconds cache
+export const revalidate = 1800; // 30 minutes cache (reduces ISR writes while client live-updates)
 
 interface LocalizedWorldEventsProps {
   params: Promise<{

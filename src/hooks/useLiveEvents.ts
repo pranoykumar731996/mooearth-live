@@ -49,10 +49,12 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
 
       try {
         setIsLoading(events.length === 0);
-        const catParam = activeCategory ? `&category=${activeCategory}` : '';
-        const langParam = locale ? `&lang=${locale}` : '';
-        const refreshParam = forceRefresh ? '&refresh=true' : '';
-        const response = await fetch(`/api/events?t=${Date.now()}${catParam}${langParam}${refreshParam}`);
+        const query = new URLSearchParams();
+        if (activeCategory) query.set('category', activeCategory);
+        if (locale) query.set('lang', locale);
+        if (forceRefresh) query.set('refresh', 'true');
+        const qs = query.toString();
+        const response = await fetch(`/api/events${qs ? `?${qs}` : ''}`);
         if (!response.ok) throw new Error('Failed to fetch live events');
         
         const data = await response.json();
@@ -105,14 +107,25 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
       fetchEvents();
       
       const intervalId = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+          return; // Pause background polling when tab is inactive to preserve bandwidth
+        }
         // Reset the force-refresh flag every polling cycle so we can try again if still stale
         hasForceRefreshedRef.current = false;
         fetchEvents();
       }, 60000);
 
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          fetchEvents();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
       return () => {
         isMounted = false;
         clearInterval(intervalId);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     } else {
       return () => {

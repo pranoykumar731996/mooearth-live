@@ -3,7 +3,7 @@ import { fetchGlobalWeatherHighlights } from '@/services/weatherService';
 import GlobalWeatherTemplate from '@/components/Weather/GlobalWeatherTemplate';
 import { generateHreflangs } from '@/lib/i18n';
 
-export const revalidate = 600; // 10 minutes cache
+export const revalidate = 3600; // 1 hour cache
 
 const title = 'World Weather — Planetary Climate Directory & Atmospheric Map | MooEarth Live';
 const description = 'Explore real-world weather observations across Earth on MooEarth Live. Verified meteorological data from global capital stations, tropical latitudes, and polar climate zones.';

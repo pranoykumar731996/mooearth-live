@@ -141,7 +141,7 @@ async function fetchWithRetry(
       const res = await fetch(url, {
         signal: AbortSignal.timeout(timeoutMs),
         // Next.js ISR cache — revalidate every 10 minutes
-        next: { revalidate: 600 },
+        next: { revalidate: 1800 }, // 30 minutes cache
       });
 
       if (res.ok) return res;

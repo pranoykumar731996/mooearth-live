@@ -1,0 +1,22 @@
+# Test suites, reports, and coverage
+tests/
+test-results/
+playwright-report/
+coverage/
+
+# Scratch & development notes
+scratch/
+docs/
+
+# Marketing & promotional media assets not required for web app bundle
+public/promo/
+public/ugc_walkthrough_video.webp
+mooearth_launch_demo.webp
+public/community-launch/
+
+# Development scripts and caches
+.eslintcache
+database_audit_report.json
+compress_clouds.js
+fetch_clouds.js
+fetch_textures.js

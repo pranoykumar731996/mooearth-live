@@ -150,7 +150,7 @@ export async function fetchUsgsEarthquakes(timeoutMs = 7000): Promise<PlanetaryE
             'Accept': 'application/json',
             'User-Agent': 'MooEarthLivePlanetaryEngine/1.0',
           },
-          next: { revalidate: 120 },
+          next: { revalidate: 1800 }, // 30 minutes cache
         });
         if (!res.ok) return [];
         const data: UsgsGeoJsonResponse = await res.json();

@@ -6,7 +6,7 @@ import { fetchCountryWeather } from '@/services/weatherService';
 import { shouldIndexWeatherPage } from '@/lib/seo/weatherQualityGate';
 import LocationWeatherTemplate, { LocationWeatherViewData } from '@/components/Weather/LocationWeatherTemplate';
 
-export const revalidate = 600; // 10 minutes cache
+export const revalidate = 3600; // 1 hour cache (reduces ISR writes across 335 static paths)
 
 interface LocationWeatherPageProps {
   params: Promise<{

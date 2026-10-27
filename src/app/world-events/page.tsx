@@ -4,7 +4,7 @@ import { shouldIndexEventPage } from '@/lib/seo/eventQualityGate';
 import WorldEventsTemplate from '@/components/Events/WorldEventsTemplate';
 import { generateHreflangs } from '@/lib/i18n';
 
-export const revalidate = 60; // 60 seconds cache
+export const revalidate = 1800; // 30 minutes cache (reduces ISR writes while client live-updates)
 
 const title = 'World Events — Live Global Events Map & International Developments | MooEarth Live';
 const description = 'Explore verified major world events on MooEarth Live. 3D interactive globe, geocoded event markers, primary wire sources, related sovereign states, and regional context.';

@@ -35,7 +35,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
-import type { SatelliteSpectralMode } from '@/services/weather/types';
+import type { SatelliteSpectralMode, WeatherLayerMode } from '@/services/weather/types';
 import {
   type TropicalCyclone,
   interpolateForecastPosition,
@@ -88,6 +88,7 @@ export interface CityMapViewerProps {
   initialMapStyle?: MapStyleKey;
   weatherSummary?: CityWeatherSummary | null;
   activeLayer?: string;
+  onLayerChange?: (layer: WeatherLayerMode) => void;
   radarTileUrl?: string;
   satelliteTileUrl?: string;
   satelliteObservationUtc?: string;
@@ -178,6 +179,7 @@ export default function CityMapViewer({
   initialMapStyle = 'atmospheric-satellite',
   weatherSummary,
   activeLayer = 'wind',
+  onLayerChange,
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
@@ -216,6 +218,11 @@ export default function CityMapViewer({
   const [currentBearing, setCurrentBearing] = useState(0);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isSatelliteHudDismissed, setIsSatelliteHudDismissed] = useState(false);
+  const [isRadarNoticeDismissed, setIsRadarNoticeDismissed] = useState(false);
+
+  useEffect(() => {
+    setIsRadarNoticeDismissed(false);
+  }, [activeLayer]);
 
   // Disaster filtering, visibility and collapsible bar state on 2D map
   const [internalDisasterFilter, setInternalDisasterFilter] = useState<'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather'>('all');
@@ -1597,7 +1604,7 @@ export default function CityMapViewer({
         // Observation date string: for geostationary infrared & moisture, stream today's live real-time frames
         const geoObs = getGeostationaryObservationDate(timelineHoursAhead < 0 ? Math.abs(timelineHoursAhead) : 0);
         const dateStr = isVisibleMode
-          ? (satelliteObservationUtc ? satelliteObservationUtc.slice(0, 10) : getSatelliteObservationDate().dateStr)
+          ? getSatelliteObservationDate(0, 'visible').dateStr
           : geoObs.dateStr;
 
         if (isVisibleMode) {
@@ -1609,10 +1616,10 @@ export default function CityMapViewer({
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // Global seamless TrueColor VIIRS layer directly from NASA GIBS with 100% tile availability
+          // Global seamless TrueColor VIIRS layer directly from NASA GIBS with 100% tile availability (NOAA-20 primary)
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 
           const existingSource = map.getSource(visibleSourceId) as any;
           if (existingSource) {
@@ -1676,64 +1683,55 @@ export default function CityMapViewer({
           if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
 
           // Multi-sector geostationary constellation:
-          // Strictly focused on cyclone bounding envelope or clamped to tropical belt (< 32°N)
-          // Eliminates cold-ground thermal false positives over Siberia/Arctic completely!
-          const activeStorm = selectedCyclone || (cyclones && cyclones.length > 0 ? cyclones[0] : null);
-          let sectors: { id: string; layerName: string; bounds: [number, number, number, number] }[] = [];
-
-          if (activeStorm) {
-            const stormBounds: [number, number, number, number] = [
-              activeStorm.lng - 14.0,
-              Math.max(-32.0, activeStorm.lat - 11.0),
-              activeStorm.lng + 14.0,
-              Math.min(32.0, activeStorm.lat + 11.0),
-            ];
-
-            if (activeStorm.lng >= 45.0 && activeStorm.lng <= 180.0) {
-              sectors = [
-                {
-                  id: 'himawari',
-                  layerName: 'Himawari_AHI_Band13_Clean_Infrared',
-                  bounds: stormBounds,
-                },
-              ];
-            } else if (activeStorm.lng >= -145.0 && activeStorm.lng <= -20.0) {
-              sectors = [
-                {
-                  id: 'goes-east',
-                  layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
-                  bounds: stormBounds,
-                },
-              ];
-            } else {
-              sectors = [
-                {
-                  id: 'goes-west',
-                  layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
-                  bounds: stormBounds,
-                },
-              ];
-            }
-          } else {
-            // General tropical cyclone corridor: capped at 32°N to eliminate high-latitude frozen land
-            sectors = [
-              {
-                id: 'himawari',
-                layerName: 'Himawari_AHI_Band13_Clean_Infrared',
-                bounds: [55.0, -32.0, 160.0, 32.0] as [number, number, number, number],
-              },
-              {
-                id: 'goes-east',
-                layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
-                bounds: [-135.0, -32.0, -20.0, 32.0] as [number, number, number, number],
-              },
-              {
-                id: 'goes-west',
-                layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
-                bounds: [-175.0, -32.0, -95.0, 32.0] as [number, number, number, number],
-              },
-            ];
-          }
+          // Full global coverage across Asia-Pacific & Indian Ocean (Himawari-9),
+          // Americas & Atlantic (GOES-East), Pacific & Hawaii (GOES-West),
+          // and Europe & Africa (VIIRS NOAA-20 Thermal).
+          const sectors: {
+            id: string;
+            layerName: string;
+            bounds: [number, number, number, number];
+            tileMatrixSet: string;
+            format: 'image/png' | 'image/jpeg';
+            isSubHourly: boolean;
+            maxzoom: number;
+          }[] = [
+            {
+              id: 'himawari',
+              layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+              tileMatrixSet: 'GoogleMapsCompatible_Level6',
+              format: 'image/png',
+              bounds: [55.0, -60.0, 160.0, 60.0],
+              isSubHourly: true,
+              maxzoom: 6,
+            },
+            {
+              id: 'goes-east',
+              layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+              tileMatrixSet: 'GoogleMapsCompatible_Level6',
+              format: 'image/png',
+              bounds: [-140.0, -60.0, -20.0, 60.0],
+              isSubHourly: true,
+              maxzoom: 6,
+            },
+            {
+              id: 'goes-west',
+              layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+              tileMatrixSet: 'GoogleMapsCompatible_Level6',
+              format: 'image/png',
+              bounds: [-180.0, -60.0, -100.0, 60.0],
+              isSubHourly: true,
+              maxzoom: 6,
+            },
+            {
+              id: 'europe-africa',
+              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
+              tileMatrixSet: 'GoogleMapsCompatible_Level9',
+              format: 'image/png',
+              bounds: [-25.0, -60.0, 56.0, 65.0],
+              isSubHourly: false,
+              maxzoom: 9,
+            },
+          ];
 
           // Clean up unused sectors
           const activeSectorIds = new Set(sectors.map((s) => s.id));
@@ -1747,8 +1745,9 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileTime = geoObs.isoTimestamp;
-            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+            const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
+            const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
+            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
@@ -1762,7 +1761,7 @@ export default function CityMapViewer({
                     type: 'raster',
                     tiles: [tileUrl],
                     tileSize: 256,
-                    maxzoom: 6,
+                    maxzoom: sec.maxzoom,
                     bounds: sec.bounds,
                     attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
                   });
@@ -1790,7 +1789,7 @@ export default function CityMapViewer({
                 type: 'raster',
                 tiles: [tileUrl],
                 tileSize: 256,
-                maxzoom: 6,
+                maxzoom: sec.maxzoom,
                 bounds: sec.bounds,
                 attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
               });
@@ -1971,21 +1970,24 @@ export default function CityMapViewer({
       )}
 
       {/* ── Radar Coverage Notice when viewing areas outside North American Doppler network ── */}
-      {activeLayer === 'radar' && !isLocationCoveredByRadar(latitude, longitude) && (
+      {activeLayer === 'radar' && !isRadarNoticeDismissed && !isLocationCoveredByRadar(latitude, longitude) && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto">
           <RadarCoverageNotice
             locationName={cityName}
             onSwitchToPrecipitation={() => {
-              if (onOpenWeather) onOpenWeather();
+              if (onLayerChange) onLayerChange('precipitation');
+              else if (onOpenWeather) onOpenWeather();
             }}
             onSwitchToSatellite={() => {
-              if (onOpenWeather) onOpenWeather();
+              if (onLayerChange) onLayerChange('satellite');
+              else if (onOpenWeather) onOpenWeather();
             }}
             onRecenterRadar={() => {
               if (mapRef.current) {
                 mapRef.current.flyTo({ center: [-96.0, 38.5], zoom: 4.5, speed: 1.4 });
               }
             }}
+            onDismiss={() => setIsRadarNoticeDismissed(true)}
           />
         </div>
       )}

@@ -76,6 +76,26 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/textures/:path*',
+        headers: [
+          ...securityHeaders,
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/icons/:path*',
+        headers: [
+          ...securityHeaders,
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
         source: '/embed/:path*',
         headers: embedHeaders,
       },

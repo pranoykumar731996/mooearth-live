@@ -11,7 +11,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface RadarCoverageNoticeProps {
   locationName?: string;
@@ -30,6 +30,19 @@ export default function RadarCoverageNotice({
   onDismiss,
   className = '',
 }: RadarCoverageNoticeProps) {
+  const [isInternalDismissed, setIsInternalDismissed] = useState(false);
+
+  if (isInternalDismissed) {
+    return null;
+  }
+
+  const handleDismiss = () => {
+    setIsInternalDismissed(true);
+    if (onDismiss) {
+      onDismiss();
+    }
+  };
+
   return (
     <div
       data-testid="radar-unavailable-banner"
@@ -46,17 +59,15 @@ export default function RadarCoverageNotice({
               <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-amber-400/20 text-amber-200 border border-amber-400/30">
                 PHYSICAL LIMIT
               </span>
-              {onDismiss && (
-                <button
-                  type="button"
-                  onClick={onDismiss}
-                  className="w-5 h-5 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors text-xs font-bold cursor-pointer"
-                  title="Dismiss notice"
-                  aria-label="Dismiss notice"
-                >
-                  ✕
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleDismiss}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors text-xs font-bold cursor-pointer"
+                title="Dismiss notice"
+                aria-label="Dismiss notice"
+              >
+                ✕
+              </button>
             </div>
           </div>
 

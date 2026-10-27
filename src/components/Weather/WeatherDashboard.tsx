@@ -192,10 +192,22 @@ export default function WeatherDashboard() {
         .catch(() => {});
     };
     fetchCyclones();
-    const interval = setInterval(fetchCyclones, 60000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchCyclones();
+    }, 300000); // 5 minutes interval (cyclone tracks update on 3-6 hour operational cycles)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCyclones();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -470,11 +482,11 @@ export default function WeatherDashboard() {
     weather.setActiveLayer('radar');
   }, [viewMode, weather, updateUrlParams]);
 
-  // Fetch live global events for radar/atmosphere integration with continuous 60s auto-refresh
+  // Fetch live global events for radar/atmosphere integration with Edge CDN caching
   useEffect(() => {
     let cancelled = false;
     const fetchLatestEvents = () => {
-      fetch('/api/events?refresh=true')
+      fetch('/api/events')
         .then((res) => res.json())
         .then((data) => {
           if (!cancelled && data.events && Array.isArray(data.events)) {
@@ -485,10 +497,22 @@ export default function WeatherDashboard() {
     };
 
     fetchLatestEvents();
-    const intervalTimer = setInterval(fetchLatestEvents, 60000);
+    const intervalTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchLatestEvents();
+    }, 60000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestEvents();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       cancelled = true;
       clearInterval(intervalTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -1271,6 +1295,7 @@ export default function WeatherDashboard() {
                 }
                 initialMapStyle="atmospheric-satellite"
                 activeLayer={weather.activeLayer}
+                onLayerChange={weather.setActiveLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
                 satelliteTileUrl={satelliteMeta.tileUrlTemplate}
                 satelliteObservationUtc={satelliteMeta.observationUtc}

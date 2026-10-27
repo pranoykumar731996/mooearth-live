@@ -43,15 +43,25 @@ function useDebounce<T extends (...args: unknown[]) => void>(
   ) as T;
 }
 
-// ── Fetch helpers ─────────────────────────────────────────────
+// ── Fetch helpers with in-memory deduplication ───────────────
+
+const weatherClientCache = new Map<string, { data: unknown; timestamp: number }>();
+const CLIENT_CACHE_TTL_MS = 300000; // 5 minutes client cache
 
 async function fetchJson<T>(url: string): Promise<T> {
+  const cached = weatherClientCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CLIENT_CACHE_TTL_MS) {
+    return cached.data as T;
+  }
+
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body?.error || `HTTP ${res.status}`);
   }
-  return res.json();
+  const data = await res.json();
+  weatherClientCache.set(url, { data, timestamp: Date.now() });
+  return data;
 }
 
 // ── Main Hook ─────────────────────────────────────────────────
@@ -138,6 +148,8 @@ export function useWeatherData() {
 
   // Fetch forecast
   const fetchForecast = useCallback(async (lat: number, lng: number) => {
+    const qLat = Number(lat.toFixed(2));
+    const qLng = Number(lng.toFixed(2));
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, forecast: true },
@@ -145,7 +157,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<ForecastResponse>(
-        `/api/weather/forecast?lat=${lat}&lng=${lng}`
+        `/api/weather/forecast?lat=${qLat}&lng=${qLng}`
       );
       setState(prev => ({
         ...prev,
@@ -164,6 +176,8 @@ export function useWeatherData() {
 
   // Fetch air quality
   const fetchAirQuality = useCallback(async (lat: number, lng: number) => {
+    const qLat = Number(lat.toFixed(2));
+    const qLng = Number(lng.toFixed(2));
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, airQuality: true },
@@ -171,7 +185,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<AirQualityResponse>(
-        `/api/weather/air-quality?lat=${lat}&lng=${lng}`
+        `/api/weather/air-quality?lat=${qLat}&lng=${qLng}`
       );
       setState(prev => ({
         ...prev,
@@ -190,6 +204,8 @@ export function useWeatherData() {
 
   // Fetch elevation
   const fetchElevation = useCallback(async (lat: number, lng: number) => {
+    const qLat = Number(lat.toFixed(2));
+    const qLng = Number(lng.toFixed(2));
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, elevation: true },
@@ -197,7 +213,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<ElevationResponse>(
-        `/api/weather/elevation?lat=${lat}&lng=${lng}`
+        `/api/weather/elevation?lat=${qLat}&lng=${qLng}`
       );
       setState(prev => ({
         ...prev,
@@ -216,6 +232,8 @@ export function useWeatherData() {
 
   // Fetch flood
   const fetchFlood = useCallback(async (lat: number, lng: number) => {
+    const qLat = Number(lat.toFixed(2));
+    const qLng = Number(lng.toFixed(2));
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, flood: true },
@@ -223,7 +241,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<FloodResponse>(
-        `/api/weather/flood?lat=${lat}&lng=${lng}`
+        `/api/weather/flood?lat=${qLat}&lng=${qLng}`
       );
       setState(prev => ({
         ...prev,
@@ -242,6 +260,8 @@ export function useWeatherData() {
 
   // Fetch marine
   const fetchMarine = useCallback(async (lat: number, lng: number) => {
+    const qLat = Number(lat.toFixed(2));
+    const qLng = Number(lng.toFixed(2));
     setState(prev => ({
       ...prev,
       loading: { ...prev.loading, marine: true },
@@ -249,7 +269,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<MarineResponse>(
-        `/api/weather/marine?lat=${lat}&lng=${lng}`
+        `/api/weather/marine?lat=${qLat}&lng=${qLng}`
       );
       setState(prev => ({
         ...prev,

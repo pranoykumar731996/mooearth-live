@@ -11,7 +11,7 @@ import {
   getCanonicalUrl,
 } from '@/lib/i18n';
 
-export const revalidate = 600; // 10 minutes cache
+export const revalidate = 3600; // 1 hour cache
 
 interface LocalizedWeatherProps {
   params: Promise<{

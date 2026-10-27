@@ -11,6 +11,8 @@ import { shouldIndexCityPage } from '@/lib/seo/cityQualityGate';
 import WebGLGlobeViewer from '@/components/Globe/WebGLGlobeViewer';
 import GlobalFooter from '@/components/Layout/GlobalFooter';
 
+export const revalidate = 3600; // 1 hour cache (reduces ISR writes across 85 city pages)
+
 interface CityPageProps {
   params: Promise<{
     city: string;

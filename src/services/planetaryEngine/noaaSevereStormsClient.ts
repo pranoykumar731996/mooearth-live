@@ -104,7 +104,7 @@ export async function fetchNoaaSevereStorms(timeoutMs = 7000): Promise<Planetary
         'User-Agent': 'MooEarthLive/1.0 (contact@mooearth.live)',
         Accept: 'application/geo+json',
       },
-      next: { revalidate: 180 }, // Revalidate every 3 minutes
+      next: { revalidate: 1800 }, // 30 minutes cache
     });
     clearTimeout(timeout);
 
@@ -207,7 +207,7 @@ export async function fetchNoaaCurrentStorms(timeoutMs = 6000): Promise<Planetar
         'User-Agent': 'MooEarthLive/1.0 (contact@mooearth.live)',
         Accept: 'application/json',
       },
-      next: { revalidate: 300 }, // 5-minute cache
+      next: { revalidate: 1800 }, // 30 minutes cache
     });
     clearTimeout(timeout);
 

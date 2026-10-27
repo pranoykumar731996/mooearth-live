@@ -3,7 +3,7 @@ import { fetchGlobalWeatherHighlights } from '@/services/weatherService';
 import GlobalWeatherTemplate from '@/components/Weather/GlobalWeatherTemplate';
 import { generateHreflangs } from '@/lib/i18n';
 
-export const revalidate = 600; // 10 minutes cache
+export const revalidate = 3600; // 1 hour cache
 
 const title = 'Weather Map — Interactive 3D Climate Globe & Atmospheric Layers | MooEarth Live';
 const description = 'Interactive 3D weather map on MooEarth Live. Explore verified temperatures, barometric pressure gradients, and dynamic wind velocities mapped to real global coordinates.';

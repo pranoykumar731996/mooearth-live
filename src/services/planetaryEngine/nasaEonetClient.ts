@@ -208,7 +208,7 @@ export async function fetchNasaEonetEvents(timeoutMs = 7000): Promise<PlanetaryE
         'Accept': 'application/json',
         'User-Agent': 'MooEarthLivePlanetaryEngine/1.0',
       },
-      next: { revalidate: 300 }, // 5-minute Next.js caching
+      next: { revalidate: 1800 }, // 30 minutes cache
     });
 
     clearTimeout(timer);

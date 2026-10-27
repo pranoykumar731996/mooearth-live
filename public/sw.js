@@ -107,14 +107,18 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
-          // Serve from cache, and perform stale-while-revalidate background update
-          fetch(event.request)
-            .then((networkResponse) => {
-              if (networkResponse.status === 200) {
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-              }
-            })
-            .catch(() => {/* Ignore background errors when offline */});
+          // Immutable Next.js static chunks have content hashes in their URL; serve immediately without background fetch
+          const isImmutableChunk = url.pathname.startsWith('/_next/static/');
+          if (!isImmutableChunk) {
+            // For other static assets, perform background update
+            fetch(event.request)
+              .then((networkResponse) => {
+                if (networkResponse.status === 200) {
+                  caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+                }
+              })
+              .catch(() => {/* Ignore background errors when offline */});
+          }
           return cachedResponse;
         }
 
@@ -204,4 +208,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Build Timestamp: 2026-10-26T23:06:00.950Z
+// Build Timestamp: 2026-10-27T12:59:47.171Z
