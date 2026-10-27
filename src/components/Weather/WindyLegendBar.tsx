@@ -18,7 +18,7 @@ interface WindyLegendBarProps {
 
 export default function WindyLegendBar({
   activeLayer,
-  spectralMode = 'blue',
+  spectralMode = 'visible',
   units = 'celsius',
   className = '',
 }: WindyLegendBarProps) {

@@ -1696,10 +1696,10 @@ export default function CityMapViewer({
           if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
           if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
 
-          // Multi-sector geostationary & polar constellation:
-          // Full 100% global planetary coverage across Asia-Pacific & Indian Ocean (Himawari-9),
-          // Americas & Atlantic (GOES-East), Pacific & Hawaii (GOES-West),
-          // Europe & Africa (VIIRS NOAA-20 Thermal), and Polar Arctic & Antarctic caps.
+          // Geostationary Clean Infrared constellation:
+          // Covers Asia-Pacific & Indian Ocean / Bay of Bengal (Himawari-9),
+          // Americas & Atlantic (GOES-East), and Pacific / Hawaii (GOES-West).
+          // Clamped to tropical and temperate storm zones [-50°, +55°] to eliminate polar freezing ground false-positives.
           const sectors: {
             id: string;
             layerName: string;
@@ -1714,7 +1714,7 @@ export default function CityMapViewer({
               layerName: 'Himawari_AHI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [50.0, -60.0, 165.0, 65.0],
+              bounds: [45.0, -50.0, 165.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1723,7 +1723,7 @@ export default function CityMapViewer({
               layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-140.0, -60.0, -20.0, 65.0],
+              bounds: [-140.0, -50.0, -15.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1732,40 +1732,13 @@ export default function CityMapViewer({
               layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-180.0, -60.0, -100.0, 65.0],
+              bounds: [-180.0, -50.0, -100.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
-            {
-              id: 'europe-africa',
-              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-              tileMatrixSet: 'GoogleMapsCompatible_Level9',
-              format: 'image/png',
-              bounds: [-25.0, -60.0, 56.0, 65.0],
-              isSubHourly: false,
-              maxzoom: 9,
-            },
-            {
-              id: 'arctic-polar',
-              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
-              tileMatrixSet: 'GoogleMapsCompatible_Level9',
-              format: 'image/png',
-              bounds: [-180.0, 55.0, 180.0, 85.0],
-              isSubHourly: false,
-              maxzoom: 9,
-            },
-            {
-              id: 'antarctic-polar',
-              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-              tileMatrixSet: 'GoogleMapsCompatible_Level9',
-              format: 'image/png',
-              bounds: [-180.0, -85.0, 180.0, -50.0],
-              isSubHourly: false,
-              maxzoom: 9,
-            },
           ];
 
-          // Clean up unused sectors
+          // Clean up unused sectors (including obsolete VIIRS thermal brightness sectors)
           const activeSectorIds = new Set(sectors.map((s) => s.id));
           ['himawari', 'goes-east', 'goes-west', 'europe-africa', 'arctic-polar', 'antarctic-polar'].forEach((sId) => {
             if (!activeSectorIds.has(sId)) {

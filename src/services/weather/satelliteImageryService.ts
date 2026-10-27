@@ -74,7 +74,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'Himawari_AHI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [55.0, -60.0, 160.0, 60.0],
+      bounds: [45.0, -50.0, 165.0, 55.0],
     },
     {
       id: 'goes-east-ir',
@@ -82,7 +82,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-140.0, -60.0, -20.0, 60.0],
+      bounds: [-140.0, -50.0, -15.0, 55.0],
     },
     {
       id: 'goes-west-ir',
@@ -90,31 +90,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-180.0, -60.0, -100.0, 60.0],
-    },
-    {
-      id: 'europe-africa-ir',
-      name: 'Europe & Africa Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/png',
-      bounds: [-25.0, -60.0, 56.0, 65.0],
-    },
-    {
-      id: 'arctic-polar-ir',
-      name: 'Arctic & Polar Night Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/png',
-      bounds: [-180.0, 55.0, 180.0, 85.0],
-    },
-    {
-      id: 'antarctic-polar-ir',
-      name: 'Antarctica Polar Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/png',
-      bounds: [-180.0, -85.0, 180.0, -50.0],
+      bounds: [-180.0, -50.0, -100.0, 55.0],
     },
   ],
   blue: [
@@ -124,7 +100,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'Himawari_AHI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [55.0, -60.0, 160.0, 60.0],
+      bounds: [45.0, -50.0, 165.0, 55.0],
     },
     {
       id: 'goes-east-blue',
@@ -132,31 +108,15 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-140.0, -60.0, -20.0, 60.0],
+      bounds: [-140.0, -50.0, -15.0, 55.0],
     },
     {
-      id: 'europe-africa-blue',
-      name: 'Europe & Africa Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      id: 'goes-west-blue',
+      name: 'GOES-West Pacific & Hawaii Moisture',
+      layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-25.0, -60.0, 56.0, 65.0],
-    },
-    {
-      id: 'arctic-polar-blue',
-      name: 'Arctic & Polar Night Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/png',
-      bounds: [-180.0, 55.0, 180.0, 85.0],
-    },
-    {
-      id: 'antarctic-polar-blue',
-      name: 'Antarctica Polar Thermal Clouds (VIIRS NOAA-20 IR)',
-      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/png',
-      bounds: [-180.0, -85.0, 180.0, -50.0],
+      bounds: [-180.0, -50.0, -100.0, 55.0],
     },
   ],
   visible: [
@@ -166,15 +126,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
       tileMatrixSet: 'GoogleMapsCompatible_Level9',
       format: 'image/jpeg',
-      bounds: [-180.0, -85.0, 180.0, 62.0],
-    },
-    {
-      id: 'arctic-dnb',
-      name: 'Arctic Polar Cloud Reflectance (VIIRS Day/Night Band)',
-      layerName: 'VIIRS_NOAA20_DayNightBand',
-      tileMatrixSet: 'GoogleMapsCompatible_Level7',
-      format: 'image/png',
-      bounds: [-180.0, 58.0, 180.0, 85.0],
+      bounds: [-180.0, -85.0, 180.0, 85.0],
     },
   ],
 };
@@ -247,20 +199,20 @@ export function getGeostationarySectorForCoords(
   const sectors = GEOSTATIONARY_SECTORS[mode] || GEOSTATIONARY_SECTORS.infra;
   const normLng = ((((lng % 360) + 540) % 360) - 180);
 
-  // 1. Asia-Pacific & Indian Ocean / Bay of Bengal (55°E to 160°E) -> Himawari
-  if (normLng >= 50 && normLng <= 165) {
+  // 1. Asia-Pacific & Indian Ocean / Bay of Bengal (45°E to 165°E) -> Himawari
+  if (normLng >= 45 && normLng <= 165) {
     return sectors.find((s) => s.id.includes('himawari')) || sectors[0];
   }
-  // 2. Americas & Atlantic Ocean (-140°W to -20°W) -> GOES-East
-  if (normLng >= -140 && normLng <= -20) {
+  // 2. Americas & Atlantic Ocean (-140°W to -15°W) -> GOES-East
+  if (normLng >= -140 && normLng <= -15) {
     return sectors.find((s) => s.id.includes('goes-east')) || sectors[0];
   }
   // 3. Central & East Pacific / Hawaii (-180°W to -100°W) -> GOES-West
   if (normLng < -100 || normLng > 165) {
     return sectors.find((s) => s.id.includes('goes-west')) || sectors[0];
   }
-  // 4. Europe & Africa (-25°W to 55°E) -> Europe/Africa
-  return sectors.find((s) => s.id.includes('europe-africa')) || sectors[0];
+  // 4. Default geostationary fallback -> Himawari or GOES-East
+  return sectors[0];
 }
 
 /**
@@ -305,7 +257,7 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
  */
 export function getSatelliteObservationDate(
   offsetHours: number = 0,
-  mode: SatelliteSpectralMode = 'blue'
+  mode: SatelliteSpectralMode = 'visible'
 ): { dateStr: string; utcStr: string; timestampMs: number } {
   // If requesting geostationary infrared or moisture, use today's real-time stream
   if (mode === 'infra' || mode === 'blue') {
@@ -358,10 +310,10 @@ export function buildGibsTileUrl(
  * Supports smooth time-lapse cloud movement playback for the animation scrubber.
  */
 export function getSatelliteFrames(
-  mode: SatelliteSpectralMode = 'blue',
+  mode: SatelliteSpectralMode = 'visible',
   frameCount: number = 8
 ): SatelliteFrame[] {
-  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.blue;
+  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
   const frames: SatelliteFrame[] = [];
   const baseObs = getSatelliteObservationDate(0, mode);
   const now = baseObs.timestampMs;
@@ -398,8 +350,8 @@ export function getSatelliteFrames(
 /**
  * High-level helper returning comprehensive satellite imagery metadata.
  */
-export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'blue', offsetHours: number = 0): SatelliteMetadataResponse {
-  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.blue;
+export function getSatelliteMetadata(mode: SatelliteSpectralMode = 'visible', offsetHours: number = 0): SatelliteMetadataResponse {
+  const product = SATELLITE_PRODUCTS[mode] || SATELLITE_PRODUCTS.visible;
   const { dateStr, utcStr } = getSatelliteObservationDate(offsetHours, mode);
   const tileUrlTemplate = buildGibsTileUrl(product, dateStr);
   const frames = getSatelliteFrames(mode, 8);
