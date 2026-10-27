@@ -100,6 +100,22 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       format: 'image/png',
       bounds: [-25.0, -60.0, 56.0, 65.0],
     },
+    {
+      id: 'arctic-polar-ir',
+      name: 'Arctic & Polar Night Thermal Clouds (VIIRS NOAA-20 IR)',
+      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
+      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      format: 'image/png',
+      bounds: [-180.0, 55.0, 180.0, 85.0],
+    },
+    {
+      id: 'antarctic-polar-ir',
+      name: 'Antarctica Polar Thermal Clouds (VIIRS NOAA-20 IR)',
+      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      format: 'image/png',
+      bounds: [-180.0, -85.0, 180.0, -50.0],
+    },
   ],
   blue: [
     {
@@ -125,6 +141,22 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       tileMatrixSet: 'GoogleMapsCompatible_Level9',
       format: 'image/png',
       bounds: [-25.0, -60.0, 56.0, 65.0],
+    },
+    {
+      id: 'arctic-polar-blue',
+      name: 'Arctic & Polar Night Thermal Clouds (VIIRS NOAA-20 IR)',
+      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
+      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      format: 'image/png',
+      bounds: [-180.0, 55.0, 180.0, 85.0],
+    },
+    {
+      id: 'antarctic-polar-blue',
+      name: 'Antarctica Polar Thermal Clouds (VIIRS NOAA-20 IR)',
+      layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level9',
+      format: 'image/png',
+      bounds: [-180.0, -85.0, 180.0, -50.0],
     },
   ],
   visible: [

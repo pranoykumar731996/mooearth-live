@@ -1542,18 +1542,24 @@ export default function CityMapViewer({
 
     const sectorSourceIds = [
       'nasa-gibs-visible-source',
+      'nasa-gibs-polar-fill-source',
       'nasa-gibs-himawari-source',
       'nasa-gibs-goes-east-source',
       'nasa-gibs-goes-west-source',
       'nasa-gibs-europe-africa-source',
+      'nasa-gibs-arctic-polar-source',
+      'nasa-gibs-antarctic-polar-source',
       'nasa-gibs-satellite-source',
     ];
     const sectorLayerIds = [
       'nasa-gibs-visible-layer',
+      'nasa-gibs-polar-fill-layer',
       'nasa-gibs-himawari-layer',
       'nasa-gibs-goes-east-layer',
       'nasa-gibs-goes-west-layer',
       'nasa-gibs-europe-africa-layer',
+      'nasa-gibs-arctic-polar-layer',
+      'nasa-gibs-antarctic-polar-layer',
       'nasa-gibs-satellite-layer',
     ];
 
@@ -1609,14 +1615,72 @@ export default function CityMapViewer({
 
         if (isVisibleMode) {
           // Clean up infrared sectors
-          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-europe-africa-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
+          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-europe-africa-layer', 'nasa-gibs-arctic-polar-layer', 'nasa-gibs-antarctic-polar-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
             if (map.getLayer(id)) map.removeLayer(id);
           });
-          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-europe-africa-source', 'nasa-gibs-satellite-source'].forEach((id) => {
+          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-europe-africa-source', 'nasa-gibs-arctic-polar-source', 'nasa-gibs-antarctic-polar-source', 'nasa-gibs-satellite-source'].forEach((id) => {
             if (map.getSource(id)) map.removeSource(id);
           });
 
-          // Global seamless TrueColor VIIRS layer directly from NASA GIBS with 100% tile availability (NOAA-20 primary)
+          // 1. Polar night thermal fill layer (covers Svalbard, Greenland, Arctic Ocean where daylight TrueColor has no reflection)
+          const polarFillSourceId = 'nasa-gibs-polar-fill-source';
+          const polarFillLayerId = 'nasa-gibs-polar-fill-layer';
+          const polarFillUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_Brightness_Temp_BandI5_Night/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png`;
+
+          const existingPolarSource = map.getSource(polarFillSourceId) as any;
+          if (existingPolarSource) {
+            if (existingPolarSource.tiles?.[0] !== polarFillUrl) {
+              if (map.getLayer(polarFillLayerId)) map.removeLayer(polarFillLayerId);
+              map.removeSource(polarFillSourceId);
+              map.addSource(polarFillSourceId, {
+                type: 'raster',
+                tiles: [polarFillUrl],
+                tileSize: 256,
+                maxzoom: 9,
+                attribution: 'NASA GIBS / NOAA-20 Polar Night Thermal Clouds',
+              });
+              map.addLayer(
+                {
+                  id: polarFillLayerId,
+                  type: 'raster',
+                  source: polarFillSourceId,
+                  maxzoom: 12,
+                  paint: {
+                    'raster-opacity': visibleOpacityExpression,
+                    'raster-contrast': 0.12,
+                    'raster-fade-duration': 300,
+                  },
+                },
+                beforeLayerId
+              );
+            } else if (map.getLayer(polarFillLayerId)) {
+              map.setPaintProperty(polarFillLayerId, 'raster-opacity', visibleOpacityExpression);
+            }
+          } else {
+            map.addSource(polarFillSourceId, {
+              type: 'raster',
+              tiles: [polarFillUrl],
+              tileSize: 256,
+              maxzoom: 9,
+              attribution: 'NASA GIBS / NOAA-20 Polar Night Thermal Clouds',
+            });
+            map.addLayer(
+              {
+                id: polarFillLayerId,
+                type: 'raster',
+                source: polarFillSourceId,
+                maxzoom: 12,
+                paint: {
+                  'raster-opacity': visibleOpacityExpression,
+                  'raster-contrast': 0.12,
+                  'raster-fade-duration': 300,
+                },
+              },
+              beforeLayerId
+            );
+          }
+
+          // 2. Global seamless TrueColor VIIRS layer on top (daylight reflectance)
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
           const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
@@ -1676,16 +1740,18 @@ export default function CityMapViewer({
           }
         } else {
           // Infrared / Blue geostationary sectors
-          // Clean up visible layer if present
+          // Clean up visible and polar fill layers if present
           if (map.getLayer('nasa-gibs-visible-layer')) map.removeLayer('nasa-gibs-visible-layer');
           if (map.getSource('nasa-gibs-visible-source')) map.removeSource('nasa-gibs-visible-source');
+          if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
+          if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
           if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
           if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
 
-          // Multi-sector geostationary constellation:
-          // Full global coverage across Asia-Pacific & Indian Ocean (Himawari-9),
+          // Multi-sector geostationary & polar constellation:
+          // Full 100% global planetary coverage across Asia-Pacific & Indian Ocean (Himawari-9),
           // Americas & Atlantic (GOES-East), Pacific & Hawaii (GOES-West),
-          // and Europe & Africa (VIIRS NOAA-20 Thermal).
+          // Europe & Africa (VIIRS NOAA-20 Thermal), and Polar Arctic & Antarctic caps.
           const sectors: {
             id: string;
             layerName: string;
@@ -1700,7 +1766,7 @@ export default function CityMapViewer({
               layerName: 'Himawari_AHI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [55.0, -60.0, 160.0, 60.0],
+              bounds: [50.0, -60.0, 165.0, 65.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1709,7 +1775,7 @@ export default function CityMapViewer({
               layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-140.0, -60.0, -20.0, 60.0],
+              bounds: [-140.0, -60.0, -20.0, 65.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1718,7 +1784,7 @@ export default function CityMapViewer({
               layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-180.0, -60.0, -100.0, 60.0],
+              bounds: [-180.0, -60.0, -100.0, 65.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1731,11 +1797,29 @@ export default function CityMapViewer({
               isSubHourly: false,
               maxzoom: 9,
             },
+            {
+              id: 'arctic-polar',
+              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Night',
+              tileMatrixSet: 'GoogleMapsCompatible_Level9',
+              format: 'image/png',
+              bounds: [-180.0, 55.0, 180.0, 85.0],
+              isSubHourly: false,
+              maxzoom: 9,
+            },
+            {
+              id: 'antarctic-polar',
+              layerName: 'VIIRS_NOAA20_Brightness_Temp_BandI5_Day',
+              tileMatrixSet: 'GoogleMapsCompatible_Level9',
+              format: 'image/png',
+              bounds: [-180.0, -85.0, 180.0, -50.0],
+              isSubHourly: false,
+              maxzoom: 9,
+            },
           ];
 
           // Clean up unused sectors
           const activeSectorIds = new Set(sectors.map((s) => s.id));
-          ['himawari', 'goes-east', 'goes-west', 'europe-africa'].forEach((sId) => {
+          ['himawari', 'goes-east', 'goes-west', 'europe-africa', 'arctic-polar', 'antarctic-polar'].forEach((sId) => {
             if (!activeSectorIds.has(sId)) {
               if (map.getLayer(`nasa-gibs-${sId}-layer`)) map.removeLayer(`nasa-gibs-${sId}-layer`);
               if (map.getSource(`nasa-gibs-${sId}-source`)) map.removeSource(`nasa-gibs-${sId}-source`);
