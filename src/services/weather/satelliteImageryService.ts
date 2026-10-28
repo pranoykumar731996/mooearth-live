@@ -123,7 +123,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
     {
       id: 'viirs-truecolor',
       name: 'VIIRS Global True Color (NOAA-20)',
-      layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
+      layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
       tileMatrixSet: 'GoogleMapsCompatible_Level9',
       format: 'image/jpeg',
       bounds: [-180.0, -85.0, 180.0, 85.0],
@@ -151,7 +151,7 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
     attribution: 'NASA Global Imagery Browse Services (GIBS) / EOSDIS',
     license: 'NASA Earth Science Open Data Policy (Public Domain)',
     licenseUrl: 'https://earthdata.nasa.gov/collaborate/open-data-services-and-software/data-information-policy',
-    layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
+    layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
   },
   blue: {
     id: 'nasa-gibs-himawari-blue',
@@ -274,7 +274,7 @@ export function getSatelliteObservationDate(
   // Before ~04:00 UTC, the current day's mosaic is only partially complete (Europe/Asia present, but Americas/Pacific blank 1.6KB tiles).
   // Therefore, to guarantee 100% complete global cloud coverage across all continents with zero black/missing swaths,
   // we anchor to the latest fully composited observation date (prior to 04:00 UTC, 2 days prior; at or after 04:00 UTC, yesterday).
-  const daysBack = utcHours < 4 ? 2 : 1;
+  const daysBack = utcHours < 14 ? 2 : 1;
   const anchorTime = baseNow.getTime() - daysBack * 24 * 3600 * 1000;
   
   const targetTime = anchorTime - offsetHours * 3600 * 1000;

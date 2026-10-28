@@ -329,6 +329,7 @@ export default function CityMapViewer({
           showZoom: true,
           visualizePitch: true,
         });
+        if (typeof window !== 'undefined') (window as any)._map = map;
         map.addControl(nav, 'top-right');
 
         // Add scale bar
@@ -1629,7 +1630,7 @@ export default function CityMapViewer({
           // Global seamless TrueColor VIIRS layer (natural daylight cloud reflectance)
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 
           const existingVisibleSource = map.getSource(visibleSourceId) as any;
           if (existingVisibleSource) {
