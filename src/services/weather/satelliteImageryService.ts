@@ -94,11 +94,11 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
     },
     {
       id: 'europe-africa-ir',
-      name: 'Europe & Africa Thermal Cloud Tops',
-      layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      name: 'Meteosat Europe & Africa Clean Infrared',
+      layerName: 'msg_fes:ir108',
+      tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [-25.0, -50.0, 55.0, 65.0],
+      bounds: [-70.0, -60.0, 60.0, 65.0],
     },
   ],
   blue: [
@@ -128,11 +128,11 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
     },
     {
       id: 'europe-africa-blue',
-      name: 'Europe & Africa Upper Moisture & Clouds',
-      layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
-      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      name: 'Meteosat Europe & Africa Upper Clouds',
+      layerName: 'msg_fes:ir108',
+      tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [-25.0, -50.0, 55.0, 65.0],
+      bounds: [-70.0, -60.0, 60.0, 65.0],
     },
   ],
   visible: [
@@ -148,6 +148,9 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
 };
 
 export function buildSectorTileUrl(sector: GeostationarySector, dateStr: string): string {
+  if (sector.layerName.startsWith('msg_')) {
+    return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sector.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`;
+  }
   const ext = sector.format === 'image/jpeg' ? 'jpg' : 'png';
   return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sector.layerName}/default/${dateStr}/${sector.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 }
@@ -227,9 +230,9 @@ export function getGeostationarySectorForCoords(
   if (normLng < -100 || normLng > 165) {
     return sectors.find((s) => s.id.includes('goes-west')) || sectors[0];
   }
-  // 4. Europe & Africa (-25°W to 45°E) -> Europe/Africa
+  // 4. Europe & Africa (-70°W to 60°E) -> EUMETSAT Meteosat Prime
   const eurSector = sectors.find((s) => s.id.includes('europe-africa'));
-  if (eurSector && normLng >= -25 && normLng <= 45) return eurSector;
+  if (eurSector && normLng >= -70 && normLng <= 60) return eurSector;
   // 5. Default geostationary fallback
   return sectors[0];
 }
@@ -246,7 +249,7 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
   isLive: boolean;
 } {
   // NASA GIBS sub-hourly geostationary processing latency is ~50 minutes from orbit scan to WMTS tile ingestion
-  const SATELLITE_PROCESSING_LATENCY_MS = 50 * 60 * 1000;
+  const SATELLITE_PROCESSING_LATENCY_MS = 70 * 60 * 1000;
   const targetTime = Date.now() - SATELLITE_PROCESSING_LATENCY_MS - Math.max(0, offsetHours) * 3600 * 1000;
   const targetDate = new Date(targetTime);
 

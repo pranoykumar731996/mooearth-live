@@ -75,6 +75,74 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         return { data: buf };
       }
     });
+    addProtocol('eumet-alpha', async (params, abortController) => {
+      const realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
+      const res = await fetch(realUrl, { signal: abortController.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+
+      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+
+      try {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { data: bitmap };
+
+        ctx.drawImage(bitmap, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        const len = d.length;
+
+        for (let i = 0; i < len; i += 4) {
+          const val = d[i];
+          if (val < 26) {
+            d[i] = 0;
+            d[i + 1] = 0;
+            d[i + 2] = 0;
+            d[i + 3] = 0;
+          } else if (val < 155) {
+            const alpha = val < 70 ? Math.round(((val - 26) / (70 - 26)) * 240) : 255;
+            d[i] = val;
+            d[i + 1] = val;
+            d[i + 2] = val;
+            d[i + 3] = alpha;
+          } else if (val < 170) {
+            d[i] = 0;
+            d[i + 1] = 230;
+            d[i + 2] = 240;
+            d[i + 3] = 255;
+          } else if (val < 185) {
+            d[i] = 255;
+            d[i + 1] = 220;
+            d[i + 2] = 0;
+            d[i + 3] = 255;
+          } else if (val < 200) {
+            d[i] = 255;
+            d[i + 1] = 50;
+            d[i + 2] = 0;
+            d[i + 3] = 255;
+          } else {
+            d[i] = 220;
+            d[i + 1] = 0;
+            d[i + 2] = 255;
+            d[i + 3] = 255;
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        const cleanBitmap = await createImageBitmap(canvas);
+        return { data: cleanBitmap };
+      } catch {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+    });
   } catch (protoErr) {
     console.warn('[CityMapViewer] gibs-alpha protocol notice:', protoErr);
   }
@@ -1866,11 +1934,11 @@ export default function CityMapViewer({
             },
             {
               id: 'europe-africa',
-              layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
-              tileMatrixSet: 'GoogleMapsCompatible_Level6',
+              layerName: 'msg_fes:ir108',
+              tileMatrixSet: 'EPSG:3857',
               format: 'image/png',
-              bounds: [-25.0, -50.0, 55.0, 65.0],
-              isSubHourly: false,
+              bounds: [-70.0, -60.0, 60.0, 65.0],
+              isSubHourly: true,
               maxzoom: 6,
             },
           ];
@@ -1889,7 +1957,10 @@ export default function CityMapViewer({
             const lId = `nasa-gibs-${sec.id}-layer`;
             const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
-            const tileUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
+            const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
+            const tileUrl = isEumet
+              ? `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'eumet-alpha://' : 'https://'}view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sec.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`
+              : `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
@@ -1902,7 +1973,7 @@ export default function CityMapViewer({
                   tileSize: 256,
                   maxzoom: sec.maxzoom,
                   bounds: sec.bounds,
-                  attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+                  attribution: sec.layerName.startsWith('msg_') ? 'EUMETSAT Meteosat High Rate SEVIRI' : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
                 });
                 map.addLayer(
                   {
@@ -1929,7 +2000,7 @@ export default function CityMapViewer({
                 tileSize: 256,
                 maxzoom: sec.maxzoom,
                 bounds: sec.bounds,
-                attribution: 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
+                attribution: sec.layerName.startsWith('msg_') ? 'EUMETSAT Meteosat High Rate SEVIRI' : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
               });
               map.addLayer(
                 {
