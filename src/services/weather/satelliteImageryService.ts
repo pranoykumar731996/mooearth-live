@@ -74,7 +74,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'Himawari_AHI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [45.0, -50.0, 165.0, 55.0],
     },
     {
       id: 'goes-east-ir',
@@ -82,7 +81,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-140.0, -50.0, -15.0, 55.0],
     },
     {
       id: 'goes-west-ir',
@@ -90,7 +88,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-180.0, -50.0, -100.0, 55.0],
     },
     {
       id: 'europe-africa-ir',
@@ -98,7 +95,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_fes:ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [-70.0, -60.0, 60.0, 65.0],
     },
   ],
   blue: [
@@ -108,7 +104,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'Himawari_AHI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [45.0, -50.0, 165.0, 55.0],
     },
     {
       id: 'goes-east-blue',
@@ -116,7 +111,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-140.0, -50.0, -15.0, 55.0],
     },
     {
       id: 'goes-west-blue',
@@ -124,7 +118,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
-      bounds: [-180.0, -50.0, -100.0, 55.0],
     },
     {
       id: 'europe-africa-blue',
@@ -132,7 +125,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_fes:ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [-70.0, -60.0, 60.0, 65.0],
     },
   ],
   visible: [

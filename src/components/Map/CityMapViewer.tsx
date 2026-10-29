@@ -27,6 +27,15 @@ import {
   importScriptInWorkers,
 } from 'maplibre-gl';
 
+// Configure standalone Web Worker asset in browser context before any worker operations
+if (typeof window !== 'undefined') {
+  try {
+    setWorkerUrl('/maplibre-gl-worker.mjs');
+  } catch {
+    // ignore if already set
+  }
+}
+
 // Register custom MapLibre protocol for NASA GIBS TrueColor tiles:
 // Converts opaque black void pixels (un-imaged swaths, missing passes) into transparent pixels (alpha = 0)
 // and seamlessly cross-fills missing tracks with NOAA-20 VIIRS data, eliminating black cutoffs like Windy & Zoom Earth.
@@ -59,13 +68,35 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         const d = imgData.data;
         const len = d.length;
 
+        const isInfra = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR');
+
         for (let i = 0; i < len; i += 4) {
           const r = d[i];
           const g = d[i + 1];
           const b = d[i + 2];
-          // NASA GIBS missing swath and void pixels are near-black (RGB < 22)
-          if (r < 22 && g < 22 && b < 22) {
-            d[i + 3] = 0; // Transparent (eliminates black cutoffs!)
+
+          if (isInfra) {
+            const isVoid = (r < 25 && g < 25 && b < 25) ||
+                           (r < 38 && g < 38 && b < 38 && Math.abs(r - g) < 8 && Math.abs(g - b) < 8);
+            if (isVoid) {
+              d[i + 3] = 0;
+              continue;
+            }
+
+            const isGray = Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6;
+            if (isGray) {
+              if (r <= 114) {
+                d[i + 3] = 0;
+              } else if (r < 145) {
+                d[i + 3] = Math.round(((r - 114) / (145 - 114)) * 190);
+              } else {
+                d[i + 3] = 230;
+              }
+            }
+          } else {
+            if (r < 22 && g < 22 && b < 22) {
+              d[i + 3] = 0;
+            }
           }
         }
 
@@ -103,36 +134,42 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         for (let i = 0; i < len; i += 4) {
           const val = d[i];
-          if (val < 26) {
+          if (val < 30) {
             d[i] = 0;
             d[i + 1] = 0;
             d[i + 2] = 0;
             d[i + 3] = 0;
-          } else if (val < 155) {
-            const alpha = val < 70 ? Math.round(((val - 26) / (70 - 26)) * 240) : 255;
-            d[i] = val;
-            d[i + 1] = val;
-            d[i + 2] = val;
+          } else if (val < 140) {
+            const alpha = Math.min(210, Math.round(((val - 30) / (140 - 30)) * 180));
+            const cloudGray = Math.min(240, Math.round(180 + val * 0.35));
+            d[i] = cloudGray;
+            d[i + 1] = cloudGray;
+            d[i + 2] = cloudGray;
             d[i + 3] = alpha;
-          } else if (val < 170) {
+          } else if (val < 175) {
             d[i] = 0;
-            d[i + 1] = 230;
+            d[i + 1] = 210;
             d[i + 2] = 240;
-            d[i + 3] = 255;
-          } else if (val < 185) {
+            d[i + 3] = 220;
+          } else if (val < 205) {
+            d[i] = 0;
+            d[i + 1] = 225;
+            d[i + 2] = 70;
+            d[i + 3] = 235;
+          } else if (val < 225) {
             d[i] = 255;
-            d[i + 1] = 220;
+            d[i + 1] = 225;
             d[i + 2] = 0;
-            d[i + 3] = 255;
-          } else if (val < 200) {
+            d[i + 3] = 245;
+          } else if (val < 240) {
             d[i] = 255;
-            d[i + 1] = 50;
+            d[i + 1] = 60;
             d[i + 2] = 0;
             d[i + 3] = 255;
           } else {
-            d[i] = 220;
+            d[i] = 235;
             d[i + 1] = 0;
-            d[i + 2] = 255;
+            d[i + 2] = 245;
             d[i + 3] = 255;
           }
         }
@@ -567,7 +604,10 @@ export default function CityMapViewer({
         // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
-          if (styleKey === 'satellite' || styleKey === 'atmospheric-satellite') return; // Do not trigger false timeout on satellite base styles
+          if (styleKey === 'satellite' || styleKey === 'atmospheric-satellite') {
+            setIsMapLoaded(true);
+            return;
+          }
           const isLoaded = mapRef.current.loaded();
           if (!isLoaded) {
             console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);
@@ -1949,7 +1989,7 @@ export default function CityMapViewer({
           const sectors: {
             id: string;
             layerName: string;
-            bounds: [number, number, number, number];
+            bounds?: [number, number, number, number];
             tileMatrixSet: string;
             format: 'image/png' | 'image/jpeg';
             isSubHourly: boolean;
@@ -1960,7 +2000,6 @@ export default function CityMapViewer({
               layerName: 'Himawari_AHI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [45.0, -50.0, 165.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1969,7 +2008,6 @@ export default function CityMapViewer({
               layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-140.0, -50.0, -15.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1978,7 +2016,6 @@ export default function CityMapViewer({
               layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
               tileMatrixSet: 'GoogleMapsCompatible_Level6',
               format: 'image/png',
-              bounds: [-180.0, -50.0, -100.0, 55.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -1987,7 +2024,6 @@ export default function CityMapViewer({
               layerName: 'msg_fes:ir108',
               tileMatrixSet: 'EPSG:3857',
               format: 'image/png',
-              bounds: [-70.0, -60.0, 60.0, 65.0],
               isSubHourly: true,
               maxzoom: 6,
             },
@@ -2010,7 +2046,7 @@ export default function CityMapViewer({
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
             const tileUrl = isEumet
               ? `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'eumet-alpha://' : 'https://'}view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sec.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`
-              : `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
+              : `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://'}gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
