@@ -92,6 +92,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       format: 'image/png',
       bounds: [-180.0, -50.0, -100.0, 55.0],
     },
+    {
+      id: 'europe-africa-ir',
+      name: 'Europe & Africa Thermal Cloud Tops',
+      layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-25.0, -50.0, 55.0, 65.0],
+    },
   ],
   blue: [
     {
@@ -117,6 +125,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       tileMatrixSet: 'GoogleMapsCompatible_Level6',
       format: 'image/png',
       bounds: [-180.0, -50.0, -100.0, 55.0],
+    },
+    {
+      id: 'europe-africa-blue',
+      name: 'Europe & Africa Upper Moisture & Clouds',
+      layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
+      tileMatrixSet: 'GoogleMapsCompatible_Level6',
+      format: 'image/png',
+      bounds: [-25.0, -50.0, 55.0, 65.0],
     },
   ],
   visible: [
@@ -211,7 +227,10 @@ export function getGeostationarySectorForCoords(
   if (normLng < -100 || normLng > 165) {
     return sectors.find((s) => s.id.includes('goes-west')) || sectors[0];
   }
-  // 4. Default geostationary fallback -> Himawari or GOES-East
+  // 4. Europe & Africa (-25°W to 45°E) -> Europe/Africa
+  const eurSector = sectors.find((s) => s.id.includes('europe-africa'));
+  if (eurSector && normLng >= -25 && normLng <= 45) return eurSector;
+  // 5. Default geostationary fallback
   return sectors[0];
 }
 

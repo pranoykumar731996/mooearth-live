@@ -109,7 +109,7 @@ function runLintSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; 
 
   let passInitial = false;
   try {
-    execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
+    execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 120000 });
     passInitial = true;
     console.log('✅ PASSED (0 errors)');
     return { pass: true, healed: false, message: 'Code conforms to ESLint standards' };
@@ -120,10 +120,10 @@ function runLintSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; 
   if (!passInitial && autoFixEnabled) {
     process.stdout.write('\n   🩹 Auto-healing detected lint violations (eslint --fix)... ');
     try {
-      execSync('npx eslint src --cache --fix', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
+      execSync('npx eslint src --cache --fix', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 120000 });
       // Re-verify after fix
       try {
-        execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 60000 });
+        execSync('npx eslint src --cache', { cwd: ROOT_DIR, stdio: 'pipe', encoding: 'utf-8', timeout: 120000 });
         console.log('✅ HEALED & VERIFIED');
         issues.push({
           id: `ESLINT-HEALED-${Date.now()}`,

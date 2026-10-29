@@ -22,6 +22,7 @@ import {
   Popup,
   setWorkerUrl,
   addProtocol,
+  importScriptInWorkers,
 } from 'maplibre-gl';
 
 // Register custom MapLibre protocol for NASA GIBS TrueColor tiles:
@@ -30,6 +31,7 @@ import {
 if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegistered) {
   (window as any).__gibsAlphaProtocolRegistered = true;
   try {
+    importScriptInWorkers('/workers/gibs-protocol-worker.js').catch(e => console.warn('[CityMapViewer] worker protocol import notice:', e));
     addProtocol('gibs-alpha', async (params, abortController) => {
       const realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
       const res = await fetch(realUrl, { signal: abortController.signal });
@@ -1862,6 +1864,15 @@ export default function CityMapViewer({
               isSubHourly: true,
               maxzoom: 6,
             },
+            {
+              id: 'europe-africa',
+              layerName: 'MODIS_Terra_Cloud_Top_Temp_Day',
+              tileMatrixSet: 'GoogleMapsCompatible_Level6',
+              format: 'image/png',
+              bounds: [-25.0, -50.0, 55.0, 65.0],
+              isSubHourly: false,
+              maxzoom: 6,
+            },
           ];
 
           // Clean up unused sectors (including obsolete VIIRS thermal brightness sectors)
@@ -2291,6 +2302,27 @@ export default function CityMapViewer({
         <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
           {/* Top Controls Row: Style Selector Dropdown + Optional Satellite HUD Restore Pill */}
           <div className="flex items-center gap-1.5">
+            {/* Full World Panoramic View (Windy / Zoom Earth View) */}
+            <button
+              type="button"
+              data-testid="full-world-view-btn"
+              onClick={() => {
+                if (mapRef.current) {
+                  mapRef.current.flyTo({
+                    center: [15, 20],
+                    zoom: 1.8,
+                    pitch: 0,
+                    bearing: 0,
+                    speed: 1.2,
+                  });
+                }
+              }}
+              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer"
+              title="Full World View (Zoom to fit all continents & oceans)"
+            >
+              <span>🌐</span>
+              <span className="hidden sm:inline">Full World</span>
+            </button>
             {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
             {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && isSatelliteHudDismissed && (
               <button

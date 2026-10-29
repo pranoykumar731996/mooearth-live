@@ -1594,7 +1594,9 @@ export default function WeatherDashboard() {
         {/* ── Weather Details Panel (Desktop: side panel / Mobile: bottom sheet) ── */}
         {hasData && (
           /* Desktop Side Panel */
-          <div className="hidden lg:flex flex-col w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0">
+          <div className={`hidden lg:flex flex-col ${
+            isPanelMinimized ? 'w-0 opacity-0 pointer-events-none border-none' : 'w-[380px] opacity-100'
+          } shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0 transition-all duration-300 ease-in-out`}>
             <WeatherPanel
               forecast={displayedForecast}
               airQuality={weather.data.airQuality}
