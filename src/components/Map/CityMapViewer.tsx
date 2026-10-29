@@ -21,7 +21,62 @@ import {
   Marker,
   Popup,
   setWorkerUrl,
+  addProtocol,
 } from 'maplibre-gl';
+
+// Register custom MapLibre protocol for NASA GIBS TrueColor tiles:
+// Converts opaque black void pixels (un-imaged swaths, missing passes) into transparent pixels (alpha = 0)
+// and seamlessly cross-fills missing tracks with NOAA-20 VIIRS data, eliminating black cutoffs like Windy & Zoom Earth.
+if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegistered) {
+  (window as any).__gibsAlphaProtocolRegistered = true;
+  try {
+    addProtocol('gibs-alpha', async (params, abortController) => {
+      const realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
+      const res = await fetch(realUrl, { signal: abortController.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+
+      // Fallback if environment lacks ImageBitmap or Canvas
+      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+
+      try {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { data: bitmap };
+
+        ctx.drawImage(bitmap, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        const len = d.length;
+
+        for (let i = 0; i < len; i += 4) {
+          const r = d[i];
+          const g = d[i + 1];
+          const b = d[i + 2];
+          // NASA GIBS missing swath and void pixels are near-black (RGB < 22)
+          if (r < 22 && g < 22 && b < 22) {
+            d[i + 3] = 0; // Transparent (eliminates black cutoffs!)
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        const cleanBitmap = await createImageBitmap(canvas);
+        return { data: cleanBitmap };
+      } catch {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+    });
+  } catch (protoErr) {
+    console.warn('[CityMapViewer] gibs-alpha protocol notice:', protoErr);
+  }
+}
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import {
@@ -1543,6 +1598,7 @@ export default function CityMapViewer({
 
     const sectorSourceIds = [
       'nasa-gibs-visible-source',
+      'nasa-gibs-visible-noaa20-source',
       'nasa-gibs-polar-fill-source',
       'nasa-gibs-himawari-source',
       'nasa-gibs-goes-east-source',
@@ -1554,6 +1610,7 @@ export default function CityMapViewer({
     ];
     const sectorLayerIds = [
       'nasa-gibs-visible-layer',
+      'nasa-gibs-visible-noaa20-layer',
       'nasa-gibs-polar-fill-layer',
       'nasa-gibs-himawari-layer',
       'nasa-gibs-goes-east-layer',
@@ -1627,11 +1684,77 @@ export default function CityMapViewer({
           if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
           if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
 
-          // Global seamless TrueColor VIIRS layer (natural daylight cloud reflectance)
+          // Dual Polar Satellite Cross-Fill Architecture (Windy / Zoom Earth Parity):
+          // 1. Underlay: NOAA-20 VIIRS TrueColor (fills orbital gaps from 50-minute phase offset)
+          // 2. Overlay: Suomi-NPP VIIRS TrueColor (primary 250m global reflectance)
+          // Both processed via 'gibs-alpha://' protocol to key out black swath voids to 100% transparent.
+          const protocolPrefix = typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://';
+          const noaa20SourceId = 'nasa-gibs-visible-noaa20-source';
+          const noaa20LayerId = 'nasa-gibs-visible-noaa20-layer';
+          const noaa20Url = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+
           const visibleSourceId = 'nasa-gibs-visible-source';
           const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+          const trueColorUrl = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 
+          // Underlay Layer: NOAA-20
+          const existingNoaa20Source = map.getSource(noaa20SourceId) as any;
+          if (existingNoaa20Source) {
+            if (existingNoaa20Source.tiles?.[0] !== noaa20Url) {
+              if (map.getLayer(noaa20LayerId)) map.removeLayer(noaa20LayerId);
+              map.removeSource(noaa20SourceId);
+              map.addSource(noaa20SourceId, {
+                type: 'raster',
+                tiles: [noaa20Url],
+                tileSize: 256,
+                maxzoom: 9,
+                bounds: [-180.0, -85.0, 180.0, 85.0],
+                attribution: 'NASA GIBS / NOAA-20 True Color',
+              });
+              map.addLayer(
+                {
+                  id: noaa20LayerId,
+                  type: 'raster',
+                  source: noaa20SourceId,
+                  maxzoom: 12,
+                  paint: {
+                    'raster-opacity': visibleOpacityExpression,
+                    'raster-contrast': rasterContrast,
+                    'raster-fade-duration': 300,
+                  },
+                },
+                beforeLayerId
+              );
+            } else if (map.getLayer(noaa20LayerId)) {
+              map.setPaintProperty(noaa20LayerId, 'raster-opacity', visibleOpacityExpression);
+              map.setPaintProperty(noaa20LayerId, 'raster-contrast', rasterContrast);
+            }
+          } else {
+            map.addSource(noaa20SourceId, {
+              type: 'raster',
+              tiles: [noaa20Url],
+              tileSize: 256,
+              maxzoom: 9,
+              bounds: [-180.0, -85.0, 180.0, 85.0],
+              attribution: 'NASA GIBS / NOAA-20 True Color',
+            });
+            map.addLayer(
+              {
+                id: noaa20LayerId,
+                type: 'raster',
+                source: noaa20SourceId,
+                maxzoom: 12,
+                paint: {
+                  'raster-opacity': visibleOpacityExpression,
+                  'raster-contrast': rasterContrast,
+                  'raster-fade-duration': 300,
+                },
+              },
+              beforeLayerId
+            );
+          }
+
+          // Primary Overlay Layer: Suomi-NPP
           const existingVisibleSource = map.getSource(visibleSourceId) as any;
           if (existingVisibleSource) {
             if (existingVisibleSource.tiles?.[0] !== trueColorUrl) {
@@ -1692,6 +1815,8 @@ export default function CityMapViewer({
           // Clean up visible and polar fill layers if present
           if (map.getLayer('nasa-gibs-visible-layer')) map.removeLayer('nasa-gibs-visible-layer');
           if (map.getSource('nasa-gibs-visible-source')) map.removeSource('nasa-gibs-visible-source');
+          if (map.getLayer('nasa-gibs-visible-noaa20-layer')) map.removeLayer('nasa-gibs-visible-noaa20-layer');
+          if (map.getSource('nasa-gibs-visible-noaa20-source')) map.removeSource('nasa-gibs-visible-noaa20-source');
           if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
           if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
           if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
