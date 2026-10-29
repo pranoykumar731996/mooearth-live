@@ -22,6 +22,7 @@ import { describeDischarge } from '@/services/weather/floodService';
 import { describeWaveConditions, waveDirectionToCompass } from '@/services/weather/marineService';
 import { getWmoWeatherInfo } from '@/services/weather/forecastService';
 import WeatherNewsSection from './WeatherNewsSection';
+import { useLocationTime } from '@/hooks/useLocationTime';
 
 interface WeatherPanelProps {
   forecast: ForecastResponse | null;
@@ -53,6 +54,7 @@ export default function WeatherPanel({
   onExploreCity,
 }: WeatherPanelProps) {
   const [unit, setUnit] = useState<'C' | 'F'>('C');
+  const liveTime = useLocationTime(location?.latitude, location?.longitude, location?.timezone);
 
   const formatTemp = (celsius: number | undefined | null) => {
     if (typeof celsius !== 'number') return '—';
@@ -90,6 +92,16 @@ export default function WeatherPanel({
               <p className="text-[11px] text-white/50 truncate">
                 {location.country} · {location.latitude.toFixed(2)}°, {location.longitude.toFixed(2)}°
               </p>
+            )}
+            {liveTime && (
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-cyan-300 font-semibold mt-0.5">
+                <span>{liveTime.solar.icon}</span>
+                <span className="text-white font-bold">{liveTime.timeSeconds12}</span>
+                <span className="text-white/60">· {liveTime.solar.label}</span>
+                <span className="px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-300 text-[9px] font-mono border border-cyan-500/30">
+                  {liveTime.tzFullLabel}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -131,7 +143,15 @@ export default function WeatherPanel({
           <div className="flex items-center gap-2">
             <span className="text-2xl">{forecast?.current?.weatherEmoji || '🌤️'}</span>
             <div>
-              <div className="text-sm font-bold text-white">{formatTemp(forecast?.current?.temperature)}</div>
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                <span>{formatTemp(forecast?.current?.temperature)}</span>
+                {liveTime && (
+                  <span className="text-xs font-mono text-cyan-300 font-normal flex items-center gap-1">
+                    <span>{liveTime.solar.icon}</span>
+                    <span>{liveTime.time12}</span>
+                  </span>
+                )}
+              </div>
               <div className="text-[11px] text-white/50">{forecast?.current?.weatherDescription || 'Current conditions'}</div>
             </div>
           </div>
@@ -189,10 +209,15 @@ export default function WeatherPanel({
                       </p>
                     </div>
                     <div className="text-right text-xs text-white/50 space-y-1">
-                      <div>{forecast.current.isDay ? '☀️ Day' : '🌙 Night'}</div>
-                      <div>{forecast.timezone}</div>
-                      <div className="text-[10px] text-white/30">
-                        {new Date(forecast.current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="flex items-center justify-end gap-1 font-bold text-cyan-300 font-mono">
+                        <span>{liveTime?.solar.icon || (forecast.current.isDay ? '☀️' : '🌙')}</span>
+                        <span>{liveTime?.timeSeconds12 || new Date().toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-[11px] text-white/70 font-mono">
+                        {liveTime?.tzFullLabel || forecast.timezone}
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        Obs: {new Date(forecast.current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                   </div>

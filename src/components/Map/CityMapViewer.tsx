@@ -14,6 +14,8 @@
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { getLocationTime } from '@/services/weather/timeService';
+import { useLocationTime } from '@/hooks/useLocationTime';
 import {
   Map,
   NavigationControl,
@@ -194,6 +196,8 @@ export interface CityWeatherSummary {
   relativeHumidity?: number;
   precipitation?: number;
   units?: string;
+  timezone?: string;
+  isDay?: boolean | number;
 }
 
 import {
@@ -209,6 +213,7 @@ export interface CityMapViewerProps {
   longitude: number;
   cityName: string;
   countryName?: string;
+  timezone?: string;
   initialZoom?: number;
   initialMapStyle?: MapStyleKey;
   weatherSummary?: CityWeatherSummary | null;
@@ -241,31 +246,56 @@ function createLocationPopupHtml(
   countryName?: string,
   latitude?: number,
   longitude?: number,
-  weather?: CityWeatherSummary | null
+  weather?: CityWeatherSummary | null,
+  timezone?: string
 ): string {
   const hasWeather = Boolean(weather && typeof weather.temperature === 'number');
   const tempStr = hasWeather && weather?.temperature !== undefined
     ? `${Math.round(weather.temperature)}°${weather.units === 'fahrenheit' ? 'F' : 'C'}`
     : '';
+
+  const timeInfo = typeof latitude === 'number' && typeof longitude === 'number'
+    ? getLocationTime(latitude, longitude, timezone || weather?.timezone)
+    : null;
+
   return `
-    <div style="background: rgba(5,5,18,0.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 270px;">
-      <div style="font-weight: 800; color: #67e8f9; font-size: 13px; margin-bottom: 2px; white-space: normal; line-height: 1.25;">${cityName}</div>
-      ${countryName ? `<div style="color: rgba(255,255,255,0.75); font-size: 10px;">${countryName}</div>` : ''}
+    <div style="background: rgba(5,5,18,0.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(6,182,212,0.45); border-radius: 14px; padding: 10px 14px; color: #fff; font-family: monospace; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); max-width: 285px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+        <div style="font-weight: 800; color: #67e8f9; font-size: 13px; line-height: 1.25;">${cityName}</div>
+        ${countryName ? `<div style="color: rgba(255,255,255,0.65); font-size: 10px; flex-shrink: 0;">${countryName}</div>` : ''}
+      </div>
+
+      ${timeInfo ? `
+        <!-- Live Ticking Local Time & Solar Condition (Option 1) -->
+        <div id="city-popup-time-badge" style="display: flex; align-items: center; justify-content: space-between; margin: 6px 0 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(30, 41, 59, 0.75); border: 1px solid rgba(148, 163, 184, 0.3);">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span id="city-popup-time-icon" style="font-size: 13px;">${timeInfo.solar.icon}</span>
+            <span id="city-popup-time-str" style="font-weight: 800; color: #f8fafc; font-size: 12px; letter-spacing: 0.5px;">${timeInfo.timeSeconds12}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span id="city-popup-time-period" style="color: #94a3b8; font-size: 9px; font-weight: 600;">${timeInfo.solar.label}</span>
+            <span id="city-popup-time-tz" style="color: #38bdf8; font-size: 9px; font-weight: 700; background: rgba(56, 189, 248, 0.12); padding: 1px 4px; border-radius: 4px;">${timeInfo.tzCode}</span>
+          </div>
+        </div>
+      ` : ''}
+
       ${hasWeather && weather ? `
-        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.3);">
+        <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.3);">
           <span style="font-size: 16px;">${weather.weatherEmoji || '🌤️'}</span>
           <span style="font-weight: 800; color: #ffffff; font-size: 13px;">${tempStr}</span>
           <span style="color: rgba(255,255,255,0.75); font-size: 10px; margin-left: 2px;">${weather.weatherDescription || ''}</span>
         </div>
       ` : `
-        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);">
+        <div style="display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 4px 8px; border-radius: 8px; background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);">
           <span style="display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background: #22d3ee; box-shadow: 0 0 8px #22d3ee;"></span>
           <span style="color: #67e8f9; font-size: 10px; font-weight: 600;">Fetching live weather telemetry...</span>
         </div>
       `}
-      ${typeof latitude === 'number' && typeof longitude === 'number' ? `
-        <div style="color: rgba(6,182,212,0.85); font-size: 9px; margin-top: 4px; font-weight: 600;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</div>
-      ` : ''}
+
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; font-size: 9px; color: rgba(6,182,212,0.85); font-weight: 600;">
+        <span>${typeof latitude === 'number' && typeof longitude === 'number' ? `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°` : ''}</span>
+        ${timeInfo ? `<span style="color: rgba(255,255,255,0.45); font-family: monospace;">${timeInfo.tzOffset}</span>` : ''}
+      </div>
     </div>
   `;
 }
@@ -300,6 +330,7 @@ export default function CityMapViewer({
   longitude,
   cityName,
   countryName,
+  timezone,
   initialZoom = 12.8,
   initialMapStyle = 'atmospheric-satellite',
   weatherSummary,
@@ -332,6 +363,7 @@ export default function CityMapViewer({
   const markerRef = useRef<Marker | null>(null);
   const disasterMarkersRef = useRef<{ marker: Marker; event: WorldEvent; popup: Popup }[]>([]);
   const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const liveTime = useLocationTime(latitude, longitude, timezone || weatherSummary?.timezone);
 
   const [activeStyleKey, setActiveStyleKey] = useState<MapStyleKey>(() => initialMapStyle || getDefaultMapStyleKey());
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -483,7 +515,7 @@ export default function CityMapViewer({
             closeButton: true,
             className: 'city-map-popup',
           }).setHTML(
-            createLocationPopupHtml(initCoords.cityName, initCoords.countryName, initCoords.latitude, initCoords.longitude, activeWeatherSummary)
+            createLocationPopupHtml(initCoords.cityName, initCoords.countryName, initCoords.latitude, initCoords.longitude, activeWeatherSummary, timezone)
           );
 
           // Attach marker
@@ -564,7 +596,7 @@ export default function CityMapViewer({
 
           if (isCritical) {
             console.warn(`[CityMapViewer] MapLibre error encountered on style "${styleKey}":`, e.error);
-            if (styleKey === 'satellite' || styleKey === 'windy-satellite') {
+            if (styleKey === 'satellite' || styleKey === 'windy-satellite' || styleKey === 'atmospheric-satellite') {
               // Atmospheric satellite has multiple fallback tile sources; do not trigger disruptive failover
               return;
             }
@@ -644,7 +676,7 @@ export default function CityMapViewer({
       essential: true,
     });
 
-    const popupHtml = createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary);
+    const popupHtml = createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary, timezone);
 
     if (markerRef.current) {
       markerRef.current.setLngLat([longitude, latitude]);
@@ -685,11 +717,29 @@ export default function CityMapViewer({
     }
   }, [latitude, longitude, cityName, countryName, initialZoom, isMapLoaded]);
 
+  // Live ticking local time DOM update for active map pin popup without re-rendering MapLibre (Option 1)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const timeEl = document.getElementById('city-popup-time-str');
+      if (timeEl && typeof latitude === 'number' && typeof longitude === 'number') {
+        const info = getLocationTime(latitude, longitude, timezone || activeWeatherSummary?.timezone);
+        timeEl.textContent = info.timeSeconds12;
+        const iconEl = document.getElementById('city-popup-time-icon');
+        if (iconEl) iconEl.textContent = info.solar.icon;
+        const periodEl = document.getElementById('city-popup-time-period');
+        if (periodEl) periodEl.textContent = info.solar.label;
+        const tzEl = document.getElementById('city-popup-time-tz');
+        if (tzEl) tzEl.textContent = info.tzCode;
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [latitude, longitude, timezone, activeWeatherSummary?.timezone]);
+
   // Synchronize pin popup whenever activeWeatherSummary updates WITHOUT touching map camera
   useEffect(() => {
     if (markerRef.current && activeWeatherSummary) {
       markerRef.current.getPopup()?.setHTML(
-        createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary)
+        createLocationPopupHtml(cityName, countryName, latitude, longitude, activeWeatherSummary, timezone)
       );
     }
   }, [activeWeatherSummary, cityName, countryName, latitude, longitude]);
@@ -2327,6 +2377,15 @@ export default function CityMapViewer({
                 <span className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
                   {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
                 </span>
+                {cityName !== 'World Map' && liveTime && (
+                  <span
+                    className="text-cyan-300 font-mono text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shrink-0 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/20"
+                    title={`Local Time: ${liveTime.timeSeconds12} · ${liveTime.tzFullLabel}`}
+                  >
+                    <span>{liveTime.solar.icon}</span>
+                    <span>{liveTime.time12}</span>
+                  </span>
+                )}
                 {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number' && (
                   <span className="font-black text-cyan-300 text-xs font-mono shrink-0">
                     {Math.round(activeWeatherSummary.temperature)}°{activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}
@@ -2475,12 +2534,21 @@ export default function CityMapViewer({
                     {activeWeatherSummary.weatherEmoji || '🌤️'}
                   </span>
                   <div>
-                    <div className="text-xs sm:text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors flex items-center gap-1">
+                    <div className="text-xs sm:text-sm font-black text-white font-mono leading-tight group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
                       <span>
                         {typeof activeWeatherSummary.temperature === 'number'
                           ? `${Math.round(activeWeatherSummary.temperature)}°${activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}`
                           : '—'}
                       </span>
+                      {liveTime && (
+                        <span
+                          className="text-[10px] sm:text-[11px] font-bold text-cyan-300/90 font-mono flex items-center gap-1 bg-cyan-950/50 px-1.5 py-0.5 rounded border border-cyan-500/25 shrink-0"
+                          title={`Local Solar Time: ${liveTime.timeSeconds12} (${liveTime.tzFullLabel})`}
+                        >
+                          <span>{liveTime.solar.icon}</span>
+                          <span>{liveTime.time12}</span>
+                        </span>
+                      )}
                       {!weatherSummary && (
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" title="Refreshing telemetry..." />
                       )}
@@ -2510,6 +2578,9 @@ export default function CityMapViewer({
                 className="hidden sm:flex items-center gap-2 pt-1 border-t border-white/5 text-[9px] font-mono text-white/40 cursor-pointer hover:text-white/70 transition-colors"
                 onClick={onOpenWeather}
               >
+                {liveTime && (
+                  <span className="text-cyan-400/80 font-semibold">{liveTime.tzCode}</span>
+                )}
                 {typeof activeWeatherSummary.windSpeed === 'number' && (
                   <span>💨 {Math.round(activeWeatherSummary.windSpeed)} km/h</span>
                 )}

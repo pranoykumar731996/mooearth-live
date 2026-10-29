@@ -871,8 +871,12 @@ export default function WeatherDashboard() {
       relativeHumidity: displayedForecast.current.relativeHumidity,
       precipitation: displayedForecast.current.precipitation,
       units: weather.units,
+      timezone: displayedForecast.timezone || weather.selectedLocation?.timezone || 'auto',
+      isDay: displayedForecast.current.isDay,
     };
   }, [
+    displayedForecast?.timezone,
+    displayedForecast?.current?.isDay,
     displayedForecast?.current?.temperature,
     displayedForecast?.current?.apparentTemperature,
     displayedForecast?.current?.weatherDescription,
@@ -1284,6 +1288,7 @@ export default function WeatherDashboard() {
                 longitude={weather.selectedLocation?.longitude ?? resolveInitialLocation().longitude}
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
+                timezone={weather.selectedLocation?.timezone || displayedForecast?.timezone}
                 initialZoom={
                   weather.activeLayer === 'satellite' || weather.activeLayer === 'clouds'
                     ? 3.3

@@ -166,3 +166,12 @@ export type {
   CycloneForecastConeNode,
   CycloneFeedResponse,
 } from './cycloneTrackingService';
+// Solar & Local Location Time Service
+export {
+  getSolarPosition,
+  getLocationTime,
+} from './timeService';
+export type {
+  SolarPosition,
+  LocationTimeResult,
+} from './timeService';
