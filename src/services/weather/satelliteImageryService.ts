@@ -129,12 +129,32 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
   ],
   visible: [
     {
-      id: 'viirs-truecolor',
-      name: 'VIIRS Global True Color (NOAA-20)',
-      layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
-      tileMatrixSet: 'GoogleMapsCompatible_Level9',
-      format: 'image/jpeg',
-      bounds: [-180.0, -85.0, 180.0, 85.0],
+      id: 'himawari-vis',
+      name: 'Himawari Asia-Pacific & Indian Ocean Live Visible',
+      layerName: 'Himawari_AHI_Band3_Red_Visible_1km',
+      tileMatrixSet: 'GoogleMapsCompatible_Level7',
+      format: 'image/png',
+    },
+    {
+      id: 'goes-east-vis',
+      name: 'GOES-East Americas & Atlantic GeoColor',
+      layerName: 'GOES-East_ABI_GeoColor',
+      tileMatrixSet: 'GoogleMapsCompatible_Level7',
+      format: 'image/png',
+    },
+    {
+      id: 'goes-west-vis',
+      name: 'GOES-West Pacific & Hawaii GeoColor',
+      layerName: 'GOES-West_ABI_GeoColor',
+      tileMatrixSet: 'GoogleMapsCompatible_Level7',
+      format: 'image/png',
+    },
+    {
+      id: 'europe-africa-vis',
+      name: 'Meteosat Europe & Africa Live Visible',
+      layerName: 'msg_fes:vis006',
+      tileMatrixSet: 'EPSG:3857',
+      format: 'image/png',
     },
   ],
 };
@@ -273,37 +293,14 @@ export function getSatelliteObservationDate(
   offsetHours: number = 0,
   mode: SatelliteSpectralMode = 'visible'
 ): { dateStr: string; utcStr: string; timestampMs: number } {
-  // If requesting geostationary infrared or moisture, use today's real-time stream
-  if (mode === 'infra' || mode === 'blue') {
-    return getGeostationaryObservationDate(offsetHours);
-  }
-
-  const baseNow = new Date();
-  const utcHours = baseNow.getUTCHours();
-
-  // For daily global polar satellite composites (NASA GIBS VIIRS TrueColor / MODIS):
-  // Polar sun-synchronous satellites take daytime passes around 13:30 local solar time.
-  // The westernmost longitudes (Americas, Alaska, Hawaii, and Pacific) finish their passes around 23:30-01:00 UTC,
-  // and NASA GIBS ground systems require several hours to mosaic and aggregate the global imagery, completing by ~04:00 UTC the following day.
-  // Before ~04:00 UTC, the current day's mosaic is only partially complete (Europe/Asia present, but Americas/Pacific blank 1.6KB tiles).
-  // Therefore, to guarantee 100% complete global cloud coverage across all continents with zero black/missing swaths,
-  // we anchor to the latest fully composited observation date (prior to 04:00 UTC, 2 days prior; at or after 04:00 UTC, yesterday).
-  const daysBack = utcHours < 14 ? 2 : 1;
-  const anchorTime = baseNow.getTime() - daysBack * 24 * 3600 * 1000;
-  
-  const targetTime = anchorTime - offsetHours * 3600 * 1000;
-  const targetDate = new Date(targetTime);
-
-  const yyyy = targetDate.getUTCFullYear();
-  const mm = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(targetDate.getUTCDate()).padStart(2, '0');
-  const dateStr = `${yyyy}-${mm}-${dd}`;
-  const utcStr = `${dateStr} ${String(targetDate.getUTCHours()).padStart(2, '0')}:00 UTC`;
-
+  // Geostationary satellite processing engine:
+  // All modes (Visible GeoColor, Infrared, Blue Moisture) anchor to real-time geostationary streams
+  // with sub-hourly cadence (Windy / Zoom Earth parity)
+  const geoObs = getGeostationaryObservationDate(offsetHours);
   return {
-    dateStr,
-    utcStr,
-    timestampMs: targetDate.getTime(),
+    dateStr: geoObs.dateStr,
+    utcStr: geoObs.utcStr,
+    timestampMs: geoObs.timestampMs,
   };
 }
 

@@ -1831,90 +1831,22 @@ export default function CityMapViewer({
           ? getSatelliteObservationDate(0, 'visible').dateStr
           : geoObs.dateStr;
 
+        // 1. Clean up obsolete duplicate NOAA-20 layer (eliminates double-exposure blur & 98.6% compounded opacity)
+        if (map.getLayer('nasa-gibs-visible-noaa20-layer')) map.removeLayer('nasa-gibs-visible-noaa20-layer');
+        if (map.getSource('nasa-gibs-visible-noaa20-source')) map.removeSource('nasa-gibs-visible-noaa20-source');
+        if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
+        if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
+
+        // 2. Manage Global Baseline TrueColor Underlay (Single Pass, Clean Ground)
+        const visibleSourceId = 'nasa-gibs-visible-source';
+        const visibleLayerId = 'nasa-gibs-visible-layer';
         if (isVisibleMode) {
-          // Clean up infrared sectors
-          ['nasa-gibs-himawari-layer', 'nasa-gibs-goes-east-layer', 'nasa-gibs-goes-west-layer', 'nasa-gibs-europe-africa-layer', 'nasa-gibs-arctic-polar-layer', 'nasa-gibs-antarctic-polar-layer', 'nasa-gibs-satellite-layer'].forEach((id) => {
-            if (map.getLayer(id)) map.removeLayer(id);
-          });
-          ['nasa-gibs-himawari-source', 'nasa-gibs-goes-east-source', 'nasa-gibs-goes-west-source', 'nasa-gibs-europe-africa-source', 'nasa-gibs-arctic-polar-source', 'nasa-gibs-antarctic-polar-source', 'nasa-gibs-satellite-source'].forEach((id) => {
-            if (map.getSource(id)) map.removeSource(id);
-          });
-
-          // Clean up polar fill layer if previously active
-          if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
-          if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
-
-          // Dual Polar Satellite Cross-Fill Architecture (Windy / Zoom Earth Parity):
-          // 1. Underlay: NOAA-20 VIIRS TrueColor (fills orbital gaps from 50-minute phase offset)
-          // 2. Overlay: Suomi-NPP VIIRS TrueColor (primary 250m global reflectance)
-          // Both processed via 'gibs-alpha://' protocol to key out black swath voids to 100% transparent.
           const protocolPrefix = typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://';
-          const noaa20SourceId = 'nasa-gibs-visible-noaa20-source';
-          const noaa20LayerId = 'nasa-gibs-visible-noaa20-layer';
-          const noaa20Url = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
-
-          const visibleSourceId = 'nasa-gibs-visible-source';
-          const visibleLayerId = 'nasa-gibs-visible-layer';
-          const trueColorUrl = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
-
-          // Underlay Layer: NOAA-20
-          const existingNoaa20Source = map.getSource(noaa20SourceId) as any;
-          if (existingNoaa20Source) {
-            if (existingNoaa20Source.tiles?.[0] !== noaa20Url) {
-              if (map.getLayer(noaa20LayerId)) map.removeLayer(noaa20LayerId);
-              map.removeSource(noaa20SourceId);
-              map.addSource(noaa20SourceId, {
-                type: 'raster',
-                tiles: [noaa20Url],
-                tileSize: 256,
-                maxzoom: 9,
-                bounds: [-180.0, -85.0, 180.0, 85.0],
-                attribution: 'NASA GIBS / NOAA-20 True Color',
-              });
-              map.addLayer(
-                {
-                  id: noaa20LayerId,
-                  type: 'raster',
-                  source: noaa20SourceId,
-                  maxzoom: 12,
-                  paint: {
-                    'raster-opacity': visibleOpacityExpression,
-                    'raster-contrast': rasterContrast,
-                    'raster-fade-duration': 300,
-                  },
-                },
-                beforeLayerId
-              );
-            } else if (map.getLayer(noaa20LayerId)) {
-              map.setPaintProperty(noaa20LayerId, 'raster-opacity', visibleOpacityExpression);
-              map.setPaintProperty(noaa20LayerId, 'raster-contrast', rasterContrast);
-            }
-          } else {
-            map.addSource(noaa20SourceId, {
-              type: 'raster',
-              tiles: [noaa20Url],
-              tileSize: 256,
-              maxzoom: 9,
-              bounds: [-180.0, -85.0, 180.0, 85.0],
-              attribution: 'NASA GIBS / NOAA-20 True Color',
-            });
-            map.addLayer(
-              {
-                id: noaa20LayerId,
-                type: 'raster',
-                source: noaa20SourceId,
-                maxzoom: 12,
-                paint: {
-                  'raster-opacity': visibleOpacityExpression,
-                  'raster-contrast': rasterContrast,
-                  'raster-fade-duration': 300,
-                },
-              },
-              beforeLayerId
-            );
-          }
-
-          // Primary Overlay Layer: Suomi-NPP
+          const polarBaselineDateStr = (() => {
+            const d = new Date(Date.now() - 24 * 3600 * 1000);
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+          })();
+          const trueColorUrl = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${polarBaselineDateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
           const existingVisibleSource = map.getSource(visibleSourceId) as any;
           if (existingVisibleSource) {
             if (existingVisibleSource.tiles?.[0] !== trueColorUrl) {
@@ -1971,64 +1903,99 @@ export default function CityMapViewer({
             );
           }
         } else {
-          // Infrared / Blue geostationary sectors
-          // Clean up visible and polar fill layers if present
-          if (map.getLayer('nasa-gibs-visible-layer')) map.removeLayer('nasa-gibs-visible-layer');
-          if (map.getSource('nasa-gibs-visible-source')) map.removeSource('nasa-gibs-visible-source');
-          if (map.getLayer('nasa-gibs-visible-noaa20-layer')) map.removeLayer('nasa-gibs-visible-noaa20-layer');
-          if (map.getSource('nasa-gibs-visible-noaa20-source')) map.removeSource('nasa-gibs-visible-noaa20-source');
-          if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
-          if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
-          if (map.getLayer('nasa-gibs-satellite-layer')) map.removeLayer('nasa-gibs-satellite-layer');
-          if (map.getSource('nasa-gibs-satellite-source')) map.removeSource('nasa-gibs-satellite-source');
+          // Infrared & Blue: remove TrueColor baseline to reveal clean ocean basemap
+          if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
+          if (map.getSource(visibleSourceId)) map.removeSource(visibleSourceId);
+        }
 
-          // Geostationary Clean Infrared constellation:
-          // Covers Asia-Pacific & Indian Ocean / Bay of Bengal (Himawari-9),
-          // Americas & Atlantic (GOES-East), and Pacific / Hawaii (GOES-West).
-          // Clamped to tropical and temperate storm zones [-50°, +55°] to eliminate polar freezing ground false-positives.
-          const sectors: {
-            id: string;
-            layerName: string;
-            bounds?: [number, number, number, number];
-            tileMatrixSet: string;
-            format: 'image/png' | 'image/jpeg';
-            isSubHourly: boolean;
-            maxzoom: number;
-          }[] = [
-            {
-              id: 'himawari',
-              layerName: 'Himawari_AHI_Band13_Clean_Infrared',
-              tileMatrixSet: 'GoogleMapsCompatible_Level6',
-              format: 'image/png',
-              isSubHourly: true,
-              maxzoom: 6,
-            },
-            {
-              id: 'goes-east',
-              layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
-              tileMatrixSet: 'GoogleMapsCompatible_Level6',
-              format: 'image/png',
-              isSubHourly: true,
-              maxzoom: 6,
-            },
-            {
-              id: 'goes-west',
-              layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
-              tileMatrixSet: 'GoogleMapsCompatible_Level6',
-              format: 'image/png',
-              isSubHourly: true,
-              maxzoom: 6,
-            },
-            {
-              id: 'europe-africa',
-              layerName: 'msg_fes:ir108',
-              tileMatrixSet: 'EPSG:3857',
-              format: 'image/png',
-              isSubHourly: true,
-              maxzoom: 6,
-            },
-          ];
-
+        // 3. Geostationary Multi-Satellite Triad (Windy & Zoom Earth Parity):
+        // In Visible mode: Live 10m Geostationary Visible (Himawari Band 3 Red Visible, GOES GeoColor, Meteosat vis006)
+        // In Infra mode: Live 10m Clean Infrared (Himawari Band 13, GOES Band 13, Meteosat ir108)
+        const sectors: {
+          id: string;
+          layerName: string;
+          bounds?: [number, number, number, number];
+          tileMatrixSet: string;
+          format: 'image/png' | 'image/jpeg';
+          isSubHourly: boolean;
+          maxzoom: number;
+        }[] = isVisibleMode
+          ? [
+              {
+                id: 'himawari',
+                layerName: 'Himawari_AHI_Band3_Red_Visible_1km',
+                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                format: 'image/png',
+                bounds: [50.0, -60.0, 180.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 7,
+              },
+              {
+                id: 'goes-east',
+                layerName: 'GOES-East_ABI_GeoColor',
+                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                format: 'image/png',
+                bounds: [-140.0, -60.0, -10.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 7,
+              },
+              {
+                id: 'goes-west',
+                layerName: 'GOES-West_ABI_GeoColor',
+                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                format: 'image/png',
+                bounds: [-180.0, -60.0, -90.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 7,
+              },
+              {
+                id: 'europe-africa',
+                layerName: 'msg_fes:vis006',
+                tileMatrixSet: 'EPSG:3857',
+                format: 'image/png',
+                bounds: [-70.0, -60.0, 60.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 6,
+              },
+            ]
+          : [
+              {
+                id: 'himawari',
+                layerName: 'Himawari_AHI_Band13_Clean_Infrared',
+                tileMatrixSet: 'GoogleMapsCompatible_Level6',
+                format: 'image/png',
+                bounds: [50.0, -60.0, 180.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 6,
+              },
+              {
+                id: 'goes-east',
+                layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: 'GoogleMapsCompatible_Level6',
+                format: 'image/png',
+                bounds: [-140.0, -60.0, -10.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 6,
+              },
+              {
+                id: 'goes-west',
+                layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: 'GoogleMapsCompatible_Level6',
+                format: 'image/png',
+                bounds: [-180.0, -60.0, -90.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 6,
+              },
+              {
+                id: 'europe-africa',
+                layerName: 'msg_fes:ir108',
+                tileMatrixSet: 'EPSG:3857',
+                format: 'image/png',
+                bounds: [-70.0, -60.0, 60.0, 60.0],
+                isSubHourly: true,
+                maxzoom: 6,
+              },
+            ];
           // Clean up unused sectors (including obsolete VIIRS thermal brightness sectors)
           const activeSectorIds = new Set(sectors.map((s) => s.id));
           ['himawari', 'goes-east', 'goes-west', 'europe-africa', 'arctic-polar', 'antarctic-polar'].forEach((sId) => {
@@ -2041,11 +2008,11 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
+            const tileTime = (sec.layerName.includes('GeoColor') || sec.layerName.includes('Visible') || !sec.isSubHourly) ? geoObs.dateStr : geoObs.isoTimestamp;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
             const tileUrl = isEumet
-              ? `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'eumet-alpha://' : 'https://'}view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sec.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`
+              ? `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'eumet-alpha://' : 'https://'}view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png`
               : `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://'}gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 
             const existingSource = map.getSource(sId) as any;
@@ -2104,7 +2071,6 @@ export default function CityMapViewer({
               );
             }
           });
-        }
       } catch (err) {
         console.warn('[MapLibre Satellite] Layer sync notice:', err);
       }

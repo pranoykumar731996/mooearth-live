@@ -27,6 +27,8 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const len = d.length;
 
         const isInfra = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR');
+        const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
+        const isGeoColor = realUrl.includes('GeoColor');
 
         for (let i = 0; i < len; i += 4) {
           const r = d[i];
@@ -57,10 +59,50 @@ if (typeof self !== 'undefined' && self.addProtocol) {
               }
             }
             // Vivid colored Dvorak convective storm cores retain full alpha 255
+          } else if (isHimawariVis) {
+            // Himawari-9 Band 3 (Red Visible 1km):
+            // Converts raw albedo into crisp white clouds over transparent oceans/continents (Windy Parity)
+            if (r < 25 && g < 25 && b < 25) {
+              d[i + 3] = 0; // Space / edge void
+            } else if (r <= 40) {
+              d[i + 3] = 0; // Clear warm ocean / dark land surface (100% transparent)
+            } else if (r < 85) {
+              // Soft translucent low clouds
+              const alpha = Math.round(((r - 40) / (85 - 40)) * 170);
+              const cloudVal = Math.min(250, r + 30);
+              d[i] = cloudVal;
+              d[i + 1] = cloudVal;
+              d[i + 2] = cloudVal;
+              d[i + 3] = alpha;
+            } else {
+              // Bright dense convective and frontal clouds
+              const cloudVal = Math.min(255, Math.round(200 + (r - 85) * 0.32));
+              d[i] = cloudVal;
+              d[i + 1] = cloudVal;
+              d[i + 2] = cloudVal;
+              d[i + 3] = 235;
+            }
+          } else if (isGeoColor) {
+            // NOAA GOES-16/18 ABI GeoColor:
+            // Key out deep space edge voids and subtract thin oceanic Rayleigh haze
+            if (r < 18 && g < 18 && b < 18) {
+              d[i + 3] = 0;
+            } else {
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (lum < 48 && b > r + 6) {
+                // Subtracted ocean glint / atmospheric Rayleigh scattering
+                d[i + 3] = Math.max(0, Math.round(((lum - 32) / 16) * 110));
+              }
+            }
           } else {
-            // TrueColor: Key out missing orbital swaths and void pixels
+            // Polar VIIRS TrueColor: Key out missing orbital swaths and void pixels
             if (r < 22 && g < 22 && b < 22) {
               d[i + 3] = 0;
+            } else {
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (lum < 45 && b > r + 8) {
+                d[i + 3] = 0; // Clear ocean haze removal
+              }
             }
           }
         }
@@ -78,7 +120,28 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
   // Protocol 2: EUMETSAT Meteosat Calibrated Dvorak/BD Curve Harmonizer
   self.addProtocol('eumet-alpha', async (params, abortController) => {
-    const realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
+    let realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
+
+    // Dynamically calculate EPSG:3857 BBOX from standard slippy tile coordinates {z}/{x}/{y}
+    const tileMatch = realUrl.match(/\/tile\/([^/]+)\/(\d+)\/(\d+)\/(\d+)/);
+    if (tileMatch) {
+      const layer = tileMatch[1];
+      const z = parseInt(tileMatch[2], 10);
+      const x = parseInt(tileMatch[3], 10);
+      const y = parseInt(tileMatch[4], 10);
+
+      const R = 6378137;
+      const initialResolution = (2 * Math.PI * R) / 256;
+      const originShift = (2 * Math.PI * R) / 2;
+      const res = initialResolution / (1 << z);
+      const minx = x * 256 * res - originShift;
+      const maxx = (x + 1) * 256 * res - originShift;
+      const maxy = originShift - y * 256 * res;
+      const miny = originShift - (y + 1) * 256 * res;
+      const bbox = `${minx.toFixed(2)},${miny.toFixed(2)},${maxx.toFixed(2)},${maxy.toFixed(2)}`;
+      realUrl = `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layer}&STYLES=&BBOX=${bbox}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`;
+    }
+
     const res = await fetch(realUrl, { signal: abortController.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
@@ -95,10 +158,33 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const d = imgData.data;
         const len = d.length;
 
-        for (let i = 0; i < len; i += 4) {
-          const val = d[i]; // Grayscale thermal brightness value (0 = warm, 255 = extreme cold)
+        const isVis = realUrl.includes('vis006') || realUrl.includes('VIS');
 
-          if (val < 30) {
+        for (let i = 0; i < len; i += 4) {
+          const val = d[i]; // Brightness / reflectance value
+
+          if (isVis) {
+            // EUMETSAT Meteosat High-Resolution Visible (0.6µm)
+            if (val < 32) {
+              d[i] = 0;
+              d[i + 1] = 0;
+              d[i + 2] = 0;
+              d[i + 3] = 0; // Clear ocean / land surface (transparent)
+            } else if (val < 85) {
+              const alpha = Math.min(200, Math.round(((val - 32) / (85 - 32)) * 180));
+              const cloudGray = Math.min(250, val + 35);
+              d[i] = cloudGray;
+              d[i + 1] = cloudGray;
+              d[i + 2] = cloudGray;
+              d[i + 3] = alpha;
+            } else {
+              const cloudGray = Math.min(255, Math.round(200 + (val - 85) * 0.32));
+              d[i] = cloudGray;
+              d[i + 1] = cloudGray;
+              d[i + 2] = cloudGray;
+              d[i + 3] = 235;
+            }
+          } else if (val < 30) {
             // Warm clear ocean and land surface: 100% transparent (reveals basemap)
             d[i] = 0;
             d[i + 1] = 0;
