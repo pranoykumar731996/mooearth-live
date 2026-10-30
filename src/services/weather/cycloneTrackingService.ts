@@ -390,6 +390,11 @@ export function interpolateForecastPosition(
 }
 
 export function isTropicalCycloneEvent(e: WorldEvent): boolean {
+  // Freshness check: Discard storms older than 24 hours (operational RSMC standard)
+  if (e.publishedAt) {
+    const ageMs = Date.now() - new Date(e.publishedAt).getTime();
+    if (Number.isFinite(ageMs) && ageMs > 24 * 3600 * 1000) return false;
+  }
   if (e.planetaryTelemetry?.stormWarningType === 'tropical_cyclone') return true;
   const t = (e.title || '').toLowerCase();
   const s = (e.summary || '').toLowerCase();

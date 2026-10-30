@@ -102,7 +102,7 @@ export function parseNasaEonetEvent(event: NasaEonetEvent): PlanetaryEvent | nul
   // Severe storms / cyclones dissipate within 14 days, active wildfires within 48 hours.
   if (latestGeo.date) {
     const geoTime = new Date(latestGeo.date).getTime();
-    const maxAgeMs = isCyclone ? 14 * 24 * 3600 * 1000 : 48 * 3600 * 1000;
+    const maxAgeMs = isCyclone ? 24 * 3600 * 1000 : 48 * 3600 * 1000;
     if (Number.isFinite(geoTime) && Date.now() - geoTime > maxAgeMs) {
       return null;
     }

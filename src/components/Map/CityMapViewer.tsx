@@ -864,7 +864,7 @@ export default function CityMapViewer({
 
       // Check if this event corresponds to an active tracked tropical cyclone
       const matchingCyclone = meta.type === 'cyclone'
-        ? (cyclones.find((c) => c.id === event.id || c.name.toLowerCase() === event.title.toLowerCase()) || (cyclones.length > 0 ? cyclones[0] : null))
+        ? (cyclones.find((c) => c.id === event.id || c.name.toLowerCase().includes(event.title.toLowerCase()) || event.title.toLowerCase().includes(c.name.toLowerCase())) || null)
         : null;
 
       // Position computation: interpolate along official forecast/observed path when timeline scrubber moves

@@ -213,8 +213,9 @@ export default function WeatherDashboard() {
 
   // Active cyclones feed and normalized objects (official NOAA NHC, JTWC, and IMD feeds)
   const activeCycloneFeed = useMemo(() => {
-    return getActiveTropicalCyclones(events);
-  }, [events]);
+    const freshEvents = events.filter((e) => isEventWithin24Hours(e));
+    return getActiveTropicalCyclones(freshEvents);
+  }, [events, isEventWithin24Hours]);
 
   const rawCyclones: TropicalCyclone[] = useMemo(() => {
     if (officialCyclones.length > 0) {
