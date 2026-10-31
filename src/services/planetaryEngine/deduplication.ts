@@ -47,7 +47,22 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
  */
 export function extractCanonicalName(title: string, id: string): string {
   // Start from title — it's the most readable
-  let candidate = title.toLowerCase();
+  let candidate = title.toLowerCase().trim();
+
+  // Extract storm name from parentheses if present (e.g. "Typhoon 30W (In-fa)")
+  const parenMatch = candidate.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const inside = parenMatch[1].trim();
+    if (
+      !inside.includes('category') &&
+      !inside.includes('storm') &&
+      !inside.includes('depression') &&
+      !inside.includes('hurricane') &&
+      !inside.includes('typhoon')
+    ) {
+      candidate = inside;
+    }
+  }
 
   // Remove common cyclone classification prefixes
   candidate = candidate
@@ -76,11 +91,11 @@ export function extractCanonicalName(title: string, id: string): string {
   candidate = candidate.replace(/\b[A-Z]{2}\d{4,6}\b/gi, '').trim();
   candidate = candidate.replace(/-+\d+$/g, '').trim();
 
-  // Remove "warning #NN" 
+  // Remove "warning #NN"
   candidate = candidate.replace(/warning\s+#?\d+/gi, '').trim();
 
   // Clean up punctuation
-  candidate = candidate.replace(/[-_]+/g, '-').replace(/^[-\s]+|[-\s]+$/g, '').trim();
+  candidate = candidate.replace(/[-_]+/g, '-').replace(/^[-+\s]+|[-+\s]+$/g, '').trim();
 
   // If the title extraction yielded something meaningful (>= 2 chars), use it
   if (candidate.length >= 2) {
@@ -89,15 +104,12 @@ export function extractCanonicalName(title: string, id: string): string {
 
   // Fallback: extract from ID
   let idCandidate = id.toLowerCase();
-  // Strip agency prefixes
   idCandidate = idCandidate
     .replace(/^(gdacs-tc-|jtwc-|nhc-|eonet-|nasa-eo-|noaa-)/, '')
     .replace(/^(eonet_)/, '');
-  // Strip trailing numbers
   idCandidate = idCandidate.replace(/-+\d+$/g, '').trim();
-  // Strip storm designators
   idCandidate = idCandidate.replace(/\b\d{1,2}[wescnp]\b/gi, '').trim();
-  idCandidate = idCandidate.replace(/[-_]+/g, '-').replace(/^[-\s]+|[-\s]+$/g, '');
+  idCandidate = idCandidate.replace(/[-_]+/g, '-').replace(/^[-+\s]+|[-+\s]+$/g, '');
 
   return idCandidate || id;
 }
@@ -199,7 +211,7 @@ export function deduplicatePlanetaryEvents(events: PlanetaryEvent[]): PlanetaryE
         const thresholdKm = bothCyclones ? CYCLONE_PROXIMITY_THRESHOLD_KM : GENERAL_PROXIMITY_THRESHOLD_KM;
         const distance = haversineKm(event.lat, event.lng, existing.lat, existing.lng);
 
-        if ((bothCyclones || sameCategory) && distance < thresholdKm) {
+        if ((bothCyclones) || (sameCategory && distance < thresholdKm)) {
           // This is a duplicate — the existing one has higher priority, skip this one
           seenIds.add(event.id);
           continue;
@@ -223,6 +235,10 @@ export function deduplicatePlanetaryEvents(events: PlanetaryEvent[]): PlanetaryE
         : GENERAL_PROXIMITY_THRESHOLD_KM;
       const distance = haversineKm(event.lat, event.lng, existingEvent.lat, existingEvent.lng);
 
+      if (isThisCyclone && isCycloneEvent(existingEvent)) {
+        isDuplicate = true;
+        break;
+      }
       if (distance < thresholdKm) {
         isDuplicate = true;
         break;

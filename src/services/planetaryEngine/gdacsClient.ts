@@ -76,9 +76,20 @@ export async function fetchGdacsCyclones(timeoutMs = 7000): Promise<PlanetaryEve
     const events: PlanetaryEvent[] = [];
     const seenStorms = new Set<string>();
 
+        const now = Date.now();
     for (const feat of data.features) {
       const p = feat.properties;
       if (!p || !p.eventname) continue;
+
+      // Operational Freshness Invariant: Drop stale storms modified or valid > 24 hours ago
+      const eventTime = p.datemodified || p.todate || p.fromdate;
+      if (eventTime) {
+        const timeIso = eventTime.endsWith('Z') ? eventTime : eventTime + 'Z';
+        const timeMs = new Date(timeIso).getTime();
+        if (Number.isFinite(timeMs) && (now - timeMs) > 24 * 3600 * 1000) {
+          continue;
+        }
+      }
 
       const stormKey = p.eventname.trim().toUpperCase();
       if (seenStorms.has(stormKey)) continue;

@@ -36,6 +36,7 @@ import {
   isTropicalCycloneEvent,
   type TropicalCyclone,
 } from '@/services/weather/cycloneTrackingService';
+import { extractCanonicalName } from '@/services/planetaryEngine/deduplication';
 import CycloneDossierPanel from './CycloneDossierPanel';
 import WindyHurricaneTrackerSidebar from './WindyHurricaneTrackerSidebar';
 import { CYCLONE_TIMELINE_STEPS, CYCLONE_LIVE_STEP_INDEX } from './WindyTimeScrubber';
@@ -336,16 +337,27 @@ export default function WeatherDashboard() {
   // Guarantees 100% synchronization and identical positions across 3D Earth and 2D MapLibre map.
   const allDisasters = useMemo(() => {
     const map = new Map<string, WorldEvent>();
+    const seenCycloneNames = new Set<string>();
+
     // 1. Live tropical cyclones & hurricanes (strictly live real-time events, zero stale/historical data)
-    activeCyclones.forEach((c) => map.set(c.id, c));
+    activeCyclones.forEach((c) => {
+      map.set(c.id, c);
+      const name = extractCanonicalName(c.title, c.id);
+      if (name) seenCycloneNames.add(name);
+    });
+
     // 2. Earthquakes (past 24h)
     activeEarthquakes.forEach((e) => map.set(e.id, e));
+
     // 3. Wildfires (past 24h)
     activeWildfires.forEach((w) => map.set(w.id, w));
+
     // 4. Thunderstorms (past 24h)
     activeThunderstorms.forEach((t) => map.set(t.id, t));
+
     // 5. Space weather (past 24h)
     activeSpaceWeather.forEach((s) => map.set(s.id, s));
+
     // 6. Additional events from events feed (if not already mapped and within 24h)
     events.forEach((ev) => {
       if (
@@ -354,7 +366,18 @@ export default function WeatherDashboard() {
         ev.category === 'wildfires' ||
         ev.category === 'space_weather'
       ) {
-        if (!map.has(ev.id) && isEventWithin24Hours(ev)) map.set(ev.id, ev);
+        if (!map.has(ev.id) && isEventWithin24Hours(ev)) {
+          const isCyclone = ev.planetaryTelemetry?.stormWarningType === 'tropical_cyclone' ||
+            ev.title.toLowerCase().includes('cyclon') ||
+            ev.title.toLowerCase().includes('typhoon') ||
+            ev.title.toLowerCase().includes('hurricane');
+          if (isCyclone) {
+            const name = extractCanonicalName(ev.title, ev.id);
+            if (name && seenCycloneNames.has(name)) return;
+            if (name) seenCycloneNames.add(name);
+          }
+          map.set(ev.id, ev);
+        }
       }
     });
     return Array.from(map.values());

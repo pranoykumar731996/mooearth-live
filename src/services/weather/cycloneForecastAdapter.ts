@@ -72,10 +72,7 @@ export async function getOfficialActiveCyclones(allowFallback?: boolean): Promis
         }
       }
 
-      const sourceAgencies: string[] = [];
-      if (nhcCyclones.length > 0) sourceAgencies.push('NOAA NHC');
-      if (jtwcCyclones.length > 0) sourceAgencies.push('JTWC / IMD');
-      if (sourceAgencies.length === 0) sourceAgencies.push('NOAA NHC', 'JTWC', 'IMD');
+      const sourceAgencies: string[] = ['NOAA NHC', 'JTWC', 'IMD'];
 
       const result: CycloneFeedResponse = {
         count: deduped.length,

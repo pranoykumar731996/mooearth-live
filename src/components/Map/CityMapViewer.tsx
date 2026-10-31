@@ -43,13 +43,235 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
   (window as any).__gibsAlphaProtocolRegistered = true;
   try {
     importScriptInWorkers('/workers/gibs-protocol-worker.js').catch(e => console.warn('[CityMapViewer] worker protocol import notice:', e));
+
+    function tileToLng(x: number, z: number): number {
+      return (x / Math.pow(2, z)) * 360 - 180;
+    }
+
+    function tileToLat(y: number, z: number): number {
+      const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+      return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    }
+
+    // Circular partition of unity across all 360 degrees (Himawari, GOES-West, GOES-East, Meteosat)
+    function getSectorSpatialWeight(url: string, lng: number, lat: number): number {
+      const absLat = Math.abs(lat);
+      let latWeight = 1.0;
+      if (absLat > 66.0) return 0.0;
+      else if (absLat > 56.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 56.0) / 10.0)));
+
+      const angle = (((lng % 360) + 360) % 360);
+      let lngWeight = 0.0;
+
+      const isHimawari = url.includes('Himawari') || url.includes('himawari');
+      const isEumet = url.includes('msg_') || url.includes('eumet');
+      const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
+      const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
+
+      if (isHimawari) {
+        if (angle >= 45.0 && angle <= 65.0) {
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+        } else if (angle > 65.0 && angle <= 165.0) {
+          lngWeight = 1.0;
+        } else if (angle > 165.0 && angle <= 195.0) {
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
+        }
+      } else if (isGoesWest) {
+        if (angle >= 165.0 && angle <= 195.0) {
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
+        } else if (angle > 195.0 && angle <= 225.0) {
+          lngWeight = 1.0;
+        } else if (angle > 225.0 && angle <= 265.0) {
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
+        }
+      } else if (isGoesEast) {
+        if (angle >= 225.0 && angle <= 265.0) {
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
+        } else if (angle > 265.0 && angle <= 320.0) {
+          lngWeight = 1.0;
+        } else if (angle > 320.0 && angle <= 345.0) {
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
+        }
+      } else if (isEumet) {
+        if (angle >= 320.0 && angle <= 345.0) {
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
+        } else if (angle > 345.0 || angle <= 45.0) {
+          lngWeight = 1.0;
+        } else if (angle > 45.0 && angle <= 65.0) {
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+        }
+      }
+
+      return Math.max(0.0, Math.min(1.0, lngWeight * latWeight));
+    }
+
+    function processMainThreadTile(d: Uint8ClampedArray, width: number, height: number, realUrl: string) {
+      const len = d.length;
+      const coordMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+      let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
+      if (coordMatch) {
+        tileZ = parseInt(coordMatch[1], 10);
+        tileY = parseInt(coordMatch[2], 10);
+        tileX = parseInt(coordMatch[3], 10);
+        hasCoords = true;
+      }
+
+      const tileLngs = new Float32Array(width);
+      const tileLats = new Float32Array(height);
+      if (hasCoords) {
+        for (let c = 0; c < width; c++) tileLngs[c] = tileToLng(tileX + (c + 0.5) / width, tileZ);
+        for (let r = 0; r < height; r++) tileLats[r] = tileToLat(tileY + (r + 0.5) / height, tileZ);
+      }
+
+      const isVisMode = realUrl.includes('spectral=vis') || (!realUrl.includes('spectral=infra') && !realUrl.includes('spectral=blue'));
+      const isInfraLayer = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR') || realUrl.includes('ir108');
+      const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
+      const isGeoColor = realUrl.includes('GeoColor');
+      const isEumet = realUrl.includes('msg_') || realUrl.includes('eumet');
+
+      for (let i = 0; i < len; i += 4) {
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+
+        const pixelIdx = i >> 2;
+        const pxCol = pixelIdx % width;
+        const pxRow = Math.floor(pixelIdx / width);
+        const spatWeight = hasCoords ? getSectorSpatialWeight(realUrl, tileLngs[pxCol], tileLats[pxRow]) : 1.0;
+
+        if (spatWeight <= 0.001) {
+          d[i + 3] = 0;
+          continue;
+        }
+
+        if (r < 28 && g < 28 && b < 28) {
+          d[i + 3] = 0;
+          continue;
+        }
+
+        if (isVisMode) {
+          if (isInfraLayer) {
+            if (r <= 118) {
+              d[i + 3] = 0;
+            } else {
+              const norm = Math.min(1.0, (r - 114) / (180 - 114));
+              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+              const finalAlpha = Math.round(cloudAlpha * spatWeight);
+              if (finalAlpha <= 2) {
+                d[i + 3] = 0;
+              } else {
+                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+                d[i] = cloudTone;
+                d[i + 1] = cloudTone;
+                d[i + 2] = cloudTone;
+                d[i + 3] = finalAlpha;
+              }
+            }
+          } else if (isHimawariVis) {
+            if (r <= 20) {
+              d[i + 3] = 0;
+            } else {
+              const norm = Math.min(1.0, (r - 20) / (80 - 20));
+              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+              const finalAlpha = Math.round(cloudAlpha * spatWeight);
+              if (finalAlpha <= 2) {
+                d[i + 3] = 0;
+              } else {
+                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+                d[i] = cloudTone;
+                d[i + 1] = cloudTone;
+                d[i + 2] = cloudTone;
+                d[i + 3] = finalAlpha;
+              }
+            }
+          } else if (isGeoColor) {
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            const isSand = (r > g && g > b && (r - b) >= 22 && (r - g) >= 8);
+            if (isSand) {
+              d[i + 3] = 0;
+              continue;
+            }
+            const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
+            if (isCityLights) {
+              d[i + 3] = 0;
+              continue;
+            }
+            if (lum <= 32 || (b > r + 10 && lum < 65)) {
+              d[i + 3] = 0;
+              continue;
+            }
+            const isCloudLike = Math.abs(r - g) <= 16 && Math.abs(g - b) <= 16;
+            if (!isCloudLike && lum < 140) {
+              d[i + 3] = 0;
+              continue;
+            }
+            const norm = Math.min(1.0, (lum - 30) / (95 - 30));
+            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+            const finalAlpha = Math.round(cloudAlpha * spatWeight);
+            if (finalAlpha <= 2) {
+              d[i + 3] = 0;
+            } else {
+              const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+              d[i] = cloudTone;
+              d[i + 1] = cloudTone;
+              d[i + 2] = cloudTone;
+              d[i + 3] = finalAlpha;
+            }
+          } else if (isEumet) {
+            if (r <= 32) {
+              d[i + 3] = 0;
+            } else {
+              const norm = Math.min(1.0, (r - 30) / (110 - 30));
+              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+              const finalAlpha = Math.round(cloudAlpha * spatWeight);
+              if (finalAlpha <= 2) {
+                d[i + 3] = 0;
+              } else {
+                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+                d[i] = cloudTone;
+                d[i + 1] = cloudTone;
+                d[i + 2] = cloudTone;
+                d[i + 3] = finalAlpha;
+              }
+            }
+          } else {
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            if (lum <= 25) {
+              d[i + 3] = 0;
+            } else {
+              const norm = Math.min(1.0, (lum - 25) / (100 - 25));
+              d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
+            }
+          }
+        } else {
+          const isVoid = (r < 25 && g < 25 && b < 25) || (r < 38 && g < 38 && b < 38 && Math.abs(r - g) < 8 && Math.abs(g - b) < 8);
+          if (isVoid) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const isGray = Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6;
+          if (isGray) {
+            if (r <= 114) {
+              d[i + 3] = 0;
+            } else if (r < 145) {
+              d[i + 3] = Math.round(((r - 114) / (145 - 114)) * 190 * spatWeight);
+            } else {
+              d[i + 3] = Math.round(230 * spatWeight);
+            }
+          } else {
+            d[i + 3] = Math.round(255 * spatWeight);
+          }
+        }
+      }
+    }
+
     addProtocol('gibs-alpha', async (params, abortController) => {
+
       const realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
       const res = await fetch(realUrl, { signal: abortController.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const blob = await res.blob();
 
-      // Fallback if environment lacks ImageBitmap or Canvas
       if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
         const buf = await blob.arrayBuffer();
         return { data: buf };
@@ -65,41 +287,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imgData.data;
-        const len = d.length;
-
-        const isInfra = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR');
-
-        for (let i = 0; i < len; i += 4) {
-          const r = d[i];
-          const g = d[i + 1];
-          const b = d[i + 2];
-
-          if (isInfra) {
-            const isVoid = (r < 25 && g < 25 && b < 25) ||
-                           (r < 38 && g < 38 && b < 38 && Math.abs(r - g) < 8 && Math.abs(g - b) < 8);
-            if (isVoid) {
-              d[i + 3] = 0;
-              continue;
-            }
-
-            const isGray = Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6;
-            if (isGray) {
-              if (r <= 114) {
-                d[i + 3] = 0;
-              } else if (r < 145) {
-                d[i + 3] = Math.round(((r - 114) / (145 - 114)) * 190);
-              } else {
-                d[i + 3] = 230;
-              }
-            }
-          } else {
-            if (r < 22 && g < 22 && b < 22) {
-              d[i + 3] = 0;
-            }
-          }
-        }
-
+        processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
@@ -108,7 +296,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         return { data: buf };
       }
     });
+
     addProtocol('eumet-alpha', async (params, abortController) => {
+
       const realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
       const res = await fetch(realUrl, { signal: abortController.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -129,51 +319,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imgData.data;
-        const len = d.length;
-
-        for (let i = 0; i < len; i += 4) {
-          const val = d[i];
-          if (val < 30) {
-            d[i] = 0;
-            d[i + 1] = 0;
-            d[i + 2] = 0;
-            d[i + 3] = 0;
-          } else if (val < 140) {
-            const alpha = Math.min(210, Math.round(((val - 30) / (140 - 30)) * 180));
-            const cloudGray = Math.min(240, Math.round(180 + val * 0.35));
-            d[i] = cloudGray;
-            d[i + 1] = cloudGray;
-            d[i + 2] = cloudGray;
-            d[i + 3] = alpha;
-          } else if (val < 175) {
-            d[i] = 0;
-            d[i + 1] = 210;
-            d[i + 2] = 240;
-            d[i + 3] = 220;
-          } else if (val < 205) {
-            d[i] = 0;
-            d[i + 1] = 225;
-            d[i + 2] = 70;
-            d[i + 3] = 235;
-          } else if (val < 225) {
-            d[i] = 255;
-            d[i + 1] = 225;
-            d[i + 2] = 0;
-            d[i + 3] = 245;
-          } else if (val < 240) {
-            d[i] = 255;
-            d[i + 1] = 60;
-            d[i + 2] = 0;
-            d[i + 3] = 255;
-          } else {
-            d[i] = 235;
-            d[i + 1] = 0;
-            d[i + 2] = 245;
-            d[i + 3] = 255;
-          }
-        }
-
+        processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
@@ -1837,80 +1983,31 @@ export default function CityMapViewer({
         if (map.getLayer('nasa-gibs-polar-fill-layer')) map.removeLayer('nasa-gibs-polar-fill-layer');
         if (map.getSource('nasa-gibs-polar-fill-source')) map.removeSource('nasa-gibs-polar-fill-source');
 
-        // 2. Manage Global Baseline TrueColor Underlay (Single Pass, Clean Ground)
+        // 2. Clean up obsolete opaque polar swath underlay so crisp vector / satellite basemap shines through
         const visibleSourceId = 'nasa-gibs-visible-source';
         const visibleLayerId = 'nasa-gibs-visible-layer';
-        if (isVisibleMode) {
-          const protocolPrefix = typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://';
-          const polarBaselineDateStr = (() => {
-            const d = new Date(Date.now() - 24 * 3600 * 1000);
-            return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-          })();
-          const trueColorUrl = `${protocolPrefix}gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${polarBaselineDateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
-          const existingVisibleSource = map.getSource(visibleSourceId) as any;
-          if (existingVisibleSource) {
-            if (existingVisibleSource.tiles?.[0] !== trueColorUrl) {
-              if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
-              map.removeSource(visibleSourceId);
-              map.addSource(visibleSourceId, {
-                type: 'raster',
-                tiles: [trueColorUrl],
-                tileSize: 256,
-                maxzoom: 9,
-                bounds: [-180.0, -85.0, 180.0, 85.0],
-                attribution: 'NASA GIBS / EOSDIS True Color',
-              });
-              map.addLayer(
-                {
-                  id: visibleLayerId,
-                  type: 'raster',
-                  source: visibleSourceId,
-                  maxzoom: 12,
-                  paint: {
-                    'raster-opacity': visibleOpacityExpression,
-                    'raster-contrast': rasterContrast,
-                    'raster-fade-duration': 300,
-                  },
-                },
-                beforeLayerId
-              );
-            } else if (map.getLayer(visibleLayerId)) {
-              map.setPaintProperty(visibleLayerId, 'raster-opacity', visibleOpacityExpression);
-              map.setPaintProperty(visibleLayerId, 'raster-contrast', rasterContrast);
-            }
-          } else {
-            map.addSource(visibleSourceId, {
-              type: 'raster',
-              tiles: [trueColorUrl],
-              tileSize: 256,
-              maxzoom: 9,
-              bounds: [-180.0, -85.0, 180.0, 85.0],
-              attribution: 'NASA GIBS / EOSDIS True Color',
-            });
-            map.addLayer(
-              {
-                id: visibleLayerId,
-                type: 'raster',
-                source: visibleSourceId,
-                maxzoom: 12,
-                paint: {
-                  'raster-opacity': visibleOpacityExpression,
-                  'raster-contrast': rasterContrast,
-                  'raster-fade-duration': 300,
-                },
-              },
-              beforeLayerId
-            );
-          }
-        } else {
-          // Infrared & Blue: remove TrueColor baseline to reveal clean ocean basemap
-          if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
-          if (map.getSource(visibleSourceId)) map.removeSource(visibleSourceId);
+        if (map.getLayer(visibleLayerId)) map.removeLayer(visibleLayerId);
+        if (map.getSource(visibleSourceId)) map.removeSource(visibleSourceId);
+
+        // 3. Astronomical Sub-Solar Longitude & Day/Night Dynamic Engine (Windy & Zoom Earth Parity):
+        // Determines whether each geostationary disk is currently illuminated by daylight or in night
+        const obsDate = new Date(geoObs.timestampMs);
+        const utcHour = obsDate.getUTCHours() + obsDate.getUTCMinutes() / 60;
+        const subSolarLng = ((12 - utcHour) * 15 + 540) % 360 - 180;
+
+        function isSectorDaylight(centerLng: number): boolean {
+          const delta = Math.abs((((centerLng - subSolarLng + 540) % 360) - 180));
+          return delta < 82; // Within daylight illumination window (~5.5 hours of solar noon)
         }
 
-        // 3. Geostationary Multi-Satellite Triad (Windy & Zoom Earth Parity):
-        // In Visible mode: Live 10m Geostationary Visible (Himawari Band 3 Red Visible, GOES GeoColor, Meteosat vis006)
-        // In Infra mode: Live 10m Clean Infrared (Himawari Band 13, GOES Band 13, Meteosat ir108)
+        const himawariDay = isSectorDaylight(140.0);
+        const goesEastDay = isSectorDaylight(-75.0);
+        const goesWestDay = isSectorDaylight(-135.0);
+        const europeAfricaDay = isSectorDaylight(0.0);
+
+        // 4. Geostationary Multi-Satellite Continuous Mosaic with Overlapping Longitude Cross-Fade:
+        // Expanded sector bounds allow the Web Worker to apply seamless cosine cross-fades across
+        // boundary belts (e.g. 45°E-65°E, -40°W to -15°W), eliminating 100% of vertical razor seams!
         const sectors: {
           id: string;
           layerName: string;
@@ -1923,10 +2020,10 @@ export default function CityMapViewer({
           ? [
               {
                 id: 'himawari',
-                layerName: 'Himawari_AHI_Band3_Red_Visible_1km',
-                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
+                tileMatrixSet: himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [50.0, -60.0, 180.0, 60.0],
+                bounds: [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
@@ -1935,7 +2032,7 @@ export default function CityMapViewer({
                 layerName: 'GOES-East_ABI_GeoColor',
                 tileMatrixSet: 'GoogleMapsCompatible_Level7',
                 format: 'image/png',
-                bounds: [-140.0, -60.0, -10.0, 60.0],
+                bounds: [-145.0, -68.0, -5.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
@@ -1944,16 +2041,16 @@ export default function CityMapViewer({
                 layerName: 'GOES-West_ABI_GeoColor',
                 tileMatrixSet: 'GoogleMapsCompatible_Level7',
                 format: 'image/png',
-                bounds: [-180.0, -60.0, -90.0, 60.0],
+                bounds: [-180.0, -68.0, -80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
               {
                 id: 'europe-africa',
-                layerName: 'msg_fes:vis006',
+                layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-70.0, -60.0, 60.0, 60.0],
+                bounds: [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -1964,7 +2061,7 @@ export default function CityMapViewer({
                 layerName: 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [50.0, -60.0, 180.0, 60.0],
+                bounds: [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -1973,7 +2070,7 @@ export default function CityMapViewer({
                 layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-140.0, -60.0, -10.0, 60.0],
+                bounds: [-145.0, -68.0, -5.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -1982,7 +2079,7 @@ export default function CityMapViewer({
                 layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-180.0, -60.0, -90.0, 60.0],
+                bounds: [-180.0, -68.0, -80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -1991,7 +2088,7 @@ export default function CityMapViewer({
                 layerName: 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-70.0, -60.0, 60.0, 60.0],
+                bounds: [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2011,9 +2108,10 @@ export default function CityMapViewer({
             const tileTime = (sec.layerName.includes('GeoColor') || sec.layerName.includes('Visible') || !sec.isSubHourly) ? geoObs.dateStr : geoObs.isoTimestamp;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
+            const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
             const tileUrl = isEumet
-              ? `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'eumet-alpha://' : 'https://'}view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png`
-              : `${typeof window !== 'undefined' && typeof createImageBitmap !== 'undefined' ? 'gibs-alpha://' : 'https://'}gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
+              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png?${spectralParam}`
+              : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
@@ -2025,7 +2123,6 @@ export default function CityMapViewer({
                   tiles: [tileUrl],
                   tileSize: 256,
                   maxzoom: sec.maxzoom,
-                  bounds: sec.bounds,
                   attribution: sec.layerName.startsWith('msg_') ? 'EUMETSAT Meteosat High Rate SEVIRI' : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
                 });
                 map.addLayer(
@@ -2052,7 +2149,6 @@ export default function CityMapViewer({
                 tiles: [tileUrl],
                 tileSize: 256,
                 maxzoom: sec.maxzoom,
-                bounds: sec.bounds,
                 attribution: sec.layerName.startsWith('msg_') ? 'EUMETSAT Meteosat High Rate SEVIRI' : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data',
               });
               map.addLayer(
