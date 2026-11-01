@@ -151,19 +151,20 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         if (isVisMode) {
           if (isInfraLayer) {
-            if (r <= 118) {
+            // Nighttime Clean Infrared → smooth moonlight white clouds (Windy parity)
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            if (lum <= 75) {
               d[i + 3] = 0;
             } else {
-              const norm = Math.min(1.0, (r - 114) / (180 - 114));
-              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+              const norm = Math.min(1.0, (lum - 72) / (220 - 72));
+              const cloudAlpha = Math.round(240 * Math.pow(norm, 0.55));
               const finalAlpha = Math.round(cloudAlpha * spatWeight);
               if (finalAlpha <= 2) {
                 d[i + 3] = 0;
               } else {
-                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
-                d[i] = cloudTone;
-                d[i + 1] = cloudTone;
-                d[i + 2] = cloudTone;
+                d[i] = 252;
+                d[i + 1] = 252;
+                d[i + 2] = 255;
                 d[i + 3] = finalAlpha;
               }
             }
@@ -218,20 +219,21 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i + 3] = finalAlpha;
             }
           } else if (isEumet) {
-            if (r <= 32) {
+            // EUMETSAT Meteosat → moonlight white clouds
+            const eLum = 0.299 * r + 0.587 * g + 0.114 * b;
+            if (eLum <= 30) {
               d[i + 3] = 0;
             } else {
-              const norm = Math.min(1.0, (r - 30) / (110 - 30));
-              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
-              const finalAlpha = Math.round(cloudAlpha * spatWeight);
-              if (finalAlpha <= 2) {
+              const eNorm = Math.min(1.0, (eLum - 28) / (180 - 28));
+              const eAlpha = Math.round(240 * Math.pow(eNorm, 0.55));
+              const eFinal = Math.round(eAlpha * spatWeight);
+              if (eFinal <= 2) {
                 d[i + 3] = 0;
               } else {
-                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
-                d[i] = cloudTone;
-                d[i + 1] = cloudTone;
-                d[i + 2] = cloudTone;
-                d[i + 3] = finalAlpha;
+                d[i] = 252;
+                d[i + 1] = 252;
+                d[i + 2] = 255;
+                d[i + 3] = eFinal;
               }
             }
           } else {
@@ -2029,21 +2031,21 @@ export default function CityMapViewer({
               },
               {
                 id: 'goes-east',
-                layerName: 'GOES-East_ABI_GeoColor',
-                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                layerName: goesEastDay ? 'GOES-East_ABI_GeoColor' : 'GOES-East_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: goesEastDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 bounds: [-145.0, -68.0, -5.0, 68.0],
                 isSubHourly: true,
-                maxzoom: 7,
+                maxzoom: goesEastDay ? 7 : 6,
               },
               {
                 id: 'goes-west',
-                layerName: 'GOES-West_ABI_GeoColor',
-                tileMatrixSet: 'GoogleMapsCompatible_Level7',
+                layerName: goesWestDay ? 'GOES-West_ABI_GeoColor' : 'GOES-West_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: goesWestDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 bounds: [-180.0, -68.0, -80.0, 68.0],
                 isSubHourly: true,
-                maxzoom: 7,
+                maxzoom: goesWestDay ? 7 : 6,
               },
               {
                 id: 'europe-africa',

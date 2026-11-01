@@ -135,20 +135,23 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         // VISIBLE / CLOUDS MODE (Windy & Zoom Earth Parity)
         // ==========================================
         if (isInfraLayer) {
-          // Nighttime Clean Infrared stream converted to soft moonlight white clouds
-          if (r <= 118) {
+          // Nighttime Clean Infrared → smooth moonlight white clouds (Windy parity)
+          // Band13 grayscale: low values = warm clear sky, high values = cold cloud tops
+          // Threshold 75 captures thin cirrus; range extends to 220 for dense cumulonimbus cores
+          var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum <= 75) {
             d[i + 3] = 0; // Clear warm ocean / land surface: 100% transparent
           } else {
-            const norm = Math.min(1.0, (r - 114) / (180 - 114));
-            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
-            const finalAlpha = Math.round(cloudAlpha * spatWeight);
+            var norm = Math.min(1.0, (lum - 72) / (220 - 72));
+            var cloudAlpha = Math.round(240 * Math.pow(norm, 0.55));
+            var finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
             } else {
-              const cloudTone = Math.min(255, Math.round(238 + norm * 17));
-              d[i] = cloudTone;
-              d[i + 1] = cloudTone;
-              d[i + 2] = cloudTone;
+              // Pure luminous white — no color tint (matches Windy nighttime rendering)
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
               d[i + 3] = finalAlpha;
             }
           }
@@ -214,21 +217,21 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             d[i + 3] = finalAlpha;
           }
         } else if (isEumet) {
-          // EUMETSAT Meteosat High Rate SEVIRI
-          if (r <= 32) {
+          // EUMETSAT Meteosat High Rate SEVIRI → moonlight white clouds
+          var eLum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (eLum <= 30) {
             d[i + 3] = 0;
           } else {
-            const norm = Math.min(1.0, (r - 30) / (110 - 30));
-            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
-            const finalAlpha = Math.round(cloudAlpha * spatWeight);
-            if (finalAlpha <= 2) {
+            var eNorm = Math.min(1.0, (eLum - 28) / (180 - 28));
+            var eAlpha = Math.round(240 * Math.pow(eNorm, 0.55));
+            var eFinal = Math.round(eAlpha * spatWeight);
+            if (eFinal <= 2) {
               d[i + 3] = 0;
             } else {
-              const cloudTone = Math.min(255, Math.round(238 + norm * 17));
-              d[i] = cloudTone;
-              d[i + 1] = cloudTone;
-              d[i + 2] = cloudTone;
-              d[i + 3] = finalAlpha;
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
+              d[i + 3] = eFinal;
             }
           }
         } else {
