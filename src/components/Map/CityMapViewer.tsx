@@ -615,9 +615,9 @@ export default function CityMapViewer({
     });
   }, [disasters, activeDisasterFilter, activeLayer, disasterFilterProp, internalDisasterFilter]);
 
-  // Real-time Nowcast Lightning telemetry feed
+  // Real-time Nowcast Lightning telemetry feed (default false to match Windy's clean aesthetic)
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
-  const [showLightning, setShowLightning] = useState(true);
+  const [showLightning, setShowLightning] = useState(false);
 
   useEffect(() => {
     setLightningFeed(getNowcastLightningFeed(disasters));

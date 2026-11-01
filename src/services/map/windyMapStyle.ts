@@ -22,8 +22,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
     },
     openmaptiles: {
       type: 'vector',
-      tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
-      maxzoom: 14,
+      url: 'https://tiles.openfreemap.org/planet',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
     },
   },
@@ -38,7 +37,18 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'background-color': '#354a12',
       },
     },
-    // 2. Deep Navy Water & Oceans
+    // 2. Natural Earth Topographic Shaded Relief (beneath water to keep oceans pure navy)
+    {
+      id: 'ne2_shaded',
+      type: 'raster',
+      source: 'ne2_shaded',
+      maxzoom: 7,
+      paint: {
+        'raster-opacity': 0.16,
+        'raster-contrast': 0.20,
+      },
+    },
+    // 3. Deep Navy Water & Oceans (crisp sampled Windy #243754)
     {
       id: 'water',
       type: 'fill',
@@ -46,17 +56,6 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       'source-layer': 'water',
       paint: {
         'fill-color': '#243754',
-      },
-    },
-    // 3. Natural Earth Topographic Shaded Relief
-    {
-      id: 'ne2_shaded',
-      type: 'raster',
-      source: 'ne2_shaded',
-      maxzoom: 7,
-      paint: {
-        'raster-opacity': 0.14,
-        'raster-contrast': 0.15,
       },
     },
     // 4. Country Sovereign Boundaries
