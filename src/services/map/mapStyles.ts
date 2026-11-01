@@ -57,6 +57,14 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
   const cartoQuery = cartoKey ? `?api_key=${encodeURIComponent(cartoKey)}` : '';
 
   return {
+    'atmospheric-satellite': {
+      key: 'atmospheric-satellite',
+      label: 'Atmospheric Satellite',
+      badge: 'NASA / NOAA',
+      style: ATMOSPHERIC_SATELLITE_MAP_STYLE,
+      type: 'vector',
+      attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',
+    },
     satellite: {
       key: 'satellite',
       label: 'Satellite HD',
@@ -102,14 +110,6 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       },
       type: 'raster',
       attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS',
-    },
-    'atmospheric-satellite': {
-      key: 'atmospheric-satellite',
-      label: 'Atmospheric Satellite',
-      badge: 'NASA / NOAA',
-      style: ATMOSPHERIC_SATELLITE_MAP_STYLE,
-      type: 'vector',
-      attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',
     },
     'windy-satellite': {
       key: 'windy-satellite',

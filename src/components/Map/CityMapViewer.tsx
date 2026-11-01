@@ -69,9 +69,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
       if (isHimawari) {
-        if (angle >= 45.0 && angle <= 65.0) {
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
-        } else if (angle > 65.0 && angle <= 165.0) {
+        if (angle >= 60.0 && angle <= 75.0) {
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
+        } else if (angle > 75.0 && angle <= 165.0) {
           lngWeight = 1.0;
         } else if (angle > 165.0 && angle <= 195.0) {
           lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -95,10 +95,10 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       } else if (isEumet) {
         if (angle >= 320.0 && angle <= 345.0) {
           lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-        } else if (angle > 345.0 || angle <= 45.0) {
+        } else if (angle > 345.0 || angle <= 60.0) {
           lngWeight = 1.0;
-        } else if (angle > 45.0 && angle <= 65.0) {
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+        } else if (angle > 60.0 && angle <= 75.0) {
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
         }
       }
 
@@ -299,10 +299,27 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       }
     });
 
-    addProtocol('eumet-alpha', async (params, abortController) => {
+    function eumetUrlToWms(url: string): string {
+      const match = url.match(/\/tile\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
+      if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
+      const layer = match[1];
+      const z = parseInt(match[2], 10);
+      const y = parseInt(match[3], 10);
+      const x = parseInt(match[4], 10);
+      const n = Math.pow(2, z);
+      const worldSize = 20037508.342789244 * 2;
+      const originShift = 20037508.342789244;
+      const res = worldSize / n;
+      const minX = x * res - originShift;
+      const maxX = (x + 1) * res - originShift;
+      const maxY = originShift - y * res;
+      const minY = originShift - (y + 1) * res;
+      return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=${minX},${minY},${maxX},${maxY}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=${layer}&FORMAT=image/png`;
+    }
 
-      const realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
-      const res = await fetch(realUrl, { signal: abortController.signal });
+    addProtocol('eumet-alpha', async (params, abortController) => {
+      const wmsUrl = eumetUrlToWms(params.url);
+      const res = await fetch(wmsUrl, { signal: abortController.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const blob = await res.blob();
 
@@ -321,7 +338,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
+        processMainThreadTile(imgData.data, canvas.width, canvas.height, params.url);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
@@ -564,6 +581,9 @@ export default function CityMapViewer({
 
   useEffect(() => {
     setIsRadarNoticeDismissed(false);
+    if (activeLayer === 'satellite' || activeLayer === 'clouds') {
+      setActiveStyleKey('atmospheric-satellite');
+    }
   }, [activeLayer]);
 
   // Disaster filtering, visibility and collapsible bar state on 2D map
@@ -972,15 +992,46 @@ export default function CityMapViewer({
 
     if (!showDisasters && activeLayer !== 'hurricane') return;
 
+    // Canonical storm deduplication helper
+    const extractStormDesignator = (nameOrTitle: string, id: string = '') => {
+      const combined = `${nameOrTitle} ${id}`.toLowerCase();
+      const mNum = combined.match(/\b(?:invest\s*)?(\d{1,2}[a-z]?)\b/i);
+      if (mNum) return mNum[1].toUpperCase();
+      const mJtwc = combined.match(/\b([a-z]{2}\d{2,4})\b/i);
+      if (mJtwc) return mJtwc[1].toUpperCase();
+      return nameOrTitle
+        .toLowerCase()
+        .replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '')
+        .trim();
+    };
+
+    const calcDistKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
     // Guarantee that every tracked tropical cyclone has a representation when cyclones or hurricane layer are active
-    const eventsToRender: WorldEvent[] = [...(showDisasters ? filteredDisasters : [])];
+    const rawEvents: WorldEvent[] = [...(showDisasters ? filteredDisasters : [])];
     if (activeLayer === 'hurricane' || activeDisasterFilter === 'cyclones' || activeDisasterFilter === 'all') {
       cyclones.forEach((c) => {
-        const alreadyExists = eventsToRender.some(
-          (e) => e.id === c.id || e.title.toLowerCase().includes(c.name.toLowerCase())
-        );
+        const cCode = extractStormDesignator(c.name, c.id);
+        const alreadyExists = rawEvents.some((e) => {
+          if (e.id === c.id) return true;
+          const eMeta = getDisasterMeta(e);
+          if (eMeta.type !== 'cyclone') return false;
+          const eCode = extractStormDesignator(e.title, e.id);
+          if (cCode && eCode && cCode === eCode) return true;
+          if (typeof e.lat === 'number' && typeof e.lng === 'number' && typeof c.lat === 'number' && typeof c.lng === 'number') {
+            if (calcDistKm(e.lat, e.lng, c.lat, c.lng) < 350) return true;
+          }
+          return false;
+        });
         if (!alreadyExists) {
-          eventsToRender.push({
+          rawEvents.push({
             id: c.id,
             title: `Cyclone ${c.name}`,
             category: 'severe_weather',
@@ -1000,6 +1051,39 @@ export default function CityMapViewer({
         }
       });
     }
+
+    // Deduplicate so no two cyclone markers exist within 350 km of each other (merges JTWC + GDACS into 1)
+    const eventsToRender: WorldEvent[] = [];
+    rawEvents.forEach((ev) => {
+      const meta = getDisasterMeta(ev);
+      if (meta.type === 'cyclone') {
+        const evCode = extractStormDesignator(ev.title, ev.id);
+        const duplicateIdx = eventsToRender.findIndex((existing) => {
+          if (getDisasterMeta(existing).type !== 'cyclone') return false;
+          if (existing.id === ev.id) return true;
+          const existCode = extractStormDesignator(existing.title, existing.id);
+          if (evCode && existCode && evCode === existCode) return true;
+          if (typeof existing.lat === 'number' && typeof existing.lng === 'number' && typeof ev.lat === 'number' && typeof ev.lng === 'number') {
+            return calcDistKm(existing.lat, existing.lng, ev.lat, ev.lng) < 350;
+          }
+          return false;
+        });
+        if (duplicateIdx >= 0) {
+          const existing = eventsToRender[duplicateIdx];
+          const existWind = existing.planetaryTelemetry?.windSpeedKph || 0;
+          const evWind = ev.planetaryTelemetry?.windSpeedKph || 0;
+          if (evWind > existWind || ev.id.startsWith('jtwc-') || ev.id.startsWith('nhc-')) {
+            eventsToRender[duplicateIdx] = {
+              ...existing,
+              ...ev,
+              title: existing.title.includes('INVEST') ? existing.title : ev.title,
+            };
+          }
+          return;
+        }
+      }
+      eventsToRender.push(ev);
+    });
 
     if (eventsToRender.length === 0) return;
 
@@ -2025,7 +2109,7 @@ export default function CityMapViewer({
                 layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [45.0, -68.0, 180.0, 68.0],
+                bounds: [55.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
@@ -2052,7 +2136,7 @@ export default function CityMapViewer({
                 layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-45.0, -68.0, 75.0, 68.0],
+                bounds: [-45.0, -68.0, 80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2063,7 +2147,7 @@ export default function CityMapViewer({
                 layerName: 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [45.0, -68.0, 180.0, 68.0],
+                bounds: [55.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2090,7 +2174,7 @@ export default function CityMapViewer({
                 layerName: 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-45.0, -68.0, 75.0, 68.0],
+                bounds: [-45.0, -68.0, 80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2112,7 +2196,7 @@ export default function CityMapViewer({
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
             const tileUrl = isEumet
-              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png?${spectralParam}`
+              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{y}/{x}.png?${spectralParam}`
               : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
             const existingSource = map.getSource(sId) as any;

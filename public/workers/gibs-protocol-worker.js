@@ -42,9 +42,9 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
     if (isHimawari) {
-      if (angle >= 45.0 && angle <= 65.0) {
-        lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
-      } else if (angle > 65.0 && angle <= 165.0) {
+      if (angle >= 60.0 && angle <= 75.0) {
+        lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
+      } else if (angle > 75.0 && angle <= 165.0) {
         lngWeight = 1.0;
       } else if (angle > 165.0 && angle <= 195.0) {
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -68,10 +68,10 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     } else if (isEumet) {
       if (angle >= 320.0 && angle <= 345.0) {
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-      } else if (angle > 345.0 || angle <= 45.0) {
+      } else if (angle > 345.0 || angle <= 60.0) {
         lngWeight = 1.0;
-      } else if (angle > 45.0 && angle <= 65.0) {
-        lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+      } else if (angle > 60.0 && angle <= 75.0) {
+        lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
       }
     }
 
@@ -297,9 +297,28 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     return { data: await blob.arrayBuffer() };
   });
 
+  // Converts Slippy tile request URL to standard EUMETView OGC WMS EPSG:3857 BBOX query
+  function eumetUrlToWms(url) {
+    const match = url.match(/\/tile\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
+    if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
+    const layer = match[1];
+    const z = parseInt(match[2], 10);
+    const y = parseInt(match[3], 10);
+    const x = parseInt(match[4], 10);
+    const n = Math.pow(2, z);
+    const worldSize = 20037508.342789244 * 2;
+    const originShift = 20037508.342789244;
+    const res = worldSize / n;
+    const minX = x * res - originShift;
+    const maxX = (x + 1) * res - originShift;
+    const maxY = originShift - y * res;
+    const minY = originShift - (y + 1) * res;
+    return 'https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=' + minX + ',' + minY + ',' + maxX + ',' + maxY + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=' + layer + '&FORMAT=image/png';
+  }
+
   // Protocol 2: EUMETSAT Meteosat High Rate SEVIRI (Europe & Africa)
   self.addProtocol('eumet-alpha', async (params, abortController) => {
-    const realUrl = params.url.replace(/^eumet-alpha:\/\//, 'https://');
+    const realUrl = eumetUrlToWms(params.url);
     const res = await fetch(realUrl, { signal: abortController.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const blob = await res.blob();
@@ -313,7 +332,7 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processTilePixels(imgData.data, canvas.width, canvas.height, realUrl);
+        processTilePixels(imgData.data, canvas.width, canvas.height, params.url);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
