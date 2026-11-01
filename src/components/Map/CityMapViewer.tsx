@@ -597,6 +597,12 @@ export default function CityMapViewer({
   // Filtered disaster list: strictly isolates selected hazard (no unwanted hazard markers)
   const filteredDisasters = useMemo(() => {
     if (!disasters || disasters.length === 0) return [];
+    // On dedicated Satellite & Clouds meteorological view, default to cyclones-only (Windy parity)
+    // so wildfires and volcanoes do not clutter the cloud observations unless explicitly selected
+    const isSatOrClouds = activeLayer === 'satellite' || activeLayer === 'clouds';
+    if (isSatOrClouds && (!disasterFilterProp || disasterFilterProp === 'all') && internalDisasterFilter === 'all') {
+      return disasters.filter((d) => getDisasterMeta(d).type === 'cyclone');
+    }
     if (activeDisasterFilter === 'all') return disasters;
     return disasters.filter((d) => {
       const type = getDisasterMeta(d).type;
@@ -607,7 +613,7 @@ export default function CityMapViewer({
       if (activeDisasterFilter === 'space_weather') return type === 'space_weather' || d.category === 'space_weather';
       return type === activeDisasterFilter;
     });
-  }, [disasters, activeDisasterFilter]);
+  }, [disasters, activeDisasterFilter, activeLayer, disasterFilterProp, internalDisasterFilter]);
 
   // Real-time Nowcast Lightning telemetry feed
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
@@ -1430,7 +1436,9 @@ export default function CityMapViewer({
       undefined;
 
     // 1. Quakes FeatureCollection
-    const seismicFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
+    const isSatOrClouds = activeLayer === 'satellite' || activeLayer === 'clouds';
+    const shouldRenderSeismic = showDisasters && (!isSatOrClouds || activeDisasterFilter === 'seismic');
+    const seismicFeatures: any[] = (!shouldRenderSeismic ? [] : filteredDisasters)
       .filter((d) => getDisasterMeta(d).type === 'seismic' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
       .map((d) => ({
         type: 'Feature',
@@ -1559,7 +1567,8 @@ export default function CityMapViewer({
     }
 
     // 3. Wildfire Thermal Halo FeatureCollection
-    const wildfireFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
+    const shouldRenderWildfires = showDisasters && (!isSatOrClouds || activeDisasterFilter === 'wildfires');
+    const wildfireFeatures: any[] = (!shouldRenderWildfires ? [] : filteredDisasters)
       .filter((d) => getDisasterMeta(d).type === 'wildfires' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
       .map((d) => ({
         type: 'Feature',

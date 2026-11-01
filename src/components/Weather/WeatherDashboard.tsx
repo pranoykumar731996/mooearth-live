@@ -436,6 +436,7 @@ export default function WeatherDashboard() {
   // Action: Explore City Map using MapLibre GL JS
   const handleExploreCity = useCallback(() => {
     setViewMode('city-map');
+    weather.setActiveLayer('satellite');
     if (weather.selectedLocation) {
       updateUrlParams(
         weather.selectedLocation.latitude,

@@ -35,7 +35,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#2d3f18',
+        'background-color': '#354a12',
       },
     },
     // 2. Deep Navy Water & Oceans
@@ -45,7 +45,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       source: 'openmaptiles',
       'source-layer': 'water',
       paint: {
-        'fill-color': '#0d1e35',
+        'fill-color': '#243754',
       },
     },
     // 3. Natural Earth Topographic Shaded Relief
@@ -55,7 +55,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       source: 'ne2_shaded',
       maxzoom: 7,
       paint: {
-        'raster-opacity': 0.20,
+        'raster-opacity': 0.14,
         'raster-contrast': 0.15,
       },
     },
@@ -68,7 +68,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       maxzoom: 5,
       filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
       paint: {
-        'line-color': '#16240d',
+        'line-color': '#15220c',
         'line-width': 1.1,
         'line-opacity': 0.95,
       },
@@ -81,7 +81,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#16240d',
+        'line-color': '#15220c',
         'line-width': 1.4,
         'line-opacity': 0.95,
       },
