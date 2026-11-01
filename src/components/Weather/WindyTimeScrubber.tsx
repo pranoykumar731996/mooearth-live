@@ -96,6 +96,25 @@ export default function WindyTimeScrubber({
     return () => clearInterval(interval);
   }, []);
 
+  // Compute satellite observation pill text matching Windy parity: [Frame Local Time] · [Elapsed Latency]
+  const satellitePillText = React.useMemo(() => {
+    if (!satelliteObservationUtc) return liveTimeString || 'Live';
+    try {
+      const iso = satelliteObservationUtc.replace(' UTC', ':00Z').replace(' ', 'T');
+      const frameDate = new Date(iso);
+      if (isNaN(frameDate.getTime())) return liveTimeString || 'Live';
+
+      const timeStr = frameDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      const diffMs = Math.max(0, Date.now() - frameDate.getTime());
+      const diffMin = Math.max(0, Math.round(diffMs / 60000));
+
+      const latencyStr = diffMin < 60 ? `${diffMin}m ago` : `${Math.floor(diffMin / 60)}h ${diffMin % 60}m ago`;
+      return `${timeStr} · ${latencyStr}`;
+    } catch {
+      return liveTimeString || 'Live';
+    }
+  }, [satelliteObservationUtc, liveTimeString]);
+
   // Auto-play interval
   useEffect(() => {
     if (!isPlaying) return;
@@ -276,11 +295,23 @@ export default function WindyTimeScrubber({
                 <span className="hidden sm:inline text-emerald-400/60">+48h</span>
                 <span className="text-emerald-400/90 font-bold">+120h (5d)</span>
               </div>
-            ) : (
+            ) : activeLayer === 'satellite' ? (
               <div className="flex justify-between items-center text-[9px] font-mono text-white/50 px-1 mb-0.5">
                 <span>-24h</span>
                 <span>-12h</span>
                 <span>-6h</span>
+                {/* Live Pill Badge displaying actual satellite frame scan time + latency (Windy parity) */}
+                <div className="px-1.5 py-0.2 rounded-full bg-amber-400 text-black font-extrabold text-[9px] tracking-wide shadow-[0_0_8px_rgba(251,191,36,0.8)] flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>{satellitePillText}</span>
+                </div>
+                <span className="hidden sm:inline">Live</span>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center text-[9px] font-mono text-white/50 px-1 mb-0.5">
+                <span>Now</span>
+                <span>+6h</span>
+                <span>+12h</span>
                 {/* Live Pill Badge */}
                 <div className="px-1.5 py-0.2 rounded-full bg-amber-400 text-black font-extrabold text-[9px] tracking-wide shadow-[0_0_8px_rgba(251,191,36,0.8)] flex items-center gap-1 animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-600" />

@@ -619,6 +619,20 @@ export default function CityMapViewer({
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
   const [showLightning, setShowLightning] = useState(false);
 
+  // Dynamic Geostationary satellite observation date & physical scan latency
+  const satelliteObservation = useMemo(() => {
+    return getGeostationaryObservationDate(timelineHoursAhead < 0 ? Math.abs(timelineHoursAhead) : 0);
+  }, [timelineHoursAhead]);
+
+  const satelliteLatencyLabel = useMemo(() => {
+    const diffMs = Math.max(0, Date.now() - satelliteObservation.timestampMs);
+    const diffMin = Math.max(5, Math.round(diffMs / 60000));
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
+  }, [satelliteObservation.timestampMs]);
+
   useEffect(() => {
     setLightningFeed(getNowcastLightningFeed(disasters));
     const interval = setInterval(() => {
@@ -2472,7 +2486,7 @@ export default function CityMapViewer({
                 ) : (
                   <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                    <span>Live • 11m ago</span>
+                    <span>Live • {satelliteLatencyLabel}</span>
                   </div>
                 )}
 
@@ -2536,7 +2550,7 @@ export default function CityMapViewer({
 
             {/* Bottom Subtitle */}
             <div className="text-[9px] font-mono text-white/40 truncate">
-              {satelliteObservationUtc || 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain'}
+              {satelliteObservationUtc || satelliteObservation.utcStr || 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain'}
             </div>
           </div>
         </div>

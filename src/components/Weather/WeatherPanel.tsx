@@ -217,7 +217,7 @@ export default function WeatherPanel({
                         {liveTime?.tzFullLabel || forecast.timezone}
                       </div>
                       <div className="text-[10px] text-white/40">
-                        Obs: {new Date(forecast.current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Obs: {new Date(forecast.current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: forecast.timezone })}
                       </div>
                     </div>
                   </div>
@@ -251,7 +251,7 @@ export default function WeatherPanel({
                               }`}
                           >
                             <span className="text-[10px] text-white/40 font-mono">
-                              {isNow ? 'Now' : new Date(time).toLocaleTimeString([], { hour: '2-digit' })}
+                              {isNow ? 'Now' : new Date(time).toLocaleTimeString([], { hour: '2-digit', timeZone: forecast.timezone })}
                             </span>
                             <span className="text-sm">{wmo.emoji}</span>
                             <span className="text-xs font-bold text-white">

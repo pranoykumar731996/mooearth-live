@@ -126,29 +126,52 @@ export function getLocationTime(
   let tzFullLabel = '';
   let isValidTz = false;
 
-  if (timezone && timezone !== 'auto' && timezone.trim() !== '') {
+  let effectiveTimezone = timezone && timezone !== 'auto' && timezone.trim() !== '' ? timezone.trim() : undefined;
+
+  // Geographic Bounding Inference for Sovereign Timezones:
+  // When timezone is missing or 'auto' prior to API response, resolve exact sovereign timezone
+  // to avoid nautical longitude integer errors (e.g. India is IST UTC+5:30 nationwide, not UTC+6 or UTC+5).
+  if (!effectiveTimezone) {
+    if (lat >= 6.5 && lat <= 37.5 && lng >= 68.0 && lng <= 97.5) {
+      effectiveTimezone = 'Asia/Kolkata'; // Republic of India (IST, UTC+5:30 nationwide)
+    } else if (lat >= 5.8 && lat <= 9.9 && lng >= 79.5 && lng <= 82.0) {
+      effectiveTimezone = 'Asia/Colombo'; // Sri Lanka (SLST, UTC+5:30)
+    } else if (lat >= 26.3 && lat <= 30.5 && lng >= 80.0 && lng <= 88.2) {
+      effectiveTimezone = 'Asia/Kathmandu'; // Nepal (NPT, UTC+5:45)
+    } else if (lat >= 20.5 && lat <= 26.7 && lng >= 88.5 && lng <= 92.7) {
+      effectiveTimezone = 'Asia/Dhaka'; // Bangladesh (BST, UTC+6:00)
+    } else if (lat >= 9.5 && lat <= 28.5 && lng >= 92.5 && lng <= 101.2) {
+      effectiveTimezone = 'Asia/Yangon'; // Myanmar (MMT, UTC+6:30)
+    } else if (lat >= 25.0 && lat <= 39.8 && lng >= 44.0 && lng <= 63.3) {
+      effectiveTimezone = 'Asia/Tehran'; // Iran (IRST, UTC+3:30)
+    } else if (lat >= 29.3 && lat <= 38.5 && lng >= 60.5 && lng <= 75.0) {
+      effectiveTimezone = 'Asia/Kabul'; // Afghanistan (AFT, UTC+4:30)
+    }
+  }
+
+  if (effectiveTimezone) {
     try {
       const dtf12 = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
+        timeZone: effectiveTimezone,
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
       });
       const dtf24 = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
+        timeZone: effectiveTimezone,
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
       });
       const dtfSec12 = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
+        timeZone: effectiveTimezone,
         hour: 'numeric',
         minute: '2-digit',
         second: '2-digit',
         hour12: true,
       });
       const dtfSec24 = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
+        timeZone: effectiveTimezone,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -162,13 +185,13 @@ export function getLocationTime(
 
       // Determine timezone short name and exact offset
       const dtfParts = new Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
+        timeZone: effectiveTimezone,
         timeZoneName: 'short',
       }).formatToParts(date);
       const tzPart = dtfParts.find((p) => p.type === 'timeZoneName')?.value || '';
 
       const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-      const tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+      const tzDate = new Date(date.toLocaleString('en-US', { timeZone: effectiveTimezone }));
       const offsetMin = Math.round((tzDate.getTime() - utcDate.getTime()) / 60000);
       const sign = offsetMin >= 0 ? '+' : '-';
       const absMin = Math.abs(offsetMin);
@@ -176,7 +199,7 @@ export function getLocationTime(
       const m = absMin % 60;
       tzOffset = `UTC${sign}${h}${m > 0 ? `:${m.toString().padStart(2, '0')}` : ''}`;
 
-      const alias = COMMON_TIMEZONE_ALIASES[timezone];
+      const alias = COMMON_TIMEZONE_ALIASES[effectiveTimezone];
       if (alias) {
         tzCode = alias;
         tzFullLabel = `${alias} (${tzOffset})`;
