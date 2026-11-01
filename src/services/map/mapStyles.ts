@@ -70,6 +70,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
+            maxzoom: 18,
             attribution:
               'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
           },
@@ -79,6 +80,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
+            maxzoom: 18,
           },
         },
         layers: [
@@ -130,6 +132,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
+            maxzoom: 18,
             attribution:
               'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, TomTom, USGS, Intermap, iPC, NRCAN, METI, OpenStreetMap contributors',
           },
@@ -160,6 +163,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
+            maxzoom: 18,
             attribution:
               'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, NAVTEQ, OpenStreetMap contributors',
           },
