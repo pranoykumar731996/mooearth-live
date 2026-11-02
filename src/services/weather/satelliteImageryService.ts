@@ -263,7 +263,7 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
   // Dynamic satellite processing latency: start with minimal 20m offset
   // NASA GIBS geostationary tiles are typically available within 15-25 minutes of scan.
   // The tile protocol's fetch handler naturally falls back to the previous frame if a tile 404s.
-  const SATELLITE_PROCESSING_LATENCY_MS = 20 * 60 * 1000;
+  const SATELLITE_PROCESSING_LATENCY_MS = 40 * 60 * 1000;
   const targetTime = Date.now() - SATELLITE_PROCESSING_LATENCY_MS - Math.max(0, offsetHours) * 3600 * 1000;
   const targetDate = new Date(targetTime);
 

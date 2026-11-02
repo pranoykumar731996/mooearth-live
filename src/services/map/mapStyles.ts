@@ -96,7 +96,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
             id: 'esri-background-base',
             type: 'background',
             paint: {
-              'background-color': '#3d5218',
+              'background-color': '#060818',
             },
           },
           {
@@ -105,11 +105,6 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
             source: 'esri-satellite-imagery',
             minzoom: 0,
             maxzoom: 19,
-            paint: {
-              // At macro zooms (<= 8.5), Esri photo is kept at 0 opacity to preserve Windy olive/navy aesthetic
-              // It smoothly dissolves in between zooms 9.0 and 11.5, reaching 100% at zoom >= 12.0 for 4K HD monuments
-              'raster-opacity': ['interpolate', ['linear'], ['zoom'], 8.5, 0.0, 11.5, 1.0],
-            },
           },
           {
             id: 'esri-satellite-labels-layer',

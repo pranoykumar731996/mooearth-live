@@ -161,32 +161,24 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         // 3. Dense frontal clouds & cumulonimbus: lum 140-195 -> high-contrast sigmoid (alpha 0.35 to 0.88)
         // 4. Extreme convective storm tops (< 225K): lum > 195 -> dense luminous core (alpha 0.92-0.97) with cyan
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 112) {
+        if (lum <= 120) {
           d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
         } else {
-          // Smooth atmospheric sigmoid transfer function (replaces hard threshold)
           let cloudAlpha: number, cloudR: number, cloudG: number, cloudB: number;
-          if (lum <= 140) {
-            // Zone 1: Whispy cirrus feathering (cubic ease-in for natural emergence)
-            const t = (lum - 112) / 28.0;
-            cloudAlpha = Math.round((12 + 66 * t * t * t) * spatWeight);
-            // Soft luminous white with very slight blue tint
+          if (lum <= 145) {
+            const t = (lum - 120) / 25.0;
+            cloudAlpha = Math.round((14 + 68 * t * t * t) * spatWeight);
             cloudR = 250; cloudG = 251; cloudB = 255;
           } else if (lum <= 195) {
-            // Zone 2: Dense frontal clouds (sigmoid S-curve for volumetric depth)
-            const t = (lum - 140) / 55.0;
-            // Sigmoid: f(t) = t^2 * (3 - 2t) for smooth S-curve
+            const t = (lum - 145) / 50.0;
             const s = t * t * (3.0 - 2.0 * t);
-            cloudAlpha = Math.round((78 + 147 * s) * spatWeight);
-            // Pure brilliant white cloud bodies
+            cloudAlpha = Math.round((82 + 143 * s) * spatWeight);
             cloudR = 252; cloudG = 252; cloudB = 255;
           } else {
-            // Zone 3: Extreme convective storm tops (luminous dense core)
             const t = Math.min(1.0, (lum - 195) / 45.0);
             cloudAlpha = Math.round((225 + 23 * t) * spatWeight);
-            // Storm cores: luminous cyan-white glow (Windy parity)
             const cyanBlend = t * t;
-            cloudR = Math.round(252 - cyanBlend * 40);
+            cloudR = Math.round(252 - cyanBlend * 38);
             cloudG = Math.round(252 - cyanBlend * 14);
             cloudB = 255;
           }
@@ -331,8 +323,29 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
     addProtocol('gibs-alpha', async (params, abortController) => {
 
-      const realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
-      const res = await fetch(realUrl, { signal: abortController.signal });
+      let realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
+      let res = await fetch(realUrl, { signal: abortController.signal });
+      if (!res.ok && res.status === 404) {
+        const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
+        if (isoMatch) {
+          const curIso = isoMatch[1];
+          const prev10 = new Date(new Date(curIso).getTime() - 10 * 60000);
+          const yyyy = prev10.getUTCFullYear();
+          const mm = String(prev10.getUTCMonth() + 1).padStart(2, '0');
+          const dd = String(prev10.getUTCDate()).padStart(2, '0');
+          const hh = String(prev10.getUTCHours()).padStart(2, '0');
+          const min = String(prev10.getUTCMinutes()).padStart(2, '0');
+          const fbIso = yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + min + ':00Z';
+          const fbUrl = realUrl.replace(curIso, fbIso);
+          try {
+            const fbRes = await fetch(fbUrl, { signal: abortController.signal });
+            if (fbRes.ok) {
+              res = fbRes;
+              realUrl = fbUrl;
+            }
+          } catch {}
+        }
+      }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const blob = await res.blob();
 
