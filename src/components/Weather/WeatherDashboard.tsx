@@ -1350,34 +1350,11 @@ export default function WeatherDashboard() {
             </div>
           )}
 
-          {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar (Active across BOTH 3D Earth and 2D Flat Map modes) */}
-          {displayedDisasters.length > 0 && (
-            <div className="absolute top-16 sm:top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex flex-col items-center">
-              {!isHazardBarExpanded ? (
-                <button
-                  type="button"
-                  data-testid="toggle-hazards-bar-btn"
-                  onClick={() => setIsHazardBarExpanded(true)}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#060818]/90 hover:bg-[#060818] backdrop-blur-md border border-white/15 text-white/90 text-xs font-semibold shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer group"
-                  title="Click to view active planetary hazards and dossiers"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span className="animate-pulse text-xs">🚨</span>
-                    <span className="text-[11px] font-medium tracking-wide">Hazards</span>
-                    <span className="px-1.5 py-0.2 rounded-full bg-rose-500/25 border border-rose-500/40 text-[10px] font-mono text-rose-300 font-bold">
-                      {allDisasters.length}
-                    </span>
-                    <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[8px] font-mono text-emerald-300 font-bold tracking-tight">
-                      24H LIVE
-                    </span>
-                  </span>
-                  <span className="text-[10px] text-cyan-300/80 group-hover:text-cyan-300 font-mono hidden sm:inline">
-                    • Click to view
-                  </span>
-                  <span className="text-[10px] text-white/50 group-hover:text-white/80 transition-colors">▼</span>
-                </button>
-              ) : (
-                <div className="w-[calc(100vw-24px)] sm:w-auto max-w-2xl flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200">
+          {/* Universal Multi-Hazard Natural Disaster Quick-Tracker Bar (Active across BOTH 3D Earth and 2D Flat Map modes)
+              Only rendered when expanded via the dedicated Hazards toggle in the side drawer controls */}
+          {displayedDisasters.length > 0 && isHazardBarExpanded && (
+            <div className="absolute top-20 sm:top-14 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex flex-col items-center">
+              <div className="w-[calc(100vw-24px)] sm:w-auto max-w-2xl flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200">
                   {/* Header with Category Filter Chips and Collapse Button */}
                   <div className="flex items-center justify-between gap-1 px-1 pt-0.5">
                     <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
@@ -1522,9 +1499,8 @@ export default function WeatherDashboard() {
                     })}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
           {/* Floating Map Controls & 3D/2D Toggle (Floating, active across BOTH 3D Earth and 2D Satellite views) */}
           <WindyMapControls

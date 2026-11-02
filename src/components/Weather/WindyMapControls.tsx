@@ -154,6 +154,7 @@ export default function WindyMapControls({
             <div className="h-[1px] bg-white/10 mx-1" />
             <button
               type="button"
+              data-testid="toggle-hazards-bar-btn"
               onClick={onToggleHazards}
               className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs transition-all cursor-pointer active:scale-95 relative
                 ${
