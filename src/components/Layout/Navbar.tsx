@@ -217,28 +217,19 @@ export default function Navbar({
 
       {/* Logo & Status Badge */}
       <div className="flex items-center gap-4 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="hidden sm:flex w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600
-                          items-center justify-center text-base shadow-lg shadow-cyan-500/20">
-            🌍
+        <Link href="/" className="flex items-center gap-2.5 group cursor-pointer" title="MooEarth Live">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-400/20 to-blue-600/30 border border-cyan-400/40 p-1 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:border-cyan-300 group-hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] transition-all shrink-0">
+            <img src="/logo-icon.png" alt="MooEarth Logo" className="w-full h-full object-contain group-hover:scale-105 transition-transform" />
           </div>
-          {/* Mobile Logo Text matching user screenshot */}
-          <div className="block sm:hidden">
-            <div className="text-sm font-black tracking-tight text-white leading-none">
-              <span className="text-cyan-400 font-black">public</span> MooEarth
-            </div>
-          </div>
-          {/* Desktop Logo Text */}
-          <div className="hidden sm:block">
-            <div className="text-base font-bold text-white leading-tight">
+          <div className="flex items-baseline gap-0.5">
+            <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
               MooEarth
-              <span className="text-cyan-400"> Live</span>
-            </div>
-            <p className="text-[10px] text-white/30 leading-none -mt-0.5 tracking-wider">
-              {BRANDING.tagline}
-            </p>
+            </span>
+            <span className="text-[10px] sm:text-xs font-bold text-cyan-400 font-mono">
+              .live
+            </span>
           </div>
-        </div>
+        </Link>
 
         {/* Live Data Production Badge & Freshness */}
         {isDeveloper && (

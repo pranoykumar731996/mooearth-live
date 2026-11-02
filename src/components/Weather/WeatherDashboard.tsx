@@ -989,12 +989,27 @@ export default function WeatherDashboard() {
       {/* ── Top Header Bar ────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none">
         <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5 sm:gap-2 shrink-0 group">
-            <span className="text-xl">🌍</span>
-            <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors hidden md:inline">
-              MooEarth
-            </span>
+          {/* MooEarth Brand Logo (Always visible like Windy) */}
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 sm:gap-2 shrink-0 group pointer-events-auto"
+            title="MooEarth Live — World Weather & Atmospheric Intelligence"
+          >
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 p-1 shadow-[0_0_12px_rgba(6,182,212,0.35)] group-hover:border-cyan-300 group-hover:shadow-[0_0_18px_rgba(6,182,212,0.55)] transition-all flex items-center justify-center shrink-0">
+              <img
+                src="/logo-icon.png"
+                alt="MooEarth Logo"
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+              />
+            </div>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
+                MooEarth
+              </span>
+              <span className="text-[10px] sm:text-xs font-bold text-cyan-400 font-mono">
+                .live
+              </span>
+            </div>
           </Link>
 
           {/* Search Bar */}

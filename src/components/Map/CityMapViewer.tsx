@@ -2655,7 +2655,7 @@ export default function CityMapViewer({
             className="group px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-[11px] sm:text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 sm:gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit shrink-0"
             title="Return to interactive 3D Earth globe"
           >
-            <span className="text-sm sm:text-base group-hover:rotate-12 transition-transform">🌍</span>
+            <img src="/logo-icon.png" alt="MooEarth" className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-contain shrink-0 group-hover:rotate-12 transition-transform" />
             <span className="truncate">{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
             <span className="text-[10px] text-cyan-400/60 font-normal hidden sm:inline">⟵ Orbit</span>
           </button>
@@ -2721,6 +2721,31 @@ export default function CityMapViewer({
               }}
             />
           )}
+        </div>
+
+        {/* Center: Windy-Style Prominent Brand Watermark Pill */}
+        <div className="hidden lg:flex pointer-events-auto shrink-0 items-center justify-center">
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#050512]/92 hover:bg-[#0a0f2c] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 shadow-[0_4px_25px_rgba(0,0,0,0.7)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] transition-all group"
+            title="MooEarth Live — Real-Time Planetary Weather & Satellite Intelligence"
+          >
+            <div className="w-5 h-5 rounded-full overflow-hidden bg-cyan-950/80 border border-cyan-400/60 p-0.5 shadow-[0_0_8px_rgba(6,182,212,0.5)] group-hover:scale-110 transition-transform shrink-0 flex items-center justify-center">
+              <img
+                src="/logo-icon.png"
+                alt="MooEarth"
+                className="w-full h-full object-contain rounded-full"
+              />
+            </div>
+            <div className="flex items-baseline gap-0.5">
+              <span className="font-black text-white text-xs tracking-tight group-hover:text-cyan-300 transition-colors">
+                MooEarth
+              </span>
+              <span className="text-[10px] font-bold text-cyan-400 font-mono">
+                .live
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
