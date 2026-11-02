@@ -134,33 +134,50 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
       if (isBlueMode) {
         // ==========================================
-        // BLUE / ENHANCED CLEAN INFRARED MODE (Windy Parity Default)
+        // BLUE / HD ATMOSPHERIC SIGMOID CLOUD MODE (Windy HD Parity)
         // ==========================================
-        // Warm Earth surface (land & ocean > 268K): lum <= 118 -> 100% transparent.
-        // Guarantees razor-sharp 4K/HD olive basemap (#354a12) and navy oceans (#243754) with ZERO milky fog!
+        // Atmospheric Sigmoid Transfer Curve for Band 13 (10.4µm Clean Infrared):
+        // 1. Warm clear ground & ocean (> 272K): lum <= 112 -> 100% transparent (alpha = 0)
+        // 2. Whispy cirrus & marine stratocumulus feathering zone: lum 112-140 -> smooth cubic ease-in (alpha 0.04 to 0.30)
+        // 3. Dense frontal clouds & cumulonimbus: lum 140-195 -> high-contrast sigmoid (alpha 0.35 to 0.88)
+        // 4. Extreme convective storm tops (< 225K): lum > 195 -> dense luminous core (alpha 0.92-0.97) with cyan
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 118) {
+        if (lum <= 112) {
           d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
         } else {
-          const norm = Math.min(1.0, (lum - 118) / (215 - 118));
-          const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
-          const finalAlpha = Math.round(cloudAlpha * spatWeight);
-          if (finalAlpha <= 2) {
+          // Smooth atmospheric sigmoid transfer function (replaces hard threshold)
+          var cloudAlpha, cloudR, cloudG, cloudB;
+          if (lum <= 140) {
+            // Zone 1: Whispy cirrus feathering (cubic ease-in for natural emergence)
+            var t = (lum - 112) / 28.0;
+            cloudAlpha = Math.round((12 + 66 * t * t * t) * spatWeight);
+            // Soft luminous white with very slight blue tint
+            cloudR = 250; cloudG = 251; cloudB = 255;
+          } else if (lum <= 195) {
+            // Zone 2: Dense frontal clouds (sigmoid S-curve for volumetric depth)
+            var t = (lum - 140) / 55.0;
+            // Sigmoid: f(t) = t^2 * (3 - 2t) for smooth S-curve
+            var s = t * t * (3.0 - 2.0 * t);
+            cloudAlpha = Math.round((78 + 147 * s) * spatWeight);
+            // Pure brilliant white cloud bodies
+            cloudR = 252; cloudG = 252; cloudB = 255;
+          } else {
+            // Zone 3: Extreme convective storm tops (luminous dense core)
+            var t = Math.min(1.0, (lum - 195) / 45.0);
+            cloudAlpha = Math.round((225 + 23 * t) * spatWeight);
+            // Storm cores: luminous cyan-white glow (Windy parity)
+            var cyanBlend = t * t;
+            cloudR = Math.round(252 - cyanBlend * 40);
+            cloudG = Math.round(252 - cyanBlend * 14);
+            cloudB = 255;
+          }
+          if (cloudAlpha <= 2) {
             d[i + 3] = 0;
           } else {
-            if (norm <= 0.65) {
-              // Standard tropospheric clouds: luminous moonlight white
-              d[i] = 252;
-              d[i + 1] = 252;
-              d[i + 2] = 255;
-            } else {
-              // Coldest convective storm cores (< 225K): soft cyan moisture glow (Windy parity)
-              const stormNorm = (norm - 0.65) / 0.35;
-              d[i] = Math.round(252 - stormNorm * 38);
-              d[i + 1] = Math.round(252 - stormNorm * 14);
-              d[i + 2] = 255;
-            }
-            d[i + 3] = finalAlpha;
+            d[i] = cloudR;
+            d[i + 1] = cloudG;
+            d[i + 2] = cloudB;
+            d[i + 3] = Math.min(248, cloudAlpha);
           }
         }
       } else if (isVisMode) {

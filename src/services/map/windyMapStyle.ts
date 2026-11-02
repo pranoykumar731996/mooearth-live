@@ -2,10 +2,10 @@
 // MooEarth Live — Atmospheric Satellite Basemap Style Specification
 // ============================================================
 // Professional meteorological cartographic aesthetic for 2D satellite view:
-// - Land: Rich olive green (#486028)
-// - Oceans & Water: Deep marine navy (#162d4e)
+// - Land: Rich olive green (#3d5218)
+// - Oceans & Water: Deep Royal Navy (#203657)
 // - Sovereign Borders: Crisp dark border lines (#16240d)
-// - Relief: Subtle Natural Earth shaded relief (ne2sr) at 28% opacity
+// - Relief: Prominent Natural Earth shaded relief (ne2sr) at 34% opacity for visible mountain ridges
 // - Reference Labels: High-contrast white glyphs with dark halo (#121e0b)
 // - Fully open-source: OpenFreeMap / OpenMapTiles / Natural Earth (ODbL / Public Domain)
 
@@ -34,7 +34,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#354a12',
+        'background-color': '#3d5218',
       },
     },
     // 2. Natural Earth Topographic Shaded Relief (beneath water to keep oceans pure navy)
@@ -44,18 +44,18 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       source: 'ne2_shaded',
       maxzoom: 7,
       paint: {
-        'raster-opacity': 0.16,
-        'raster-contrast': 0.20,
+        'raster-opacity': 0.34,
+        'raster-contrast': 0.38,
       },
     },
-    // 3. Deep Navy Water & Oceans (crisp sampled Windy #243754)
+    // 3. Deep Royal Navy Water & Oceans (Windy HD Parity #203657)
     {
       id: 'water',
       type: 'fill',
       source: 'openmaptiles',
       'source-layer': 'water',
       paint: {
-        'fill-color': '#243754',
+        'fill-color': '#203657',
       },
     },
     // 4. Country Sovereign Boundaries
@@ -67,7 +67,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       maxzoom: 5,
       filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
       paint: {
-        'line-color': '#15220c',
+        'line-color': '#182512',
         'line-width': 1.1,
         'line-opacity': 0.95,
       },
@@ -80,7 +80,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#15220c',
+        'line-color': '#182512',
         'line-width': 1.4,
         'line-opacity': 0.95,
       },
@@ -93,7 +93,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       'source-layer': 'waterway',
       minzoom: 6,
       paint: {
-        'line-color': '#162d4e',
+        'line-color': '#203657',
         'line-width': 1.0,
       },
     },

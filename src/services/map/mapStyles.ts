@@ -96,7 +96,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
             id: 'esri-background-base',
             type: 'background',
             paint: {
-              'background-color': '#354a12',
+              'background-color': '#3d5218',
             },
           },
           {

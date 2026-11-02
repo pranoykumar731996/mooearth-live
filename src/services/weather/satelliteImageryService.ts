@@ -260,8 +260,10 @@ export function getGeostationaryObservationDate(offsetHours: number = 0): {
   timestampMs: number;
   isLive: boolean;
 } {
-  // NASA GIBS sub-hourly geostationary processing latency is ~50 minutes from orbit scan to WMTS tile ingestion
-  const SATELLITE_PROCESSING_LATENCY_MS = 70 * 60 * 1000;
+  // Dynamic satellite processing latency: start with minimal 20m offset
+  // NASA GIBS geostationary tiles are typically available within 15-25 minutes of scan.
+  // The tile protocol's fetch handler naturally falls back to the previous frame if a tile 404s.
+  const SATELLITE_PROCESSING_LATENCY_MS = 20 * 60 * 1000;
   const targetTime = Date.now() - SATELLITE_PROCESSING_LATENCY_MS - Math.max(0, offsetHours) * 3600 * 1000;
   const targetDate = new Date(targetTime);
 
@@ -333,7 +335,7 @@ export function getSatelliteFrames(
   for (let i = frameCount - 1; i >= 0; i--) {
     const frameDate = new Date(now - i * stepMs);
     const offsetMin = i * 15;
-    const label = i === 0 ? 'Live • -11m' : `-${offsetMin}m`;
+    const label = i === 0 ? 'Live' : `-${offsetMin}m`;
 
     const yyyy = frameDate.getUTCFullYear();
     const mm = String(frameDate.getUTCMonth() + 1).padStart(2, '0');
