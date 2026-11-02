@@ -18,7 +18,7 @@ interface WindyLegendBarProps {
 
 export default function WindyLegendBar({
   activeLayer,
-  spectralMode = 'visible',
+  spectralMode = 'blue',
   units = 'celsius',
   className = '',
 }: WindyLegendBarProps) {
@@ -35,10 +35,10 @@ export default function WindyLegendBar({
       }
       if (spectralMode === 'blue') {
         return {
-          unit: '%',
-          title: 'Water Vapor / Moisture Saturation',
-          ticks: ['10', '30', '50', '70', '90'],
-          gradient: 'linear-gradient(to right, #082f49 0%, #0284c7 40%, #38bdf8 75%, #bae6fd 100%)',
+          unit: 'K',
+          title: 'Clean Infrared Cloud Moisture & Top Temperature',
+          ticks: ['250', '240', '230', '220', '210', '200'],
+          gradient: 'linear-gradient(to right, #1e3a5f 0%, #0284c7 35%, #38bdf8 65%, #bae6fd 85%, #ffffff 100%)',
         };
       }
       return {

@@ -42,9 +42,9 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
     if (isHimawari) {
-      if (angle >= 60.0 && angle <= 75.0) {
-        lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
-      } else if (angle > 75.0 && angle <= 165.0) {
+      if (angle >= 45.0 && angle <= 65.0) {
+        lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+      } else if (angle > 65.0 && angle <= 165.0) {
         lngWeight = 1.0;
       } else if (angle > 165.0 && angle <= 195.0) {
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -68,10 +68,10 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     } else if (isEumet) {
       if (angle >= 320.0 && angle <= 345.0) {
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-      } else if (angle > 345.0 || angle <= 60.0) {
+      } else if (angle > 345.0 || angle <= 45.0) {
         lngWeight = 1.0;
-      } else if (angle > 60.0 && angle <= 75.0) {
-        lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
+      } else if (angle > 45.0 && angle <= 65.0) {
+        lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
       }
     }
 
@@ -103,7 +103,9 @@ if (typeof self !== 'undefined' && self.addProtocol) {
       }
     }
 
-    const isVisMode = realUrl.includes('spectral=vis') || (!realUrl.includes('spectral=infra') && !realUrl.includes('spectral=blue'));
+    const isVisMode = realUrl.includes('spectral=vis');
+    const isInfraMode = realUrl.includes('spectral=infra');
+    const isBlueMode = realUrl.includes('spectral=blue') || (!isVisMode && !isInfraMode);
     const isInfraLayer = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR') || realUrl.includes('ir108');
     const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
     const isGeoColor = realUrl.includes('GeoColor');
@@ -130,25 +132,52 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         continue;
       }
 
-      if (isVisMode) {
+      if (isBlueMode) {
         // ==========================================
-        // VISIBLE / CLOUDS MODE (Windy & Zoom Earth Parity)
+        // BLUE / ENHANCED CLEAN INFRARED MODE (Windy Parity Default)
+        // ==========================================
+        // Warm Earth surface (land & ocean > 268K): lum <= 118 -> 100% transparent.
+        // Guarantees razor-sharp 4K/HD olive basemap (#354a12) and navy oceans (#243754) with ZERO milky fog!
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (lum <= 118) {
+          d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
+        } else {
+          const norm = Math.min(1.0, (lum - 118) / (215 - 118));
+          const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
+          const finalAlpha = Math.round(cloudAlpha * spatWeight);
+          if (finalAlpha <= 2) {
+            d[i + 3] = 0;
+          } else {
+            if (norm <= 0.65) {
+              // Standard tropospheric clouds: luminous moonlight white
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
+            } else {
+              // Coldest convective storm cores (< 225K): soft cyan moisture glow (Windy parity)
+              const stormNorm = (norm - 0.65) / 0.35;
+              d[i] = Math.round(252 - stormNorm * 38);
+              d[i + 1] = Math.round(252 - stormNorm * 14);
+              d[i + 2] = 255;
+            }
+            d[i + 3] = finalAlpha;
+          }
+        }
+      } else if (isVisMode) {
+        // ==========================================
+        // VISIBLE / OPTICAL REFLECTANCE MODE
         // ==========================================
         if (isInfraLayer) {
-          // Nighttime Clean Infrared → smooth moonlight white clouds (Windy parity)
-          // Band13 grayscale: low values = warm clear sky, high values = cold cloud tops
-          // Threshold 75 captures thin cirrus; range extends to 220 for dense cumulonimbus cores
-          var lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 75) {
-            d[i + 3] = 0; // Clear warm ocean / land surface: 100% transparent
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum <= 118) {
+            d[i + 3] = 0;
           } else {
-            var norm = Math.min(1.0, (lum - 72) / (220 - 72));
-            var cloudAlpha = Math.round(240 * Math.pow(norm, 0.55));
-            var finalAlpha = Math.round(cloudAlpha * spatWeight);
+            const norm = Math.min(1.0, (lum - 118) / (215 - 118));
+            const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
+            const finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
             } else {
-              // Pure luminous white — no color tint (matches Windy nighttime rendering)
               d[i] = 252;
               d[i + 1] = 252;
               d[i + 2] = 255;
@@ -156,17 +185,17 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             }
           }
         } else if (isHimawariVis) {
-          // Daytime Himawari Band 3 (Red optical reflectance)
-          if (r <= 20) {
-            d[i + 3] = 0; // Clear ocean / dark vegetation
+          // Daytime Himawari Band 3: key out dry ground & vegetation (r <= 85)
+          if (r <= 85) {
+            d[i + 3] = 0;
           } else {
-            const norm = Math.min(1.0, (r - 20) / (80 - 20));
-            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+            const norm = Math.min(1.0, (r - 85) / (190 - 85));
+            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.80));
             const finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
             } else {
-              const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+              const cloudTone = Math.min(255, Math.round(240 + norm * 15));
               d[i] = cloudTone;
               d[i + 1] = cloudTone;
               d[i + 2] = cloudTone;
@@ -174,57 +203,47 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             }
           }
         } else if (isGeoColor) {
-          // Daytime NOAA GOES GeoColor: true-color multispectral
+          // Daytime NOAA GOES GeoColor
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-
-          // Sand / Desert Discrimination (Sahara, Arabia, Mojave):
-          const isSand = (r > g && g > b && (r - b) >= 22 && (r - g) >= 8);
+          const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
           if (isSand) {
-            d[i + 3] = 0; // Sand is 100% transparent -> shows olive basemap
+            d[i + 3] = 0;
             continue;
           }
-
-          // City lights filter at night:
           const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
           if (isCityLights) {
             d[i + 3] = 0;
             continue;
           }
-
-          // Clear ocean glint & deep water:
-          if (lum <= 32 || (b > r + 10 && lum < 65)) {
+          if (lum <= 45 || (b > r + 10 && lum < 65)) {
             d[i + 3] = 0;
             continue;
           }
-
-          // Real clouds have neutral chromaticity:
-          const isCloudLike = Math.abs(r - g) <= 16 && Math.abs(g - b) <= 16;
-          if (!isCloudLike && lum < 140) {
+          const isCloudLike = Math.abs(r - g) <= 18 && Math.abs(g - b) <= 18;
+          if (!isCloudLike || lum < 90) {
             d[i + 3] = 0;
             continue;
           }
-
-          const norm = Math.min(1.0, (lum - 30) / (95 - 30));
-          const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+          const norm = Math.min(1.0, (lum - 90) / (200 - 90));
+          const cloudAlpha = Math.round(245 * Math.pow(norm, 0.75));
           const finalAlpha = Math.round(cloudAlpha * spatWeight);
           if (finalAlpha <= 2) {
             d[i + 3] = 0;
           } else {
-            const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+            const cloudTone = Math.min(255, Math.round(240 + norm * 15));
             d[i] = cloudTone;
             d[i + 1] = cloudTone;
             d[i + 2] = cloudTone;
             d[i + 3] = finalAlpha;
           }
         } else if (isEumet) {
-          // EUMETSAT Meteosat High Rate SEVIRI → moonlight white clouds
-          var eLum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (eLum <= 30) {
+          const eLum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (eLum <= 75) {
             d[i + 3] = 0;
           } else {
-            var eNorm = Math.min(1.0, (eLum - 28) / (180 - 28));
-            var eAlpha = Math.round(240 * Math.pow(eNorm, 0.55));
-            var eFinal = Math.round(eAlpha * spatWeight);
+            const eNorm = Math.min(1.0, (eLum - 75) / (190 - 75));
+            const eAlpha = Math.round(240 * Math.pow(eNorm, 0.65));
+            const eFinal = Math.round(eAlpha * spatWeight);
             if (eFinal <= 2) {
               d[i + 3] = 0;
             } else {
@@ -235,12 +254,11 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             }
           }
         } else {
-          // Fallback reflectance
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 25) {
+          if (lum <= 65) {
             d[i + 3] = 0;
           } else {
-            const norm = Math.min(1.0, (lum - 25) / (100 - 25));
+            const norm = Math.min(1.0, (lum - 65) / (160 - 65));
             d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
           }
         }
@@ -248,23 +266,28 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         // ==========================================
         // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
         // ==========================================
-        const isVoid = (r < 25 && g < 25 && b < 25) || (r < 38 && g < 38 && b < 38 && Math.abs(r - g) < 8 && Math.abs(g - b) < 8);
-        if (isVoid) {
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (lum <= 116) {
           d[i + 3] = 0;
           continue;
         }
-
-        const isGray = Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6;
-        if (isGray) {
-          if (r <= 114) {
-            d[i + 3] = 0;
-          } else if (r < 145) {
-            d[i + 3] = Math.round(((r - 114) / (145 - 114)) * 190 * spatWeight);
-          } else {
-            d[i + 3] = Math.round(230 * spatWeight);
-          }
+        const norm = Math.min(1.0, (lum - 116) / (235 - 116));
+        const finalAlpha = Math.round(245 * Math.pow(norm, 0.60) * spatWeight);
+        if (finalAlpha <= 2) {
+          d[i + 3] = 0;
         } else {
-          d[i + 3] = Math.round(255 * spatWeight);
+          if (norm < 0.25) {
+            d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
+          } else if (norm < 0.45) {
+            d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+          } else if (norm < 0.65) {
+            d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
+          } else if (norm < 0.82) {
+            d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
+          } else {
+            d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+          }
+          d[i + 3] = finalAlpha;
         }
       }
     }

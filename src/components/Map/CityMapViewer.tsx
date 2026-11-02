@@ -123,7 +123,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         for (let r = 0; r < height; r++) tileLats[r] = tileToLat(tileY + (r + 0.5) / height, tileZ);
       }
 
-      const isVisMode = realUrl.includes('spectral=vis') || (!realUrl.includes('spectral=infra') && !realUrl.includes('spectral=blue'));
+      const isVisMode = realUrl.includes('spectral=vis');
+      const isInfraMode = realUrl.includes('spectral=infra');
+      const isBlueMode = realUrl.includes('spectral=blue') || (!isVisMode && !isInfraMode);
       const isInfraLayer = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR') || realUrl.includes('ir108');
       const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
       const isGeoColor = realUrl.includes('GeoColor');
@@ -149,121 +151,164 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           continue;
         }
 
-        if (isVisMode) {
-          if (isInfraLayer) {
-            // Nighttime Clean Infrared → smooth moonlight white clouds (Windy parity)
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (lum <= 75) {
-              d[i + 3] = 0;
+        if (isBlueMode) {
+        // ==========================================
+        // BLUE / ENHANCED CLEAN INFRARED MODE (Windy Parity Default)
+        // ==========================================
+        // Warm Earth surface (land & ocean > 268K): lum <= 118 -> 100% transparent.
+        // Guarantees razor-sharp 4K/HD olive basemap (#354a12) and navy oceans (#243754) with ZERO milky fog!
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (lum <= 118) {
+          d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
+        } else {
+          const norm = Math.min(1.0, (lum - 118) / (215 - 118));
+          const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
+          const finalAlpha = Math.round(cloudAlpha * spatWeight);
+          if (finalAlpha <= 2) {
+            d[i + 3] = 0;
+          } else {
+            if (norm <= 0.65) {
+              // Standard tropospheric clouds: luminous moonlight white
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
             } else {
-              const norm = Math.min(1.0, (lum - 72) / (220 - 72));
-              const cloudAlpha = Math.round(240 * Math.pow(norm, 0.55));
-              const finalAlpha = Math.round(cloudAlpha * spatWeight);
-              if (finalAlpha <= 2) {
-                d[i + 3] = 0;
-              } else {
-                d[i] = 252;
-                d[i + 1] = 252;
-                d[i + 2] = 255;
-                d[i + 3] = finalAlpha;
-              }
+              // Coldest convective storm cores (< 225K): soft cyan moisture glow (Windy parity)
+              const stormNorm = (norm - 0.65) / 0.35;
+              d[i] = Math.round(252 - stormNorm * 38);
+              d[i + 1] = Math.round(252 - stormNorm * 14);
+              d[i + 2] = 255;
             }
-          } else if (isHimawariVis) {
-            if (r <= 20) {
-              d[i + 3] = 0;
-            } else {
-              const norm = Math.min(1.0, (r - 20) / (80 - 20));
-              const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
-              const finalAlpha = Math.round(cloudAlpha * spatWeight);
-              if (finalAlpha <= 2) {
-                d[i + 3] = 0;
-              } else {
-                const cloudTone = Math.min(255, Math.round(238 + norm * 17));
-                d[i] = cloudTone;
-                d[i + 1] = cloudTone;
-                d[i + 2] = cloudTone;
-                d[i + 3] = finalAlpha;
-              }
-            }
-          } else if (isGeoColor) {
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            const isSand = (r > g && g > b && (r - b) >= 22 && (r - g) >= 8);
-            if (isSand) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
-            if (isCityLights) {
-              d[i + 3] = 0;
-              continue;
-            }
-            if (lum <= 32 || (b > r + 10 && lum < 65)) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const isCloudLike = Math.abs(r - g) <= 16 && Math.abs(g - b) <= 16;
-            if (!isCloudLike && lum < 140) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const norm = Math.min(1.0, (lum - 30) / (95 - 30));
-            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.65));
+            d[i + 3] = finalAlpha;
+          }
+        }
+      } else if (isVisMode) {
+        // ==========================================
+        // VISIBLE / OPTICAL REFLECTANCE MODE
+        // ==========================================
+        if (isInfraLayer) {
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum <= 118) {
+            d[i + 3] = 0;
+          } else {
+            const norm = Math.min(1.0, (lum - 118) / (215 - 118));
+            const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
             const finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
             } else {
-              const cloudTone = Math.min(255, Math.round(238 + norm * 17));
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
+              d[i + 3] = finalAlpha;
+            }
+          }
+        } else if (isHimawariVis) {
+          // Daytime Himawari Band 3: key out dry ground & vegetation (r <= 85)
+          if (r <= 85) {
+            d[i + 3] = 0;
+          } else {
+            const norm = Math.min(1.0, (r - 85) / (190 - 85));
+            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.80));
+            const finalAlpha = Math.round(cloudAlpha * spatWeight);
+            if (finalAlpha <= 2) {
+              d[i + 3] = 0;
+            } else {
+              const cloudTone = Math.min(255, Math.round(240 + norm * 15));
               d[i] = cloudTone;
               d[i + 1] = cloudTone;
               d[i + 2] = cloudTone;
               d[i + 3] = finalAlpha;
             }
-          } else if (isEumet) {
-            // EUMETSAT Meteosat → moonlight white clouds
-            const eLum = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (eLum <= 30) {
-              d[i + 3] = 0;
-            } else {
-              const eNorm = Math.min(1.0, (eLum - 28) / (180 - 28));
-              const eAlpha = Math.round(240 * Math.pow(eNorm, 0.55));
-              const eFinal = Math.round(eAlpha * spatWeight);
-              if (eFinal <= 2) {
-                d[i + 3] = 0;
-              } else {
-                d[i] = 252;
-                d[i + 1] = 252;
-                d[i + 2] = 255;
-                d[i + 3] = eFinal;
-              }
-            }
-          } else {
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (lum <= 25) {
-              d[i + 3] = 0;
-            } else {
-              const norm = Math.min(1.0, (lum - 25) / (100 - 25));
-              d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
-            }
           }
-        } else {
-          const isVoid = (r < 25 && g < 25 && b < 25) || (r < 38 && g < 38 && b < 38 && Math.abs(r - g) < 8 && Math.abs(g - b) < 8);
-          if (isVoid) {
+        } else if (isGeoColor) {
+          // Daytime NOAA GOES GeoColor
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
+          if (isSand) {
             d[i + 3] = 0;
             continue;
           }
-          const isGray = Math.abs(r - g) <= 6 && Math.abs(g - b) <= 6;
-          if (isGray) {
-            if (r <= 114) {
-              d[i + 3] = 0;
-            } else if (r < 145) {
-              d[i + 3] = Math.round(((r - 114) / (145 - 114)) * 190 * spatWeight);
-            } else {
-              d[i + 3] = Math.round(230 * spatWeight);
-            }
+          const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
+          if (isCityLights) {
+            d[i + 3] = 0;
+            continue;
+          }
+          if (lum <= 45 || (b > r + 10 && lum < 65)) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const isCloudLike = Math.abs(r - g) <= 18 && Math.abs(g - b) <= 18;
+          if (!isCloudLike || lum < 90) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const norm = Math.min(1.0, (lum - 90) / (200 - 90));
+          const cloudAlpha = Math.round(245 * Math.pow(norm, 0.75));
+          const finalAlpha = Math.round(cloudAlpha * spatWeight);
+          if (finalAlpha <= 2) {
+            d[i + 3] = 0;
           } else {
-            d[i + 3] = Math.round(255 * spatWeight);
+            const cloudTone = Math.min(255, Math.round(240 + norm * 15));
+            d[i] = cloudTone;
+            d[i + 1] = cloudTone;
+            d[i + 2] = cloudTone;
+            d[i + 3] = finalAlpha;
+          }
+        } else if (isEumet) {
+          const eLum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (eLum <= 75) {
+            d[i + 3] = 0;
+          } else {
+            const eNorm = Math.min(1.0, (eLum - 75) / (190 - 75));
+            const eAlpha = Math.round(240 * Math.pow(eNorm, 0.65));
+            const eFinal = Math.round(eAlpha * spatWeight);
+            if (eFinal <= 2) {
+              d[i + 3] = 0;
+            } else {
+              d[i] = 252;
+              d[i + 1] = 252;
+              d[i + 2] = 255;
+              d[i + 3] = eFinal;
+            }
+          }
+        } else {
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum <= 65) {
+            d[i + 3] = 0;
+          } else {
+            const norm = Math.min(1.0, (lum - 65) / (160 - 65));
+            d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
           }
         }
+      } else {
+        // ==========================================
+        // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
+        // ==========================================
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (lum <= 116) {
+          d[i + 3] = 0;
+          continue;
+        }
+        const norm = Math.min(1.0, (lum - 116) / (235 - 116));
+        const finalAlpha = Math.round(245 * Math.pow(norm, 0.60) * spatWeight);
+        if (finalAlpha <= 2) {
+          d[i + 3] = 0;
+        } else {
+          if (norm < 0.25) {
+            d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
+          } else if (norm < 0.45) {
+            d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+          } else if (norm < 0.65) {
+            d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
+          } else if (norm < 0.82) {
+            d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
+          } else {
+            d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+          }
+          d[i + 3] = finalAlpha;
+        }
+      }
       }
     }
 
@@ -2132,7 +2177,7 @@ export default function CityMapViewer({
                 layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [55.0, -68.0, 180.0, 68.0],
+                bounds: [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
@@ -2159,7 +2204,7 @@ export default function CityMapViewer({
                 layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-45.0, -68.0, 80.0, 68.0],
+                bounds: [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2170,7 +2215,7 @@ export default function CityMapViewer({
                 layerName: 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [55.0, -68.0, 180.0, 68.0],
+                bounds: [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2197,7 +2242,7 @@ export default function CityMapViewer({
                 layerName: 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: [-45.0, -68.0, 80.0, 68.0],
+                bounds: [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
