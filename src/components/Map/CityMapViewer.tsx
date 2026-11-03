@@ -161,22 +161,23 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         // 3. Dense frontal clouds & cumulonimbus: lum 140-195 -> high-contrast sigmoid (alpha 0.35 to 0.88)
         // 4. Extreme convective storm tops (< 225K): lum > 195 -> dense luminous core (alpha 0.92-0.97) with cyan
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 120) {
+        if (lum <= 122) {
           d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
         } else {
           let cloudAlpha: number, cloudR: number, cloudG: number, cloudB: number;
           if (lum <= 145) {
-            const t = (lum - 120) / 25.0;
-            cloudAlpha = Math.round((14 + 68 * t * t * t) * spatWeight);
+            const t = (lum - 122) / 23.0;
+            const s = t * t * (3.0 - 2.0 * t);
+            cloudAlpha = Math.round(72 * s * t * spatWeight);
             cloudR = 250; cloudG = 251; cloudB = 255;
           } else if (lum <= 195) {
             const t = (lum - 145) / 50.0;
             const s = t * t * (3.0 - 2.0 * t);
-            cloudAlpha = Math.round((82 + 143 * s) * spatWeight);
+            cloudAlpha = Math.round((72 + 155 * s) * spatWeight);
             cloudR = 252; cloudG = 252; cloudB = 255;
           } else {
             const t = Math.min(1.0, (lum - 195) / 45.0);
-            cloudAlpha = Math.round((225 + 23 * t) * spatWeight);
+            cloudAlpha = Math.round((227 + 21 * t) * spatWeight);
             const cyanBlend = t * t;
             cloudR = Math.round(252 - cyanBlend * 38);
             cloudG = Math.round(252 - cyanBlend * 14);
@@ -197,11 +198,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         // ==========================================
         if (isInfraLayer) {
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 118) {
+          if (lum <= 120) {
             d[i + 3] = 0;
           } else {
-            const norm = Math.min(1.0, (lum - 118) / (215 - 118));
-            const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
+            const t = Math.min(1.0, (lum - 120) / (215 - 120));
+            const s = t * t * (3.0 - 2.0 * t);
+            const cloudAlpha = Math.round(242 * s * Math.sqrt(t));
             const finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
@@ -319,6 +321,46 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         }
       }
       }
+
+      // Sub-Pixel Spatial Anti-Aliasing (Windy Parity):
+      // Softens tile alpha transitions and eliminates single-pixel sensor noise spikes over ocean
+      applyMainThreadSpatialSmoothing(d, width, height);
+    }
+
+    function applyMainThreadSpatialSmoothing(d: Uint8ClampedArray, width: number, height: number) {
+      const numPixels = width * height;
+      const alphaCopy = new Uint8Array(numPixels);
+      for (let p = 0; p < numPixels; p++) {
+        alphaCopy[p] = d[(p << 2) + 3];
+      }
+      for (let y = 1; y < height - 1; y++) {
+        const rowOffset = y * width;
+        for (let x = 1; x < width - 1; x++) {
+          const idx = rowOffset + x;
+          const center = alphaCopy[idx];
+          const top = idx - width;
+          const bottom = idx + width;
+          const nSum = alphaCopy[top] + alphaCopy[bottom] + alphaCopy[idx - 1] + alphaCopy[idx + 1];
+
+          // Clear isolated thermal noise pixel spikes
+          if (center < 36 && nSum < 28) {
+            d[(idx << 2) + 3] = 0;
+            continue;
+          }
+          if (center === 0 && nSum < 32) {
+            continue;
+          }
+
+          // 3x3 Gaussian-weighted smoothing kernel
+          const smoothed = (
+            alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
+            (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
+            alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
+          ) >> 4;
+
+          d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+        }
+      }
     }
 
     addProtocol('gibs-alpha', async (params, abortController) => {
@@ -362,6 +404,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         const ctx = canvas.getContext('2d');
         if (!ctx) return { data: bitmap };
 
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
@@ -411,6 +455,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         const ctx = canvas.getContext('2d');
         if (!ctx) return { data: bitmap };
 
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processMainThreadTile(imgData.data, canvas.width, canvas.height, params.url);
@@ -2331,7 +2377,8 @@ export default function CityMapViewer({
                     paint: {
                       'raster-opacity': geostationaryOpacityExpression,
                       'raster-contrast': rasterContrast,
-                      'raster-fade-duration': 250,
+                      'raster-resampling': 'linear',
+                      'raster-fade-duration': 200,
                     },
                   },
                   beforeLayerId
@@ -2339,6 +2386,7 @@ export default function CityMapViewer({
               } else if (map.getLayer(lId)) {
                 map.setPaintProperty(lId, 'raster-opacity', geostationaryOpacityExpression);
                 map.setPaintProperty(lId, 'raster-contrast', rasterContrast);
+                map.setPaintProperty(lId, 'raster-resampling', 'linear');
               }
             } else {
               map.addSource(sId, {
@@ -2357,7 +2405,8 @@ export default function CityMapViewer({
                   paint: {
                     'raster-opacity': geostationaryOpacityExpression,
                     'raster-contrast': rasterContrast,
-                    'raster-fade-duration': 300,
+                    'raster-resampling': 'linear',
+                    'raster-fade-duration': 250,
                   },
                 },
                 beforeLayerId

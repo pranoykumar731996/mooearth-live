@@ -142,22 +142,23 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         // 3. Dense frontal clouds & cumulonimbus: lum 140-195 -> high-contrast sigmoid (alpha 0.35 to 0.88)
         // 4. Extreme convective storm tops (< 225K): lum > 195 -> dense luminous core (alpha 0.92-0.97) with cyan
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 120) {
+        if (lum <= 122) {
           d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
         } else {
           var cloudAlpha, cloudR, cloudG, cloudB;
           if (lum <= 145) {
-            var t = (lum - 120) / 25.0;
-            cloudAlpha = Math.round((14 + 68 * t * t * t) * spatWeight);
+            var t = (lum - 122) / 23.0;
+            var s = t * t * (3.0 - 2.0 * t);
+            cloudAlpha = Math.round(72 * s * t * spatWeight);
             cloudR = 250; cloudG = 251; cloudB = 255;
           } else if (lum <= 195) {
             var t = (lum - 145) / 50.0;
             var s = t * t * (3.0 - 2.0 * t);
-            cloudAlpha = Math.round((82 + 143 * s) * spatWeight);
+            cloudAlpha = Math.round((72 + 155 * s) * spatWeight);
             cloudR = 252; cloudG = 252; cloudB = 255;
           } else {
             var t = Math.min(1.0, (lum - 195) / 45.0);
-            cloudAlpha = Math.round((225 + 23 * t) * spatWeight);
+            cloudAlpha = Math.round((227 + 21 * t) * spatWeight);
             var cyanBlend = t * t;
             cloudR = Math.round(252 - cyanBlend * 38);
             cloudG = Math.round(252 - cyanBlend * 14);
@@ -178,11 +179,12 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         // ==========================================
         if (isInfraLayer) {
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 118) {
+          if (lum <= 120) {
             d[i + 3] = 0;
           } else {
-            const norm = Math.min(1.0, (lum - 118) / (215 - 118));
-            const cloudAlpha = Math.round(242 * Math.pow(norm, 0.65));
+            const t = Math.min(1.0, (lum - 120) / (215 - 120));
+            const s = t * t * (3.0 - 2.0 * t);
+            const cloudAlpha = Math.round(242 * s * Math.sqrt(t));
             const finalAlpha = Math.round(cloudAlpha * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
@@ -300,6 +302,46 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         }
       }
     }
+
+    // 4. Sub-Pixel Spatial Anti-Aliasing (Windy Parity):
+    // Eliminates isolated 1-2px sensor noise speckles over ocean and smooths blocky cloud edges into silky organic gradients
+    applySpatialAntiAliasing(d, width, height);
+  }
+
+  function applySpatialAntiAliasing(d, width, height) {
+    const numPixels = width * height;
+    const alphaCopy = new Uint8Array(numPixels);
+    for (let p = 0; p < numPixels; p++) {
+      alphaCopy[p] = d[(p << 2) + 3];
+    }
+    for (let y = 1; y < height - 1; y++) {
+      const rowOffset = y * width;
+      for (let x = 1; x < width - 1; x++) {
+        const idx = rowOffset + x;
+        const center = alphaCopy[idx];
+        const top = idx - width;
+        const bottom = idx + width;
+        const nSum = alphaCopy[top] + alphaCopy[bottom] + alphaCopy[idx - 1] + alphaCopy[idx + 1];
+
+        // Isolated sensor noise elimination: clear isolated thermal pixel spikes
+        if (center < 36 && nSum < 28) {
+          d[(idx << 2) + 3] = 0;
+          continue;
+        }
+        if (center === 0 && nSum < 32) {
+          continue;
+        }
+
+        // 3x3 Gaussian-weighted smoothing kernel: [1 2 1; 2 4 2; 1 2 1] / 16
+        const smoothed = (
+          alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
+          (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
+          alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
+        ) >> 4;
+
+        d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+      }
+    }
   }
 
   // Protocol 1: NASA GIBS Geostationary Satellites (GOES & Himawari)
@@ -338,6 +380,10 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return { data: bitmap };
 
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processTilePixels(imgData.data, canvas.width, canvas.height, realUrl);
@@ -384,6 +430,8 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return { data: bitmap };
 
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processTilePixels(imgData.data, canvas.width, canvas.height, params.url);
