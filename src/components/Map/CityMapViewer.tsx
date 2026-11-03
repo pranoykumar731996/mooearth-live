@@ -107,6 +107,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
     function processMainThreadTile(d: Uint8ClampedArray, width: number, height: number, realUrl: string) {
       const len = d.length;
+      const totalPixels = width * height;
+
       const coordMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
       let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
       if (coordMatch) {
@@ -131,195 +133,237 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const isGeoColor = realUrl.includes('GeoColor');
       const isEumet = realUrl.includes('msg_') || realUrl.includes('eumet');
 
-      for (let i = 0; i < len; i += 4) {
-        const r = d[i];
-        const g = d[i + 1];
-        const b = d[i + 2];
-
-        const pixelIdx = i >> 2;
-        const pxCol = pixelIdx % width;
-        const pxRow = Math.floor(pixelIdx / width);
-        const spatWeight = hasCoords ? getSectorSpatialWeight(realUrl, tileLngs[pxCol], tileLats[pxRow]) : 1.0;
-
-        if (spatWeight <= 0.001) {
-          d[i + 3] = 0;
-          continue;
-        }
-
+      // Pass 1: Fast Per-Pixel Luminance Extraction
+      const lum = new Float32Array(totalPixels);
+      for (let p = 0, idx = 0; idx < len; idx += 4, p++) {
+        const r = d[idx], g = d[idx + 1], b = d[idx + 2];
         if (r < 28 && g < 28 && b < 28) {
-          d[i + 3] = 0;
-          continue;
-        }
-
-        if (isBlueMode) {
-        // ==========================================
-        // BLUE / HD ATMOSPHERIC SIGMOID CLOUD MODE (Windy HD Parity)
-        // ==========================================
-        // Atmospheric Sigmoid Transfer Curve for Band 13 (10.4µm Clean Infrared):
-        // 1. Warm clear ground & ocean (> 272K): lum <= 112 -> 100% transparent (alpha = 0)
-        // 2. Whispy cirrus & marine stratocumulus feathering zone: lum 112-140 -> smooth cubic ease-in (alpha 0.04 to 0.30)
-        // 3. Dense frontal clouds & cumulonimbus: lum 140-195 -> high-contrast sigmoid (alpha 0.35 to 0.88)
-        // 4. Extreme convective storm tops (< 225K): lum > 195 -> dense luminous core (alpha 0.92-0.97) with cyan
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 122) {
-          d[i + 3] = 0; // Warm clear ground & ocean -> 100% transparent
+          lum[p] = 0;
         } else {
-          let cloudAlpha: number, cloudR: number, cloudG: number, cloudB: number;
-          if (lum <= 145) {
-            const t = (lum - 122) / 23.0;
-            const s = t * t * (3.0 - 2.0 * t);
-            cloudAlpha = Math.round(72 * s * t * spatWeight);
-            cloudR = 250; cloudG = 251; cloudB = 255;
-          } else if (lum <= 195) {
-            const t = (lum - 145) / 50.0;
-            const s = t * t * (3.0 - 2.0 * t);
-            cloudAlpha = Math.round((72 + 155 * s) * spatWeight);
-            cloudR = 252; cloudG = 252; cloudB = 255;
-          } else {
-            const t = Math.min(1.0, (lum - 195) / 45.0);
-            cloudAlpha = Math.round((227 + 21 * t) * spatWeight);
-            const cyanBlend = t * t;
-            cloudR = Math.round(252 - cyanBlend * 38);
-            cloudG = Math.round(252 - cyanBlend * 14);
-            cloudB = 255;
-          }
-          if (cloudAlpha <= 2) {
+          lum[p] = 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+      }
+
+      // Pass 2: Fast 3x3 Box Blur for Unsharp Masking & Relief
+      const blur = new Float32Array(totalPixels);
+      for (let y = 0; y < height; y++) {
+        const row = y * width;
+        const prevRow = (y > 0 ? y - 1 : y) * width;
+        const nextRow = (y < height - 1 ? y + 1 : y) * width;
+        for (let x = 0; x < width; x++) {
+          const prevCol = x > 0 ? x - 1 : x;
+          const nextCol = x < width - 1 ? x + 1 : x;
+          const p = row + x;
+          blur[p] = (
+            lum[prevRow + prevCol] + lum[prevRow + x] + lum[prevRow + nextCol] +
+            lum[row + prevCol]     + lum[p]           + lum[row + nextCol] +
+            lum[nextRow + prevCol] + lum[nextRow + x] + lum[nextRow + nextCol]
+          ) * 0.1111111;
+        }
+      }
+
+      // Pass 3: Windy-Parity Unsharp Masking + 3D Emboss Directional Shading
+      for (let y = 0; y < height; y++) {
+        const row = y * width;
+        const prevRow = (y > 0 ? y - 1 : y) * width;
+        const nextRow = (y < height - 1 ? y + 1 : y) * width;
+        for (let x = 0; x < width; x++) {
+          const p = row + x;
+          const i = p * 4;
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+
+          // Off-disk deep black space void
+          if (lum[p] < 28) {
             d[i + 3] = 0;
-          } else {
+            continue;
+          }
+
+          const spatWeight = hasCoords ? getSectorSpatialWeight(realUrl, tileLngs[x], tileLats[y]) : 1.0;
+          if (spatWeight <= 0.001) {
+            d[i + 3] = 0;
+            continue;
+          }
+
+          const prevCol = x > 0 ? x - 1 : x;
+          const nextCol = x < width - 1 ? x + 1 : x;
+          const l = lum[p];
+          const bl = blur[p];
+
+          // Windy Unsharp Mask: sharp = l + 0.65 * (l - blur)
+          const sharp = Math.min(255, Math.max(0, l + 0.65 * (l - bl)));
+
+          // 3D Directional Emboss Normal (upper-left sunlight illumination)
+          const dx = (lum[row + nextCol] - lum[row + prevCol]) * 0.5;
+          const dy = (lum[nextRow + x] - lum[prevRow + x]) * 0.5;
+          const emboss = Math.max(-0.55, Math.min(0.55, (-dx + 1.25 * dy) / 48.0));
+
+          if (isBlueMode) {
+            // ==========================================
+            // BLUE / HD ATMOSPHERIC SIGMOID CLOUD MODE (Windy HD Parity)
+            // ==========================================
+            // Nocturnal land temperature inversion threshold:
+            // Cool clear ground radiation reaches lum 120-135 at night.
+            // Sharp threshold 136 eliminates 100% of false land splotches!
+            if (sharp <= 136) {
+              d[i + 3] = 0;
+              continue;
+            }
+
+            // Hermite smoothstep alpha curve for wispy to dense cloud fronts
+            const t = Math.min(1.0, (sharp - 136) / 52.0);
+            const s = t * t * (3.0 - 2.0 * t);
+            const cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+
+            if (cloudAlpha <= 2) {
+              d[i + 3] = 0;
+              continue;
+            }
+
+            // 3D Directional Shading & Tone
+            const baseTone = 236 + 18 * s;
+            const tone = Math.min(255, Math.max(198, Math.round(baseTone * (0.91 + 0.22 * emboss))));
+
+            let cloudR = tone;
+            let cloudG = tone;
+            let cloudB = Math.min(255, tone + 2);
+
+            // Deep convective storm top cooling (luminous cyan core)
+            if (sharp > 195) {
+              const cyanBlend = Math.min(1.0, (sharp - 195) / 55.0);
+              cloudR = Math.round(cloudR - cyanBlend * 32);
+              cloudG = Math.round(cloudG - cyanBlend * 12);
+              cloudB = 255;
+            }
+
             d[i] = cloudR;
             d[i + 1] = cloudG;
             d[i + 2] = cloudB;
-            d[i + 3] = Math.min(248, cloudAlpha);
-          }
-        }
-      } else if (isVisMode) {
-        // ==========================================
-        // VISIBLE / OPTICAL REFLECTANCE MODE
-        // ==========================================
-        if (isInfraLayer) {
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 120) {
-            d[i + 3] = 0;
+            d[i + 3] = cloudAlpha;
+
+          } else if (isVisMode) {
+            // ==========================================
+            // VISIBLE / OPTICAL REFLECTANCE MODE
+            // ==========================================
+            if (isInfraLayer) {
+              if (sharp <= 136) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const t = Math.min(1.0, (sharp - 136) / 52.0);
+              const s = t * t * (3.0 - 2.0 * t);
+              const cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+              if (cloudAlpha <= 2) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const baseTone = 238 + 16 * s;
+              const tone = Math.min(255, Math.max(200, Math.round(baseTone * (0.91 + 0.22 * emboss))));
+              d[i] = tone;
+              d[i + 1] = tone;
+              d[i + 2] = tone;
+              d[i + 3] = cloudAlpha;
+            } else if (isHimawariVis) {
+              const sharpVis = Math.min(255, Math.max(0, r + 0.65 * (r - bl)));
+              if (sharpVis <= 86) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (sharpVis - 86) / (190 - 86));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
+              if (cloudAlpha <= 2) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const baseTone = 238 + 16 * s;
+              const tone = Math.min(255, Math.max(198, Math.round(baseTone * (0.91 + 0.22 * emboss))));
+              d[i] = tone;
+              d[i + 1] = tone;
+              d[i + 2] = tone;
+              d[i + 3] = cloudAlpha;
+            } else if (isGeoColor) {
+              const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
+              if (isSand) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
+              if (isCityLights) {
+                d[i + 3] = 0;
+                continue;
+              }
+              if (sharp <= 90) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const isCloudLike = Math.abs(r - g) <= 18 && Math.abs(g - b) <= 18;
+              if (!isCloudLike) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (sharp - 90) / (200 - 90));
+              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
+              if (cloudAlpha <= 2) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const tone = Math.min(255, Math.max(200, Math.round((236 + 18 * norm) * (0.91 + 0.22 * emboss))));
+              d[i] = tone;
+              d[i + 1] = tone;
+              d[i + 2] = tone;
+              d[i + 3] = cloudAlpha;
+            } else if (isEumet) {
+              if (sharp <= 80) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (sharp - 80) / (195 - 80));
+              const cloudAlpha = Math.round(242 * Math.pow(norm, 0.70) * spatWeight);
+              if (cloudAlpha <= 2) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const tone = Math.min(255, Math.max(200, Math.round((236 + 18 * norm) * (0.91 + 0.22 * emboss))));
+              d[i] = tone;
+              d[i + 1] = tone;
+              d[i + 2] = tone;
+              d[i + 3] = cloudAlpha;
+            } else {
+              if (sharp <= 68) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (sharp - 68) / (165 - 68));
+              d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
+            }
           } else {
-            const t = Math.min(1.0, (lum - 120) / (215 - 120));
-            const s = t * t * (3.0 - 2.0 * t);
-            const cloudAlpha = Math.round(242 * s * Math.sqrt(t));
-            const finalAlpha = Math.round(cloudAlpha * spatWeight);
+            // ==========================================
+            // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
+            // ==========================================
+            if (sharp <= 116) {
+              d[i + 3] = 0;
+              continue;
+            }
+            const norm = Math.min(1.0, (sharp - 116) / (235 - 116));
+            const finalAlpha = Math.round(245 * Math.pow(norm, 0.60) * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
             } else {
-              d[i] = 252;
-              d[i + 1] = 252;
-              d[i + 2] = 255;
+              if (norm < 0.25) {
+                d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
+              } else if (norm < 0.45) {
+                d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+              } else if (norm < 0.65) {
+                d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
+              } else if (norm < 0.82) {
+                d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
+              } else {
+                d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+              }
               d[i + 3] = finalAlpha;
             }
           }
-        } else if (isHimawariVis) {
-          // Daytime Himawari Band 3: key out dry ground & vegetation (r <= 85)
-          if (r <= 85) {
-            d[i + 3] = 0;
-          } else {
-            const norm = Math.min(1.0, (r - 85) / (190 - 85));
-            const cloudAlpha = Math.round(245 * Math.pow(norm, 0.80));
-            const finalAlpha = Math.round(cloudAlpha * spatWeight);
-            if (finalAlpha <= 2) {
-              d[i + 3] = 0;
-            } else {
-              const cloudTone = Math.min(255, Math.round(240 + norm * 15));
-              d[i] = cloudTone;
-              d[i + 1] = cloudTone;
-              d[i + 2] = cloudTone;
-              d[i + 3] = finalAlpha;
-            }
-          }
-        } else if (isGeoColor) {
-          // Daytime NOAA GOES GeoColor
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-          if (isSand) {
-            d[i + 3] = 0;
-            continue;
-          }
-          const isCityLights = (r > 60 && g > 50 && b < 40 && (r - b) >= 30);
-          if (isCityLights) {
-            d[i + 3] = 0;
-            continue;
-          }
-          if (lum <= 45 || (b > r + 10 && lum < 65)) {
-            d[i + 3] = 0;
-            continue;
-          }
-          const isCloudLike = Math.abs(r - g) <= 18 && Math.abs(g - b) <= 18;
-          if (!isCloudLike || lum < 90) {
-            d[i + 3] = 0;
-            continue;
-          }
-          const norm = Math.min(1.0, (lum - 90) / (200 - 90));
-          const cloudAlpha = Math.round(245 * Math.pow(norm, 0.75));
-          const finalAlpha = Math.round(cloudAlpha * spatWeight);
-          if (finalAlpha <= 2) {
-            d[i + 3] = 0;
-          } else {
-            const cloudTone = Math.min(255, Math.round(240 + norm * 15));
-            d[i] = cloudTone;
-            d[i + 1] = cloudTone;
-            d[i + 2] = cloudTone;
-            d[i + 3] = finalAlpha;
-          }
-        } else if (isEumet) {
-          const eLum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (eLum <= 75) {
-            d[i + 3] = 0;
-          } else {
-            const eNorm = Math.min(1.0, (eLum - 75) / (190 - 75));
-            const eAlpha = Math.round(240 * Math.pow(eNorm, 0.65));
-            const eFinal = Math.round(eAlpha * spatWeight);
-            if (eFinal <= 2) {
-              d[i + 3] = 0;
-            } else {
-              d[i] = 252;
-              d[i + 1] = 252;
-              d[i + 2] = 255;
-              d[i + 3] = eFinal;
-            }
-          }
-        } else {
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum <= 65) {
-            d[i + 3] = 0;
-          } else {
-            const norm = Math.min(1.0, (lum - 65) / (160 - 65));
-            d[i + 3] = Math.round(245 * Math.pow(norm, 1.15) * spatWeight);
-          }
         }
-      } else {
-        // ==========================================
-        // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
-        // ==========================================
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum <= 116) {
-          d[i + 3] = 0;
-          continue;
-        }
-        const norm = Math.min(1.0, (lum - 116) / (235 - 116));
-        const finalAlpha = Math.round(245 * Math.pow(norm, 0.60) * spatWeight);
-        if (finalAlpha <= 2) {
-          d[i + 3] = 0;
-        } else {
-          if (norm < 0.25) {
-            d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
-          } else if (norm < 0.45) {
-            d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
-          } else if (norm < 0.65) {
-            d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
-          } else if (norm < 0.82) {
-            d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
-          } else {
-            d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
-          }
-          d[i + 3] = finalAlpha;
-        }
-      }
       }
 
       // Sub-Pixel Spatial Anti-Aliasing (Windy Parity):
@@ -2373,7 +2417,7 @@ export default function CityMapViewer({
                     id: lId,
                     type: 'raster',
                     source: sId,
-                    maxzoom: 9,
+                    maxzoom: 12,
                     paint: {
                       'raster-opacity': geostationaryOpacityExpression,
                       'raster-contrast': rasterContrast,
@@ -2401,7 +2445,7 @@ export default function CityMapViewer({
                   id: lId,
                   type: 'raster',
                   source: sId,
-                  maxzoom: 9,
+                  maxzoom: 12,
                   paint: {
                     'raster-opacity': geostationaryOpacityExpression,
                     'raster-contrast': rasterContrast,

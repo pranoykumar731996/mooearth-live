@@ -13,6 +13,15 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
   version: 8,
   name: 'Atmospheric Satellite Base',
   sources: {
+    esri_hillshade: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 16,
+      attribution: 'Hillshade &copy; Esri',
+    },
     ne2_shaded: {
       type: 'raster',
       tiles: ['https://tiles.openfreemap.org/natural_earth/ne2sr/{z}/{x}/{y}.png'],
@@ -37,15 +46,28 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'background-color': '#3d5218',
       },
     },
-    // 2. Natural Earth Topographic Shaded Relief (beneath water to keep oceans pure navy)
+    // 2. High-Resolution 3D Topographic Hillshade Relief (active all the way to zoom 16 like Windy)
+    {
+      id: 'esri_hillshade_layer',
+      type: 'raster',
+      source: 'esri_hillshade',
+      maxzoom: 18,
+      paint: {
+        'raster-opacity': 0.38,
+        'raster-contrast': 0.32,
+        'raster-resampling': 'linear',
+      },
+    },
+    // 2b. Natural Earth Topographic Shaded Relief (macro overview)
     {
       id: 'ne2_shaded',
       type: 'raster',
       source: 'ne2_shaded',
-      maxzoom: 7,
+      maxzoom: 6,
       paint: {
-        'raster-opacity': 0.34,
-        'raster-contrast': 0.38,
+        'raster-opacity': 0.20,
+        'raster-contrast': 0.28,
+        'raster-resampling': 'linear',
       },
     },
     // 3. Deep Royal Navy Water & Oceans (Windy HD Parity #203657)
