@@ -169,12 +169,12 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const bl = blur[p];
 
         // Windy Unsharp Mask: sharp = l + 0.65 * (l - blur)
-        const sharp = Math.min(255, Math.max(0, l + 0.65 * (l - bl)));
+        const sharp = Math.min(255, Math.max(0, l + 0.35 * (l - bl)));
 
         // 3D Directional Emboss Normal (upper-left sunlight illumination)
         const dx = (lum[row + nextCol] - lum[row + prevCol]) * 0.5;
         const dy = (lum[nextRow + x] - lum[prevRow + x]) * 0.5;
-        const emboss = Math.max(-0.55, Math.min(0.55, (-dx + 1.25 * dy) / 48.0));
+        const emboss = Math.max(-0.45, Math.min(0.45, (-dx + 1.25 * dy) / 48.0));
 
         if (isBlueMode) {
           // ==========================================
@@ -183,24 +183,24 @@ if (typeof self !== 'undefined' && self.addProtocol) {
           // Nocturnal land temperature inversion threshold:
           // Cool clear ground radiation reaches lum 120-135 at night.
           // Sharp threshold 136 eliminates 100% of false land splotches!
-          if (sharp <= 136) {
+          if (sharp <= 137) {
             d[i + 3] = 0;
             continue;
           }
 
           // Hermite smoothstep alpha curve for wispy to dense cloud fronts
-          const t = Math.min(1.0, (sharp - 136) / 52.0);
+          const t = Math.min(1.0, (sharp - 137) / 52.0);
           const s = t * t * (3.0 - 2.0 * t);
           const cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
 
-          if (cloudAlpha <= 2) {
+          if (cloudAlpha <= 3) {
             d[i + 3] = 0;
             continue;
           }
 
           // 3D Directional Shading & Tone
           const baseTone = 236 + 18 * s;
-          const tone = Math.min(255, Math.max(198, Math.round(baseTone * (0.91 + 0.22 * emboss))));
+          const tone = Math.min(255, Math.max(200, Math.round(baseTone * (0.92 + 0.18 * emboss))));
 
           let cloudR = tone;
           let cloudG = tone;
@@ -356,6 +356,37 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     for (let p = 0; p < numPixels; p++) {
       alphaCopy[p] = d[(p << 2) + 3];
     }
+
+    // Step A: Deep Sensor Noise Speckle Elimination (Eradicates isolated 1-3px spikes over land & sea)
+    for (let y = 1; y < height - 1; y++) {
+      const row = y * width;
+      for (let x = 1; x < width - 1; x++) {
+        const p = row + x;
+        if (alphaCopy[p] > 0) {
+          let neighborCount = 0;
+          let neighborSum = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            const ny = (y + dy) * width;
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const na = alphaCopy[ny + (x + dx)];
+              if (na > 0) {
+                neighborCount++;
+                neighborSum += na;
+              }
+            }
+          }
+          if (neighborCount < 3 || neighborSum < 80) {
+            d[(p << 2) + 3] = 0;
+          }
+        }
+      }
+    }
+
+    // Step B: Silky Gaussian-Weighted Edge Anti-Aliasing (Clean Cloud White RGB, Zero Dirty Fringe)
+    for (let p = 0; p < numPixels; p++) {
+      alphaCopy[p] = d[(p << 2) + 3];
+    }
     for (let y = 1; y < height - 1; y++) {
       const rowOffset = y * width;
       for (let x = 1; x < width - 1; x++) {
@@ -365,23 +396,21 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const bottom = idx + width;
         const nSum = alphaCopy[top] + alphaCopy[bottom] + alphaCopy[idx - 1] + alphaCopy[idx + 1];
 
-        // Isolated sensor noise elimination: clear isolated thermal pixel spikes
-        if (center < 36 && nSum < 28) {
-          d[(idx << 2) + 3] = 0;
-          continue;
-        }
-        if (center === 0 && nSum < 32) {
-          continue;
-        }
+        if (center > 0 && nSum > 30) {
+          const smoothed = (
+            alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
+            (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
+            alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
+          ) >> 4;
 
-        // 3x3 Gaussian-weighted smoothing kernel: [1 2 1; 2 4 2; 1 2 1] / 16
-        const smoothed = (
-          alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
-          (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
-          alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
-        ) >> 4;
-
-        d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+          d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+          const rgbIdx = idx << 2;
+          if (d[rgbIdx] < 200) {
+            d[rgbIdx] = 238;
+            d[rgbIdx + 1] = 238;
+            d[rgbIdx + 2] = 242;
+          }
+        }
       }
     }
   }

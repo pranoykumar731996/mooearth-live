@@ -377,6 +377,37 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       for (let p = 0; p < numPixels; p++) {
         alphaCopy[p] = d[(p << 2) + 3];
       }
+
+      // Step A: Deep Sensor Noise Speckle Elimination (Eradicates isolated 1-3px spikes over land & sea)
+      for (let y = 1; y < height - 1; y++) {
+        const row = y * width;
+        for (let x = 1; x < width - 1; x++) {
+          const p = row + x;
+          if (alphaCopy[p] > 0) {
+            let neighborCount = 0;
+            let neighborSum = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+              const ny = (y + dy) * width;
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const na = alphaCopy[ny + (x + dx)];
+                if (na > 0) {
+                  neighborCount++;
+                  neighborSum += na;
+                }
+              }
+            }
+            if (neighborCount < 3 || neighborSum < 80) {
+              d[(p << 2) + 3] = 0;
+            }
+          }
+        }
+      }
+
+      // Step B: Silky Gaussian-Weighted Edge Anti-Aliasing (Clean Cloud White RGB, Zero Dirty Fringe)
+      for (let p = 0; p < numPixels; p++) {
+        alphaCopy[p] = d[(p << 2) + 3];
+      }
       for (let y = 1; y < height - 1; y++) {
         const rowOffset = y * width;
         for (let x = 1; x < width - 1; x++) {
@@ -386,23 +417,21 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           const bottom = idx + width;
           const nSum = alphaCopy[top] + alphaCopy[bottom] + alphaCopy[idx - 1] + alphaCopy[idx + 1];
 
-          // Clear isolated thermal noise pixel spikes
-          if (center < 36 && nSum < 28) {
-            d[(idx << 2) + 3] = 0;
-            continue;
-          }
-          if (center === 0 && nSum < 32) {
-            continue;
-          }
+          if (center > 0 && nSum > 30) {
+            const smoothed = (
+              alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
+              (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
+              alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
+            ) >> 4;
 
-          // 3x3 Gaussian-weighted smoothing kernel
-          const smoothed = (
-            alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
-            (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
-            alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
-          ) >> 4;
-
-          d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+            d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
+            const rgbIdx = idx << 2;
+            if (d[rgbIdx] < 200) {
+              d[rgbIdx] = 238;
+              d[rgbIdx + 1] = 238;
+              d[rgbIdx + 2] = 242;
+            }
+          }
         }
       }
     }
