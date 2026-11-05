@@ -64,7 +64,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       let lngWeight = 0.0;
 
       const hasIodc = !url.includes('has_iodc=0');
-      const isIodc = url.includes('msg_iodc') || url.includes('iodc');
+      const isIodc = url.includes('msg_iodc') || url.includes('eumet-iodc');
       const isHimawari = url.includes('Himawari') || url.includes('himawari');
       const isEumet = (url.includes('msg_') || url.includes('eumet')) && !isIodc;
       const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
