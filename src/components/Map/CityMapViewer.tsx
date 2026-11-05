@@ -203,6 +203,10 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           } else if (r <= 54 && g <= 54 && b <= 54) {
             convective[p] = 2; // -72°C BD core candidate
           }
+        } else if (isEumet && isInfraLayer) {
+          if (lum[p] >= 185) {
+            convective[p] = 1; // Genuine coldest convective cloud tops in EUMETSAT SEVIRI IR
+          }
         }
       }
 
@@ -320,12 +324,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let s = 0;
 
             if (isEumet && isInfraLayer) {
-              // EUMETSAT IODC linear infrared (108 threshold eliminates warm ground)
-              if (sharp <= 108) {
+              // EUMETSAT linear infrared (38 threshold eliminates warm ground & ocean, preserves all clouds)
+              if (sharp <= 38) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 108) / (230 - 108));
+              const norm = Math.min(1.0, (sharp - 38) / (205 - 38));
               s = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
             } else if (isGibsBand13) {
@@ -412,12 +416,13 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
             } else {
               // Nighttime infrared fallback
-              const thresh = isEumet ? 108 : 152;
+              const thresh = isEumet ? 38 : 152;
+              const maxRange = isEumet ? 205 : 235;
               if (sharp <= thresh) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - thresh) / (235 - thresh));
+              const norm = Math.min(1.0, (sharp - thresh) / (maxRange - thresh));
               const s = norm * norm * (3.0 - 2.0 * norm);
               const cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
               if (cloudAlpha <= 2) {
@@ -431,12 +436,13 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // ==========================================
             // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
             // ==========================================
-            const thresh = isEumet ? 108 : 152;
+            const thresh = isEumet ? 38 : 152;
+            const maxRange = isEumet ? 205 : 235;
             if (sharp <= thresh) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - thresh) / (235 - thresh));
+            const norm = Math.min(1.0, (sharp - thresh) / (maxRange - thresh));
             const finalAlpha = Math.round(245 * Math.pow(norm, 0.65) * spatWeight);
             if (finalAlpha <= 2) {
               d[i + 3] = 0;
@@ -1170,6 +1176,7 @@ export default function CityMapViewer({
         });
 
         mapRef.current = map;
+        if (typeof window !== 'undefined') (window as any).__mooMap = map;
       } catch (err: any) {
         console.error('Failed to initialize MapLibre GL map:', err);
         setHasMapError(true);
