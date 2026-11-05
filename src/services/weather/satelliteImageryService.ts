@@ -96,6 +96,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
     },
+    {
+      id: 'eumet-iodc-ir',
+      name: 'Meteosat-9 Indian Ocean & Central Asia IR (45.5°E)',
+      layerName: 'msg_iodc:ir108',
+      tileMatrixSet: 'EPSG:3857',
+      format: 'image/png',
+      bounds: [20.0, -68.0, 105.0, 68.0],
+    },
   ],
   blue: [
     {
@@ -126,6 +134,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
     },
+    {
+      id: 'eumet-iodc-blue',
+      name: 'Meteosat-9 Indian Ocean & Central Asia Upper Clouds (45.5°E)',
+      layerName: 'msg_iodc:ir108',
+      tileMatrixSet: 'EPSG:3857',
+      format: 'image/png',
+      bounds: [20.0, -68.0, 105.0, 68.0],
+    },
   ],
   visible: [
     {
@@ -155,6 +171,14 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_fes:vis006',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
+    },
+    {
+      id: 'eumet-iodc-vis',
+      name: 'Meteosat-9 Indian Ocean & Central Asia Live Visible (45.5°E)',
+      layerName: 'msg_iodc:vis006',
+      tileMatrixSet: 'EPSG:3857',
+      format: 'image/png',
+      bounds: [20.0, -68.0, 105.0, 68.0],
     },
   ],
 };
@@ -219,8 +243,24 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
 };
 
 /**
+ * Checks whether EUMETSAT IODC (Meteosat-9 at 45.5°E) is active.
+ * Enabled by default to provide continuous seamless coverage over Central Asia,
+ * Middle East, India, and the Indian Ocean. Can be overridden via ?iodc=false.
+ */
+export function isIodcFeatureEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('iodc') === 'false' || params.get('iodc') === '0') {
+      return false;
+    }
+    return true;
+  }
+  return process.env.NEXT_PUBLIC_DISABLE_EUMETSAT_IODC !== 'true';
+}
+
+/**
  * Returns the optimal geostationary satellite sector based on coordinates.
- * Covers Indian Ocean/Bay of Bengal (Himawari), Atlantic/Americas (GOES-East), and Pacific (GOES-West).
+ * Covers Indian Ocean/Bay of Bengal (Himawari or IODC), Atlantic/Americas (GOES-East), and Pacific (GOES-West).
  */
 export function getGeostationarySectorForCoords(
   lat: number,
@@ -229,6 +269,12 @@ export function getGeostationarySectorForCoords(
 ): GeostationarySector {
   const sectors = GEOSTATIONARY_SECTORS[mode] || GEOSTATIONARY_SECTORS.infra;
   const normLng = ((((lng % 360) + 540) % 360) - 180);
+
+  // 0. Prototype EUMETSAT IODC (25°E to 95°E) when feature flag is enabled
+  if (isIodcFeatureEnabled() && normLng >= 25 && normLng <= 95) {
+    const iodcSector = sectors.find((s) => s.id.includes('iodc'));
+    if (iodcSector) return iodcSector;
+  }
 
   // 1. Asia-Pacific & Indian Ocean / Bay of Bengal (45°E to 165°E) -> Himawari
   if (normLng >= 45 && normLng <= 165) {
