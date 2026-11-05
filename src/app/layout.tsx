@@ -50,7 +50,10 @@ export const metadata: Metadata = {
     languages: generateHreflangs(''),
   },
   icons: {
-    icon: '/icons/icon-192.svg',
+    icon: [
+      { url: '/favicon.png', sizes: '48x48', type: 'image/png' },
+      { url: '/logo-icon.png', sizes: '512x512', type: 'image/png' },
+    ],
     apple: '/icons/icon-512.png',
   },
   openGraph: {
