@@ -988,7 +988,7 @@ export default function WeatherDashboard() {
   return (
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none h-[52px] sm:h-[54px] flex items-center">
         <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
           {/* MooEarth Brand Logo (Always visible like Windy) */}
           <Link
@@ -1014,7 +1014,7 @@ export default function WeatherDashboard() {
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-md mx-1 sm:mx-4 min-w-[70px] sm:min-w-[180px]">
+          <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 sm:mx-3 min-w-[70px] sm:min-w-[180px]">
             <WeatherSearch
               onSelectLocation={handleSelectLocation}
               onClear={() => {
@@ -1031,6 +1031,84 @@ export default function WeatherDashboard() {
                   : ''
               }
             />
+          </div>
+
+          {/* Desktop Live Intelligence & Quick Teleport Strip */}
+          <div className="hidden xl:flex items-center gap-2 2xl:gap-3 shrink-0">
+            {/* 1. Active Location Telemetry Pill */}
+            {weather.selectedLocation && displayedForecast?.current && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPanelOpen(true);
+                  setIsPanelMinimized(false);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-xs font-mono text-cyan-200 flex items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all hover:scale-[1.02]"
+                title="View full telemetry for active location"
+              >
+                <span className="text-sm">📍</span>
+                <span className="font-bold text-white max-w-[110px] 2xl:max-w-[140px] truncate">
+                  {weather.selectedLocation.name}
+                </span>
+                <span className="font-black text-cyan-300">
+                  {Math.round(displayedForecast.current.temperature)}°{weather.units === 'fahrenheit' ? 'F' : 'C'}
+                </span>
+                <span className="text-white/50 text-[11px] hidden 2xl:inline truncate max-w-[90px]">
+                  {displayedForecast.current.weatherDescription}
+                </span>
+              </button>
+            )}
+
+            {/* 2. Quick Global Reference Metropolises */}
+            <div className="hidden 2xl:flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-xl border border-white/10">
+              <span className="text-[10px] font-mono text-white/40 uppercase px-1.5 font-bold">Quick:</span>
+              {[
+                { id: 5128581, name: 'New York', country: 'United States', lat: 40.7128, lng: -74.006, icon: '🗽' },
+                { id: 2643743, name: 'London', country: 'United Kingdom', lat: 51.5074, lng: -0.1278, icon: '🗼' },
+                { id: 1850147, name: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503, icon: '🏯' },
+                { id: 1261481, name: 'New Delhi', country: 'India', lat: 28.6139, lng: 77.209, icon: '🏛️' },
+                { id: 2147714, name: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093, icon: '🏖️' },
+              ].map((city) => (
+                <button
+                  key={city.name}
+                  type="button"
+                  onClick={() => {
+                    handleSelectLocation({
+                      id: city.id,
+                      name: city.name,
+                      country: city.country,
+                      latitude: city.lat,
+                      longitude: city.lng,
+                      timezone: 'auto',
+                      type: 'city',
+                    });
+                    if (viewMode === 'globe') {
+                      globeApiRef.current?.flyTo({ lat: city.lat, lng: city.lng, altitude: 1.2 }, 1200);
+                    }
+                  }}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                  title={`Teleport to ${city.name}, ${city.country}`}
+                >
+                  <span>{city.icon}</span>
+                  <span>{city.name}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* 3. Live Planetary Status Pill */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-mono text-white/70 shadow-inner">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-white/90">GOES/NASA Live</span>
+              {allDisasters.length > 0 && (
+                <span
+                  onClick={() => setIsHazardBarExpanded(true)}
+                  className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold text-[10px] border border-rose-500/30 cursor-pointer hover:bg-rose-500/30 transition-colors"
+                  title="Click to view planetary hazards"
+                >
+                  🚨 {allDisasters.length} Hazards
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Quick Links & View Mode Switch */}
@@ -1132,7 +1210,7 @@ export default function WeatherDashboard() {
       </header>
 
       {/* ── Layer Mode Selector ────────────────────── */}
-      <div className="fixed top-[52px] left-0 right-0 z-30 bg-[#020208]/85 backdrop-blur-lg border-b border-white/5">
+      <div className="fixed top-[52px] sm:top-[54px] left-0 right-0 z-30 bg-[#020208]/85 backdrop-blur-lg border-b border-white/5 h-[50px] sm:h-[52px] flex items-center">
         <div className="max-w-screen-2xl mx-auto px-4 py-1.5">
           <WeatherLayerSelector
             activeLayer={weather.activeLayer}
@@ -1142,7 +1220,7 @@ export default function WeatherDashboard() {
       </div>
 
       {/* ── Main Viewport Area ──────────────────────── */}
-      <main className="fixed top-[98px] bottom-0 left-0 right-0 flex flex-col lg:flex-row overflow-hidden bg-[#010106]">
+      <main className="fixed top-[102px] sm:top-[106px] bottom-0 left-0 right-0 flex flex-col lg:flex-row overflow-hidden bg-[#010106]">
         {/* Globe Viewport */}
         <div className="flex-1 relative w-full h-full min-h-0 bg-[#010106] overflow-hidden isolate z-0">
           {/* Direct 3D Interactive Earth Globe & Overlays (preserved in DOM during city exploration) */}
@@ -1642,7 +1720,7 @@ export default function WeatherDashboard() {
           /* Desktop Side Panel */
           <div className={`hidden lg:flex flex-col ${
             isPanelMinimized ? 'w-0 opacity-0 pointer-events-none border-none' : 'w-[380px] opacity-100'
-          } shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0 transition-all duration-300 ease-in-out`}>
+          } shrink-0 border-l border-white/5 bg-[#050510]/95 backdrop-blur-2xl overflow-hidden h-full z-20 shadow-2xl min-h-0 pt-1.5 transition-all duration-300 ease-in-out`}>
             <WeatherPanel
               forecast={displayedForecast}
               airQuality={weather.data.airQuality}

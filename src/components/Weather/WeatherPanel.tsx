@@ -81,7 +81,7 @@ export default function WeatherPanel({
   return (
     <div className="flex flex-col h-full min-h-0 select-text">
       {/* Header with minimize toggle */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+      <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5 sm:pt-4 sm:pb-3 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-cyan-400">📍</span>
           <div className="min-w-0">
