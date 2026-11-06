@@ -1003,7 +1003,7 @@ export default function WeatherDashboard() {
                 className="w-full h-full object-contain group-hover:scale-105 transition-transform"
               />
             </div>
-            <div className="flex items-baseline gap-0.5">
+            <div className="hidden sm:flex items-baseline gap-0.5">
               <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
                 MooEarth
               </span>
@@ -1014,7 +1014,7 @@ export default function WeatherDashboard() {
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 sm:mx-3 min-w-[70px] sm:min-w-[180px]">
+          <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 sm:mx-3 min-w-[110px] sm:min-w-[180px]">
             <WeatherSearch
               onSelectLocation={handleSelectLocation}
               onClear={() => {
