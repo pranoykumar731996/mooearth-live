@@ -1428,7 +1428,7 @@ const GlobeScene = React.memo(function GlobeScene({
     // 5. Auroral Oval Layer:
     const isAuroralVisible = !isPlayEarthActive && (
       isSpaceIsolated ||
-      (isAll && activeCategory === 'space_weather')
+      (isAll && (activeCategory === 'space_weather' || activeCategory === null))
     );
     if (auroralOvalLayerRef.current) {
       const mesh = auroralOvalLayerRef.current.getMesh();
@@ -2091,11 +2091,11 @@ const GlobeScene = React.memo(function GlobeScene({
 
     // Strict categorical isolation: if a specific hazard is chosen, ONLY that hazard is displayed
     const isAll = !hazardFilter || hazardFilter === 'all';
-    const showCyclones = hazardFilter === 'cyclones' || weatherLayerMode === 'hurricane' || (isAll && (globeView === 'weather' || weatherLayerMode === 'wind'));
-    const showThunderstorms = hazardFilter === 'thunderstorms' || (isAll && globeView === 'weather' && (weatherLayerMode === 'precipitation' || weatherLayerMode === 'radar' || weatherLayerMode === 'overview'));
-    const showSeismic = hazardFilter === 'seismic' || (isAll && (globeView === 'weather' || activeCategory === 'seismic'));
-    const showWildfires = hazardFilter === 'wildfires' || (isAll && (globeView === 'weather' || activeCategory === 'wildfires'));
-    const showSpaceWeather = hazardFilter === 'space_weather' || (isAll && (globeView === 'weather' || activeCategory === 'space_weather'));
+    const showCyclones = hazardFilter === 'cyclones' || weatherLayerMode === 'hurricane' || isAll;
+    const showThunderstorms = hazardFilter === 'thunderstorms' || isAll;
+    const showSeismic = hazardFilter === 'seismic' || isAll;
+    const showWildfires = hazardFilter === 'wildfires' || isAll;
+    const showSpaceWeather = hazardFilter === 'space_weather' || isAll;
 
     // Populate active tropical cyclone & hurricane disaster markers (Official JTWC / NOAA NHC / IMD standard)
     if (showCyclones) {

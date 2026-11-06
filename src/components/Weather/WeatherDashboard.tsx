@@ -138,6 +138,14 @@ export default function WeatherDashboard() {
   const [isGridLoading, setIsGridLoading] = useState(true);
   const globeApiRef = useRef<GlobeApi | null>(null);
   const initialUrlRestoredRef = useRef(false);
+  const hazardCardsTrackRef = useRef<HTMLDivElement>(null);
+
+  const scrollHazardCards = useCallback((direction: 'left' | 'right') => {
+    if (hazardCardsTrackRef.current) {
+      const scrollAmount = direction === 'left' ? -340 : 340;
+      hazardCardsTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  }, []);
   const [selectedDisasterEvent, setSelectedDisasterEvent] = useState<WorldEvent | null>(null);
   const [selectedCyclone, setSelectedCyclone] = useState<TropicalCyclone | null>(null);
   const [showFullDossier, setShowFullDossier] = useState(false);
@@ -307,32 +315,6 @@ export default function WeatherDashboard() {
     }
   }, [weather.activeLayer, rawCyclones, selectedCyclone]);
 
-  // Unified multi-hazard disaster feed based on active filter
-  const displayedDisasters = useMemo(() => {
-    switch (disasterCategoryFilter) {
-      case 'cyclones':
-        return activeCyclones;
-      case 'seismic':
-        return activeEarthquakes;
-      case 'wildfires':
-        return activeWildfires;
-      case 'thunderstorms':
-        return activeThunderstorms;
-      case 'space_weather':
-        return activeSpaceWeather;
-      case 'all':
-      default: {
-        return [
-          ...activeCyclones.slice(0, 2),
-          ...activeEarthquakes.slice(0, 2),
-          ...activeWildfires.slice(0, 2),
-          ...activeThunderstorms.slice(0, 2),
-          ...activeSpaceWeather.slice(0, 1),
-        ];
-      }
-    }
-  }, [disasterCategoryFilter, activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather]);
-
   // Comprehensive planetary disaster feed combining all active cyclones and active hazards
   // Guarantees 100% synchronization and identical positions across 3D Earth and 2D MapLibre map.
   const allDisasters = useMemo(() => {
@@ -382,6 +364,25 @@ export default function WeatherDashboard() {
     });
     return Array.from(map.values());
   }, [activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather, events, isEventWithin24Hours]);
+
+  // Unified multi-hazard disaster feed based on active filter
+  const displayedDisasters = useMemo(() => {
+    switch (disasterCategoryFilter) {
+      case 'cyclones':
+        return activeCyclones;
+      case 'seismic':
+        return activeEarthquakes;
+      case 'wildfires':
+        return activeWildfires;
+      case 'thunderstorms':
+        return activeThunderstorms;
+      case 'space_weather':
+        return activeSpaceWeather;
+      case 'all':
+      default:
+        return allDisasters;
+    }
+  }, [disasterCategoryFilter, activeCyclones, activeEarthquakes, activeWildfires, activeThunderstorms, activeSpaceWeather, allDisasters]);
 
   // Genuine satellite metadata & observation timestamp (NASA GIBS / NOAA GOES)
   const satelliteMeta = useMemo(() => {
@@ -1369,7 +1370,7 @@ export default function WeatherDashboard() {
               Only rendered when expanded via the dedicated Hazards toggle in the side drawer controls */}
           {displayedDisasters.length > 0 && isHazardBarExpanded && (
             <div className="absolute top-20 sm:top-14 left-1/2 -translate-x-1/2 z-40 pointer-events-auto flex flex-col items-center">
-              <div className="w-[calc(100vw-24px)] sm:w-auto max-w-2xl flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200">
+              <div className="w-[calc(100vw-24px)] max-w-4xl lg:max-w-5xl flex flex-col gap-1.5 p-1.5 rounded-2xl bg-[#060818]/94 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.7)] animate-in fade-in zoom-in-95 duration-200">
                   {/* Header with Category Filter Chips and Collapse Button */}
                   <div className="flex items-center justify-between gap-1 px-1 pt-0.5">
                     <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
@@ -1379,12 +1380,12 @@ export default function WeatherDashboard() {
                         <span className="px-1 py-0.2 rounded bg-emerald-500/20 text-[8px] font-mono text-emerald-300 font-bold">24H</span>
                       </span>
                       {[
-                        { id: 'all', label: 'All', icon: '🌐' },
-                        { id: 'cyclones', label: 'Cyclones', icon: '🌀' },
-                        { id: 'seismic', label: 'Quakes', icon: '🌋' },
-                        { id: 'wildfires', label: 'Fires', icon: '🔥' },
-                        { id: 'thunderstorms', label: 'Storms', icon: '⚡' },
-                        { id: 'space_weather', label: 'Space', icon: '🌌' },
+                        { id: 'all', label: 'All', count: allDisasters.length, icon: '🌐' },
+                        { id: 'cyclones', label: 'Cyclones', count: activeCyclones.length, icon: '🌀' },
+                        { id: 'seismic', label: 'Quakes', count: activeEarthquakes.length, icon: '🌋' },
+                        { id: 'wildfires', label: 'Fires', count: activeWildfires.length, icon: '🔥' },
+                        { id: 'thunderstorms', label: 'Storms', count: activeThunderstorms.length, icon: '⚡' },
+                        { id: 'space_weather', label: 'Space', count: activeSpaceWeather.length, icon: '🌌' },
                       ].map((tab) => {
                         const isActive = disasterCategoryFilter === tab.id;
                         return (
@@ -1400,25 +1401,49 @@ export default function WeatherDashboard() {
                           >
                             <span>{tab.icon}</span>
                             <span>{tab.label}</span>
+                            <span className={`text-[9px] px-1 py-0.2 rounded-full font-mono ${isActive ? 'bg-cyan-400/20 text-cyan-200' : 'bg-white/10 text-white/50'}`}>
+                              {tab.count}
+                            </span>
                           </button>
                         );
                       })}
                     </div>
 
-                    {/* Collapse button */}
-                    <button
-                      type="button"
-                      data-testid="collapse-hazards-bar-btn"
-                      onClick={() => setIsHazardBarExpanded(false)}
-                      className="px-1.5 py-0.5 rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer shrink-0 ml-1 text-[11px]"
-                      title="Collapse hazards bar to reveal full map"
-                    >
-                      ▲
-                    </button>
+                    {/* Actions: Scroll track buttons & Collapse button */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => scrollHazardCards('left')}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-white/15 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
+                        title="Scroll hazards left"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollHazardCards('right')}
+                        className="w-5 h-5 flex items-center justify-center rounded bg-white/5 hover:bg-white/15 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
+                        title="Scroll hazards right"
+                      >
+                        ›
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="collapse-hazards-bar-btn"
+                        onClick={() => setIsHazardBarExpanded(false)}
+                        className="px-1.5 py-0.5 rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer text-[11px]"
+                        title="Collapse hazards bar to reveal full map"
+                      >
+                        ▲
+                      </button>
+                    </div>
                   </div>
 
                   {/* Disaster Cards Track */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                  <div
+                    ref={hazardCardsTrackRef}
+                    className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pb-0.5 scroll-smooth"
+                  >
                     {displayedDisasters.map((disaster) => {
                       const isSelected = selectedDisasterEvent?.id === disaster.id;
                       const icon =
