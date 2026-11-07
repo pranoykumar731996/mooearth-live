@@ -165,14 +165,21 @@ export function getLandRoughnessFactor(lat: number, lng: number): number {
     return 0.34;
   }
   // Eurasia (Europe, Russia, Middle East, India, China)
-  if (lat >= 8 && lat <= 75 && lng >= -10 && lng <= 175) {
+  if (lat >= 8 && lat <= 75 && lng >= -10 && lng <= 145) {
     // Arabian Sea / Bay of Bengal marine waters
-    if (lat < 22 && lng >= 58 && lng <= 73) return 1.0;
-    if (lat < 18 && lng >= 81 && lng <= 93) return 1.0;
-    // South China Sea marine waters
-    if (lat < 21 && lng >= 110 && lng <= 121) return 1.0;
+    if (lat < 25 && lng >= 56 && lng <= 75) return 1.0;
+    if (lat < 22 && lng >= 80 && lng <= 95) return 1.0;
+    // South China Sea marine waters (lat 8 to 22, lng 108 to 121)
+    if (lat < 22 && lng >= 108 && lng <= 121) return 1.0;
+    // Philippine Sea / West Pacific Ocean (lat < 32, lng > 122)
+    if (lat < 32 && lng > 122) return 1.0;
+    // East China Sea / Pacific Ocean east of Japan (lat 32 to 50, lng > 141)
+    if (lat >= 32 && lat <= 50 && lng > 141) return 1.0;
     // Baltic / North Sea / Mediterranean
     if (lat >= 35 && lat <= 44 && lng >= -5 && lng <= 25) return 0.75;
+    // Black Sea / Caspian Sea
+    if (lat >= 41 && lat <= 47 && lng >= 28 && lng <= 42) return 0.85;
+    if (lat >= 36 && lat <= 47 && lng >= 47 && lng <= 54) return 0.85;
     return 0.33;
   }
   // Open ocean: full marine velocity
@@ -247,7 +254,13 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
         }
       }
 
-      // ── 3. Superimpose Physical Cyclonic Vortices (Storms 94S & THIRTYONE) ──
+      // ── 3. Continental Land Friction Damping (Windy Parity) ───────────────
+      // Reduces 10m surface winds over landmasses to 2-8 kt (deep navy blue)
+      const roughness = getLandRoughnessFactor(lat, lng);
+      u *= roughness;
+      v *= roughness;
+
+      // ── 4. Superimpose Physical Cyclonic Vortices (Storms 94S & THIRTYONE) ──
       for (const vort of vortices) {
         const vRad = vort.lat * (Math.PI / 180);
         const dLng = ((((lng - vort.lng) % 360) + 540) % 360) - 180;
@@ -262,12 +275,12 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
           const inX = -dxKm / distKm;
           const inY = -dyKm / distKm;
 
-          const rMax = 55; // eyewall radius in km
+          const rMax = 75; // eyewall radius in km
           let vMag = 0;
           if (distKm <= rMax) {
             vMag = vort.maxWindKph * (distKm / rMax);
           } else {
-            vMag = vort.maxWindKph * Math.pow(rMax / distKm, 0.65);
+            vMag = vort.maxWindKph * Math.pow(rMax / distKm, 0.55);
           }
 
           const taper = 0.5 * (1 + Math.cos(Math.PI * (distKm / vort.radiusKm)));
@@ -277,12 +290,6 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
           v += vortexSpeed * (0.85 * tanY + 0.15 * inY);
         }
       }
-
-      // ── 4. Continental Land Friction Damping (Windy Parity) ───────────────
-      // Reduces 10m surface winds over landmasses to 2-8 kt (deep navy blue)
-      const roughness = getLandRoughnessFactor(lat, lng);
-      u *= roughness;
-      v *= roughness;
 
       const speed = Math.sqrt(u * u + v * v);
       uGrid[idx] = u;
