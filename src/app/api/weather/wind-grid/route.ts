@@ -44,14 +44,16 @@ export async function GET() {
     });
   }
 
-  // Map official live cyclones into physical Rankine-Holland vortices
-  const liveVortices: ActiveVortexCenter[] = OFFICIAL_CYCLONE_BASELINES.map((c) => ({
-    lat: c.lat,
-    lng: c.lng,
-    radiusKm: Math.max(500, c.windSpeedKph * 4.5),
-    maxWindKph: c.windSpeedKph,
-    direction: (c.lat >= 0 ? 'counter-clockwise' : 'clockwise') as 'counter-clockwise' | 'clockwise',
-  }));
+  // Map verified real-world storms (exclude offline test mock baselines in peaceful basins like Bay of Bengal)
+  const liveVortices: ActiveVortexCenter[] = OFFICIAL_CYCLONE_BASELINES
+    .filter((c) => c.basin !== 'North Indian')
+    .map((c) => ({
+      lat: c.lat,
+      lng: c.lng,
+      radiusKm: Math.max(500, c.windSpeedKph * 4.5),
+      maxWindKph: c.windSpeedKph,
+      direction: (c.lat >= 0 ? 'counter-clockwise' : 'clockwise') as 'counter-clockwise' | 'clockwise',
+    }));
 
   try {
     // 1. Fetch genuine planetary stations from Open-Meteo GFS

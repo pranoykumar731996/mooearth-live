@@ -15,6 +15,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import { Marker, Popup } from 'maplibre-gl';
 import {
   getGlobalWindField,
   loadLiveWindField,
@@ -55,6 +56,116 @@ interface WindCursorTelemetry {
   beaufort: { name: string; color: string };
 }
 
+export interface WindCityStation {
+  name: string;
+  lat: number;
+  lng: number;
+  minZoom: number;
+  country: string;
+}
+
+interface CityWindMarkerEntry {
+  marker: Marker;
+  station: WindCityStation;
+}
+
+export const WIND_CITY_STATIONS: WindCityStation[] = [
+  // ── 1. South Asia (India & Neighbors) — Zoom Earth Parity ──
+  { name: 'New Delhi', lat: 28.6139, lng: 77.2090, minZoom: 2.0, country: 'India' },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777, minZoom: 2.4, country: 'India' },
+  { name: 'Kolkata', lat: 22.5726, lng: 88.3639, minZoom: 3.0, country: 'India' },
+  { name: 'Chennai', lat: 13.0827, lng: 80.2707, minZoom: 3.0, country: 'India' },
+  { name: 'Bengaluru', lat: 12.9716, lng: 77.5946, minZoom: 3.0, country: 'India' },
+  { name: 'Hyderabad', lat: 17.3850, lng: 78.4867, minZoom: 3.4, country: 'India' },
+  { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714, minZoom: 3.6, country: 'India' },
+  { name: 'Bhubaneswar', lat: 20.2961, lng: 85.8245, minZoom: 3.6, country: 'India' },
+  { name: 'Jaipur', lat: 26.9124, lng: 75.7873, minZoom: 4.2, country: 'India' },
+  { name: 'Prayagraj', lat: 25.4358, lng: 81.8463, minZoom: 4.4, country: 'India' },
+  { name: 'Raipur', lat: 21.2514, lng: 81.6296, minZoom: 4.4, country: 'India' },
+  { name: 'Kota', lat: 25.2138, lng: 75.8648, minZoom: 4.6, country: 'India' },
+  { name: 'Chicalim', lat: 15.3949, lng: 73.8340, minZoom: 4.8, country: 'India' },
+  { name: 'Pune', lat: 18.5204, lng: 73.8567, minZoom: 4.6, country: 'India' },
+  { name: 'Surat', lat: 21.1702, lng: 72.8311, minZoom: 4.8, country: 'India' },
+  { name: 'Nagpur', lat: 21.1458, lng: 79.0882, minZoom: 4.6, country: 'India' },
+  { name: 'Patna', lat: 25.5941, lng: 85.1376, minZoom: 4.6, country: 'India' },
+  { name: 'Lucknow', lat: 26.8467, lng: 80.9462, minZoom: 4.6, country: 'India' },
+  { name: 'Varanasi', lat: 25.3176, lng: 82.9739, minZoom: 4.8, country: 'India' },
+  { name: 'Bhopal', lat: 23.2599, lng: 77.4126, minZoom: 4.8, country: 'India' },
+  { name: 'Indore', lat: 22.7196, lng: 75.8577, minZoom: 4.8, country: 'India' },
+  { name: 'Visakhapatnam', lat: 17.6868, lng: 83.2185, minZoom: 4.6, country: 'India' },
+  { name: 'Madurai', lat: 9.9252, lng: 78.1198, minZoom: 4.8, country: 'India' },
+  { name: 'Kochi', lat: 9.9312, lng: 76.2673, minZoom: 4.8, country: 'India' },
+  { name: 'Chandigarh', lat: 30.7333, lng: 76.7794, minZoom: 4.6, country: 'India' },
+  { name: 'Guwahati', lat: 26.1445, lng: 91.7362, minZoom: 4.6, country: 'India' },
+  { name: 'Srinagar', lat: 34.0837, lng: 74.7973, minZoom: 4.8, country: 'India' },
+  { name: 'Sri Vijaya Puram', lat: 11.6234, lng: 92.7265, minZoom: 4.5, country: 'India' },
+  { name: 'Colombo', lat: 6.9271, lng: 79.8612, minZoom: 3.2, country: 'Sri Lanka' },
+  { name: 'Jaffna', lat: 9.6615, lng: 80.0255, minZoom: 4.6, country: 'Sri Lanka' },
+  { name: 'Karachi', lat: 24.8607, lng: 67.0011, minZoom: 3.0, country: 'Pakistan' },
+  { name: 'Lahore', lat: 31.5204, lng: 74.3587, minZoom: 3.5, country: 'Pakistan' },
+  { name: 'Dhaka', lat: 23.8103, lng: 90.4125, minZoom: 3.2, country: 'Bangladesh' },
+  { name: 'Kathmandu', lat: 27.7172, lng: 85.3240, minZoom: 3.8, country: 'Nepal' },
+
+  // ── 2. Middle East & Central Asia ──
+  { name: 'Dubai', lat: 25.2048, lng: 55.2708, minZoom: 2.2, country: 'UAE' },
+  { name: 'Muscat', lat: 23.5880, lng: 58.3829, minZoom: 3.6, country: 'Oman' },
+  { name: 'Salalah', lat: 17.0151, lng: 54.0924, minZoom: 4.6, country: 'Oman' },
+  { name: 'Bandar Abbas', lat: 27.1832, lng: 56.2666, minZoom: 4.4, country: 'Iran' },
+  { name: 'Turbat', lat: 26.0031, lng: 63.0544, minZoom: 4.8, country: 'Pakistan' },
+  { name: 'Riyadh', lat: 24.7136, lng: 46.6753, minZoom: 2.8, country: 'Saudi Arabia' },
+  { name: 'Doha', lat: 25.2854, lng: 51.5310, minZoom: 3.6, country: 'Qatar' },
+  { name: 'Kuwait City', lat: 29.3759, lng: 47.9774, minZoom: 3.6, country: 'Kuwait' },
+  { name: 'Tehran', lat: 35.6892, lng: 51.3890, minZoom: 3.0, country: 'Iran' },
+  { name: 'Cairo', lat: 30.0444, lng: 31.2357, minZoom: 2.2, country: 'Egypt' },
+
+  // ── 3. Southeast Asia & East Asia ──
+  { name: 'Bangkok', lat: 13.7563, lng: 100.5018, minZoom: 2.5, country: 'Thailand' },
+  { name: 'Phuket', lat: 7.8804, lng: 98.3923, minZoom: 4.5, country: 'Thailand' },
+  { name: 'Yangon', lat: 16.8661, lng: 96.1951, minZoom: 3.6, country: 'Myanmar' },
+  { name: 'Nay Pyi Taw', lat: 19.7633, lng: 96.0785, minZoom: 4.4, country: 'Myanmar' },
+  { name: 'Singapore', lat: 1.3521, lng: 103.8198, minZoom: 2.2, country: 'Singapore' },
+  { name: 'Kuala Lumpur', lat: 3.1390, lng: 101.6869, minZoom: 2.8, country: 'Malaysia' },
+  { name: 'Banda Aceh', lat: 5.5483, lng: 95.3238, minZoom: 4.6, country: 'Indonesia' },
+  { name: 'Jakarta', lat: -6.2088, lng: 106.8456, minZoom: 2.5, country: 'Indonesia' },
+  { name: 'Manila', lat: 14.5995, lng: 120.9842, minZoom: 2.5, country: 'Philippines' },
+  { name: 'Hanoi', lat: 21.0285, lng: 105.8542, minZoom: 3.2, country: 'Vietnam' },
+  { name: 'Ho Chi Minh City', lat: 10.8231, lng: 106.6297, minZoom: 3.2, country: 'Vietnam' },
+  { name: 'Vientiane', lat: 17.9757, lng: 102.6331, minZoom: 4.2, country: 'Laos' },
+  { name: 'Hong Kong', lat: 22.3193, lng: 114.1694, minZoom: 2.8, country: 'China' },
+  { name: 'Taipei', lat: 25.0330, lng: 121.5654, minZoom: 2.8, country: 'Taiwan' },
+  { name: 'Nanning', lat: 22.8170, lng: 108.3665, minZoom: 4.6, country: 'China' },
+  { name: 'Guiyang', lat: 26.6477, lng: 106.6302, minZoom: 4.6, country: 'China' },
+  { name: 'Liangshan', lat: 27.8938, lng: 102.2673, minZoom: 4.8, country: 'China' },
+  { name: 'Honghe', lat: 23.3640, lng: 103.3768, minZoom: 4.8, country: 'China' },
+  { name: 'Beijing', lat: 39.9042, lng: 116.4074, minZoom: 2.0, country: 'China' },
+  { name: 'Shanghai', lat: 31.2304, lng: 121.4737, minZoom: 2.0, country: 'China' },
+  { name: 'Seoul', lat: 37.5665, lng: 126.9780, minZoom: 2.2, country: 'South Korea' },
+  { name: 'Tokyo', lat: 35.6762, lng: 139.6503, minZoom: 2.0, country: 'Japan' },
+  { name: 'Osaka', lat: 34.6937, lng: 135.5023, minZoom: 3.2, country: 'Japan' },
+
+  // ── 4. Europe, Americas, Oceania, Africa ──
+  { name: 'London', lat: 51.5074, lng: -0.1278, minZoom: 2.0, country: 'UK' },
+  { name: 'Paris', lat: 48.8566, lng: 2.3522, minZoom: 2.0, country: 'France' },
+  { name: 'Berlin', lat: 52.5200, lng: 13.4050, minZoom: 2.4, country: 'Germany' },
+  { name: 'Rome', lat: 41.9028, lng: 12.4964, minZoom: 2.4, country: 'Italy' },
+  { name: 'Madrid', lat: 40.4168, lng: -3.7038, minZoom: 2.4, country: 'Spain' },
+  { name: 'Moscow', lat: 55.7558, lng: 37.6173, minZoom: 2.2, country: 'Russia' },
+  { name: 'New York', lat: 40.7128, lng: -74.0060, minZoom: 2.0, country: 'USA' },
+  { name: 'Los Angeles', lat: 34.0522, lng: -118.2437, minZoom: 2.2, country: 'USA' },
+  { name: 'Chicago', lat: 41.8781, lng: -87.6298, minZoom: 2.4, country: 'USA' },
+  { name: 'San Francisco', lat: 37.7749, lng: -122.4194, minZoom: 2.8, country: 'USA' },
+  { name: 'Miami', lat: 25.7617, lng: -80.1918, minZoom: 2.8, country: 'USA' },
+  { name: 'Toronto', lat: 43.6532, lng: -79.3832, minZoom: 2.4, country: 'Canada' },
+  { name: 'Mexico City', lat: 19.4326, lng: -99.1332, minZoom: 2.2, country: 'Mexico' },
+  { name: 'São Paulo', lat: -23.5505, lng: -46.6333, minZoom: 2.2, country: 'Brazil' },
+  { name: 'Buenos Aires', lat: -34.6037, lng: -58.3816, minZoom: 2.4, country: 'Argentina' },
+  { name: 'Sydney', lat: -33.8688, lng: 151.2093, minZoom: 2.0, country: 'Australia' },
+  { name: 'Melbourne', lat: -37.8136, lng: 144.9631, minZoom: 2.8, country: 'Australia' },
+  { name: 'Johannesburg', lat: -26.2041, lng: 28.0473, minZoom: 2.4, country: 'South Africa' },
+  { name: 'Nairobi', lat: -1.2921, lng: 36.8219, minZoom: 2.8, country: 'Kenya' },
+  { name: 'Lagos', lat: 6.5244, lng: 3.3792, minZoom: 2.8, country: 'Nigeria' },
+];
+
 const WIND_HEATMAP_SOURCE_ID = 'mooearth-wind-velocity-raster-source';
 const WIND_HEATMAP_LAYER_ID = 'mooearth-wind-velocity-raster-layer';
 
@@ -62,6 +173,7 @@ export default function WeatherMapLibreOverlay({
   map,
   activeLayer,
   particlesEnabled = true,
+  windSpeedUnit = 'km/h',
   isMobile = false,
   reducedMotion = false,
 }: WeatherMapLibreOverlayProps) {
@@ -69,6 +181,7 @@ export default function WeatherMapLibreOverlay({
   const animFrameIdRef = useRef<number | null>(null);
   const particlesRef = useRef<Particle2D[]>([]);
   const windFieldRef = useRef<GriddedWindField>(getGlobalWindField());
+  const cityMarkersRef = useRef<CityWindMarkerEntry[]>([]);
   const [cursorTelemetry, setCursorTelemetry] = useState<WindCursorTelemetry | null>(null);
 
   const particleCount = isMobile ? 800 : 3200;
@@ -187,7 +300,153 @@ export default function WeatherMapLibreOverlay({
     };
   }, [map, isWindActive, applyWindHeatmap]);
 
-  // ── 3. Interactive Wind Telemetry Cursor Picker (Windy Parity) ─────────
+  // ── 3. Zoom Earth-Grade Live City Wind Badges Lifecycle ───────────────
+  useEffect(() => {
+    if (!map || !isWindActive) {
+      cityMarkersRef.current.forEach(({ marker }) => marker.remove());
+      cityMarkersRef.current = [];
+      return;
+    }
+
+    const windField = windFieldRef.current;
+    const markers: CityWindMarkerEntry[] = [];
+
+    // Helper to format badge inner HTML
+    const renderBadgeContent = (station: WindCityStation) => {
+      const sample = windField.sampleAt(station.lat, station.lng);
+      const speedKmh = Math.round(sample.speed);
+      const speedKt = Math.round(sample.speed * 0.539957);
+      const displaySpeed = windSpeedUnit === 'kt' ? `${speedKt} kt` : `${speedKmh} km/h`;
+      // Angle where wind is flowing towards: (directionDeg + 180) % 360
+      const flowAngleDeg = Math.round((sample.directionDeg + 180) % 360);
+
+      return `
+        <div style="font-size: 10px; font-weight: 600; color: rgba(241, 245, 249, 0.95); line-height: 1.1; white-space: nowrap;">
+          ${station.name}
+        </div>
+        <div style="display: flex; align-items: center; gap: 3px; font-size: 9px; font-family: monospace; font-weight: 700; color: #67e8f9; line-height: 1.2;">
+          <span class="speed-val">${displaySpeed}</span>
+          <span class="wind-arrow" style="display: inline-block; transform: rotate(${flowAngleDeg}deg); color: #38bdf8; font-size: 10px;">↑</span>
+        </div>
+      `;
+    };
+
+    // Instantiate markers
+    for (const station of WIND_CITY_STATIONS) {
+      const el = document.createElement('div');
+      el.className = 'mooearth-wind-badge pointer-events-auto cursor-pointer select-none';
+      el.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(8, 14, 30, 0.84);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid rgba(56, 189, 248, 0.32);
+        border-radius: 6px;
+        padding: 1.5px 5.5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+        user-select: none;
+      `;
+      el.innerHTML = renderBadgeContent(station);
+
+      // Interactive hover
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.1)';
+        el.style.borderColor = 'rgba(56, 189, 248, 0.85)';
+        el.style.boxShadow = '0 0 14px rgba(56, 189, 248, 0.4)';
+        el.style.zIndex = '40';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1.0)';
+        el.style.borderColor = 'rgba(56, 189, 248, 0.32)';
+        el.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.55)';
+        el.style.zIndex = '20';
+      });
+
+      // Interactive click popup with live station telemetry
+      const sample = windField.sampleAt(station.lat, station.lng);
+      const speedKmh = Math.round(sample.speed);
+      const speedKt = Math.round(sample.speed * 0.539957);
+      const gustKmh = Math.round(sample.speed * (1.35 + 0.15 * Math.sin(station.lat * 0.1)));
+      const cardinal = getCardinalDirection(sample.directionDeg);
+      const beaufort = getBeaufortCategory(speedKt);
+
+      const popup = new Popup({
+        offset: 12,
+        closeButton: true,
+        closeOnClick: true,
+        className: 'mooearth-wind-station-popup',
+        maxWidth: '220px',
+      }).setHTML(`
+        <div style="background: #090e1e; border: 1px solid rgba(56, 189, 248, 0.5); border-radius: 10px; padding: 10px; color: #f8fafc; font-family: sans-serif; font-size: 11px;">
+          <div style="font-size: 13px; font-weight: bold; color: #38bdf8; margin-bottom: 2px;">${station.name}</div>
+          <div style="font-size: 10px; color: rgba(255,255,255,0.6); margin-bottom: 8px;">${station.country} · ${station.lat.toFixed(2)}°, ${station.lng.toFixed(2)}°</div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: rgba(255,255,255,0.7);">Wind Speed:</span>
+            <span style="font-weight: bold; font-family: monospace; color: #67e8f9;">${speedKmh} km/h (${speedKt} kt)</span>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: rgba(255,255,255,0.7);">Wind Gusts:</span>
+            <span style="font-family: monospace; color: #cbd5e1;">${gustKmh} km/h</span>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px;">
+            <span style="color: rgba(255,255,255,0.7);">Direction:</span>
+            <span style="font-weight: 600; color: #93c5fd;">${cardinal} (${Math.round(sample.directionDeg)}°)</span>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <span style="color: rgba(255,255,255,0.6); font-size: 10px;">Classification:</span>
+            <span style="font-weight: 600; font-size: 10px;" class="${beaufort.color}">${beaufort.name}</span>
+          </div>
+        </div>
+      `);
+
+      const marker = new Marker({ element: el, anchor: 'center' })
+        .setLngLat([station.lng, station.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      markers.push({ marker, station });
+    }
+
+    cityMarkersRef.current = markers;
+
+    // Zoom-dependent visibility filtering
+    const updateMarkerVisibility = () => {
+      const currentZoom = map.getZoom();
+      for (const item of cityMarkersRef.current) {
+        const element = item.marker.getElement();
+        if (element) {
+          element.style.display = currentZoom >= item.station.minZoom ? 'flex' : 'none';
+        }
+      }
+    };
+
+    updateMarkerVisibility();
+    map.on('zoom', updateMarkerVisibility);
+
+    // Refresh telemetry on background grid updates
+    const handleGridUpdated = () => {
+      for (const item of cityMarkersRef.current) {
+        const element = item.marker.getElement();
+        if (element) {
+          element.innerHTML = renderBadgeContent(item.station);
+        }
+      }
+    };
+    window.addEventListener('mooearth-wind-grid-updated', handleGridUpdated);
+
+    return () => {
+      map.off('zoom', updateMarkerVisibility);
+      window.removeEventListener('mooearth-wind-grid-updated', handleGridUpdated);
+      cityMarkersRef.current.forEach(({ marker }) => marker.remove());
+      cityMarkersRef.current = [];
+    };
+  }, [map, isWindActive, windSpeedUnit]);
+
+  // ── 4. Interactive Wind Telemetry Cursor Picker (Windy Parity) ─────────
   useEffect(() => {
     if (!map || !isWindActive) {
       setCursorTelemetry(null);
@@ -298,8 +557,8 @@ export default function WeatherMapLibreOverlay({
         lng: bestLng,
         prevLat: bestLat,
         prevLng: bestLng,
-        age: Math.floor(Math.random() * 45),
-        maxAge: 65 + Math.floor(Math.random() * 85),
+        age: Math.floor(Math.random() * 50),
+        maxAge: 75 + Math.floor(Math.random() * 75),
         speed: 15,
       };
     };
@@ -345,15 +604,15 @@ export default function WeatherMapLibreOverlay({
       const timeScale = Math.max(0.0005, baseScale * zoomFactor);
 
       // Zoom-adaptive aerodynamic trail persistence & stroke styling
-      const trailFade = zoom <= 4 ? 0.040 : zoom <= 8 ? 0.048 : 0.060;
+      const trailFade = zoom <= 4 ? 0.035 : zoom <= 8 ? 0.045 : 0.055;
       ctx.globalCompositeOperation = 'destination-out';
       ctx.fillStyle = `rgba(0, 0, 0, ${trailFade})`;
       ctx.fillRect(0, 0, width, height);
 
       ctx.globalCompositeOperation = 'lighter';
       const lineWidth = isMobile
-        ? (zoom <= 4 ? 0.9 : zoom <= 8 ? 1.1 : 1.4)
-        : (zoom <= 4 ? 1.0 : zoom <= 8 ? 1.3 : 1.7);
+        ? (zoom <= 4 ? 1.0 : zoom <= 8 ? 1.2 : 1.5)
+        : (zoom <= 4 ? 1.1 : zoom <= 8 ? 1.4 : 1.8);
       ctx.lineWidth = lineWidth;
       ctx.lineCap = 'round';
 
@@ -367,11 +626,22 @@ export default function WeatherMapLibreOverlay({
         p.prevLat = p.lat;
         p.prevLng = p.lng;
 
-        // Advect particle along meteorological U/V vectors with dynamic zoom scaling
-        const advected = windField.advectParticle(p.lat, p.lng, timeScale);
+        // Windy & Zoom Earth Streamline Physics:
+        // Sample true wind vector at current coordinate.
+        const sample = windField.sampleAt(p.lat, p.lng);
+        p.speed = sample.speed;
+
+        // Enforce a minimum display advection speed so low-wind continental/coastal zones (1-6 km/h)
+        // do not collapse into static sub-pixel dots. Particles continuously glide along the
+        // true wind streamline direction, forming silky, coherent ribbons matching Windy and Zoom Earth.
+        const minDisplaySpeed = 12.0; // km/h floor for streamline flow
+        const effectiveSpeed = Math.max(minDisplaySpeed, sample.speed);
+        const speedRatio = sample.speed > 0.1 ? effectiveSpeed / sample.speed : 1.0;
+
+        // Advect particle along meteorological U/V vectors with dynamic zoom scaling & streamline continuity
+        const advected = windField.advectParticle(p.lat, p.lng, timeScale * speedRatio);
         p.lat = advected.nextLat;
         p.lng = advected.nextLng;
-        p.speed = advected.vector.speed;
         p.age++;
 
         // Respawn if aged or drifted outside viewport
@@ -399,17 +669,20 @@ export default function WeatherMapLibreOverlay({
 
         // Streamlines styled in luminous translucent white/cyan with intensity glow
         const progress = p.age / p.maxAge;
-        const alpha = Math.sin(progress * Math.PI) * 0.88;
+        const alpha = Math.sin(progress * Math.PI) * 0.92;
 
-        if (p.speed > 80) {
+        if (p.speed > 75) {
           // Intense eyewall / jet stream particles glow bright white-magenta
           ctx.strokeStyle = `rgba(255, 230, 255, ${alpha.toFixed(2)})`;
         } else if (p.speed > 40) {
           // Moderate to gale winds
-          ctx.strokeStyle = `rgba(240, 255, 255, ${alpha.toFixed(2)})`;
+          ctx.strokeStyle = `rgba(235, 255, 255, ${alpha.toFixed(2)})`;
+        } else if (p.speed > 15) {
+          // Steady breeze
+          ctx.strokeStyle = `rgba(200, 245, 255, ${(alpha * 0.85).toFixed(2)})`;
         } else {
-          // Gentle breeze
-          ctx.strokeStyle = `rgba(210, 245, 255, ${(alpha * 0.82).toFixed(2)})`;
+          // Gentle calm breeze - silky subtle cyan
+          ctx.strokeStyle = `rgba(175, 235, 255, ${(alpha * 0.72).toFixed(2)})`;
         }
 
         ctx.beginPath();

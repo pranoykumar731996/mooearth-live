@@ -86,15 +86,7 @@ export const ACTIVE_PLANETARY_VORTICES: ActiveVortexCenter[] = [
     maxWindKph: 145,
     direction: 'clockwise',
   },
-  // 3. North Indian Ocean — Bay of Bengal Cyclonic Depression
-  {
-    lat: 16.5,
-    lng: 88.5,
-    radiusKm: 550,
-    maxWindKph: 95,
-    direction: 'counter-clockwise',
-  },
-  // 4. Northeast Pacific — Tropical Storm
+  // 3. Northeast Pacific — Tropical Storm
   {
     lat: 21.0,
     lng: -110.0,
