@@ -2,16 +2,26 @@
 // MooEarth Live — 2D MapLibre Wind Streamlines & Velocity Heatmap Overlay
 // ============================================================
 // Synchronized Windy-grade Wind Layer for MapLibre GL JS:
-// 1. Continuous scalar wind speed velocity heatmap raster underneath particles.
-// 2. Hardware-accelerated Canvas 2D animated streamline particles with motion trails.
-// 3. Interactive cursor wind inspection telemetry (speed in kt & km/h, direction arrow, gusts).
+// 1. Continuous scalar wind speed velocity heatmap raster underneath particles (0.62 opacity).
+// 2. Multi-scale zoom-adaptive Canvas 2D streamline particle advection:
+//    - Dynamic zoom scaling factor k(z) prevents streaking or freezing across zooms 1.0 to 14.0+.
+//    - Viewport-bounded instant particle recycling on pan/zoom (moveend).
+//    - Speed-weighted importance sampling to enrich active jet streams & cyclone eyewalls.
+//    - Zoom-adaptive stroke width and aerodynamic motion trail persistence.
+// 3. Interactive cursor wind inspection telemetry (speed in kt & km/h, direction arrow, Beaufort classification).
 // 4. Strict isolation: mounts and displays ONLY when activeLayer === 'wind'.
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { getGlobalWindField, GriddedWindField } from '@/services/weather/griddedWindService';
+import {
+  getGlobalWindField,
+  loadLiveWindField,
+  GriddedWindField,
+  getBeaufortCategory,
+  getCardinalDirection,
+} from '@/services/weather/griddedWindService';
 
 interface WeatherMapLibreOverlayProps {
   map: MapLibreMap | null;
@@ -41,6 +51,8 @@ interface WindCursorTelemetry {
   speedKmh: number;
   gustKmh: number;
   directionDeg: number;
+  cardinal: string;
+  beaufort: { name: string; color: string };
 }
 
 const WIND_HEATMAP_SOURCE_ID = 'mooearth-wind-velocity-raster-source';
@@ -62,42 +74,25 @@ export default function WeatherMapLibreOverlay({
   const particleCount = isMobile ? 800 : 3200;
   const isWindActive = activeLayer === 'wind';
 
-  // ── 1. MapLibre Wind Velocity Heatmap Raster Layer Lifecycle ───────────
+  // ── 1. Live Planetary Grid Synchronization ─────────────────────────────
   useEffect(() => {
-    if (!map) return;
+    if (!isWindActive) return;
+    // Asynchronously synchronize live planetary wind vectors in background
+    loadLiveWindField().catch(() => {});
+  }, [isWindActive]);
 
-    if (!isWindActive) {
-      // Clean up wind heatmap raster as soon as user switches away from Wind
-      try {
-        if (map.getLayer(WIND_HEATMAP_LAYER_ID)) {
-          map.removeLayer(WIND_HEATMAP_LAYER_ID);
-        }
-        if (map.getSource(WIND_HEATMAP_SOURCE_ID)) {
-          map.removeSource(WIND_HEATMAP_SOURCE_ID);
-        }
-      } catch (err) {
-        console.warn('[MapLibre Wind] Cleanup notice:', err);
-      }
-      return;
-    }
+  // ── 2. MapLibre Wind Velocity Heatmap Raster Layer Lifecycle ───────────
+  const applyWindHeatmap = useCallback(() => {
+    if (!map || !isWindActive) return;
 
-    const applyWindHeatmap = () => {
-      try {
-        if (map.getSource(WIND_HEATMAP_SOURCE_ID)) return;
+    try {
+      const windField = windFieldRef.current;
+      const dataUrl = windField.getMercatorWindHeatmapDataUrl(1440, 720);
+      if (!dataUrl) return;
 
-        const windField = windFieldRef.current;
-        const dataUrl = windField.getMercatorWindHeatmapDataUrl(1440, 720);
-        if (!dataUrl) return;
-
-        // Position wind heatmap below country boundaries and place names for crisp labels
-        const beforeLayerId =
-          map.getLayer('place_country_major') ? 'place_country_major' :
-          map.getLayer('place_country_minor') ? 'place_country_minor' :
-          map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
-          map.getLayer('carto-labels-layer') ? 'carto-labels-layer' : undefined;
-
-        map.addSource(WIND_HEATMAP_SOURCE_ID, {
-          type: 'image',
+      const existingSource = map.getSource(WIND_HEATMAP_SOURCE_ID) as any;
+      if (existingSource && typeof existingSource.updateImage === 'function') {
+        existingSource.updateImage({
           url: dataUrl,
           coordinates: [
             [-180, 85.0511],
@@ -106,24 +101,63 @@ export default function WeatherMapLibreOverlay({
             [-180, -85.0511],
           ],
         });
-
-        map.addLayer(
-          {
-            id: WIND_HEATMAP_LAYER_ID,
-            type: 'raster',
-            source: WIND_HEATMAP_SOURCE_ID,
-            paint: {
-              'raster-opacity': 0.62,
-              'raster-fade-duration': 250,
-              'raster-resampling': 'linear',
-            },
-          },
-          beforeLayerId
-        );
-      } catch (err) {
-        console.warn('[MapLibre Wind] Heatmap mount error:', err);
+        return;
       }
-    };
+
+      if (map.getSource(WIND_HEATMAP_SOURCE_ID)) return;
+
+      // Position wind heatmap below country boundaries and place names for crisp labels
+      const beforeLayerId =
+        map.getLayer('place_country_major') ? 'place_country_major' :
+        map.getLayer('place_country_minor') ? 'place_country_minor' :
+        map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
+        map.getLayer('carto-labels-layer') ? 'carto-labels-layer' : undefined;
+
+      map.addSource(WIND_HEATMAP_SOURCE_ID, {
+        type: 'image',
+        url: dataUrl,
+        coordinates: [
+          [-180, 85.0511],
+          [180, 85.0511],
+          [180, -85.0511],
+          [-180, -85.0511],
+        ],
+      });
+
+      map.addLayer(
+        {
+          id: WIND_HEATMAP_LAYER_ID,
+          type: 'raster',
+          source: WIND_HEATMAP_SOURCE_ID,
+          paint: {
+            'raster-opacity': 0.62,
+            'raster-fade-duration': 250,
+            'raster-resampling': 'linear',
+          },
+        },
+        beforeLayerId
+      );
+    } catch (err) {
+      console.warn('[MapLibre Wind] Heatmap mount error:', err);
+    }
+  }, [map, isWindActive]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    if (!isWindActive) {
+      try {
+        if (map.getLayer(WIND_HEATMAP_LAYER_ID)) {
+          map.removeLayer(WIND_HEATMAP_LAYER_ID);
+        }
+        if (map.getSource(WIND_HEATMAP_SOURCE_ID)) {
+          map.removeSource(WIND_HEATMAP_SOURCE_ID);
+        }
+      } catch (err) {
+        // Safe cleanup
+      }
+      return;
+    }
 
     if (map.isStyleLoaded()) {
       applyWindHeatmap();
@@ -131,7 +165,15 @@ export default function WeatherMapLibreOverlay({
       map.once('style.load', applyWindHeatmap);
     }
 
+    // Refresh heatmap if background sync delivers new live data
+    const handleGridUpdated = () => {
+      windFieldRef.current.invalidateRasterCache();
+      applyWindHeatmap();
+    };
+    window.addEventListener('mooearth-wind-grid-updated', handleGridUpdated);
+
     return () => {
+      window.removeEventListener('mooearth-wind-grid-updated', handleGridUpdated);
       try {
         if (map.getLayer(WIND_HEATMAP_LAYER_ID)) {
           map.removeLayer(WIND_HEATMAP_LAYER_ID);
@@ -143,9 +185,9 @@ export default function WeatherMapLibreOverlay({
         // Safe unmount
       }
     };
-  }, [map, isWindActive]);
+  }, [map, isWindActive, applyWindHeatmap]);
 
-  // ── 2. Interactive Wind Telemetry Cursor Picker ─────────────────────────
+  // ── 3. Interactive Wind Telemetry Cursor Picker (Windy Parity) ─────────
   useEffect(() => {
     if (!map || !isWindActive) {
       setCursorTelemetry(null);
@@ -161,6 +203,7 @@ export default function WeatherMapLibreOverlay({
       const speedKmh = Math.round(sample.speed);
       const speedKt = Math.round(sample.speed * 0.539957);
       const gustKmh = Math.round(sample.speed * (1.35 + 0.15 * Math.sin(lat * 0.1)));
+      const dirDeg = Math.round(sample.directionDeg);
 
       setCursorTelemetry({
         x: point.x,
@@ -170,7 +213,9 @@ export default function WeatherMapLibreOverlay({
         speedKt,
         speedKmh,
         gustKmh,
-        directionDeg: Math.round(sample.directionDeg),
+        directionDeg: dirDeg,
+        cardinal: getCardinalDirection(dirDeg),
+        beaufort: getBeaufortCategory(speedKt),
       });
     };
 
@@ -191,7 +236,7 @@ export default function WeatherMapLibreOverlay({
     };
   }, [map, isWindActive]);
 
-  // ── 3. High-Performance Streamline Particle Engine ──────────────────────
+  // ── 4. Multi-Scale Zoom-Adaptive Particle Engine ────────────────────────
   useEffect(() => {
     if (!map || !isWindActive || !particlesEnabled) {
       if (animFrameIdRef.current) {
@@ -223,7 +268,9 @@ export default function WeatherMapLibreOverlay({
 
     resizeCanvas();
 
-    // Spawn random particle within current visible map bounds
+    const windField = windFieldRef.current;
+
+    // Speed-weighted importance sampling particle spawner
     const spawnParticle = (): Particle2D => {
       const bounds = map.getBounds();
       const west = bounds.getWest();
@@ -231,45 +278,88 @@ export default function WeatherMapLibreOverlay({
       const south = Math.max(-80, bounds.getSouth());
       const north = Math.min(80, bounds.getNorth());
 
-      const lat = south + Math.random() * (north - south);
-      const lng = west + Math.random() * (east - west);
+      let bestLat = south + Math.random() * (north - south);
+      let bestLng = west + Math.random() * (east - west);
+
+      // 2-sample importance check: prefer areas with active wind
+      const sample1 = windField.sampleAt(bestLat, bestLng);
+      if (sample1.speed < 4) {
+        const candidateLat = south + Math.random() * (north - south);
+        const candidateLng = west + Math.random() * (east - west);
+        const sample2 = windField.sampleAt(candidateLat, candidateLng);
+        if (sample2.speed > sample1.speed) {
+          bestLat = candidateLat;
+          bestLng = candidateLng;
+        }
+      }
 
       return {
-        lat,
-        lng,
-        prevLat: lat,
-        prevLng: lng,
+        lat: bestLat,
+        lng: bestLng,
+        prevLat: bestLat,
+        prevLng: bestLng,
         age: Math.floor(Math.random() * 45),
         maxAge: 65 + Math.floor(Math.random() * 85),
         speed: 15,
       };
     };
 
+    // Initialize screen particle pool
     particlesRef.current = [];
     for (let i = 0; i < particleCount; i++) {
       particlesRef.current.push(spawnParticle());
     }
 
-    const windField = windFieldRef.current;
-    const timeScale = reducedMotion ? 0.05 : 0.18;
+    // Instant screen-space particle recycling on pan or zoom
+    const handleViewportChange = () => {
+      const bounds = map.getBounds();
+      const west = bounds.getWest();
+      const east = bounds.getEast();
+      const south = Math.max(-80, bounds.getSouth());
+      const north = Math.min(80, bounds.getNorth());
+      const particles = particlesRef.current;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.lat < south || p.lat > north || p.lng < west || p.lng > east) {
+          particles[i] = spawnParticle();
+        }
+      }
+    };
+
+    map.on('moveend', handleViewportChange);
 
     const render = () => {
       const container = map.getContainer();
       if (!container) return;
       const width = container.clientWidth;
       const height = container.clientHeight;
+      const zoom = map.getZoom();
 
-      // Soft trail fade creates aerodynamic particle motion blur
+      // Dynamic zoom-adaptive time scale:
+      // In Web Mercator, 1 deg lat/lng spans exponentially more pixels as zoom increases (2^z).
+      // We scale the advection step inversely by 2^(-(z-2.5)*0.82) so pixel displacement
+      // remains in the comfortable 2-8 px/frame window across all zooms (1.0 to 14.0+).
+      const zoomFactor = Math.pow(2, -(zoom - 2.5) * 0.82);
+      const baseScale = reducedMotion ? 0.05 : 0.18;
+      const timeScale = Math.max(0.0005, baseScale * zoomFactor);
+
+      // Zoom-adaptive aerodynamic trail persistence & stroke styling
+      const trailFade = zoom <= 4 ? 0.040 : zoom <= 8 ? 0.048 : 0.060;
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.045)';
+      ctx.fillStyle = `rgba(0, 0, 0, ${trailFade})`;
       ctx.fillRect(0, 0, width, height);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.lineWidth = isMobile ? 1.0 : 1.3;
+      const lineWidth = isMobile
+        ? (zoom <= 4 ? 0.9 : zoom <= 8 ? 1.1 : 1.4)
+        : (zoom <= 4 ? 1.0 : zoom <= 8 ? 1.3 : 1.7);
+      ctx.lineWidth = lineWidth;
       ctx.lineCap = 'round';
 
       const particles = particlesRef.current;
       const bounds = map.getBounds();
+      const maxDistSq = zoom <= 5 ? 10000 : zoom <= 9 ? 6400 : 2500;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
@@ -277,7 +367,7 @@ export default function WeatherMapLibreOverlay({
         p.prevLat = p.lat;
         p.prevLng = p.lng;
 
-        // Advect particle along meteorological U/V vectors
+        // Advect particle along meteorological U/V vectors with dynamic zoom scaling
         const advected = windField.advectParticle(p.lat, p.lng, timeScale);
         p.lat = advected.nextLat;
         p.lng = advected.nextLng;
@@ -300,13 +390,14 @@ export default function WeatherMapLibreOverlay({
         const p0 = map.project([p.prevLng, p.prevLat]);
         const p1 = map.project([p.lng, p.lat]);
 
+        // Antimeridian or sudden camera jump guard
         const distSq = (p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2;
-        if (distSq > 10000) {
+        if (distSq > maxDistSq) {
           particles[i] = spawnParticle();
           continue;
         }
 
-        // Streamlines on top of heatmap are styled in luminous translucent white/cyan
+        // Streamlines styled in luminous translucent white/cyan with intensity glow
         const progress = p.age / p.maxAge;
         const alpha = Math.sin(progress * Math.PI) * 0.88;
 
@@ -335,6 +426,7 @@ export default function WeatherMapLibreOverlay({
 
     return () => {
       map.off('resize', resizeCanvas);
+      map.off('moveend', handleViewportChange);
       if (animFrameIdRef.current) {
         cancelAnimationFrame(animFrameIdRef.current);
         animFrameIdRef.current = null;
@@ -358,28 +450,31 @@ export default function WeatherMapLibreOverlay({
           className="absolute pointer-events-none z-30 transition-transform duration-75 hidden sm:block"
           style={{
             left: `${cursorTelemetry.x + 14}px`,
-            top: `${cursorTelemetry.y - 36}px`,
+            top: `${cursorTelemetry.y - 42}px`,
           }}
         >
-          <div className="bg-[#0b1329]/95 border border-cyan-400/50 backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-2xl text-xs font-mono text-white flex items-center gap-2">
+          <div className="bg-[#0b1329]/95 border border-cyan-400/50 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl text-xs font-mono text-white flex items-center gap-2.5">
             <span
-              className="inline-block transition-transform duration-100 text-cyan-300 font-bold text-sm"
+              className="inline-block transition-transform duration-100 text-cyan-300 font-bold text-base drop-shadow-[0_0_6px_rgba(34,211,238,0.6)]"
               style={{ transform: `rotate(${cursorTelemetry.directionDeg}deg)` }}
-              title={`Wind blowing from ${cursorTelemetry.directionDeg}°`}
+              title={`Wind blowing from ${cursorTelemetry.cardinal} (${cursorTelemetry.directionDeg}°)`}
             >
               ↑
             </span>
             <div className="flex flex-col leading-tight">
-              <div className="flex items-baseline gap-1">
+              <div className="flex items-baseline gap-1.5">
                 <span className="font-bold text-sm text-cyan-300">{cursorTelemetry.speedKt}</span>
-                <span className="text-[10px] text-cyan-400/80">kt</span>
+                <span className="text-[10px] text-cyan-400/80 font-sans">kt</span>
                 <span className="text-white/30 text-[10px]">·</span>
-                <span className="text-[11px] text-white/90">{cursorTelemetry.speedKmh} km/h</span>
+                <span className="text-[11px] text-white/90 font-sans">{cursorTelemetry.speedKmh} km/h</span>
+                <span className={`text-[10px] font-semibold ml-1 ${cursorTelemetry.beaufort.color}`}>
+                  {cursorTelemetry.beaufort.name}
+                </span>
               </div>
-              <div className="text-[9px] text-white/50 flex items-center gap-1">
+              <div className="text-[9px] text-white/50 flex items-center gap-1.5 font-sans mt-0.5">
                 <span>Gusts {cursorTelemetry.gustKmh} km/h</span>
                 <span>·</span>
-                <span>{cursorTelemetry.directionDeg}°</span>
+                <span className="text-cyan-200/70">{cursorTelemetry.cardinal} ({cursorTelemetry.directionDeg}°)</span>
               </div>
             </div>
           </div>

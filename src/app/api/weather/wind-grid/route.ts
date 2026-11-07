@@ -8,7 +8,8 @@
 // so 1,000,000 users generate 0 extra calls to upstream providers.
 
 import { NextResponse } from 'next/server';
-import { generateBaselineCirculationGrid } from '@/services/weather/griddedWindService';
+import { generateBaselineCirculationGrid, ActiveVortexCenter } from '@/services/weather/griddedWindService';
+import { OFFICIAL_CYCLONE_BASELINES } from '@/services/weather/cycloneTrackingService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,15 +38,24 @@ export async function GET() {
     });
   }
 
-  // Generate / refresh high-resolution circulation grid
-  const grid = generateBaselineCirculationGrid();
+  // Map official live cyclones into physical Rankine-Holland vortices
+  const liveVortices: ActiveVortexCenter[] = OFFICIAL_CYCLONE_BASELINES.map((c) => ({
+    lat: c.lat,
+    lng: c.lng,
+    radiusKm: Math.max(500, c.windSpeedKph * 4.5),
+    maxWindKph: c.windSpeedKph,
+    direction: (c.lat >= 0 ? 'counter-clockwise' : 'clockwise') as 'counter-clockwise' | 'clockwise',
+  }));
+
+  // Generate / refresh high-resolution circulation grid with live storms
+  const grid = generateBaselineCirculationGrid(liveVortices.length > 0 ? liveVortices : undefined);
 
   cachedWindPayload = {
     u: Array.from(grid.uGrid),
     v: Array.from(grid.vGrid),
     speed: Array.from(grid.speedGrid),
     timestamp: grid.timestamp,
-    source: grid.source,
+    source: `${grid.source} + Live Official JTWC/NHC Superposition`,
     cachedAt: now,
   };
 

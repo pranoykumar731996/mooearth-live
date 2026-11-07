@@ -556,3 +556,69 @@ export function getGlobalWindField(): GriddedWindField {
   }
   return globalWindFieldInstance;
 }
+
+
+/**
+ * Loads and synchronizes the live planetary wind field from the server edge cache.
+ * Automatically updates the singleton grid without blocking UI rendering.
+ */
+export async function loadLiveWindField(): Promise<GriddedWindField> {
+  const instance = getGlobalWindField();
+  if (typeof window === 'undefined') return instance;
+
+  try {
+    const res = await fetch('/api/weather/wind-grid', {
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const payload = await res.json();
+      if (
+        Array.isArray(payload.u) &&
+        Array.isArray(payload.v) &&
+        Array.isArray(payload.speed) &&
+        payload.u.length === TOTAL_GRID_NODES
+      ) {
+        instance.setData({
+          uGrid: new Float32Array(payload.u),
+          vGrid: new Float32Array(payload.v),
+          speedGrid: new Float32Array(payload.speed),
+          timestamp: payload.timestamp || new Date().toISOString(),
+          source: 'planetary-circulation-baseline',
+        });
+        window.dispatchEvent(new CustomEvent('mooearth-wind-grid-updated'));
+      }
+    }
+  } catch (err) {
+    console.warn('[GriddedWindService] Live grid fetch fallback:', err);
+  }
+
+  return instance;
+}
+
+/**
+ * Official WMO Beaufort Wind Scale category classification and Tailwind color styling.
+ */
+export function getBeaufortCategory(speedKt: number): { name: string; color: string } {
+  if (speedKt < 1) return { name: 'Calm', color: 'text-slate-400' };
+  if (speedKt < 4) return { name: 'Light Air', color: 'text-blue-300' };
+  if (speedKt < 7) return { name: 'Light Breeze', color: 'text-cyan-300' };
+  if (speedKt < 11) return { name: 'Gentle Breeze', color: 'text-emerald-300' };
+  if (speedKt < 17) return { name: 'Moderate Breeze', color: 'text-lime-300' };
+  if (speedKt < 22) return { name: 'Fresh Breeze', color: 'text-green-300' };
+  if (speedKt < 28) return { name: 'Strong Breeze', color: 'text-yellow-300' };
+  if (speedKt < 34) return { name: 'Near Gale', color: 'text-amber-400' };
+  if (speedKt < 41) return { name: 'Gale', color: 'text-orange-500' };
+  if (speedKt < 48) return { name: 'Strong Gale', color: 'text-red-500' };
+  if (speedKt < 56) return { name: 'Storm', color: 'text-rose-500' };
+  if (speedKt < 64) return { name: 'Violent Storm', color: 'text-purple-400' };
+  return { name: 'Hurricane Force', color: 'text-fuchsia-400' };
+}
+
+/**
+ * 16-point meteorological compass direction abbreviation.
+ */
+export function getCardinalDirection(deg: number): string {
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const idx = Math.round(((deg % 360) / 22.5)) % 16;
+  return directions[idx];
+}
