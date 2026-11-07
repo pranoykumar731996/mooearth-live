@@ -694,6 +694,7 @@ import {
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
 import { getSatelliteObservationDate, getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
+import { GLOBAL_PRESSURE_CENTERS, getIsobarLevels } from '@/components/Globe/WeatherLayers/AtmosphericPressureLayer';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
 import { isLocationCoveredByRadar } from '@/services/weather/radarAdapter';
 import NearbyPlacesPanel from './NearbyPlacesPanel';
@@ -748,6 +749,7 @@ export interface CityMapViewerProps {
   spectralMode?: SatelliteSpectralMode;
   onSelectSpectralMode?: (mode: SatelliteSpectralMode) => void;
   particlesEnabled?: boolean;
+  showPressureIsobars?: boolean;
   disasters?: WorldEvent[];
   disasterFilter?: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather';
   onSelectDisasterFilter?: (filter: 'all' | 'cyclones' | 'seismic' | 'wildfires' | 'thunderstorms' | 'space_weather') => void;
@@ -865,6 +867,7 @@ export default function CityMapViewer({
   spectralMode = 'blue',
   onSelectSpectralMode,
   particlesEnabled = true,
+  showPressureIsobars = false,
   disasters = [],
   disasterFilter: disasterFilterProp,
   onSelectDisasterFilter,
@@ -2333,6 +2336,142 @@ export default function CityMapViewer({
       }
     }
   }, [activeLayer, isMapLoaded, radarTileUrl]);
+
+  // ── Synchronize 2D MSLP Atmospheric Isobars & Pressure Centers ───────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+    const isIsobarsActive = (showPressureIsobars || activeLayer === 'pressure') && (activeLayer === 'wind' || activeLayer === 'pressure');
+    const ISOBAR_SOURCE_ID = 'mooearth-isobars-source';
+    const ISOBAR_LINE_LAYER_ID = 'mooearth-isobars-line-layer';
+    const ISOBAR_CENTERS_LAYER_ID = 'mooearth-isobars-centers-layer';
+
+    if (!isIsobarsActive) {
+      try {
+        if (map.getLayer(ISOBAR_CENTERS_LAYER_ID)) map.removeLayer(ISOBAR_CENTERS_LAYER_ID);
+        if (map.getLayer(ISOBAR_LINE_LAYER_ID)) map.removeLayer(ISOBAR_LINE_LAYER_ID);
+        if (map.getSource(ISOBAR_SOURCE_ID)) map.removeSource(ISOBAR_SOURCE_ID);
+      } catch (e) {
+        // Cleanup
+      }
+      return;
+    }
+
+    const buildIsobarsGeoJson = () => {
+      const features: any[] = [];
+      GLOBAL_PRESSURE_CENTERS.forEach((center) => {
+        const levels = getIsobarLevels(center.centralHpa, center.type, 4);
+        levels.forEach((hpa, lIdx) => {
+          const radiusDeg = (lIdx + 1) * 3.5;
+          const coordinates: [number, number][] = [];
+          const steps = 48;
+          for (let s = 0; s <= steps; s++) {
+            const angle = (s / steps) * 2 * Math.PI;
+            const cosLat = Math.max(0.15, Math.cos((center.lat * Math.PI) / 180));
+            const lng = center.lng + (radiusDeg * Math.cos(angle)) / cosLat;
+            const lat = Math.max(-85, Math.min(85, center.lat + radiusDeg * Math.sin(angle)));
+            coordinates.push([lng, lat]);
+          }
+
+          features.push({
+            type: 'Feature',
+            properties: { hpa, type: center.type },
+            geometry: { type: 'LineString', coordinates },
+          });
+        });
+
+        features.push({
+          type: 'Feature',
+          properties: {
+            centerType: center.type,
+            name: center.name,
+            hpa: center.centralHpa,
+          },
+          geometry: { type: 'Point', coordinates: [center.lng, center.lat] },
+        });
+      });
+
+      return { type: 'FeatureCollection', features };
+    };
+
+    const applyIsobars = () => {
+      try {
+        const geoData = buildIsobarsGeoJson();
+        if (map.getSource(ISOBAR_SOURCE_ID)) {
+          (map.getSource(ISOBAR_SOURCE_ID) as any).setData(geoData);
+          return;
+        }
+
+        const beforeLayerId =
+          map.getLayer('place_country_major') ? 'place_country_major' :
+          map.getLayer('place_country_minor') ? 'place_country_minor' :
+          map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
+          map.getLayer('carto-labels-layer') ? 'carto-labels-layer' : undefined;
+
+        map.addSource(ISOBAR_SOURCE_ID, {
+          type: 'geojson',
+          data: geoData as any,
+        });
+
+        map.addLayer(
+          {
+            id: ISOBAR_LINE_LAYER_ID,
+            type: 'line',
+            filter: ['==', '$type', 'LineString'],
+            source: ISOBAR_SOURCE_ID,
+            paint: {
+              'line-color': '#e2e8f0',
+              'line-width': 1.1,
+              'line-opacity': 0.55,
+              'line-dasharray': [4, 3],
+            },
+          },
+          beforeLayerId
+        );
+
+        map.addLayer(
+          {
+            id: ISOBAR_CENTERS_LAYER_ID,
+            type: 'circle',
+            filter: ['==', '$type', 'Point'],
+            source: ISOBAR_SOURCE_ID,
+            paint: {
+              'circle-radius': 9,
+              'circle-color': [
+                'match',
+                ['get', 'centerType'],
+                'L', '#ef4444',
+                'H', '#0284c7',
+                '#64748b'
+              ],
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': 1.5,
+              'circle-opacity': 0.9,
+            },
+          },
+          beforeLayerId
+        );
+      } catch (err) {
+        console.warn('[MapLibre Isobars] Layer sync notice:', err);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      applyIsobars();
+    } else {
+      map.once('style.load', applyIsobars);
+    }
+
+    return () => {
+      try {
+        if (map.getLayer(ISOBAR_CENTERS_LAYER_ID)) map.removeLayer(ISOBAR_CENTERS_LAYER_ID);
+        if (map.getLayer(ISOBAR_LINE_LAYER_ID)) map.removeLayer(ISOBAR_LINE_LAYER_ID);
+        if (map.getSource(ISOBAR_SOURCE_ID)) map.removeSource(ISOBAR_SOURCE_ID);
+      } catch (err) {
+        // Safe cleanup
+      }
+    };
+  }, [isMapLoaded, showPressureIsobars, activeLayer]);
 
   // Synchronize NASA GIBS Satellite Multi-Sector Raster Layers with MapLibre
   useEffect(() => {

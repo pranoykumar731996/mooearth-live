@@ -416,6 +416,33 @@ export default function WindyTimeScrubber({
             </div>
           )}
 
+          {/* Windy Parity Forecast Model Selector (when Wind is active) */}
+          {activeLayer === 'wind' && (
+            <div className="flex items-center gap-1 bg-black/40 border border-white/10 p-0.5 rounded-xl text-[10px] font-mono select-none">
+              <button
+                type="button"
+                className="px-2 py-0.5 rounded-lg bg-amber-500/25 text-amber-300 font-bold border border-amber-400/40 shadow-sm transition-all"
+                title="European Centre for Medium-Range Weather Forecasts (ECMWF 9km HD)"
+              >
+                ECMWF 9km
+              </button>
+              <button
+                type="button"
+                className="px-1.5 py-0.5 rounded-lg text-white/50 hover:text-white transition-colors"
+                title="Global Forecast System (NOAA GFS 22km)"
+              >
+                GFS 22km
+              </button>
+              <button
+                type="button"
+                className="px-1.5 py-0.5 rounded-lg text-white/50 hover:text-white transition-colors hidden min-[400px]:inline"
+                title="German Weather Service (DWD ICON 13km)"
+              >
+                ICON 13km
+              </button>
+            </div>
+          )}
+
           {/* Right Group: Radar Overlay, Pressure, Particles, Grid */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Radar Overlay Toggle */}

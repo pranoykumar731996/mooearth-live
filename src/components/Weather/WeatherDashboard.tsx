@@ -1426,6 +1426,7 @@ export default function WeatherDashboard() {
                 spectralMode={spectralMode}
                 onSelectSpectralMode={setSpectralMode}
                 particlesEnabled={particlesEnabled}
+                showPressureIsobars={showPressureIsobars}
                 disasters={allDisasters}
                 disasterFilter={disasterCategoryFilter}
                 onSelectDisasterFilter={setDisasterCategoryFilter}

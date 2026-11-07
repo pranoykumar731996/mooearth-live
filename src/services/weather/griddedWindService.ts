@@ -204,6 +204,68 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
   };
 }
 
+export interface ColorStop {
+  kt: number;
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+export const WINDY_COLOR_STOPS: ColorStop[] = [
+  { kt: 0, r: 24, g: 35, b: 72, a: 160 },
+  { kt: 5, r: 32, g: 87, b: 155, a: 185 },
+  { kt: 10, r: 31, g: 163, b: 150, a: 195 },
+  { kt: 15, r: 34, g: 197, b: 94, a: 205 },
+  { kt: 20, r: 132, g: 204, b: 22, a: 215 },
+  { kt: 28, r: 234, g: 179, b: 8, a: 225 },
+  { kt: 35, r: 249, g: 115, b: 22, a: 235 },
+  { kt: 45, r: 239, g: 68, b: 68, a: 245 },
+  { kt: 60, r: 217, g: 70, b: 239, a: 250 },
+  { kt: 85, r: 168, g: 85, b: 247, a: 255 },
+];
+
+let cachedWindColorLut: Uint32Array | null = null;
+
+export function getWindColorLut(): Uint32Array {
+  if (cachedWindColorLut) return cachedWindColorLut;
+  const lut = new Uint32Array(256);
+  const stops = WINDY_COLOR_STOPS;
+
+  for (let i = 0; i < 256; i++) {
+    const kt = i / 3;
+    let r = stops[0].r;
+    let g = stops[0].g;
+    let b = stops[0].b;
+    let a = stops[0].a;
+
+    if (kt <= stops[0].kt) {
+      r = stops[0].r; g = stops[0].g; b = stops[0].b; a = stops[0].a;
+    } else if (kt >= stops[stops.length - 1].kt) {
+      const last = stops[stops.length - 1];
+      r = last.r; g = last.g; b = last.b; a = last.a;
+    } else {
+      for (let s = 0; s < stops.length - 1; s++) {
+        const s0 = stops[s];
+        const s1 = stops[s + 1];
+        if (kt >= s0.kt && kt <= s1.kt) {
+          const t = (kt - s0.kt) / (s1.kt - s0.kt);
+          r = Math.round(s0.r + t * (s1.r - s0.r));
+          g = Math.round(s0.g + t * (s1.g - s0.g));
+          b = Math.round(s0.b + t * (s1.b - s0.b));
+          a = Math.round(s0.a + t * (s1.a - s0.a));
+          break;
+        }
+      }
+    }
+    // Little-endian RGBA packing
+    lut[i] = ((a & 0xff) << 24) | ((b & 0xff) << 16) | ((g & 0xff) << 8) | (r & 0xff);
+  }
+
+  cachedWindColorLut = lut;
+  return lut;
+}
+
 export class GriddedWindField {
   private data: PlanetaryWindGridData;
 
@@ -213,7 +275,95 @@ export class GriddedWindField {
 
   public setData(data: PlanetaryWindGridData) {
     this.data = data;
+    this.invalidateRasterCache();
   }
+
+  private mercatorDataUrlCache: string | null = null;
+  private equirectCanvasCache: HTMLCanvasElement | null = null;
+
+  public invalidateRasterCache() {
+    this.mercatorDataUrlCache = null;
+    this.equirectCanvasCache = null;
+  }
+
+  /**
+   * Generates high-fidelity Wind Velocity Heatmap Canvas matching Windy.com's exact color ramp.
+   * Supports Web Mercator projection (for MapLibre 2D) and Equirectangular (for Three.js 3D Globe).
+   */
+  public generateWindVelocityColorCanvas(
+    width = 1440,
+    height = 720,
+    projection: 'mercator' | 'equirectangular' = 'mercator'
+  ): HTMLCanvasElement | null {
+    if (typeof document === 'undefined') return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+
+    const imgData = ctx.createImageData(width, height);
+    const buf32 = new Uint32Array(imgData.data.buffer);
+    const lut = getWindColorLut();
+
+    // Precompute latitude row lookup
+    const rowLats = new Float32Array(height);
+    for (let y = 0; y < height; y++) {
+      if (projection === 'mercator') {
+        const normY = (y + 0.5) / height;
+        // Inverse Web Mercator: lat = (2 * atan(exp(pi * (1 - 2y))) - pi/2) in deg
+        const latRad = 2 * Math.atan(Math.exp(Math.PI * (1 - 2 * normY))) - Math.PI / 2;
+        rowLats[y] = Math.max(-85.0511, Math.min(85.0511, latRad * (180 / Math.PI)));
+      } else {
+        rowLats[y] = 90 - ((y + 0.5) / height) * 180;
+      }
+    }
+
+    // Precompute longitude col lookup
+    const colLngs = new Float32Array(width);
+    for (let x = 0; x < width; x++) {
+      colLngs[x] = -180 + ((x + 0.5) / width) * 360;
+    }
+
+    for (let y = 0; y < height; y++) {
+      const lat = rowLats[y];
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x++) {
+        const lng = colLngs[x];
+        const sample = this.sampleAt(lat, lng);
+        const kt = sample.speed * 0.539957; // km/h to knots
+        const lutIdx = Math.min(255, Math.max(0, (kt * 3) | 0));
+        buf32[rowOffset + x] = lut[lutIdx];
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  /**
+   * Returns memoized data URL of Mercator wind velocity heatmap for MapLibre image raster source.
+   */
+  public getMercatorWindHeatmapDataUrl(width = 1440, height = 720): string | null {
+    if (this.mercatorDataUrlCache) return this.mercatorDataUrlCache;
+    const canvas = this.generateWindVelocityColorCanvas(width, height, 'mercator');
+    if (!canvas) return null;
+    this.mercatorDataUrlCache = canvas.toDataURL('image/png');
+    return this.mercatorDataUrlCache;
+  }
+
+  /**
+   * Returns memoized HTMLCanvasElement of Equirectangular wind velocity heatmap for Three.js texture.
+   */
+  public getEquirectWindHeatmapCanvas(width = 1024, height = 512): HTMLCanvasElement | null {
+    if (this.equirectCanvasCache) return this.equirectCanvasCache;
+    const canvas = this.generateWindVelocityColorCanvas(width, height, 'equirectangular');
+    if (!canvas) return null;
+    this.equirectCanvasCache = canvas;
+    return this.equirectCanvasCache;
+  }
+
 
   public getData(): PlanetaryWindGridData {
     return this.data;

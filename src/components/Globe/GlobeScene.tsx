@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { trackEvent } from '@/services/analytics';
 import { CountryFlag } from '@/components/UI/CountryFlag';
+import { getGlobalWindField } from '@/services/weather/griddedWindService';
 import { WindParticleSystem, TemperatureHeatmapLayer, PrecipitationLayer, CycloneVortexLayer, SeismicShockwaveLayer, LightningNetworkLayer, WildfireThermalLayer, AuroralOvalLayer, OceanCurrentsLayer, GeostationarySatelliteLayer, AtmosphericPressureLayer, PlanetaryGraticuleLayer, BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS, getCycloneCategoryLabel, getRichterCategoryLabel, getWildfireIntensityLabel, getKpStormScaleLabel } from './WeatherLayers';
 import { CYCLONE_TIMELINE_STEPS } from '@/components/Weather/WindyTimeScrubber';
 import type { WeatherLayerMode, UnitPreferences, SatelliteSpectralMode } from '@/services/weather/types';
@@ -244,6 +245,7 @@ const GlobeScene = React.memo(function GlobeScene({
 
   // ── 3D Weather Layers Refs (Phase 2 Real Weather Visualizations) ──
   const windParticleSystemRef = useRef<WindParticleSystem | null>(null);
+  const windHeatmapMeshRef = useRef<THREE.Mesh | null>(null);
   const temperatureLayerRef = useRef<TemperatureHeatmapLayer | null>(null);
   const precipitationLayerRef = useRef<PrecipitationLayer | null>(null);
   const cycloneVortexLayerRef = useRef<CycloneVortexLayer | null>(null);
@@ -1060,13 +1062,35 @@ const GlobeScene = React.memo(function GlobeScene({
     const stations = weatherGridData?.stations || [];
     const radius = globe.getGlobeRadius();
 
-    // 1. Wind Particles Layer: active in 'wind' and 'overview' when viewing weather, or in satellite/radar when particlesEnabled is true
-    const shouldShowWind = !isPlayEarthActive && isWeather && (
-      weatherLayerMode === 'wind' || 
-      weatherLayerMode === 'overview' || 
-      (particlesEnabled && (weatherLayerMode === 'satellite' || weatherLayerMode === 'radar' || weatherLayerMode === 'clouds'))
-    );
+    // 1. Wind Velocity Heatmap & Particles Layer: strictly active ONLY when weatherLayerMode === 'wind'
+    const shouldShowWind = !isPlayEarthActive && isWeather && weatherLayerMode === 'wind';
     if (shouldShowWind) {
+      // 1a. Three.js Wind Velocity Heatmap Mesh
+      if (!windHeatmapMeshRef.current) {
+        const windField = getGlobalWindField();
+        const equirectCanvas = windField.getEquirectWindHeatmapCanvas(1024, 512);
+        if (equirectCanvas) {
+          const texture = new THREE.CanvasTexture(equirectCanvas);
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.generateMipmaps = true;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          const geom = new THREE.SphereGeometry(radius * 1.002, 64, 64);
+          const mat = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0.82,
+            depthWrite: false,
+          });
+          const mesh = new THREE.Mesh(geom, mat);
+          mesh.name = 'weather-wind-heatmap-sphere';
+          mesh.renderOrder = 30; // Just beneath particles (renderOrder 35)
+          scene.add(mesh);
+          windHeatmapMeshRef.current = mesh;
+        }
+      }
+
+      // 1b. Three.js Animated Wind Particle Streamlines
       if (!windParticleSystemRef.current) {
         windParticleSystemRef.current = new WindParticleSystem({
           radius,
@@ -1080,11 +1104,25 @@ const GlobeScene = React.memo(function GlobeScene({
         windParticleSystemRef.current.setStations(stations);
         windParticleSystemRef.current.setHourlyIndex(weatherTimelineIndex);
       }
-    } else if (windParticleSystemRef.current) {
-      const mesh = windParticleSystemRef.current.getMesh();
-      if (mesh) scene.remove(mesh);
-      windParticleSystemRef.current.dispose();
-      windParticleSystemRef.current = null;
+    } else {
+      if (windHeatmapMeshRef.current) {
+        scene.remove(windHeatmapMeshRef.current);
+        if (windHeatmapMeshRef.current.geometry) windHeatmapMeshRef.current.geometry.dispose();
+        if (windHeatmapMeshRef.current.material) {
+          const mat = windHeatmapMeshRef.current.material as THREE.MeshBasicMaterial;
+          if (mat) {
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          }
+        }
+        windHeatmapMeshRef.current = null;
+      }
+      if (windParticleSystemRef.current) {
+        const mesh = windParticleSystemRef.current.getMesh();
+        if (mesh) scene.remove(mesh);
+        windParticleSystemRef.current.dispose();
+        windParticleSystemRef.current = null;
+      }
     }
 
     // 1b. Planetary Graticules Coordinate Grid (Nullschool-style latitude/longitude lines)

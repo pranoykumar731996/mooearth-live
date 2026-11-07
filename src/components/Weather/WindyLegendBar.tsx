@@ -60,10 +60,10 @@ export default function WindyLegendBar({
 
     if (activeLayer === 'wind') {
       return {
-        unit: 'km/h',
-        title: 'Surface Wind Speed',
-        ticks: ['10', '25', '40', '60', '80', '110+'],
-        gradient: 'linear-gradient(to right, #00f0ff 0%, #10b981 25%, #facc15 50%, #f97316 75%, #ef4444 100%)',
+        unit: 'kt',
+        title: 'Surface Wind Speed (10m AGL)',
+        ticks: ['0', '5', '10', '20', '30', '40', '60+'],
+        gradient: 'linear-gradient(to right, #182347 0%, #1f579b 12%, #1fa396 25%, #22c55e 38%, #84cc16 52%, #eab308 65%, #f97316 78%, #ef4444 90%, #d946ef 100%)',
       };
     }
 
