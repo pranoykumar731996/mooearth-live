@@ -68,37 +68,37 @@ export interface ActiveVortexCenter {
  * exhibit genuine physical spinning streamlines on the 3D globe and 2D map.
  */
 export const ACTIVE_PLANETARY_VORTICES: ActiveVortexCenter[] = [
-  // 1. North Indian Ocean — Bay of Bengal Cyclonic Storm / Invest 98B
-  {
-    lat: 16.2,
-    lng: 89.8,
-    radiusKm: 650,
-    maxWindKph: 120,
-    direction: 'counter-clockwise',
-  },
-  // 2. West Pacific — Super Typhoon Kong-rey / Champi
+  // 1. West Pacific — Tropical Cyclone THIRTYONE (Category 3-4 Hurricane / Typhoon)
   {
     lat: 19.5,
-    lng: 126.8,
-    radiusKm: 850,
-    maxWindKph: 230,
+    lng: 128.5,
+    radiusKm: 750,
+    maxWindKph: 175,
     direction: 'counter-clockwise',
   },
-  // 3. East Pacific — Hurricane Vance
+  // 2. South Indian Ocean — Tropical Cyclone 94S (East of Madagascar)
   {
-    lat: 22.5,
-    lng: -108.0,
-    radiusKm: 550,
-    maxWindKph: 155,
-    direction: 'counter-clockwise',
-  },
-  // 4. Southern Hemisphere — Tropical Cyclone Jasper / Agueda
-  {
-    lat: -15.8,
-    lng: 152.5,
-    radiusKm: 550,
-    maxWindKph: 160,
+    lat: -18.2,
+    lng: 58.5,
+    radiusKm: 650,
+    maxWindKph: 145,
     direction: 'clockwise',
+  },
+  // 3. North Indian Ocean — Bay of Bengal Cyclonic Depression
+  {
+    lat: 16.5,
+    lng: 88.5,
+    radiusKm: 550,
+    maxWindKph: 95,
+    direction: 'counter-clockwise',
+  },
+  // 4. Northeast Pacific — Tropical Storm
+  {
+    lat: 21.0,
+    lng: -110.0,
+    radiusKm: 500,
+    maxWindKph: 110,
+    direction: 'counter-clockwise',
   },
 ];
 
@@ -107,6 +107,78 @@ export const ACTIVE_PLANETARY_VORTICES: ActiveVortexCenter[] = [
  * based on the global 3-cell circulation (Hadley, Ferrel, Polar cells)
  * coupled with physical Rankine-Holland cyclonic vortex superposition for real-world storms.
  */
+export interface SynopticCenter {
+  type: 'H' | 'L';
+  name: string;
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  strengthKmh: number;
+}
+
+/**
+ * Semi-permanent planetary synoptic pressure centers that govern global geostrophic wind circulation.
+ * (Windy Parity: causes authentic curved anticyclonic and cyclonic streamline loops).
+ */
+export const SYNOPTIC_PRESSURE_CENTERS: SynopticCenter[] = [
+  // Subtropical Anticyclonic Highs (Clockwise in Northern Hemisphere, Counter-clockwise in Southern Hemisphere)
+  { type: 'H', name: 'Azores High', lat: 34.0, lng: -35.0, radiusKm: 2800, strengthKmh: 18 },
+  { type: 'H', name: 'Hawaiian Pacific High', lat: 33.0, lng: -142.0, radiusKm: 3000, strengthKmh: 20 },
+  { type: 'H', name: 'Siberian Continental High', lat: 52.0, lng: 95.0, radiusKm: 2600, strengthKmh: 12 },
+  { type: 'H', name: 'South Atlantic St. Helena High', lat: -28.0, lng: -12.0, radiusKm: 2800, strengthKmh: 19 },
+  { type: 'H', name: 'South Pacific Easter Island High', lat: -27.0, lng: -105.0, radiusKm: 3000, strengthKmh: 20 },
+  { type: 'H', name: 'South Indian Mascarene High', lat: -32.0, lng: 75.0, radiusKm: 2800, strengthKmh: 20 },
+  // Subpolar Cyclonic Lows (Counter-clockwise in Northern Hemisphere, Clockwise in Southern Hemisphere)
+  { type: 'L', name: 'Icelandic Low', lat: 63.0, lng: -35.0, radiusKm: 2400, strengthKmh: 22 },
+  { type: 'L', name: 'Aleutian Low', lat: 53.0, lng: -175.0, radiusKm: 2600, strengthKmh: 24 },
+  { type: 'L', name: 'Monsoon Depressional Trough', lat: 21.0, lng: 88.0, radiusKm: 1800, strengthKmh: 16 },
+  { type: 'L', name: 'Southern Ocean Circumpolar Trough', lat: -60.0, lng: 20.0, radiusKm: 3500, strengthKmh: 22 },
+];
+
+/**
+ * High-speed continental boundary box classifier.
+ * Evaluates whether a geographic point is over a continental landmass
+ * to apply authentic surface roughness damping (10m surface winds over land are 2-8 kt).
+ */
+export function getLandRoughnessFactor(lat: number, lng: number): number {
+  // Antarctica ice sheet
+  if (lat < -65) return 0.35;
+  // Greenland
+  if (lat >= 60 && lat <= 84 && lng >= -73 && lng <= -12) return 0.35;
+  // Australia
+  if (lat >= -39 && lat <= -12 && lng >= 113 && lng <= 153) return 0.35;
+  // Africa
+  if (lat >= -35 && lat <= 37 && lng >= -18 && lng <= 51) {
+    if (lat < -15 && (lng < 11 || lng > 40)) return 1.0;
+    if (lat > 32 && lng < 25) return 0.7; // Mediterranean fringe
+    return 0.32;
+  }
+  // South America
+  if (lat >= -55 && lat <= 12 && lng >= -81 && lng <= -35) {
+    if (lat < -25 && lng > -50) return 1.0;
+    return 0.35;
+  }
+  // North America
+  if (lat >= 15 && lat <= 72 && lng >= -168 && lng <= -52) {
+    // Gulf of Mexico water body
+    if (lat >= 20 && lat <= 29 && lng >= -95 && lng <= -83) return 1.0;
+    return 0.34;
+  }
+  // Eurasia (Europe, Russia, Middle East, India, China)
+  if (lat >= 8 && lat <= 75 && lng >= -10 && lng <= 175) {
+    // Arabian Sea / Bay of Bengal marine waters
+    if (lat < 22 && lng >= 58 && lng <= 73) return 1.0;
+    if (lat < 18 && lng >= 81 && lng <= 93) return 1.0;
+    // South China Sea marine waters
+    if (lat < 21 && lng >= 110 && lng <= 121) return 1.0;
+    // Baltic / North Sea / Mediterranean
+    if (lat >= 35 && lat <= 44 && lng >= -5 && lng <= 25) return 0.75;
+    return 0.33;
+  }
+  // Open ocean: full marine velocity
+  return 1.0;
+}
+
 export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCenter[]): PlanetaryWindGridData {
   const uGrid = new Float32Array(TOTAL_GRID_NODES);
   const vGrid = new Float32Array(TOTAL_GRID_NODES);
@@ -116,6 +188,7 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
   for (let y = 0; y < GRID_LAT_STEPS; y++) {
     const lat = 90 - y * GRID_DELTA_DEG;
     const latRad = lat * (Math.PI / 180);
+    const absLat = Math.abs(lat);
 
     for (let x = 0; x < GRID_LNG_STEPS; x++) {
       const lng = -180 + x * GRID_DELTA_DEG;
@@ -125,31 +198,56 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
       let u = 0;
       let v = 0;
 
-      // Primary zonal circulation bands
-      const absLat = Math.abs(lat);
-      if (absLat < 30) {
-        // Hadley Cell / Tropical Trade Winds: Easterlies (blow towards West)
-        const factor = Math.cos(latRad * 3);
-        u = -18 - 8 * factor + 4 * Math.sin(lngRad * 3);
-        v = (lat > 0 ? -1 : 1) * (4 + 2 * Math.cos(lngRad * 2));
-      } else if (absLat >= 30 && absLat < 60) {
-        // Ferrel Cell / Mid-Latitude Westerlies: Strong Westerlies (blow towards East)
-        const jetStreamCore = Math.exp(-Math.pow((absLat - 48) / 8, 2));
-        const rossbyWave = Math.sin(lngRad * 4 + (lat > 0 ? 1.2 : -1.2));
-        u = 24 + 45 * jetStreamCore + 12 * rossbyWave;
-        v = (lat > 0 ? 1 : -1) * 8 * Math.cos(lngRad * 4);
-      } else {
-        // Polar Cell: Polar Easterlies
-        u = -12 * Math.cos(latRad) + 3 * Math.sin(lngRad * 2);
-        v = (lat > 0 ? -1 : 1) * 3 * Math.cos(lngRad * 2);
+      // ── 1. Smooth, Continuous Global Circulation (Zero Horizontal Seams) ──
+      // Tropical Trade Winds: Easterlies centered at 14°N/S (-14 km/h ocean surface)
+      const tradeProfile = -15 * Math.exp(-Math.pow((absLat - 14) / 12, 2));
+      // Mid-Latitude Westerlies: Gentle 10m surface ocean westerlies (+16 km/h)
+      const westProfile = 17 * Math.exp(-Math.pow((absLat - 46) / 14, 2));
+      // Polar Easterlies (-8 km/h)
+      const polarProfile = -8 * Math.exp(-Math.pow((absLat - 74) / 12, 2));
+
+      u = tradeProfile + westProfile + polarProfile;
+
+      // Rossby long-waves & gentle meridional circulation (3-5 km/h)
+      const rossby = 4 * Math.sin(lngRad * 3 + (lat > 0 ? 0.8 : -0.8));
+      u += rossby;
+      v = (lat > 0 ? -1 : 1) * 3 * Math.cos(lngRad * 2) * Math.sin(latRad);
+
+      // Southern Ocean uninterrupted marine wind acceleration ("Roaring Forties")
+      if (lat >= -60 && lat <= -38) {
+        u += 14 * Math.exp(-Math.pow((lat + 48) / 8, 2));
       }
 
-      // Add Southern Ocean "Roaring Forties" & "Furious Fifties" intensification
-      if (lat >= -60 && lat <= -40) {
-        u += 22; // Very powerful uninterrupted ocean winds
+      // ── 2. Synoptic Pressure Systems (Curved Geostrophic Loops) ───────────
+      for (const center of SYNOPTIC_PRESSURE_CENTERS) {
+        const cRad = center.lat * (Math.PI / 180);
+        const dLng = ((((lng - center.lng) % 360) + 540) % 360) - 180;
+        const dxKm = dLng * 111.1 * Math.cos(cRad);
+        const dyKm = (lat - center.lat) * 111.1;
+        const distKm = Math.sqrt(dxKm * dxKm + dyKm * dyKm);
+
+        if (distKm < center.radiusKm && distKm > 20) {
+          const isNorthern = center.lat >= 0;
+          // For High (H): Clockwise in NH, Counter-clockwise in SH
+          // For Low (L): Counter-clockwise in NH, Clockwise in SH
+          const isClockwise = center.type === 'H' ? isNorthern : !isNorthern;
+          const tanX = isClockwise ? dyKm / distKm : -dyKm / distKm;
+          const tanY = isClockwise ? -dxKm / distKm : dxKm / distKm;
+
+          // Outward drift for Highs, inward spiral for Lows
+          const radX = center.type === 'H' ? dxKm / distKm : -dxKm / distKm;
+          const radY = center.type === 'H' ? dyKm / distKm : -dyKm / distKm;
+
+          // Velocity bell curve peaking at 40% radius
+          const normDist = distKm / center.radiusKm;
+          const speedCurve = center.strengthKmh * Math.sin(normDist * Math.PI) * Math.exp(-normDist * 0.5);
+
+          u += speedCurve * (0.88 * tanX + 0.12 * radX);
+          v += speedCurve * (0.88 * tanY + 0.12 * radY);
+        }
       }
 
-      // Superimpose Physical Cyclonic Vortex Streamlines
+      // ── 3. Superimpose Physical Cyclonic Vortices (Storms 94S & THIRTYONE) ──
       for (const vort of vortices) {
         const vRad = vort.lat * (Math.PI / 180);
         const dLng = ((((lng - vort.lng) % 360) + 540) % 360) - 180;
@@ -159,17 +257,11 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
 
         if (distKm < vort.radiusKm && distKm > 2) {
           const isNorthern = vort.direction ? vort.direction === 'counter-clockwise' : vort.lat >= 0;
-          // Tangential unit vector:
-          // Counter-clockwise (Northern): [-dy / dist, dx / dist]
-          // Clockwise (Southern): [dy / dist, -dx / dist]
           const tanX = isNorthern ? -dyKm / distKm : dyKm / distKm;
           const tanY = isNorthern ? dxKm / distKm : -dxKm / distKm;
-
-          // Inflow radial vector towards the low-pressure eye (convergence)
           const inX = -dxKm / distKm;
           const inY = -dyKm / distKm;
 
-          // Modified Holland velocity profile
           const rMax = 55; // eyewall radius in km
           let vMag = 0;
           if (distKm <= rMax) {
@@ -178,15 +270,19 @@ export function generateBaselineCirculationGrid(customVortices?: ActiveVortexCen
             vMag = vort.maxWindKph * Math.pow(rMax / distKm, 0.65);
           }
 
-          // Smooth boundary taper to ambient circulation
           const taper = 0.5 * (1 + Math.cos(Math.PI * (distKm / vort.radiusKm)));
           const vortexSpeed = vMag * taper;
 
-          // 85% tangential rotational flow + 15% cyclonic inward spiral
           u += vortexSpeed * (0.85 * tanX + 0.15 * inX);
           v += vortexSpeed * (0.85 * tanY + 0.15 * inY);
         }
       }
+
+      // ── 4. Continental Land Friction Damping (Windy Parity) ───────────────
+      // Reduces 10m surface winds over landmasses to 2-8 kt (deep navy blue)
+      const roughness = getLandRoughnessFactor(lat, lng);
+      u *= roughness;
+      v *= roughness;
 
       const speed = Math.sqrt(u * u + v * v);
       uGrid[idx] = u;
@@ -213,16 +309,16 @@ export interface ColorStop {
 }
 
 export const WINDY_COLOR_STOPS: ColorStop[] = [
-  { kt: 0, r: 24, g: 35, b: 72, a: 160 },
-  { kt: 5, r: 32, g: 87, b: 155, a: 185 },
-  { kt: 10, r: 31, g: 163, b: 150, a: 195 },
-  { kt: 15, r: 34, g: 197, b: 94, a: 205 },
-  { kt: 20, r: 132, g: 204, b: 22, a: 215 },
-  { kt: 28, r: 234, g: 179, b: 8, a: 225 },
-  { kt: 35, r: 249, g: 115, b: 22, a: 235 },
-  { kt: 45, r: 239, g: 68, b: 68, a: 245 },
-  { kt: 60, r: 217, g: 70, b: 239, a: 250 },
-  { kt: 85, r: 168, g: 85, b: 247, a: 255 },
+  { kt: 0, r: 24, g: 35, b: 72, a: 160 },    // Deep dark ocean navy
+  { kt: 5, r: 30, g: 69, b: 126, a: 175 },   // Slate blue (typical land 3-6 kt)
+  { kt: 10, r: 27, g: 136, b: 147, a: 190 }, // Marine teal (light ocean breeze)
+  { kt: 15, r: 34, g: 197, b: 94, a: 200 },  // Emerald green (steady trade wind)
+  { kt: 20, r: 132, g: 204, b: 22, a: 215 }, // Chartreuse / lime (fresh ocean wind)
+  { kt: 28, r: 234, g: 179, b: 8, a: 225 },  // Amber yellow (strong breeze)
+  { kt: 35, r: 249, g: 115, b: 22, a: 235 }, // Vivid orange (near gale)
+  { kt: 45, r: 239, g: 68, b: 68, a: 245 },  // Storm red (gale / storm)
+  { kt: 60, r: 217, g: 70, b: 239, a: 250 }, // Deep magenta (cyclone eyewall)
+  { kt: 85, r: 168, g: 85, b: 247, a: 255 }, // Violet (extreme hurricane core)
 ];
 
 let cachedWindColorLut: Uint32Array | null = null;

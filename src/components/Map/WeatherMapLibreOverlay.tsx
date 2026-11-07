@@ -59,7 +59,7 @@ export default function WeatherMapLibreOverlay({
   const windFieldRef = useRef<GriddedWindField>(getGlobalWindField());
   const [cursorTelemetry, setCursorTelemetry] = useState<WindCursorTelemetry | null>(null);
 
-  const particleCount = isMobile ? 500 : 1500;
+  const particleCount = isMobile ? 800 : 3200;
   const isWindActive = activeLayer === 'wind';
 
   // ── 1. MapLibre Wind Velocity Heatmap Raster Layer Lifecycle ───────────
@@ -113,7 +113,7 @@ export default function WeatherMapLibreOverlay({
             type: 'raster',
             source: WIND_HEATMAP_SOURCE_ID,
             paint: {
-              'raster-opacity': 0.82,
+              'raster-opacity': 0.62,
               'raster-fade-duration': 250,
               'raster-resampling': 'linear',
             },
@@ -240,7 +240,7 @@ export default function WeatherMapLibreOverlay({
         prevLat: lat,
         prevLng: lng,
         age: Math.floor(Math.random() * 45),
-        maxAge: 45 + Math.floor(Math.random() * 55),
+        maxAge: 65 + Math.floor(Math.random() * 85),
         speed: 15,
       };
     };
@@ -261,11 +261,11 @@ export default function WeatherMapLibreOverlay({
 
       // Soft trail fade creates aerodynamic particle motion blur
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.10)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.045)';
       ctx.fillRect(0, 0, width, height);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.lineWidth = isMobile ? 1.1 : 1.5;
+      ctx.lineWidth = isMobile ? 1.0 : 1.3;
       ctx.lineCap = 'round';
 
       const particles = particlesRef.current;

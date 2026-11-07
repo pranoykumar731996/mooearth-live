@@ -1079,7 +1079,7 @@ const GlobeScene = React.memo(function GlobeScene({
           const mat = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.82,
+            opacity: 0.62,
             depthWrite: false,
           });
           const mesh = new THREE.Mesh(geom, mat);
