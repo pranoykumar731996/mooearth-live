@@ -118,6 +118,23 @@ const CityMapViewer = dynamic(
   }
 );
 
+interface QuickTeleportCity {
+  id: number;
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  icon: string;
+}
+
+const QUICK_TELEPORT_CITIES: QuickTeleportCity[] = [
+  { id: 5128581, name: 'New York', country: 'United States', lat: 40.7128, lng: -74.006, icon: '🗽' },
+  { id: 2643743, name: 'London', country: 'United Kingdom', lat: 51.5074, lng: -0.1278, icon: '🗼' },
+  { id: 1850147, name: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503, icon: '🏯' },
+  { id: 1261481, name: 'New Delhi', country: 'India', lat: 28.6139, lng: 77.209, icon: '🏛️' },
+  { id: 2147714, name: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093, icon: '🏖️' },
+];
+
 export default function WeatherDashboard() {
   const weather = useWeatherData();
   const searchParams = useSearchParams();
@@ -292,6 +309,7 @@ export default function WeatherDashboard() {
 
   // Collapsible toggle state for the Multi-Hazard tracker bar to keep the 3D Earth view clear and uncluttered
   const [isHazardBarExpanded, setIsHazardBarExpanded] = useState(false);
+  const [isQuickCitiesOpen, setIsQuickCitiesOpen] = useState(false);
 
   // Active timeline hours ahead for tropical cyclones (interpolates forecast cone & tracks)
   const cycloneHoursAhead = useMemo(() => {
@@ -989,53 +1007,56 @@ export default function WeatherDashboard() {
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none h-[52px] sm:h-[54px] flex items-center">
-        <div className="max-w-screen-2xl mx-auto px-2 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-3">
-          {/* MooEarth Brand Logo (Always visible like Windy) */}
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 sm:gap-2 shrink-0 group pointer-events-auto"
-            title="MooEarth Live — World Weather & Atmospheric Intelligence"
-          >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 p-1 shadow-[0_0_12px_rgba(6,182,212,0.35)] group-hover:border-cyan-300 group-hover:shadow-[0_0_18px_rgba(6,182,212,0.55)] transition-all flex items-center justify-center shrink-0">
-              <img
-                src="/logo-icon.png"
-                alt="MooEarth Logo"
-                className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+        <div className="w-full px-3 sm:px-5 lg:px-6 py-2 flex items-center justify-between gap-2 lg:gap-4">
+          {/* Left Zone: Brand Logo & Search */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0 flex-1 max-w-xl">
+            {/* MooEarth Brand Logo */}
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 sm:gap-2 shrink-0 group pointer-events-auto"
+              title="MooEarth Live — World Weather & Atmospheric Intelligence"
+            >
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 p-1 shadow-[0_0_12px_rgba(6,182,212,0.35)] group-hover:border-cyan-300 group-hover:shadow-[0_0_18px_rgba(6,182,212,0.55)] transition-all flex items-center justify-center shrink-0">
+                <img
+                  src="/logo-icon.png"
+                  alt="MooEarth Logo"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                />
+              </div>
+              <div className="hidden sm:flex items-baseline gap-0.5">
+                <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
+                  MooEarth
+                </span>
+                <span className="text-[10px] sm:text-xs font-bold text-cyan-400 font-mono">
+                  .live
+                </span>
+              </div>
+            </Link>
+
+            {/* Search Bar */}
+            <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md min-w-[110px] sm:min-w-[160px]">
+              <WeatherSearch
+                onSelectLocation={handleSelectLocation}
+                onClear={() => {
+                  setSelectedCountryOnGlobe(null);
+                }}
+                placeholder="Search..."
+                initialQuery={
+                  weather.selectedLocation
+                    ? weather.selectedLocation.country &&
+                      weather.selectedLocation.name.toLowerCase() !== weather.selectedLocation.country.toLowerCase() &&
+                      !weather.selectedLocation.name.toLowerCase().includes(weather.selectedLocation.country.toLowerCase())
+                      ? `${weather.selectedLocation.name}, ${weather.selectedLocation.country}`
+                      : weather.selectedLocation.name
+                    : ''
+                }
               />
             </div>
-            <div className="hidden sm:flex items-baseline gap-0.5">
-              <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
-                MooEarth
-              </span>
-              <span className="text-[10px] sm:text-xs font-bold text-cyan-400 font-mono">
-                .live
-              </span>
-            </div>
-          </Link>
-
-          {/* Search Bar */}
-          <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl mx-1 sm:mx-3 min-w-[110px] sm:min-w-[180px]">
-            <WeatherSearch
-              onSelectLocation={handleSelectLocation}
-              onClear={() => {
-                setSelectedCountryOnGlobe(null);
-              }}
-              placeholder="Search..."
-              initialQuery={
-                weather.selectedLocation
-                  ? weather.selectedLocation.country &&
-                    weather.selectedLocation.name.toLowerCase() !== weather.selectedLocation.country.toLowerCase() &&
-                    !weather.selectedLocation.name.toLowerCase().includes(weather.selectedLocation.country.toLowerCase())
-                    ? `${weather.selectedLocation.name}, ${weather.selectedLocation.country}`
-                    : weather.selectedLocation.name
-                  : ''
-              }
-            />
           </div>
 
-          {/* Desktop Live Intelligence & Quick Teleport Strip */}
-          <div className="hidden xl:flex items-center gap-2 2xl:gap-3 shrink-0">
-            {/* 1. Active Location Telemetry Pill */}
+          {/* Center Zone: Adaptive Telemetry, Quick Cities Popover & Hazards */}
+          <div className="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
+            {/* Active Location Telemetry Pill */}
             {weather.selectedLocation && displayedForecast?.current && (
               <button
                 type="button"
@@ -1047,58 +1068,87 @@ export default function WeatherDashboard() {
                 title="View full telemetry for active location"
               >
                 <span className="text-sm">📍</span>
-                <span className="font-bold text-white max-w-[110px] 2xl:max-w-[140px] truncate">
+                <span className="font-bold text-white max-w-[90px] xl:max-w-[130px] truncate">
                   {weather.selectedLocation.name}
                 </span>
                 <span className="font-black text-cyan-300">
                   {Math.round(displayedForecast.current.temperature)}°{weather.units === 'fahrenheit' ? 'F' : 'C'}
                 </span>
-                <span className="text-white/50 text-[11px] hidden 2xl:inline truncate max-w-[90px]">
+                <span className="text-white/50 text-[11px] hidden xl:inline truncate max-w-[85px]">
                   {displayedForecast.current.weatherDescription}
                 </span>
               </button>
             )}
 
-            {/* 2. Quick Global Reference Metropolises */}
-            <div className="hidden 2xl:flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-xl border border-white/10">
-              <span className="text-[10px] font-mono text-white/40 uppercase px-1.5 font-bold">Quick:</span>
-              {[
-                { id: 5128581, name: 'New York', country: 'United States', lat: 40.7128, lng: -74.006, icon: '🗽' },
-                { id: 2643743, name: 'London', country: 'United Kingdom', lat: 51.5074, lng: -0.1278, icon: '🗼' },
-                { id: 1850147, name: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503, icon: '🏯' },
-                { id: 1261481, name: 'New Delhi', country: 'India', lat: 28.6139, lng: 77.209, icon: '🏛️' },
-                { id: 2147714, name: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093, icon: '🏖️' },
-              ].map((city) => (
-                <button
-                  key={city.name}
-                  type="button"
-                  onClick={() => {
-                    handleSelectLocation({
-                      id: city.id,
-                      name: city.name,
-                      country: city.country,
-                      latitude: city.lat,
-                      longitude: city.lng,
-                      timezone: 'auto',
-                      type: 'city',
-                    });
-                    if (viewMode === 'globe') {
-                      globeApiRef.current?.flyTo({ lat: city.lat, lng: city.lng, altitude: 1.2 }, 1200);
-                    }
-                  }}
-                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 cursor-pointer shrink-0"
-                  title={`Teleport to ${city.name}, ${city.country}`}
+            {/* Quick Teleport Popover Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsQuickCitiesOpen((prev) => !prev)}
+                className="px-2 sm:px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-mono text-white/80 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                title="Quick teleport to major world metropolises"
+              >
+                <span>⚡</span>
+                <span className="hidden min-[1100px]:inline font-medium text-[11px]">Quick</span>
+                <svg
+                  className={`w-3 h-3 text-white/40 transition-transform ${isQuickCitiesOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
-                  <span>{city.icon}</span>
-                  <span>{city.name}</span>
-                </button>
-              ))}
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+
+              {isQuickCitiesOpen && (
+                <div
+                  className="absolute top-full left-0 mt-1.5 w-48 rounded-2xl bg-[#090d20]/95 backdrop-blur-2xl border border-white/15 shadow-2xl p-1.5 z-50 divide-y divide-white/5 animate-fade-in"
+                  onMouseLeave={() => setIsQuickCitiesOpen(false)}
+                >
+                  <div className="px-2 py-1 text-[10px] font-mono uppercase text-white/40 font-bold tracking-wider">
+                    Quick Teleport
+                  </div>
+                  <div className="py-1 flex flex-col gap-0.5">
+                    {QUICK_TELEPORT_CITIES.map((city) => (
+                      <button
+                        key={city.name}
+                        type="button"
+                        onClick={() => {
+                          handleSelectLocation({
+                            id: city.id,
+                            name: city.name,
+                            country: city.country,
+                            latitude: city.lat,
+                            longitude: city.lng,
+                            timezone: 'auto',
+                            type: 'city',
+                          });
+                          if (viewMode === 'globe') {
+                            globeApiRef.current?.flyTo({ lat: city.lat, lng: city.lng, altitude: 1.2 }, 1200);
+                          }
+                          setIsQuickCitiesOpen(false);
+                        }}
+                        className="w-full px-2 py-1.5 rounded-lg text-xs text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-between text-left cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span>{city.icon}</span>
+                          <span className="font-medium">{city.name}</span>
+                        </span>
+                        <span className="text-[10px] text-white/40 font-mono">{city.country}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 3. Live Planetary Status Pill */}
+            {/* Live Planetary Status Pill */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-mono text-white/70 shadow-inner">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-white/90">GOES/NASA Live</span>
+              <span className="font-semibold text-white/90 hidden xl:inline">GOES/NASA Live</span>
               {allDisasters.length > 0 && (
                 <span
                   onClick={() => setIsHazardBarExpanded(true)}
@@ -1111,10 +1161,11 @@ export default function WeatherDashboard() {
             </div>
           </div>
 
-          {/* Quick Links & View Mode Switch */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Right Zone: Primary Destinations & Mode Switch (Guaranteed 100% Visible) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* View Mode Switch (Earth vs 2D Satellite) */}
             {weather.selectedLocation && (
-              <div className="hidden xl:flex rounded-xl bg-white/5 border border-white/10 p-0.5">
+              <div className="hidden md:flex rounded-xl bg-white/5 border border-white/10 p-0.5">
                 <button
                   type="button"
                   data-testid="header-earth-mode-btn"
@@ -1143,14 +1194,19 @@ export default function WeatherDashboard() {
                 </button>
               </div>
             )}
+
             {/* Primary Destinations Navigation: 1. Weather, 2. Explore Earth, 3. Earth Games */}
-            <div role="navigation" aria-label="Primary destinations" className="flex items-center gap-1 sm:gap-1.5 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl bg-[#090d20]/95 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
+            <div
+              role="navigation"
+              aria-label="Primary destinations"
+              className="flex items-center gap-1 sm:gap-1.5 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl bg-[#090d20]/95 border border-white/10 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0"
+            >
               {/* Destination 1: Weather */}
               <button
                 type="button"
                 data-testid="header-weather-btn"
                 onClick={handleSwitchToWeather}
-                className={`h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer ${
+                className={`h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide transition-all duration-200 cursor-pointer shrink-0 ${
                   viewMode === 'globe'
                     ? 'bg-gradient-to-r from-cyan-400 to-sky-400 text-slate-950 font-black shadow-[0_0_15px_rgba(0,229,255,0.6)]'
                     : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-400/30 hover:border-cyan-400/60'
@@ -1160,7 +1216,7 @@ export default function WeatherDashboard() {
                 aria-pressed={viewMode === 'globe'}
               >
                 <span className="text-sm">🌤️</span>
-                <span className="font-bold whitespace-nowrap hidden lg:inline">
+                <span className="font-bold whitespace-nowrap hidden sm:inline">
                   Weather
                 </span>
                 {viewMode === 'globe' && (
@@ -1172,17 +1228,17 @@ export default function WeatherDashboard() {
               <Link
                 href="/explore"
                 data-testid="header-explore-earth-btn"
-                className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer"
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-bold tracking-wide text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 cursor-pointer shrink-0"
                 title="Explore Earth — World Map, Sovereign Nations, Continents & Demographics"
                 aria-label="Explore Earth"
               >
                 <span className="text-sm">🌍</span>
-                <span className="font-bold whitespace-nowrap hidden lg:inline">
+                <span className="font-bold whitespace-nowrap hidden sm:inline">
                   Explore<span className="hidden xl:inline"> Earth</span>
                 </span>
               </Link>
 
-              {/* Destination 3: Earth Games (ALWAYS VISIBLE WITH TEXT ON MOBILE!) */}
+              {/* Destination 3: Earth Games (ALWAYS VISIBLE WITH FULL PROMINENCE!) */}
               <Link
                 href="/games"
                 data-testid="header-games-hub-btn"
@@ -1192,14 +1248,14 @@ export default function WeatherDashboard() {
               >
                 <span className="text-sm shrink-0">🎮</span>
                 <span className="font-black whitespace-nowrap text-xs">
-                  <span className="hidden xl:inline">Earth </span>Games
+                  <span className="hidden sm:inline">Earth </span>Games
                 </span>
                 {dailyStreak > 0 ? (
                   <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 hidden sm:flex items-center gap-0.5">
-                    🔥{dailyStreak}
+                    🔥${dailyStreak}
                   </span>
                 ) : (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 hidden xl:inline tracking-wider">
+                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 inline-block tracking-wider">
                     PLAY
                   </span>
                 )}
