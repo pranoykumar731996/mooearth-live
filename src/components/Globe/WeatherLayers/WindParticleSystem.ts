@@ -100,11 +100,12 @@ export class WindParticleSystem {
   }
 
   private createRandomParticle(): WindParticle {
+    const maxAge = 70 + Math.floor(Math.random() * 90);
     return {
       lat: (Math.random() - 0.5) * 160, // -80 to +80 deg
       lng: (Math.random() - 0.5) * 360, // -180 to +180 deg
-      age: Math.floor(Math.random() * 80),
-      maxAge: 70 + Math.floor(Math.random() * 70), // 70-140 frames
+      age: Math.floor(Math.random() * maxAge), // Uniform initial birth distribution
+      maxAge, // 70-160 frames
       speed: 15,
     };
   }
@@ -154,14 +155,15 @@ export class WindParticleSystem {
    * Advance simulation by one frame.
    * Advects particles along real meteorological vectors (u, v).
    */
-  public update() {
+  public update(dtSec?: number) {
     if (!this.mesh || !this.geometry) return;
     const hasStations = this.stations.length > 0;
     const hasField = this.windField !== null;
     if (!hasStations && !hasField) return;
 
-    const timeScale = this.reducedMotion ? 0.04 : 0.20;
-    const tailScale = 0.42; // Long flowing streamline trails matching Nullschool
+    const dtRatio = dtSec !== undefined && dtSec > 0 ? Math.min(2.5, Math.max(0.4, dtSec / 0.016667)) : 1.0;
+    const timeScale = (this.reducedMotion ? 0.04 : 0.18) * dtRatio;
+    const tailScale = 0.42 * dtRatio;
 
     for (let i = 0; i < this.particleCount; i++) {
       const p = this.particles[i];
@@ -185,19 +187,33 @@ export class WindParticleSystem {
 
       p.speed = speed;
 
-      // Advect particle: u is eastward (deg lon), v is northward (deg lat)
-      // Conversion from km/h to degrees per frame:
-      const cosLat = Math.max(0.1, Math.cos(p.lat * (Math.PI / 180)));
-      const deltaLat = (v * timeScale) / 111.32;
-      const deltaLng = (u * timeScale) / (111.32 * cosLat);
+      // Smooth Sub-Linear Velocity Curve (Windy Parity):
+      const speedScale = 0.65 + 0.35 * Math.min(2.8, Math.pow(Math.max(0.1, speed) / 15, 0.55));
 
-      p.lat += deltaLat;
-      p.lng += deltaLng;
-      p.age++;
+      if (this.windField) {
+        // RK2 midpoint advection via GriddedWindField
+        const advected = this.windField.advectParticle(p.lat, p.lng, timeScale * speedScale);
+        p.lat = advected.nextLat;
+        p.lng = advected.nextLng;
+      } else {
+        // RK2 midpoint advection for station fallback
+        const cosLat1 = Math.max(0.1, Math.cos(p.lat * (Math.PI / 180)));
+        const halfDeltaLat = (v * timeScale * speedScale * 0.5) / 111.32;
+        const halfDeltaLng = (u * timeScale * speedScale * 0.5) / (111.32 * cosLat1);
+        const midLat = Math.max(-85, Math.min(85, p.lat + halfDeltaLat));
+        let midLng = p.lng + halfDeltaLng;
+        if (midLng > 180) midLng -= 360;
+        else if (midLng < -180) midLng += 360;
 
-      // Longitude wrapping
-      if (p.lng > 180) p.lng -= 360;
-      if (p.lng < -180) p.lng += 360;
+        const v2 = interpolateGridWeatherAt(midLat, midLng, this.stations, this.hourlyIndex);
+        const cosMidLat = Math.max(0.1, Math.cos(midLat * (Math.PI / 180)));
+        p.lat = Math.max(-85, Math.min(85, p.lat + (v2.v * timeScale * speedScale) / 111.32));
+        p.lng += (v2.u * timeScale * speedScale) / (111.32 * cosMidLat);
+        if (p.lng > 180) p.lng -= 360;
+        else if (p.lng < -180) p.lng += 360;
+      }
+
+      p.age += dtRatio;
 
       // Respawn expired or out-of-bounds particles
       if (p.age >= p.maxAge || Math.abs(p.lat) > 85) {
@@ -206,24 +222,22 @@ export class WindParticleSystem {
       }
 
       // Compute 3D positions for head and tail
-      // Head position
+      const cosLat = Math.max(0.1, Math.cos(p.lat * (Math.PI / 180)));
       const head = geoToVector3(p.lat, p.lng, this.radius);
-      // Tail position: trail slightly behind along velocity
       const tailLat = p.lat - (v * tailScale) / 111.32;
       const tailLng = p.lng - (u * tailScale) / (111.32 * cosLat);
       const tail = geoToVector3(tailLat, tailLng, this.radius);
 
       // Color based on wind speed
       const color = getWindColor(p.speed);
-      // Fade in at birth, fade out at death
-      const progress = p.age / p.maxAge;
+      const progress = Math.min(1.0, p.age / p.maxAge);
       const alpha = Math.sin(progress * Math.PI);
       const intensity = alpha * 1.35 + 0.15;
       const r = Math.min(1.0, color.r * intensity);
       const g = Math.min(1.0, color.g * intensity);
       const b = Math.min(1.0, color.b * intensity);
 
-      // Head vertex (bright head)
+      // Head vertex
       const idxHead = i * 2;
       this.positions[idxHead * 3] = head.x;
       this.positions[idxHead * 3 + 1] = head.y;
@@ -232,7 +246,7 @@ export class WindParticleSystem {
       this.colors[idxHead * 3 + 1] = g;
       this.colors[idxHead * 3 + 2] = b;
 
-      // Tail vertex (tapered streak effect)
+      // Tail vertex
       const idxTail = i * 2 + 1;
       this.positions[idxTail * 3] = tail.x;
       this.positions[idxTail * 3 + 1] = tail.y;
@@ -242,7 +256,6 @@ export class WindParticleSystem {
       this.colors[idxTail * 3 + 2] = b * 0.45;
     }
 
-    // Notify Three.js to upload updated buffers
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
   }

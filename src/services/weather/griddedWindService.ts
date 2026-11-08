@@ -522,22 +522,36 @@ export class GriddedWindField {
     lng: number,
     timeScale = 0.16
   ): { nextLat: number; nextLng: number; vector: WindVectorSample } {
-    const vector = this.sampleAt(lat, lng);
+    // Stage 1: Initial velocity vector at (lat, lng)
+    const v1 = this.sampleAt(lat, lng);
 
-    // 1 deg latitude = 111.32 km
-    // 1 deg longitude = 111.32 * cos(lat) km
-    const cosLat = Math.max(0.08, Math.cos(lat * (Math.PI / 180)));
-    const deltaLat = (vector.v * timeScale) / 111.32;
-    const deltaLng = (vector.u * timeScale) / (111.32 * cosLat);
+    // Stage 2: Half-step displacement to midpoint
+    // 1 deg latitude = 111.32 km; 1 deg longitude = 111.32 * cos(lat) km
+    const cosLat1 = Math.max(0.08, Math.cos(lat * (Math.PI / 180)));
+    const halfDeltaLat = (v1.v * timeScale * 0.5) / 111.32;
+    const halfDeltaLng = (v1.u * timeScale * 0.5) / (111.32 * cosLat1);
 
-    const nextLat = lat + deltaLat;
-    let nextLng = lng + deltaLng;
+    const midLat = Math.max(-85, Math.min(85, lat + halfDeltaLat));
+    let midLng = lng + halfDeltaLng;
+    if (midLng > 180) midLng -= 360;
+    else if (midLng < -180) midLng += 360;
+
+    // Stage 3: Sample velocity at midpoint
+    const v2 = this.sampleAt(midLat, midLng);
+
+    // Stage 4: Full step from initial point using midpoint velocity (RK2)
+    const cosMidLat = Math.max(0.08, Math.cos(midLat * (Math.PI / 180)));
+    const fullDeltaLat = (v2.v * timeScale) / 111.32;
+    const fullDeltaLng = (v2.u * timeScale) / (111.32 * cosMidLat);
+
+    const nextLat = Math.max(-85, Math.min(85, lat + fullDeltaLat));
+    let nextLng = lng + fullDeltaLng;
 
     // Wrap longitude seamlessly
     if (nextLng > 180) nextLng -= 360;
-    if (nextLng < -180) nextLng += 360;
+    else if (nextLng < -180) nextLng += 360;
 
-    return { nextLat, nextLng, vector };
+    return { nextLat, nextLng, vector: v2 };
   }
 }
 

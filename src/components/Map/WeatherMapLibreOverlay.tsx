@@ -183,6 +183,8 @@ export default function WeatherMapLibreOverlay({
   const windFieldRef = useRef<GriddedWindField>(getGlobalWindField());
   const cityMarkersRef = useRef<CityWindMarkerEntry[]>([]);
   const [cursorTelemetry, setCursorTelemetry] = useState<WindCursorTelemetry | null>(null);
+  const lastFrameTimeRef = useRef<number>(0);
+  const isMapMovingRef = useRef<boolean>(false);
 
   const particleCount = isMobile ? 800 : 3200;
   const isWindActive = activeLayer === 'wind';
@@ -495,13 +497,15 @@ export default function WeatherMapLibreOverlay({
     };
   }, [map, isWindActive]);
 
-  // ── 4. Multi-Scale Zoom-Adaptive Particle Engine ────────────────────────
+  // ── 4. Multi-Scale Zoom-Adaptive Particle Engine (RK2 + Δt FPS-Normalized) ──
   useEffect(() => {
     if (!map || !isWindActive || !particlesEnabled) {
       if (animFrameIdRef.current) {
         cancelAnimationFrame(animFrameIdRef.current);
         animFrameIdRef.current = null;
       }
+      lastFrameTimeRef.current = 0;
+      isMapMovingRef.current = false;
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -552,13 +556,15 @@ export default function WeatherMapLibreOverlay({
         }
       }
 
+      // Wide distribution (75 to 195 frames) with uniform random initial age to eliminate pulsing waves
+      const maxAge = 75 + Math.floor(Math.random() * 120);
       return {
         lat: bestLat,
         lng: bestLng,
         prevLat: bestLat,
         prevLng: bestLng,
-        age: Math.floor(Math.random() * 50),
-        maxAge: 75 + Math.floor(Math.random() * 75),
+        age: Math.floor(Math.random() * maxAge),
+        maxAge,
         speed: 15,
       };
     };
@@ -569,8 +575,20 @@ export default function WeatherMapLibreOverlay({
       particlesRef.current.push(spawnParticle());
     }
 
-    // Instant screen-space particle recycling on pan or zoom
-    const handleViewportChange = () => {
+    // Active movement listeners to prevent screen trail smearing during camera panning/zooming
+    const handleMoveStart = () => {
+      isMapMovingRef.current = true;
+      if (canvasRef.current) {
+        const c = canvasRef.current;
+        const context = c.getContext('2d');
+        if (context) {
+          context.clearRect(0, 0, c.width, c.height);
+        }
+      }
+    };
+
+    const handleMoveEnd = () => {
+      isMapMovingRef.current = false;
       const bounds = map.getBounds();
       const west = bounds.getWest();
       const east = bounds.getEast();
@@ -586,27 +604,41 @@ export default function WeatherMapLibreOverlay({
       }
     };
 
-    map.on('moveend', handleViewportChange);
+    map.on('movestart', handleMoveStart);
+    map.on('zoomstart', handleMoveStart);
+    map.on('moveend', handleMoveEnd);
 
-    const render = () => {
+    const render = (now: number) => {
       const container = map.getContainer();
       if (!container) return;
       const width = container.clientWidth;
       const height = container.clientHeight;
       const zoom = map.getZoom();
 
+      // Delta time calculation clamped between 6ms (~165fps) and 40ms (25fps)
+      // Standardizes particle velocity to exact physical speed across 60Hz, 90Hz, 120Hz, 144Hz displays
+      const lastTime = lastFrameTimeRef.current || now;
+      const elapsedSec = (now - lastTime) / 1000;
+      lastFrameTimeRef.current = now;
+      const dtSec = Math.min(0.040, Math.max(0.006, elapsedSec));
+      const dtRatio = dtSec / 0.016667;
+
       // Dynamic zoom-adaptive time scale:
       // In Web Mercator, 1 deg lat/lng spans exponentially more pixels as zoom increases (2^z).
-      // We scale the advection step inversely by 2^(-(z-2.5)*0.82) so pixel displacement
-      // remains in the comfortable 2-8 px/frame window across all zooms (1.0 to 14.0+).
+      // k(z) = 2^(-(z-2.5)*0.82) maintains a constant physical perceptual velocity across zooms 1 to 14+.
       const zoomFactor = Math.pow(2, -(zoom - 2.5) * 0.82);
-      const baseScale = reducedMotion ? 0.05 : 0.18;
-      const timeScale = Math.max(0.0005, baseScale * zoomFactor);
+      const baseScale = reducedMotion ? 0.04 : 0.16;
+      const timeScale = Math.max(0.0004, baseScale * zoomFactor) * dtRatio;
 
       // Zoom-adaptive aerodynamic trail persistence & stroke styling
-      const trailFade = zoom <= 4 ? 0.035 : zoom <= 8 ? 0.045 : 0.055;
+      // Scale trail fade rate with delta time so trail persistence is identical across different frame rates
+      const baseTrailFade = isMapMovingRef.current
+        ? 0.35 // Accelerated fade during active drag/pan to prevent trail smearing
+        : (zoom <= 4 ? 0.038 : zoom <= 8 ? 0.048 : 0.058);
+      const effectiveFade = 1 - Math.pow(1 - baseTrailFade, dtRatio);
+
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = `rgba(0, 0, 0, ${trailFade})`;
+      ctx.fillStyle = `rgba(0, 0, 0, ${effectiveFade.toFixed(3)})`;
       ctx.fillRect(0, 0, width, height);
 
       ctx.globalCompositeOperation = 'lighter';
@@ -626,23 +658,21 @@ export default function WeatherMapLibreOverlay({
         p.prevLat = p.lat;
         p.prevLng = p.lng;
 
-        // Windy & Zoom Earth Streamline Physics:
-        // Sample true wind vector at current coordinate.
+        // Sample true wind vector at current coordinate
         const sample = windField.sampleAt(p.lat, p.lng);
         p.speed = sample.speed;
 
-        // Enforce a minimum display advection speed so low-wind continental/coastal zones (1-6 km/h)
-        // do not collapse into static sub-pixel dots. Particles continuously glide along the
-        // true wind streamline direction, forming silky, coherent ribbons matching Windy and Zoom Earth.
-        const minDisplaySpeed = 12.0; // km/h floor for streamline flow
-        const effectiveSpeed = Math.max(minDisplaySpeed, sample.speed);
-        const speedRatio = sample.speed > 0.1 ? effectiveSpeed / sample.speed : 1.0;
+        // Smooth Sub-Linear Velocity Curve (Windy & Zoom Earth Parity):
+        // Replaces artificial hard speed floor (which previously multiplied calm 0.5 km/h winds by 24x!)
+        // Smoothly maps low-wind areas to a gentle laminar crawl (0.65x) up to high-speed jet streams (1.6x)
+        // without any sudden velocity steps, stuttering, or visual jerking.
+        const speedScale = 0.65 + 0.35 * Math.min(2.8, Math.pow(Math.max(0.1, sample.speed) / 15, 0.55));
 
-        // Advect particle along meteorological U/V vectors with dynamic zoom scaling & streamline continuity
-        const advected = windField.advectParticle(p.lat, p.lng, timeScale * speedRatio);
+        // Advect particle along meteorological U/V vectors using RK2 midpoint integration
+        const advected = windField.advectParticle(p.lat, p.lng, timeScale * speedScale);
         p.lat = advected.nextLat;
         p.lng = advected.nextLng;
-        p.age++;
+        p.age += dtRatio;
 
         // Respawn if aged or drifted outside viewport
         if (
@@ -668,7 +698,7 @@ export default function WeatherMapLibreOverlay({
         }
 
         // Streamlines styled in luminous translucent white/cyan with intensity glow
-        const progress = p.age / p.maxAge;
+        const progress = Math.min(1.0, p.age / p.maxAge);
         const alpha = Math.sin(progress * Math.PI) * 0.92;
 
         if (p.speed > 75) {
@@ -694,12 +724,14 @@ export default function WeatherMapLibreOverlay({
       animFrameIdRef.current = requestAnimationFrame(render);
     };
 
-    render();
+    animFrameIdRef.current = requestAnimationFrame(render);
     map.on('resize', resizeCanvas);
 
     return () => {
       map.off('resize', resizeCanvas);
-      map.off('moveend', handleViewportChange);
+      map.off('movestart', handleMoveStart);
+      map.off('zoomstart', handleMoveStart);
+      map.off('moveend', handleMoveEnd);
       if (animFrameIdRef.current) {
         cancelAnimationFrame(animFrameIdRef.current);
         animFrameIdRef.current = null;
