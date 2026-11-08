@@ -1,0 +1,65 @@
+name: MooEarth Live — 24-Hour Autonomous Daily Health Sentry
+
+on:
+  schedule:
+    # Runs every 24 hours at 00:00 UTC (05:30 AM IST)
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  daily-feature-verification:
+    name: 🛡️ 24-Hour Autonomous Feature Verification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Check Static Type Invariants (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: ⏱️ Verify Multi-Timezone Hourly Accuracy & Zero Past Hours
+        run: npx tsx scripts/test-hourly-accuracy-suite.ts
+
+      - name: 🛡️ Run Full Sentry Anti-Regression Suite
+        run: npm run test:regression
+
+      - name: 🌐 Run 24-Hour Autonomous Health Audit against Production
+        run: npx tsx scripts/daily-health-audit.ts https://www.mooearth.live
+
+      - name: 🚨 Create Alert Issue on Verification Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let details = 'A critical feature regression was detected during the automated 24-hour verification run.';
+            try {
+              if (fs.existsSync('test-results/daily-health-report.json')) {
+                const report = JSON.parse(fs.readFileSync('test-results/daily-health-report.json', 'utf8'));
+                details = `### Daily Health Audit Summary:\n- Status: ${report.status}\n- Total: ${report.summary.total}\n- Passed: ${report.summary.passed}\n- Failed: ${report.summary.failed}\n\n### Failing Checks:\n` +
+                  report.checks.filter(c => c.status === 'FAIL').map(c => `- **${c.pillar}** (${c.target}): ${c.details}`).join('\n');
+              }
+            } catch (e) {
+              details += `\nError reading report: ${e.message}`;
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 [Daily Sentry Alert] Platform Invariant Regression Detected (${new Date().toISOString().slice(0, 10)})`,
+              body: `## ⚠️ Autonomous 24-Hour Health Check Alert\n\nThe daily automated verification run failed one or more critical invariants.\n\n${details}\n\n**Run ID**: ${context.runId}\n**Trigger**: ${context.eventName}\n\n*This issue was generated automatically by the MooEarth Live Daily Health Sentry.*`,
+              labels: ['bug', 'automated-alert', 'regression'],
+            });

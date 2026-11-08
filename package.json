@@ -18,6 +18,7 @@
     "test:data-integrity": "playwright test tests/data-integrity/",
     "test:mock-scan": "node scripts/data-integrity-scanner.js",
     "test:production-readiness": "npm run test:mock-scan && npm run test:data-integrity",
+    "test:daily-health": "npx tsx scripts/daily-health-audit.ts",
     "test:sentry": "npx tsx scripts/regression-sentry.ts",
     "test:sentry:fix": "npx tsx scripts/regression-sentry.ts --auto-fix",
     "test:sentry:full": "npx tsx scripts/regression-sentry.ts --full",

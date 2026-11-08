@@ -521,6 +521,21 @@ export default function Navbar({
                   <span>{t('navbar.leaderboards', 'Global Leaderboards')}</span>
                 </button>
 
+                {/* Platform Status */}
+                <Link
+                  href="/status"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl flex items-center justify-between text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 transition-colors text-left"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-sm">🟢</span>
+                    <span>System Status</span>
+                  </span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    24h Sentry
+                  </span>
+                </Link>
+
                 {/* About & Legal */}
                 <Link
                   href="/about"
@@ -698,6 +713,15 @@ export default function Navbar({
           >
             {isMuted ? '🔇' : '🔊'}
           </button>
+
+          {/* 24h System Status Button */}
+          <Link
+            href="/status"
+            title="MooEarth System Status — 24-Hour Autonomous Feature Verification"
+            className="hidden sm:flex w-9 h-9 rounded-xl bg-white/5 border border-white/10 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-emerald-400 transition-all duration-300 pointer-events-auto cursor-pointer items-center justify-center text-sm group"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform" />
+          </Link>
 
           {/* Global Leaderboard Button */}
           <button

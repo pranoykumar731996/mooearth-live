@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/daily-health-check",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/sw\\.js",
