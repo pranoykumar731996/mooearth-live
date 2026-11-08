@@ -148,27 +148,37 @@ export async function fetchCountryWeather(
 
     const wmo = getWmoWeatherInfo(curr.weather_code ?? 0);
 
-    // Extract next 24h hourly forecast
+    // Extract next 24h hourly forecast (AccuWeather Parity)
     let hourlyItems: HourlyForecastItem[] | undefined;
     if (data.hourly && Array.isArray(data.hourly.time)) {
-      const currTime = curr.time || '';
+      const currTime = (curr.time || '').slice(0, 13);
       const hTimes: string[] = data.hourly.time;
-      let startIdx = hTimes.findIndex((t: string) => t >= currTime);
+      let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= currTime);
       if (startIdx < 0) startIdx = 0;
+
+      const rawT0 = data.hourly.temperature_2m?.[startIdx] ?? curr.temperature_2m;
+      const obsDelta = curr.temperature_2m - rawT0;
 
       hourlyItems = hTimes.slice(startIdx, startIdx + 24).map((t: string, idx: number) => {
         const i = startIdx + idx;
-        const dt = new Date(t);
-        const hour = dt.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+        const hourNum = parseInt(t.slice(11, 13), 10);
+        const period = hourNum >= 12 ? 'PM' : 'AM';
+        const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+        const hour = idx === 0 ? 'Now' : `${displayHour} ${period}`;
+
         const hCode = data.hourly.weather_code?.[i] ?? 0;
         const hWmo = getWmoWeatherInfo(hCode);
+
+        const blendFactor = idx === 0 ? 1.0 : idx === 1 ? 0.65 : idx === 2 ? 0.30 : 0.0;
+        const blendedTemp = Math.round((data.hourly.temperature_2m?.[i] ?? curr.temperature_2m) + obsDelta * blendFactor);
+        const temp = idx === 0 ? Math.round(curr.temperature_2m) : blendedTemp;
 
         return {
           time: t,
           hour,
-          temperature: Math.round(data.hourly.temperature_2m?.[i] ?? 0),
+          temperature: temp,
           apparentTemperature: data.hourly.apparent_temperature?.[i] != null
-            ? Math.round(data.hourly.apparent_temperature[i])
+            ? Math.round(data.hourly.apparent_temperature[i] + obsDelta * blendFactor)
             : undefined,
           weatherCode: hCode,
           weatherDescription: hWmo.desc,

@@ -238,33 +238,65 @@ export default function WeatherPanel({
                       Hourly Forecast
                     </h4>
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                      {forecast.hourly.time.slice(0, 24).map((time, i) => {
-                        const wmo = getWmoWeatherInfo(forecast.hourly.weatherCode[i]);
-                        const isNow = i === 0;
-                        return (
-                          <div
-                            key={time}
-                            className={`shrink-0 flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border
-                              ${isNow
-                                ? 'bg-cyan-500/10 border-cyan-400/30'
-                                : 'bg-white/[0.02] border-white/5'
-                              }`}
-                          >
-                            <span className="text-[10px] text-white/40 font-mono">
-                              {isNow ? 'Now' : new Date(time).toLocaleTimeString([], { hour: '2-digit', timeZone: forecast.timezone })}
-                            </span>
-                            <span className="text-sm">{wmo.emoji}</span>
-                            <span className="text-xs font-bold text-white">
-                              {formatTemp(forecast.hourly.temperature2m[i])}
-                            </span>
-                            {forecast.hourly.precipitationProbability[i] > 0 && (
-                              <span className="text-[9px] text-blue-400">
-                                {forecast.hourly.precipitationProbability[i]}%
+                      {(() => {
+                        // AccuWeather Parity:
+                        // 1. Never show past hours. Anchor to current hour in location local time.
+                        const currIso = forecast.current.time || '';
+                        const currHourIso = currIso.slice(0, 13);
+                        const hTimes = forecast.hourly.time;
+                        let startIdx = hTimes.findIndex((t) => t.slice(0, 13) >= currHourIso);
+                        if (startIdx < 0) startIdx = 0;
+
+                        // 2. AccuWeather Observation Anchoring & Delta Blending:
+                        // Live verified thermometer delta against raw NWP model forecast at t0
+                        const rawModelTempAtT0 = forecast.hourly.temperature2m[startIdx] ?? forecast.current.temperature;
+                        const obsDelta = forecast.current.temperature - rawModelTempAtT0;
+
+                        const upcomingHours = hTimes.slice(startIdx, startIdx + 24);
+                        return upcomingHours.map((time, idx) => {
+                          const i = startIdx + idx;
+                          const wmo = getWmoWeatherInfo(forecast.hourly.weatherCode[i]);
+                          const isNow = idx === 0;
+
+                          // 3. Timezone-Safe 12h formatting directly from ISO string (eliminates browser TZ distortion)
+                          let hourLabel = 'Now';
+                          if (!isNow) {
+                            const hourNum = parseInt(time.slice(11, 13), 10);
+                            const period = hourNum >= 12 ? 'PM' : 'AM';
+                            const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+                            hourLabel = `${displayHour} ${period}`;
+                          }
+
+                          // 4. Smooth cubic/exponential blend of ground station observation into model forecast
+                          const blendFactor = isNow ? 1.0 : idx === 1 ? 0.65 : idx === 2 ? 0.30 : 0.0;
+                          const blendedTemp = Math.round(forecast.hourly.temperature2m[i] + obsDelta * blendFactor);
+                          const displayTemp = isNow ? forecast.current.temperature : blendedTemp;
+
+                          return (
+                            <div
+                              key={time}
+                              className={`shrink-0 flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl border
+                                ${isNow
+                                  ? 'bg-cyan-500/10 border-cyan-400/30'
+                                  : 'bg-white/[0.02] border-white/5'
+                                }`}
+                            >
+                              <span className="text-[10px] text-white/40 font-mono">
+                                {hourLabel}
                               </span>
-                            )}
-                          </div>
-                        );
-                      })}
+                              <span className="text-sm">{isNow ? (forecast.current.weatherEmoji || wmo.emoji) : wmo.emoji}</span>
+                              <span className="text-xs font-bold text-white">
+                                {formatTemp(displayTemp)}
+                              </span>
+                              {forecast.hourly.precipitationProbability[i] > 0 && (
+                                <span className="text-[9px] text-blue-400">
+                                  {forecast.hourly.precipitationProbability[i]}%
+                                </span>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
 

@@ -117,26 +117,49 @@ export default function WeatherFloatingHUD({
           icon: current.weatherEmoji || info.icon,
         });
 
-        // Parse next 5 hourly slots from hourly data
+        // Parse next 5 hourly slots from hourly data (AccuWeather Parity)
         if (data.hourly && Array.isArray(data.hourly.time) && Array.isArray(data.hourly.temperature2m)) {
           const hours: HourlyItem[] = [];
-          const now = new Date();
-          const currentHour = now.getHours();
+          const currIso = current.time || '';
+          const currHourIso = currIso.slice(0, 13);
+          const hTimes = data.hourly.time;
+          let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= currHourIso);
+          if (startIdx < 0) startIdx = 0;
 
-          for (let i = 0; i < Math.min(data.hourly.time.length, 24); i += 2) {
-            const timeStr = data.hourly.time[i];
-            const tDate = new Date(timeStr);
-            if (tDate.getTime() >= now.getTime() - 3600000 && hours.length < 5) {
-              const hCode = data.hourly.weatherCode ? data.hourly.weatherCode[i] : 0;
-              const hInfo = getWeatherInfo(hCode);
-              const formattedHour = `${tDate.getHours()}:00`;
-              hours.push({
-                timeStr: hours.length === 0 ? 'Now' : formattedHour,
-                temp: Math.round(data.hourly.temperature2m[i] ?? 20),
-                icon: hInfo.icon,
-              });
-            }
+          const currTemp = Math.round(current.temperature ?? current.temperature_2m ?? 22);
+          const rawT0 = data.hourly.temperature2m[startIdx] ?? currTemp;
+          const obsDelta = currTemp - rawT0;
+
+          // Slot 0: Current condition strictly anchored to live station thermometer
+          hours.push({
+            timeStr: 'Now',
+            temp: currTemp,
+            icon: current.weatherEmoji || info.icon,
+          });
+
+          // Slots 1 to 4: Upcoming hours at 2-hour intervals (+2h, +4h, +6h, +8h)
+          for (let step = 2; step <= 8 && hours.length < 5; step += 2) {
+            const idx = startIdx + step;
+            if (idx >= hTimes.length) break;
+            const timeStr = hTimes[idx];
+            const hourNum = parseInt(timeStr.slice(11, 13), 10);
+            const period = hourNum >= 12 ? 'PM' : 'AM';
+            const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+            const hCode = data.hourly.weatherCode ? data.hourly.weatherCode[idx] : 0;
+            const hInfo = getWeatherInfo(hCode);
+
+            // Spline-blended temperature
+            const blendFactor = step <= 2 ? 0.35 : 0.0;
+            const rawTemp = data.hourly.temperature2m[idx] ?? currTemp;
+            const finalTemp = Math.round(rawTemp + obsDelta * blendFactor);
+
+            hours.push({
+              timeStr: `${displayHour} ${period}`,
+              temp: finalTemp,
+              icon: hInfo.icon,
+            });
           }
+
           if (hours.length > 0) {
             setHourlyList(hours);
           }

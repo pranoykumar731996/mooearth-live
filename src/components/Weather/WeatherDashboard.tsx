@@ -55,37 +55,54 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 
-// Synchronize displayed forecast and telemetry with the forecast timeline scrubber
+// Synchronize displayed forecast and telemetry with the forecast timeline scrubber (AccuWeather Parity)
 function computeDisplayedForecast(
   forecast: ForecastResponse | null,
   timelineIndex: number
 ): ForecastResponse | null {
   if (!forecast) return null;
-  if (timelineIndex === 0 || !forecast.hourly?.time?.[timelineIndex]) {
+  if (timelineIndex === 0 || !forecast.hourly?.time) {
     return forecast;
   }
   const h = forecast.hourly;
-  const time = h.time[timelineIndex];
-  const wmo = getWmoWeatherInfo(h.weatherCode?.[timelineIndex] ?? 0);
+  const currIso = forecast.current.time || '';
+  const currHourIso = currIso.slice(0, 13);
+  let startIdx = h.time.findIndex((t) => t.slice(0, 13) >= currHourIso);
+  if (startIdx < 0) startIdx = 0;
+
+  const targetIdx = Math.min(h.time.length - 1, startIdx + timelineIndex);
+  if (!h.time[targetIdx]) {
+    return forecast;
+  }
+
+  const time = h.time[targetIdx];
+  const wmo = getWmoWeatherInfo(h.weatherCode?.[targetIdx] ?? 0);
   const curr = forecast.current;
+
+  // AccuWeather Spline Blending: Decays real-world station delta smoothly across scrubber steps
+  const rawT0 = h.temperature2m?.[startIdx] ?? curr.temperature;
+  const obsDelta = curr.temperature - rawT0;
+  const blendFactor = timelineIndex === 1 ? 0.65 : timelineIndex === 2 ? 0.35 : 0.0;
+  const targetTemp = Math.round((h.temperature2m?.[targetIdx] ?? curr.temperature) + obsDelta * blendFactor);
+
   return {
     ...forecast,
     current: {
       ...curr,
       time,
-      temperature: h.temperature2m?.[timelineIndex] ?? curr.temperature,
-      apparentTemperature: h.apparentTemperature?.[timelineIndex] ?? curr.apparentTemperature,
-      precipitation: h.precipitation?.[timelineIndex] ?? curr.precipitation,
-      weatherCode: h.weatherCode?.[timelineIndex] ?? curr.weatherCode,
+      temperature: targetTemp,
+      apparentTemperature: h.apparentTemperature?.[targetIdx] ?? curr.apparentTemperature,
+      precipitation: h.precipitation?.[targetIdx] ?? curr.precipitation,
+      weatherCode: h.weatherCode?.[targetIdx] ?? curr.weatherCode,
       weatherDescription: wmo.desc,
       weatherEmoji: wmo.emoji,
-      surfacePressure: h.surfacePressure?.[timelineIndex] ?? curr.surfacePressure,
-      windSpeed: h.windSpeed10m?.[timelineIndex] ?? curr.windSpeed,
-      windDirection: h.windDirection10m?.[timelineIndex] ?? curr.windDirection,
-      windGusts: h.windGusts10m?.[timelineIndex] ?? curr.windGusts,
-      relativeHumidity: h.relativeHumidity2m?.[timelineIndex] ?? curr.relativeHumidity,
-      cloudCover: h.cloudCover?.[timelineIndex] ?? curr.cloudCover,
-      isDay: Boolean(h.isDay?.[timelineIndex] ?? curr.isDay),
+      surfacePressure: h.surfacePressure?.[targetIdx] ?? curr.surfacePressure,
+      windSpeed: h.windSpeed10m?.[targetIdx] ?? curr.windSpeed,
+      windDirection: h.windDirection10m?.[targetIdx] ?? curr.windDirection,
+      windGusts: h.windGusts10m?.[targetIdx] ?? curr.windGusts,
+      relativeHumidity: h.relativeHumidity2m?.[targetIdx] ?? curr.relativeHumidity,
+      cloudCover: h.cloudCover?.[targetIdx] ?? curr.cloudCover,
+      isDay: Boolean(h.isDay?.[targetIdx] ?? curr.isDay),
     },
   };
 }
