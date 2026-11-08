@@ -448,23 +448,24 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i + 3] = 0;
               continue;
             }
-            if (isEumet) {
-              if (norm < 0.25) {
-                d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
-              } else if (norm < 0.45) {
-                d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
-              } else if (norm < 0.65) {
-                d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
-              } else if (norm < 0.85) {
-                d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
-              } else {
-                d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
-              }
+            // Unified thermodynamic Kelvin temperature palette across EUMETSAT, Himawari, and GOES:
+            if (norm < 0.25) {
+              // Cirrus & mid-troposphere clouds: soft luminous translucent moonlight-white
+              const tone = Math.min(255, Math.max(200, Math.round((215 + 30 * norm) * (0.92 + 0.18 * emboss))));
+              d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 4);
+            } else if (norm < 0.45) {
+              // Upper troposphere: dense white cloud top
+              const tone = Math.min(255, Math.max(225, Math.round((235 + 18 * norm) * (0.92 + 0.18 * emboss))));
+              d[i] = tone; d[i + 1] = tone; d[i + 2] = tone;
+            } else if (norm < 0.65) {
+              // Active convection (-40°C to -55°C): Emerald green storm mantle
+              d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+            } else if (norm < 0.85) {
+              // Deep convective vortex (-55°C to -70°C): Vivid Amber / Yellow core
+              d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
             } else {
-              // Mid-troposphere clouds in IR mode: pale blue/cyan wisps to light gray
-              d[i] = Math.round(14 + 180 * norm);
-              d[i + 1] = Math.round(165 + 70 * norm);
-              d[i + 2] = Math.round(233 + 22 * norm);
+              // Coldest overshooting tops (< -70°C): Crimson / Luminous White storm core
+              d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
             }
             d[i + 3] = finalAlpha;
           }
@@ -668,6 +669,110 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         return { data: buf };
       }
     });
+
+    function processMainThreadBlackMarble(d: Uint8ClampedArray, width: number, height: number, url: string) {
+      const coordMatch = url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+      let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
+      if (coordMatch) {
+        tileZ = parseInt(coordMatch[1], 10);
+        tileY = parseInt(coordMatch[2], 10);
+        tileX = parseInt(coordMatch[3], 10);
+        hasCoords = true;
+      }
+      if (!hasCoords) return;
+
+      const now = new Date();
+      const timeMs = now.getTime();
+      const dayDiff = (timeMs - 946728000000) / 86400000;
+      const L = (280.460 + 0.9856474 * dayDiff) % 360;
+      const g = ((357.528 + 0.9856003 * dayDiff) % 360) * Math.PI / 180;
+      const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+      const eps = (23.439 - 0.0000004 * dayDiff) * Math.PI / 180;
+      const solLat = Math.asin(Math.sin(eps) * Math.sin(lambda)) * 180 / Math.PI;
+      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+      const solLng = ((12 - utcHours) * 15 + 540) % 360 - 180;
+      const rad = Math.PI / 180;
+
+      const tileLngs = new Float32Array(width);
+      const tileLats = new Float32Array(height);
+      for (let c = 0; c < width; c++) tileLngs[c] = tileToLng(tileX + (c + 0.5) / width, tileZ);
+      for (let r = 0; r < height; r++) tileLats[r] = tileToLat(tileY + (r + 0.5) / height, tileZ);
+
+      for (let y = 0; y < height; y++) {
+        const row = y * width;
+        const pLat = tileLats[y];
+        const sinLat = Math.sin(pLat * rad);
+        const cosLat = Math.cos(pLat * rad);
+        const sinSol = Math.sin(solLat * rad);
+        const cosSol = Math.cos(solLat * rad);
+
+        for (let x = 0; x < width; x++) {
+          const p = row + x;
+          const i = p * 4;
+          const pLng = tileLngs[x];
+
+          const cosZenith = sinLat * sinSol + cosLat * cosSol * Math.cos((pLng - solLng) * rad);
+          if (cosZenith >= 0.06) {
+            d[i + 3] = 0;
+            continue;
+          }
+
+          let nightWeight = 1.0;
+          if (cosZenith > -0.06) {
+            const t = (cosZenith - (-0.06)) / 0.12;
+            nightWeight = 0.5 * (1.0 + Math.cos(t * Math.PI));
+          }
+
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum < 16) {
+            d[i + 3] = 0;
+            continue;
+          }
+
+          const intensity = Math.min(1.0, (lum - 16) / 110.0);
+          const alpha = Math.min(245, Math.round(245 * intensity * nightWeight));
+
+          d[i] = Math.min(255, Math.round(r * 1.15 + 16));
+          d[i + 1] = Math.min(255, Math.round(g * 1.05 + 10));
+          d[i + 2] = Math.max(0, Math.round(b * 0.90));
+          d[i + 3] = alpha;
+        }
+      }
+    }
+
+    addProtocol('black-marble-alpha', async (params, abortController) => {
+      const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
+      const res = await fetch(realUrl, { signal: abortController.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+
+      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+
+      try {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { data: bitmap };
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(bitmap, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        processMainThreadBlackMarble(imgData.data, canvas.width, canvas.height, params.url);
+        ctx.putImageData(imgData, 0, 0);
+        const cleanBitmap = await createImageBitmap(canvas);
+        return { data: cleanBitmap };
+      } catch {
+        const buf = await blob.arrayBuffer();
+        return { data: buf };
+      }
+    });
   } catch (protoErr) {
     console.warn('[CityMapViewer] gibs-alpha protocol notice:', protoErr);
   }
@@ -693,6 +798,7 @@ import {
 } from '@/services/weather/cycloneTrackingService';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
 import { getSatelliteObservationDate, getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
+import { getNightTerminatorGeoJSON } from '@/services/weather/solarTerminatorService';
 import WeatherMapLibreOverlay from './WeatherMapLibreOverlay';
 import { GLOBAL_PRESSURE_CENTERS, getIsobarLevels } from '@/components/Globe/WeatherLayers/AtmosphericPressureLayer';
 import RadarCoverageNotice from '@/components/Weather/RadarCoverageNotice';
@@ -2479,6 +2585,8 @@ export default function CityMapViewer({
     if (!map || !isMapLoaded) return;
 
     const sectorSourceIds = [
+      'solar-terminator-source',
+      'nasa-black-marble-source',
       'nasa-gibs-visible-source',
       'nasa-gibs-visible-noaa20-source',
       'nasa-gibs-polar-fill-source',
@@ -2486,11 +2594,15 @@ export default function CityMapViewer({
       'nasa-gibs-goes-east-source',
       'nasa-gibs-goes-west-source',
       'nasa-gibs-europe-africa-source',
+      'nasa-gibs-eumet-iodc-source',
       'nasa-gibs-arctic-polar-source',
       'nasa-gibs-antarctic-polar-source',
       'nasa-gibs-satellite-source',
     ];
     const sectorLayerIds = [
+      'solar-terminator-night-layer',
+      'solar-terminator-twilight-layer',
+      'nasa-black-marble-layer',
       'nasa-gibs-visible-layer',
       'nasa-gibs-visible-noaa20-layer',
       'nasa-gibs-polar-fill-layer',
@@ -2498,6 +2610,7 @@ export default function CityMapViewer({
       'nasa-gibs-goes-east-layer',
       'nasa-gibs-goes-west-layer',
       'nasa-gibs-europe-africa-layer',
+      'nasa-gibs-eumet-iodc-layer',
       'nasa-gibs-arctic-polar-layer',
       'nasa-gibs-antarctic-polar-layer',
       'nasa-gibs-satellite-layer',
@@ -2592,7 +2705,6 @@ export default function CityMapViewer({
         const sectors: {
           id: string;
           layerName: string;
-          bounds?: [number, number, number, number];
           tileMatrixSet: string;
           format: 'image/png' | 'image/jpeg';
           isSubHourly: boolean;
@@ -2604,7 +2716,6 @@ export default function CityMapViewer({
                 layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: isIodcActive ? [70.0, -68.0, 180.0, 68.0] : [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 7,
               },
@@ -2615,7 +2726,6 @@ export default function CityMapViewer({
                       layerName: iodcDay ? 'msg_iodc:vis006' : 'msg_iodc:ir108',
                       tileMatrixSet: 'EPSG:3857',
                       format: 'image/png' as const,
-                      bounds: [20.0, -68.0, 105.0, 68.0] as [number, number, number, number],
                       isSubHourly: true,
                       maxzoom: 6,
                     },
@@ -2626,7 +2736,6 @@ export default function CityMapViewer({
                 layerName: goesEastDay ? 'GOES-East_ABI_GeoColor' : 'GOES-East_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: goesEastDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-145.0, -68.0, -5.0, 68.0],
                 isSubHourly: true,
                 maxzoom: goesEastDay ? 7 : 6,
               },
@@ -2635,7 +2744,6 @@ export default function CityMapViewer({
                 layerName: goesWestDay ? 'GOES-West_ABI_GeoColor' : 'GOES-West_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: goesWestDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-180.0, -68.0, -80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: goesWestDay ? 7 : 6,
               },
@@ -2644,7 +2752,6 @@ export default function CityMapViewer({
                 layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: isIodcActive ? [-45.0, -68.0, 50.0, 68.0] : [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2655,7 +2762,6 @@ export default function CityMapViewer({
                 layerName: 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: isIodcActive ? [70.0, -68.0, 180.0, 68.0] : [45.0, -68.0, 180.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2666,7 +2772,6 @@ export default function CityMapViewer({
                       layerName: 'msg_iodc:ir108',
                       tileMatrixSet: 'EPSG:3857',
                       format: 'image/png' as const,
-                      bounds: [20.0, -68.0, 105.0, 68.0] as [number, number, number, number],
                       isSubHourly: true,
                       maxzoom: 6,
                     },
@@ -2677,7 +2782,6 @@ export default function CityMapViewer({
                 layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-145.0, -68.0, -5.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2686,7 +2790,6 @@ export default function CityMapViewer({
                 layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
                 tileMatrixSet: 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
-                bounds: [-180.0, -68.0, -80.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2695,7 +2798,6 @@ export default function CityMapViewer({
                 layerName: 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
-                bounds: isIodcActive ? [-45.0, -68.0, 50.0, 68.0] : [-45.0, -68.0, 75.0, 68.0],
                 isSubHourly: true,
                 maxzoom: 6,
               },
@@ -2709,10 +2811,81 @@ export default function CityMapViewer({
             }
           });
 
+          // 4b. Astronomical Solar Terminator (Night Shadow & Golden Twilight Horizon)
+          const nightGeoJSON = getNightTerminatorGeoJSON(obsDate);
+          const terminatorSrc = map.getSource('solar-terminator-source') as any;
+          if (terminatorSrc) {
+            terminatorSrc.setData(nightGeoJSON);
+          } else {
+            map.addSource('solar-terminator-source', {
+              type: 'geojson',
+              data: nightGeoJSON,
+            });
+          }
+          if (!map.getLayer('solar-terminator-night-layer')) {
+            map.addLayer(
+              {
+                id: 'solar-terminator-night-layer',
+                type: 'fill',
+                source: 'solar-terminator-source',
+                paint: {
+                  'fill-color': '#01030a',
+                  'fill-opacity': 0.60,
+                },
+              },
+              beforeLayerId
+            );
+          }
+          if (!map.getLayer('solar-terminator-twilight-layer')) {
+            map.addLayer(
+              {
+                id: 'solar-terminator-twilight-layer',
+                type: 'line',
+                source: 'solar-terminator-source',
+                paint: {
+                  'line-color': '#f59e0b',
+                  'line-width': 3.5,
+                  'line-opacity': 0.35,
+                  'line-blur': 8.0,
+                },
+              },
+              beforeLayerId
+            );
+          }
+
+          // 5. NASA Black Marble (VIIRS Day/Night Band Nocturnal City Lights)
+          const blackMarbleUrl = 'black-marble-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png';
+          const blackMarbleSrc = map.getSource('nasa-black-marble-source') as any;
+          if (!blackMarbleSrc) {
+            map.addSource('nasa-black-marble-source', {
+              type: 'raster',
+              tiles: [blackMarbleUrl],
+              tileSize: 256,
+              maxzoom: 8,
+              attribution: 'NASA EOSDIS / Earth Science Open Data (VIIRS Black Marble)',
+            });
+          }
+          if (!map.getLayer('nasa-black-marble-layer')) {
+            map.addLayer(
+              {
+                id: 'nasa-black-marble-layer',
+                type: 'raster',
+                source: 'nasa-black-marble-source',
+                maxzoom: 12,
+                paint: {
+                  'raster-opacity': 0.85,
+                  'raster-resampling': 'linear',
+                  'raster-fade-duration': 250,
+                },
+              },
+              beforeLayerId
+            );
+          }
+
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileTime = (sec.layerName.includes('GeoColor') || sec.layerName.includes('Visible') || !sec.isSubHourly) ? geoObs.dateStr : geoObs.isoTimestamp;
+            const tileTime = geoObs.dateStr;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';

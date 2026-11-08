@@ -1,18 +1,27 @@
 // ============================================================
-// MooEarth Live — Atmospheric Satellite Basemap Style Specification
+// MooEarth Live — Photorealistic Satellite Basemap Specification
 // ============================================================
-// Professional meteorological cartographic aesthetic for 2D satellite view:
-// - Land: Rich olive green (#3d5218)
-// - Oceans & Water: Deep Royal Navy (#203657)
-// - Sovereign Borders: Crisp dark border lines (#16240d)
-// - Relief: Prominent Natural Earth shaded relief (ne2sr) at 34% opacity for visible mountain ridges
-// - Reference Labels: High-contrast white glyphs with dark halo (#121e0b)
-// - Fully open-source: OpenFreeMap / OpenMapTiles / Natural Earth (ODbL / Public Domain)
+// Professional meteorological satellite cartographic aesthetic for 2D satellite view:
+// - Photorealistic 4K Earth Surface: High-resolution Esri World Imagery (250m to sub-meter)
+// - Realistic Deserts, Forests, Mountains & Ocean Bathymetry
+// - Reference Boundaries: Crisp, subtle sovereign border lines (#e2e8f0 at 35-40% opacity)
+// - Reference Labels: High-contrast white glyphs with deep-space halo (#050814) for crystal readability
+// - Fully licensed & compliant: Esri World Imagery, OpenMapTiles, Natural Earth (Public Domain / ODbL)
 
 export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
   version: 8,
   name: 'Atmospheric Satellite Base',
   sources: {
+    esri_satellite_imagery: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution:
+        'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+    },
     esri_hillshade: {
       type: 'raster',
       tiles: [
@@ -22,65 +31,49 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       maxzoom: 16,
       attribution: 'Hillshade &copy; Esri',
     },
-    ne2_shaded: {
-      type: 'raster',
-      tiles: ['https://tiles.openfreemap.org/natural_earth/ne2sr/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      maxzoom: 6,
-      attribution: 'Shaded Relief &copy; Natural Earth',
-    },
     openmaptiles: {
       type: 'vector',
       url: 'https://tiles.openfreemap.org/planet',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://openfreemap.org">OpenFreeMap</a>',
     },
   },
   sprite: 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm',
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   layers: [
-    // 1. Olive Green Land Background
+    // 1. Deep Space Black Base
     {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#3d5218',
+        'background-color': '#030712',
       },
     },
-    // 2. High-Resolution 3D Topographic Hillshade Relief (active all the way to zoom 16 like Windy)
+    // 2. Photorealistic 4K Global Satellite Photography (ESRI World Imagery)
+    {
+      id: 'esri_satellite_imagery_layer',
+      type: 'raster',
+      source: 'esri_satellite_imagery',
+      minzoom: 0,
+      maxzoom: 19,
+      paint: {
+        'raster-opacity': 1.0,
+        'raster-resampling': 'linear',
+      },
+    },
+    // 3. Subtle 3D Topographic Hillshade Relief (subtle depth enhancement)
     {
       id: 'esri_hillshade_layer',
       type: 'raster',
       source: 'esri_hillshade',
-      maxzoom: 18,
+      maxzoom: 16,
       paint: {
-        'raster-opacity': 0.38,
-        'raster-contrast': 0.32,
+        'raster-opacity': 0.18,
+        'raster-contrast': 0.20,
         'raster-resampling': 'linear',
       },
     },
-    // 2b. Natural Earth Topographic Shaded Relief (macro overview)
-    {
-      id: 'ne2_shaded',
-      type: 'raster',
-      source: 'ne2_shaded',
-      maxzoom: 6,
-      paint: {
-        'raster-opacity': 0.20,
-        'raster-contrast': 0.28,
-        'raster-resampling': 'linear',
-      },
-    },
-    // 3. Deep Royal Navy Water & Oceans (Windy HD Parity #203657)
-    {
-      id: 'water',
-      type: 'fill',
-      source: 'openmaptiles',
-      'source-layer': 'water',
-      paint: {
-        'fill-color': '#203657',
-      },
-    },
-    // 4. Country Sovereign Boundaries
+    // 4. Country Sovereign Boundaries (Subtle & Crisp over Satellite Ground)
     {
       id: 'boundary_country_z0-4',
       type: 'line',
@@ -89,9 +82,9 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       maxzoom: 5,
       filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
       paint: {
-        'line-color': '#182512',
-        'line-width': 1.1,
-        'line-opacity': 0.95,
+        'line-color': '#f8fafc',
+        'line-width': 1.0,
+        'line-opacity': 0.38,
       },
     },
     {
@@ -102,24 +95,12 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#182512',
-        'line-width': 1.4,
-        'line-opacity': 0.95,
+        'line-color': '#f8fafc',
+        'line-width': 1.3,
+        'line-opacity': 0.42,
       },
     },
-    // 5. Waterway Lines (Rivers & Lakes)
-    {
-      id: 'waterway',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'waterway',
-      minzoom: 6,
-      paint: {
-        'line-color': '#203657',
-        'line-width': 1.0,
-      },
-    },
-    // 6. Marine Ocean Labels (e.g. INDIAN OCEAN, PACIFIC OCEAN)
+    // 5. Marine Ocean Labels (e.g. INDIAN OCEAN, PACIFIC OCEAN)
     {
       id: 'water_name_marine',
       type: 'symbol',
@@ -135,13 +116,13 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'text-max-width': 9,
       },
       paint: {
-        'text-color': '#7ea5d9',
-        'text-halo-color': '#101e33',
-        'text-halo-width': 1.5,
+        'text-color': '#93c5fd',
+        'text-halo-color': '#030712',
+        'text-halo-width': 1.8,
         'text-opacity': 0.85,
       },
     },
-    // 7. Sovereign Country Labels
+    // 6. Sovereign Country Labels
     {
       id: 'place_country_major',
       type: 'symbol',
@@ -158,8 +139,8 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       },
       paint: {
         'text-color': '#ffffff',
-        'text-halo-color': '#121e0b',
-        'text-halo-width': 1.8,
+        'text-halo-color': '#050814',
+        'text-halo-width': 2.0,
         'text-halo-blur': 0.5,
       },
     },
@@ -177,12 +158,12 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'text-max-width': 6.25,
       },
       paint: {
-        'text-color': '#f0f4e8',
-        'text-halo-color': '#121e0b',
-        'text-halo-width': 1.5,
+        'text-color': '#f8fafc',
+        'text-halo-color': '#050814',
+        'text-halo-width': 1.8,
       },
     },
-    // 8. Major Capital & Metropolitan City Labels
+    // 7. Major Capital & Metropolitan City Labels
     {
       id: 'place_city_major',
       type: 'symbol',
@@ -198,8 +179,8 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       },
       paint: {
         'text-color': '#ffffff',
-        'text-halo-color': '#121e0b',
-        'text-halo-width': 1.5,
+        'text-halo-color': '#050814',
+        'text-halo-width': 1.8,
       },
     },
   ],

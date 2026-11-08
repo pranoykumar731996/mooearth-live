@@ -427,23 +427,24 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             d[i + 3] = 0;
             continue;
           }
-          if (isEumet) {
-            if (norm < 0.25) {
-              d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
-            } else if (norm < 0.45) {
-              d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
-            } else if (norm < 0.65) {
-              d[i] = 234; d[i + 1] = 179; d[i + 2] = 8;
-            } else if (norm < 0.85) {
-              d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
-            } else {
-              d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
-            }
+          // Unified thermodynamic Kelvin temperature palette across EUMETSAT, Himawari, and GOES:
+          if (norm < 0.25) {
+            // Cirrus & mid-troposphere clouds: soft luminous translucent moonlight-white
+            const tone = Math.min(255, Math.max(200, Math.round((215 + 30 * norm) * (0.92 + 0.18 * emboss))));
+            d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 4);
+          } else if (norm < 0.45) {
+            // Upper troposphere: dense white cloud top
+            const tone = Math.min(255, Math.max(225, Math.round((235 + 18 * norm) * (0.92 + 0.18 * emboss))));
+            d[i] = tone; d[i + 1] = tone; d[i + 2] = tone;
+          } else if (norm < 0.65) {
+            // Active convection (-40°C to -55°C): Emerald green storm mantle
+            d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+          } else if (norm < 0.85) {
+            // Deep convective vortex (-55°C to -70°C): Vivid Amber / Yellow core
+            d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
           } else {
-            // Mid-troposphere clouds in IR mode: pale blue/cyan wisps to light gray
-            d[i] = Math.round(14 + 180 * norm);
-            d[i + 1] = Math.round(165 + 70 * norm);
-            d[i + 2] = Math.round(233 + 22 * norm);
+            // Coldest overshooting tops (< -70°C): Crimson / Luminous White storm core
+            d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
           }
           d[i + 3] = finalAlpha;
         }
@@ -633,6 +634,114 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         ctx.drawImage(bitmap, 0, 0);
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processTilePixels(imgData.data, canvas.width, canvas.height, params.url);
+        ctx.putImageData(imgData, 0, 0);
+        const cleanBitmap = await createImageBitmap(canvas);
+        return { data: cleanBitmap };
+      } catch {
+        return { data: await blob.arrayBuffer() };
+      }
+    }
+    return { data: await blob.arrayBuffer() };
+  });
+
+  // Protocol 3: NASA Black Marble (VIIRS Day/Night Band City Lights)
+  // Extracts nocturnal city lights, illuminates nighttime continents, keys out day hemisphere
+  function processBlackMarblePixels(d, width, height, url) {
+    const coordMatch = url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+    let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
+    if (coordMatch) {
+      tileZ = parseInt(coordMatch[1], 10);
+      tileY = parseInt(coordMatch[2], 10);
+      tileX = parseInt(coordMatch[3], 10);
+      hasCoords = true;
+    }
+    if (!hasCoords) return;
+
+    const now = new Date();
+    const timeMs = now.getTime();
+    const dayDiff = (timeMs - 946728000000) / 86400000;
+    const L = (280.460 + 0.9856474 * dayDiff) % 360;
+    const g = ((357.528 + 0.9856003 * dayDiff) % 360) * Math.PI / 180;
+    const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
+    const eps = (23.439 - 0.0000004 * dayDiff) * Math.PI / 180;
+    const solLat = Math.asin(Math.sin(eps) * Math.sin(lambda)) * 180 / Math.PI;
+    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+    const solLng = ((12 - utcHours) * 15 + 540) % 360 - 180;
+    const rad = Math.PI / 180;
+
+    const tileLngs = new Float32Array(width);
+    const tileLats = new Float32Array(height);
+    for (let c = 0; c < width; c++) tileLngs[c] = tileToLng(tileX + (c + 0.5) / width, tileZ);
+    for (let r = 0; r < height; r++) tileLats[r] = tileToLat(tileY + (r + 0.5) / height, tileZ);
+
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      const pLat = tileLats[y];
+      const sinLat = Math.sin(pLat * rad);
+      const cosLat = Math.cos(pLat * rad);
+      const sinSol = Math.sin(solLat * rad);
+      const cosSol = Math.cos(solLat * rad);
+
+      for (let x = 0; x < width; x++) {
+        const p = row + x;
+        const i = p * 4;
+        const pLng = tileLngs[x];
+
+        // Solar zenith angle cosine
+        const cosZenith = sinLat * sinSol + cosLat * cosSol * Math.cos((pLng - solLng) * rad);
+
+        // Broad daylight: 100% transparent
+        if (cosZenith >= 0.06) {
+          d[i + 3] = 0;
+          continue;
+        }
+
+        let nightWeight = 1.0;
+        if (cosZenith > -0.06) {
+          const t = (cosZenith - (-0.06)) / 0.12;
+          nightWeight = 0.5 * (1.0 + Math.cos(t * Math.PI));
+        }
+
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // Dark oceans and unpopulated areas: transparent
+        if (lum < 16) {
+          d[i + 3] = 0;
+          continue;
+        }
+
+        // City lights & populated centers: warm golden radiance
+        const intensity = Math.min(1.0, (lum - 16) / 110.0);
+        const alpha = Math.min(245, Math.round(245 * intensity * nightWeight));
+
+        // Warm golden/amber luminescence matching ISS & Zoom Earth night photography
+        d[i] = Math.min(255, Math.round(r * 1.15 + 16));
+        d[i + 1] = Math.min(255, Math.round(g * 1.05 + 10));
+        d[i + 2] = Math.max(0, Math.round(b * 0.90));
+        d[i + 3] = alpha;
+      }
+    }
+  }
+
+  self.addProtocol('black-marble-alpha', async (params, abortController) => {
+    const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
+    const res = await fetch(realUrl, { signal: abortController.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+
+    if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+      try {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { data: bitmap };
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(bitmap, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        processBlackMarblePixels(imgData.data, canvas.width, canvas.height, params.url);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
