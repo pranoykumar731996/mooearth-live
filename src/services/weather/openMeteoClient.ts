@@ -46,7 +46,7 @@ let cacheMisses = 0;
 
 // TTLs by endpoint type
 const CACHE_TTLS: Record<OpenMeteoEndpoint, number> = {
-  forecast: 10 * 60 * 1000,       // 10 minutes
+  forecast: 2 * 60 * 1000,        // 2 minutes (tight live sync)
   geocoding: 24 * 60 * 60 * 1000, // 24 hours (places don't change)
   airQuality: 30 * 60 * 1000,     // 30 minutes
   elevation: 7 * 24 * 60 * 60 * 1000, // 7 days (elevation is static)
@@ -141,7 +141,7 @@ async function fetchWithRetry(
       const res = await fetch(url, {
         signal: AbortSignal.timeout(timeoutMs),
         // Next.js ISR cache — revalidate every 10 minutes
-        next: { revalidate: 1800 }, // 30 minutes cache
+        next: { revalidate: 120 }, // 2 minutes cache (tight live sync)
       });
 
       if (res.ok) return res;

@@ -46,7 +46,7 @@ function useDebounce<T extends (...args: unknown[]) => void>(
 // ── Fetch helpers with in-memory deduplication ───────────────
 
 const weatherClientCache = new Map<string, { data: unknown; timestamp: number }>();
-const CLIENT_CACHE_TTL_MS = 300000; // 5 minutes client cache
+const CLIENT_CACHE_TTL_MS = 60000; // 1 minute client cache for tight live sync
 
 async function fetchJson<T>(url: string): Promise<T> {
   const cached = weatherClientCache.get(url);
@@ -157,7 +157,7 @@ export function useWeatherData() {
     }));
     try {
       const data = await fetchJson<ForecastResponse>(
-        `/api/weather/forecast?lat=${qLat}&lng=${qLng}`
+        `/api/weather/forecast?lat=${qLat}&lng=${qLng}&timezone=auto`
       );
       setState(prev => ({
         ...prev,

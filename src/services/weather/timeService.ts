@@ -251,3 +251,66 @@ export function getLocationTime(
     solar,
   };
 }
+
+/**
+ * Calculates the current ISO hour string (`YYYY-MM-DDTHH`) for a target location.
+ * Uses exact IANA timezone or sovereign boundary resolution, falling back to nautical solar time.
+ * This guarantees the hourly forecast timeline is anchored strictly to the current moment,
+ * completely eliminating past hours regardless of API response timestamp.
+ */
+export function getTargetLocationCurrentHourIso(
+  lat: number,
+  lng: number,
+  timezone?: string,
+  date = new Date()
+): string {
+  let effectiveTimezone = timezone && timezone !== 'auto' && timezone.trim() !== '' ? timezone.trim() : undefined;
+
+  if (!effectiveTimezone) {
+    if (lat >= 6.5 && lat <= 37.5 && lng >= 68.0 && lng <= 97.5) {
+      effectiveTimezone = 'Asia/Kolkata';
+    } else if (lat >= 5.8 && lat <= 9.9 && lng >= 79.5 && lng <= 82.0) {
+      effectiveTimezone = 'Asia/Colombo';
+    } else if (lat >= 26.3 && lat <= 30.5 && lng >= 80.0 && lng <= 88.2) {
+      effectiveTimezone = 'Asia/Kathmandu';
+    } else if (lat >= 20.5 && lat <= 26.7 && lng >= 88.5 && lng <= 92.7) {
+      effectiveTimezone = 'Asia/Dhaka';
+    } else if (lat >= 9.5 && lat <= 28.5 && lng >= 92.5 && lng <= 101.2) {
+      effectiveTimezone = 'Asia/Yangon';
+    } else if (lat >= 25.0 && lat <= 39.8 && lng >= 44.0 && lng <= 63.3) {
+      effectiveTimezone = 'Asia/Tehran';
+    } else if (lat >= 29.3 && lat <= 38.5 && lng >= 60.5 && lng <= 75.0) {
+      effectiveTimezone = 'Asia/Kabul';
+    }
+  }
+
+  if (effectiveTimezone) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: effectiveTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+      const y = parts.find((p) => p.type === 'year')?.value;
+      const m = parts.find((p) => p.type === 'month')?.value;
+      const d = parts.find((p) => p.type === 'day')?.value;
+      let h = parts.find((p) => p.type === 'hour')?.value || '00';
+      if (h === '24') h = '00';
+      return `${y}-${m}-${d}T${h}`;
+    } catch {
+      // Fall through to nautical
+    }
+  }
+
+  // Nautical solar fallback
+  const offsetHours = Math.round(lng / 15);
+  const targetDate = new Date(date.getTime() + offsetHours * 3600000);
+  const y = targetDate.getUTCFullYear();
+  const m = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(targetDate.getUTCDate()).padStart(2, '0');
+  const h = String(targetDate.getUTCHours()).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}`;
+}

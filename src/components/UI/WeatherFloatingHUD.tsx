@@ -14,6 +14,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getTargetLocationCurrentHourIso } from '@/services/weather/timeService';
 
 // Presets for quick planetary weather sampling
 export const GLOBAL_WEATHER_STATIONS = [
@@ -120,10 +121,9 @@ export default function WeatherFloatingHUD({
         // Parse next 5 hourly slots from hourly data (AccuWeather Parity)
         if (data.hourly && Array.isArray(data.hourly.time) && Array.isArray(data.hourly.temperature2m)) {
           const hours: HourlyItem[] = [];
-          const currIso = current.time || '';
-          const currHourIso = currIso.slice(0, 13);
+          const targetHourIso = getTargetLocationCurrentHourIso(lat, lng, data.timezone);
           const hTimes = data.hourly.time;
-          let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= currHourIso);
+          let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= targetHourIso);
           if (startIdx < 0) startIdx = 0;
 
           const currTemp = Math.round(current.temperature ?? current.temperature_2m ?? 22);

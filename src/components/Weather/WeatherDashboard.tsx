@@ -48,6 +48,7 @@ import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
 import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 import { getWmoWeatherInfo } from '@/services/weather/forecastService';
+import { getTargetLocationCurrentHourIso } from '@/services/weather/timeService';
 import { resolveInitialLocation, saveUserLocation } from '@/services/userLocationResolver';
 
 // Check reduced-motion preference
@@ -65,9 +66,12 @@ function computeDisplayedForecast(
     return forecast;
   }
   const h = forecast.hourly;
-  const currIso = forecast.current.time || '';
-  const currHourIso = currIso.slice(0, 13);
-  let startIdx = h.time.findIndex((t) => t.slice(0, 13) >= currHourIso);
+  const targetHourIso = getTargetLocationCurrentHourIso(
+    forecast.latitude,
+    forecast.longitude,
+    forecast.timezone
+  );
+  let startIdx = h.time.findIndex((t) => t.slice(0, 13) >= targetHourIso);
   if (startIdx < 0) startIdx = 0;
 
   const targetIdx = Math.min(h.time.length - 1, startIdx + timelineIndex);

@@ -482,7 +482,48 @@ function runCycloneForecastSuite(issues: SentryIssue[]): { pass: boolean; healed
 }
 
 // ────────────────────────────────────────────────────────────
-// Optional Suite 9: Full Production Build Verification
+// Suite 10: Hourly Forecast Accuracy & Zero Past Hours Invariants
+// ────────────────────────────────────────────────────────────
+function runHourlyAccuracySuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
+  process.stdout.write(' [10/10] Verifying Hourly Forecast Accuracy & Zero Past Hours Invariants... ');
+  try {
+    const output = execSync('npx tsx scripts/test-hourly-accuracy-suite.ts', {
+      cwd: ROOT_DIR,
+      stdio: 'pipe',
+      timeout: 60000,
+      encoding: 'utf-8',
+    });
+    if (output.includes('Passed all 5/5 location invariant tests')) {
+      console.log('✅ PASSED (Zero past hours & local solar time anchoring verified)');
+      return {
+        pass: true,
+        healed: false,
+        message: 'All location hourly timelines strictly anchored to current local time with zero past hours',
+      };
+    } else {
+      throw new Error('Hourly accuracy suite reported failure');
+    }
+  } catch (err: any) {
+    const errorOutput = (err.stdout || '') + '\n' + (err.stderr || '') + '\n' + err.message;
+    console.log('❌ FAILED: Hourly forecast accuracy regression detected');
+    issues.push({
+      id: `HOURLY-ACCURACY-FAIL-${Date.now()}`,
+      suite: 'Hourly Forecast Accuracy Invariants',
+      severity: 'CRITICAL',
+      message: errorOutput.slice(0, 300),
+      autoFixAttempted: false,
+      autoFixSucceeded: false,
+    });
+    return {
+      pass: false,
+      healed: false,
+      message: 'Hourly forecast past hours regression detected',
+    };
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// Optional Suite 11: Full Production Build Verification
 // ────────────────────────────────────────────────────────────
 function runProductionBuildSuite(issues: SentryIssue[]): { pass: boolean; healed: boolean; message: string } {
   process.stdout.write(' [Optional 9/9] Verifying Next.js Production Build (next build)... ');
@@ -611,6 +652,11 @@ async function main() {
   const s9Start = Date.now();
   const s9 = runCycloneForecastSuite(issues);
   suites.push({ name: 'Cyclone Forecast Timeline & Landfall Intelligence', status: s9.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s9Start, details: s9.message });
+
+  // Suite 10: Hourly Forecast Accuracy & Zero Past Hours Invariants
+  const s10Start = Date.now();
+  const s10 = runHourlyAccuracySuite(issues);
+  suites.push({ name: 'Hourly Forecast Accuracy Invariants', status: s10.pass ? 'PASS' : 'FAIL', durationMs: Date.now() - s10Start, details: s10.message });
 
   // Optional Suite 10: Full Build
   if (includeFullBuild) {

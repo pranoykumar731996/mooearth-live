@@ -170,6 +170,7 @@ export type {
 export {
   getSolarPosition,
   getLocationTime,
+  getTargetLocationCurrentHourIso,
 } from './timeService';
 export type {
   SolarPosition,

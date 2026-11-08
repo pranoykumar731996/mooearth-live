@@ -3,6 +3,8 @@
 // ============================================================
 // Real-world meteorological data integration. Never fabricates weather.
 
+import { getTargetLocationCurrentHourIso } from './weather/timeService';
+
 export interface HourlyForecastItem {
   time: string;
   hour: string;
@@ -94,9 +96,9 @@ export function getWmoWeatherInfo(code: number): { desc: string; emoji: string }
   return WMO_CODE_MAP[code] || { desc: `Atmospheric Code ${code}`, emoji: '🌡️' };
 }
 
-// In-memory cache with 10-minute TTL to prevent redundant external API calls per page view
+// In-memory cache with 2-minute TTL to prevent redundant external API calls per page view
 const WEATHER_CACHE = new Map<string, { result: WeatherFetchResult; expiresAt: number }>();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes (tight live sync)
 
 /**
  * Fetch real-world weather telemetry from Open-Meteo API.
@@ -122,7 +124,7 @@ export async function fetchCountryWeather(
 
     const res = await fetch(url, {
       signal: AbortSignal.timeout(7000),
-      next: { revalidate: 3600 }, // 1 hour Next.js cache (reduces ISR writes)
+      next: { revalidate: 120 }, // 2 minutes Next.js cache (tight live sync)
     });
 
     if (!res.ok) {
@@ -151,9 +153,9 @@ export async function fetchCountryWeather(
     // Extract next 24h hourly forecast (AccuWeather Parity)
     let hourlyItems: HourlyForecastItem[] | undefined;
     if (data.hourly && Array.isArray(data.hourly.time)) {
-      const currTime = (curr.time || '').slice(0, 13);
+      const targetHourIso = getTargetLocationCurrentHourIso(lat, lng, data.timezone);
       const hTimes: string[] = data.hourly.time;
-      let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= currTime);
+      let startIdx = hTimes.findIndex((t: string) => t.slice(0, 13) >= targetHourIso);
       if (startIdx < 0) startIdx = 0;
 
       const rawT0 = data.hourly.temperature_2m?.[startIdx] ?? curr.temperature_2m;

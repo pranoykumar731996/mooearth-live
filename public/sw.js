@@ -2,7 +2,7 @@
 // MooEarth Live — PWA Service Worker
 // ============================================================
 
-const CACHE_NAME = 'mooearth-live-v33';
+const CACHE_NAME = 'mooearth-live-v34';
 
 // Assets to precache immediately on install
 const PRECACHE_ASSETS = [
@@ -136,7 +136,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Dynamic requests (APIs, dynamic feeds, remote assets) -> Network first, fallback to cache
+  // 3. Live Weather Telemetry -> Network only, never cache stale observations in SW
+  if (url.pathname.startsWith('/api/weather/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 4. Dynamic requests (APIs, dynamic feeds, remote assets) -> Network first, fallback to cache
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {

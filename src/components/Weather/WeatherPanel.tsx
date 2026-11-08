@@ -21,6 +21,7 @@ import { categorizeEuropeanAqi, categorizeUsAqi, getAqiColor } from '@/services/
 import { describeDischarge } from '@/services/weather/floodService';
 import { describeWaveConditions, waveDirectionToCompass } from '@/services/weather/marineService';
 import { getWmoWeatherInfo } from '@/services/weather/forecastService';
+import { getTargetLocationCurrentHourIso } from '@/services/weather/timeService';
 import WeatherNewsSection from './WeatherNewsSection';
 import { useLocationTime } from '@/hooks/useLocationTime';
 
@@ -217,7 +218,23 @@ export default function WeatherPanel({
                         {liveTime?.tzFullLabel || forecast.timezone}
                       </div>
                       <div className="text-[10px] text-white/40">
-                        Obs: {new Date(forecast.current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: forecast.timezone })}
+                        Obs: {(() => {
+                          const timeIso = forecast.current.time;
+                          if (!timeIso) return 'Live';
+                          if (timeIso.includes('T')) {
+                            const timePart = timeIso.split('T')[1];
+                            if (timePart) {
+                              const [hStr, mStr] = timePart.split(':');
+                              const h = parseInt(hStr, 10);
+                              if (!isNaN(h)) {
+                                const period = h >= 12 ? 'PM' : 'AM';
+                                const displayH = h % 12 === 0 ? 12 : h % 12;
+                                return `${displayH}:${mStr || '00'} ${period}`;
+                              }
+                            }
+                          }
+                          return 'Live';
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -240,11 +257,14 @@ export default function WeatherPanel({
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                       {(() => {
                         // AccuWeather Parity:
-                        // 1. Never show past hours. Anchor to current hour in location local time.
-                        const currIso = forecast.current.time || '';
-                        const currHourIso = currIso.slice(0, 13);
+                        // 1. Never show past hours. Anchor strictly to current real-world hour in target location local time.
+                        const targetHourIso = getTargetLocationCurrentHourIso(
+                          location.latitude,
+                          location.longitude,
+                          forecast.timezone
+                        );
                         const hTimes = forecast.hourly.time;
-                        let startIdx = hTimes.findIndex((t) => t.slice(0, 13) >= currHourIso);
+                        let startIdx = hTimes.findIndex((t) => t.slice(0, 13) >= targetHourIso);
                         if (startIdx < 0) startIdx = 0;
 
                         // 2. AccuWeather Observation Anchoring & Delta Blending:
