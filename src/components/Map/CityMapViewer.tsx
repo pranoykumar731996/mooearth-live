@@ -107,18 +107,18 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         } else if (isEumet) {
           if (angle >= 320.0 && angle <= 345.0) {
             lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-          } else if (angle > 345.0 || angle <= 25.0) {
+          } else if (angle > 345.0 || angle <= 45.0) {
             lngWeight = 1.0;
-          } else if (angle > 25.0 && angle <= 45.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
+          } else if (angle > 45.0 && angle <= 65.0) {
+            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
           }
         }
       } else {
         // Standard 4-Satellite Baseline Partition of Unity (Production Default)
         if (isHimawari) {
-          if (angle >= 60.0 && angle <= 75.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 60.0) / 15.0)));
-          } else if (angle > 75.0 && angle <= 165.0) {
+          if (angle >= 45.0 && angle <= 65.0) {
+            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
+          } else if (angle > 65.0 && angle <= 165.0) {
             lngWeight = 1.0;
           } else if (angle > 165.0 && angle <= 195.0) {
             lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -572,21 +572,25 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
         if (isoMatch) {
           const curIso = isoMatch[1];
-          const prev10 = new Date(new Date(curIso).getTime() - 10 * 60000);
-          const yyyy = prev10.getUTCFullYear();
-          const mm = String(prev10.getUTCMonth() + 1).padStart(2, '0');
-          const dd = String(prev10.getUTCDate()).padStart(2, '0');
-          const hh = String(prev10.getUTCHours()).padStart(2, '0');
-          const min = String(prev10.getUTCMinutes()).padStart(2, '0');
-          const fbIso = yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + min + ':00Z';
-          const fbUrl = realUrl.replace(curIso, fbIso);
-          try {
-            const fbRes = await fetch(fbUrl, { signal: abortController.signal });
-            if (fbRes.ok) {
-              res = fbRes;
-              realUrl = fbUrl;
-            }
-          } catch {}
+          const curTime = new Date(curIso).getTime();
+          for (let step = 1; step <= 3 && !res.ok; step++) {
+            const prev = new Date(curTime - step * 10 * 60000);
+            const yyyy = prev.getUTCFullYear();
+            const mm = String(prev.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(prev.getUTCDate()).padStart(2, '0');
+            const hh = String(prev.getUTCHours()).padStart(2, '0');
+            const min = String(prev.getUTCMinutes()).padStart(2, '0');
+            const fbIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`;
+            const fbUrl = realUrl.replace(curIso, fbIso);
+            try {
+              const fbRes = await fetch(fbUrl, { signal: abortController.signal });
+              if (fbRes.ok) {
+                res = fbRes;
+                realUrl = fbUrl;
+                break;
+              }
+            } catch {}
+          }
         }
       }
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -638,17 +642,21 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
     }
 
     addProtocol('eumet-alpha', async (params, abortController) => {
-      const wmsUrl = eumetUrlToWms(params.url);
-      const res = await fetch(wmsUrl, { signal: abortController.signal });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const blob = await res.blob();
-
-      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
-        const buf = await blob.arrayBuffer();
-        return { data: buf };
-      }
-
       try {
+        const wmsUrl = eumetUrlToWms(params.url);
+        const timeoutController = new AbortController();
+        const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+        abortController.signal.addEventListener('abort', () => timeoutController.abort());
+        const res = await fetch(wmsUrl, { signal: timeoutController.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+
+        if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
+          const buf = await blob.arrayBuffer();
+          return { data: buf };
+        }
+
         const bitmap = await createImageBitmap(blob);
         const canvas = document.createElement('canvas');
         canvas.width = bitmap.width;
@@ -665,8 +673,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
       } catch {
-        const buf = await blob.arrayBuffer();
-        return { data: buf };
+        // Fallback transparent 1x1 png buffer so map tile engine never hangs
+        const emptyBuf = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,10,73,68,65,84,120,156,99,0,1,0,0,5,0,1,13,10,45,180,0,0,0,0,73,69,78,68,174,66,96,130]);
+        return { data: emptyBuf.buffer };
       }
     });
 
@@ -2065,7 +2074,7 @@ export default function CityMapViewer({
     const shouldRenderCycloneTracks = showDisasters && (
       activeLayer === 'hurricane' ||
       activeDisasterFilter === 'cyclones' ||
-      activeDisasterFilter === 'all'
+      selectedCyclone !== null
     );
 
     const activeConeFeatures: any[] = [];
@@ -2690,8 +2699,8 @@ export default function CityMapViewer({
         }
 
         const isIodcActive = typeof window !== 'undefined'
-          ? (new URLSearchParams(window.location.search).get('iodc') !== 'false' && new URLSearchParams(window.location.search).get('iodc') !== '0')
-          : process.env.NEXT_PUBLIC_DISABLE_EUMETSAT_IODC !== 'true';
+          ? (new URLSearchParams(window.location.search).get('iodc') === 'true' || new URLSearchParams(window.location.search).get('iodc') === '1')
+          : process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true';
 
         const himawariDay = isSectorDaylight(140.0);
         const iodcDay = isSectorDaylight(45.5);
@@ -2885,7 +2894,7 @@ export default function CityMapViewer({
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
-            const tileTime = geoObs.dateStr;
+            const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';

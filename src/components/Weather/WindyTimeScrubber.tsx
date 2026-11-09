@@ -338,7 +338,7 @@ export default function WindyTimeScrubber({
               {isRadarMode ? (
                 <span className="text-cyan-300/80 truncate">📡 {radarAttribution || 'NOAA NEXRAD Doppler'} · Frame {currentStep + 1}/{totalSteps}</span>
               ) : activeLayer === 'satellite' ? (
-                <span className="text-cyan-300/80 truncate">🛰️ NASA GIBS / NOAA GOES · {satelliteObservationUtc || 'UTC Active'}</span>
+                <span className="text-cyan-300/80 truncate">🛰️ JMA Himawari / NOAA GOES / NASA GIBS · {satelliteObservationUtc || 'UTC Active'}</span>
               ) : activeLayer === 'hurricane' ? (
                 <span className="text-cyan-300/90 truncate flex items-center gap-1.5">
                   <span className="hidden sm:inline">🌀 Cyclone Track & Cone</span>

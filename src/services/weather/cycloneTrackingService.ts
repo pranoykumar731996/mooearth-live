@@ -270,9 +270,27 @@ export function buildUncertaintyConeGeoJson(
   }
 
   const ring = [...rightCoords, ...tipCapCoords, ...leftCoords, rightCoords[0]];
+  // Antimeridian unwrapping: prevents 359-degree coordinate jumps across -180/+180 boundary
+  const unwrappedRing: [number, number][] = [[...ring[0]]];
+  for (let i = 1; i < ring.length; i++) {
+    let lng = ring[i][0];
+    const lat = ring[i][1];
+    const prevLng = unwrappedRing[i - 1][0];
+    let diff = lng - prevLng;
+    while (diff > 180) {
+      lng -= 360;
+      diff = lng - prevLng;
+    }
+    while (diff < -180) {
+      lng += 360;
+      diff = lng - prevLng;
+    }
+    unwrappedRing.push([Number(lng.toFixed(4)), lat]);
+  }
+
   return {
     type: 'Polygon',
-    coordinates: [ring],
+    coordinates: [unwrappedRing],
   };
 }
 

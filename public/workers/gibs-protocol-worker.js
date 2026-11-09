@@ -548,25 +548,29 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     let realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
     let res = await fetch(realUrl, { signal: abortController.signal });
     if (!res.ok && res.status === 404) {
-      // Auto-fallback: try 10 minutes earlier if latest scan is still uploading
+      // Auto-fallback: try up to 3 prior 10-minute frames if latest scan is still uploading
       const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
       if (isoMatch) {
         const curIso = isoMatch[1];
-        const prev10 = new Date(new Date(curIso).getTime() - 10 * 60000);
-        const yyyy = prev10.getUTCFullYear();
-        const mm = String(prev10.getUTCMonth() + 1).padStart(2, '0');
-        const dd = String(prev10.getUTCDate()).padStart(2, '0');
-        const hh = String(prev10.getUTCHours()).padStart(2, '0');
-        const min = String(prev10.getUTCMinutes()).padStart(2, '0');
-        const fbIso = yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + min + ':00Z';
-        const fbUrl = realUrl.replace(curIso, fbIso);
-        try {
-          const fbRes = await fetch(fbUrl, { signal: abortController.signal });
-          if (fbRes.ok) {
-            res = fbRes;
-            realUrl = fbUrl;
-          }
-        } catch {}
+        const curTime = new Date(curIso).getTime();
+        for (let step = 1; step <= 3 && !res.ok; step++) {
+          const prev = new Date(curTime - step * 10 * 60000);
+          const yyyy = prev.getUTCFullYear();
+          const mm = String(prev.getUTCMonth() + 1).padStart(2, '0');
+          const dd = String(prev.getUTCDate()).padStart(2, '0');
+          const hh = String(prev.getUTCHours()).padStart(2, '0');
+          const min = String(prev.getUTCMinutes()).padStart(2, '0');
+          const fbIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`;
+          const fbUrl = realUrl.replace(curIso, fbIso);
+          try {
+            const fbRes = await fetch(fbUrl, { signal: abortController.signal });
+            if (fbRes.ok) {
+              res = fbRes;
+              realUrl = fbUrl;
+              break;
+            }
+          } catch {}
+        }
       }
     }
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -617,13 +621,17 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
   // Protocol 2: EUMETSAT Meteosat High Rate SEVIRI (Europe & Africa)
   self.addProtocol('eumet-alpha', async (params, abortController) => {
-    const realUrl = eumetUrlToWms(params.url);
-    const res = await fetch(realUrl, { signal: abortController.signal });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
+    try {
+      const realUrl = eumetUrlToWms(params.url);
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+      abortController.signal.addEventListener('abort', () => timeoutController.abort());
+      const res = await fetch(realUrl, { signal: timeoutController.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
 
-    if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
-      try {
+      if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
         const bitmap = await createImageBitmap(blob);
         const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
         const ctx = canvas.getContext('2d');
@@ -637,11 +645,12 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
-      } catch {
-        return { data: await blob.arrayBuffer() };
       }
+      return { data: await blob.arrayBuffer() };
+    } catch {
+      const emptyBuf = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,10,73,68,65,84,120,156,99,0,1,0,0,5,0,1,13,10,45,180,0,0,0,0,73,69,78,68,174,66,96,130]);
+      return { data: emptyBuf.buffer };
     }
-    return { data: await blob.arrayBuffer() };
   });
 
   // Protocol 3: NASA Black Marble (VIIRS Day/Night Band City Lights)
