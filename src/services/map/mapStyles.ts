@@ -9,10 +9,11 @@
 // - CARTO Voyager / Dark (Raster): Basemaps under CC BY 4.0 / Carto Free (configurable via NEXT_PUBLIC_CARTO_API_KEY).
 // - Full attribution to OpenStreetMap contributors and respective data providers.
 
-import { ATMOSPHERIC_SATELLITE_MAP_STYLE } from './windyMapStyle';
+import { ATMOSPHERIC_SATELLITE_MAP_STYLE, WIND_DARK_MAP_STYLE } from './windyMapStyle';
 
 export type MapStyleKey =
   | 'atmospheric-satellite'
+  | 'wind-dark'
   | 'windy-satellite'
   | 'satellite'
   | 'esri-street'
@@ -64,6 +65,14 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
       style: ATMOSPHERIC_SATELLITE_MAP_STYLE,
       type: 'vector',
       attribution: '© OpenMapTiles © OpenStreetMap contributors © Natural Earth',
+    },
+    'wind-dark': {
+      key: 'wind-dark',
+      label: 'Wind Dark',
+      badge: 'Wind',
+      style: WIND_DARK_MAP_STYLE,
+      type: 'vector',
+      attribution: '© Esri © OpenMapTiles © OpenStreetMap contributors',
     },
     satellite: {
       key: 'satellite',
@@ -344,7 +353,7 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
   if (currentKey === 'esri-street') {
     return 'osm';
   }
-  if (currentKey === 'voyager' || currentKey === 'dark') {
+  if (currentKey === 'voyager' || currentKey === 'dark' || currentKey === 'wind-dark') {
     return 'esri-street';
   }
   return 'esri-street';

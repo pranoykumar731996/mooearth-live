@@ -187,3 +187,193 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
 };
 
 export const WINDY_MAP_STYLE = ATMOSPHERIC_SATELLITE_MAP_STYLE;
+
+// ============================================================
+// MooEarth Live — Wind Mode Dark Basemap (Windy & Zoom Earth Parity)
+// ============================================================
+// A dedicated dark basemap for the Wind layer that keeps continent shapes
+// clearly visible against a deep navy ocean. Uses low-opacity satellite
+// imagery so land masses are distinguishable, with bright country labels
+// and borders for geographic reference.
+export const WIND_DARK_MAP_STYLE: any = {
+  version: 8,
+  name: 'Wind Dark Basemap',
+  sources: {
+    esri_satellite_imagery: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution:
+        'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+    },
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://tiles.openfreemap.org/planet',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  sprite: 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm',
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  layers: [
+    // 1. Deep Navy Ocean Background
+    {
+      id: 'background',
+      type: 'background',
+      paint: {
+        'background-color': '#060d1e',
+      },
+    },
+    // 2. Satellite Imagery at Low Opacity — makes continents clearly visible as darker shapes
+    {
+      id: 'esri_satellite_imagery_layer',
+      type: 'raster',
+      source: 'esri_satellite_imagery',
+      minzoom: 0,
+      maxzoom: 19,
+      paint: {
+        'raster-opacity': 0.32,
+        'raster-brightness-max': 0.55,
+        'raster-contrast': 0.15,
+        'raster-saturation': -0.65,
+        'raster-resampling': 'linear',
+      },
+    },
+    // 3. Land fill — subtle dark green-grey tint to make continents pop
+    {
+      id: 'landcover_grass',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: ['==', 'class', 'grass'],
+      paint: {
+        'fill-color': '#0f1d14',
+        'fill-opacity': 0.25,
+      },
+    },
+    // 4. Water bodies — reinforced dark navy
+    {
+      id: 'water',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'water',
+      paint: {
+        'fill-color': '#050c1a',
+        'fill-opacity': 0.85,
+      },
+    },
+    // 5. Country Boundaries — crisp and visible
+    {
+      id: 'boundary_country_z0-4',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      maxzoom: 5,
+      filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
+      paint: {
+        'line-color': '#94a3b8',
+        'line-width': 0.8,
+        'line-opacity': 0.40,
+      },
+    },
+    {
+      id: 'boundary_country_z5-',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      minzoom: 5,
+      filter: ['all', ['==', 'admin_level', 2]],
+      paint: {
+        'line-color': '#94a3b8',
+        'line-width': 1.0,
+        'line-opacity': 0.45,
+      },
+    },
+    // 6. Marine Ocean Labels
+    {
+      id: 'water_name_marine',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'water_name',
+      filter: ['==', 'class', 'ocean'],
+      layout: {
+        'text-field': '{name:latin}\n{name:nonlatin}',
+        'text-font': ['Noto Sans Italic'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14],
+        'text-letter-spacing': 0.25,
+        'text-transform': 'uppercase',
+        'text-max-width': 9,
+      },
+      paint: {
+        'text-color': '#475569',
+        'text-halo-color': '#060d1e',
+        'text-halo-width': 1.5,
+        'text-opacity': 0.70,
+      },
+    },
+    // 7. Country Labels
+    {
+      id: 'place_country_major',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'country'], ['<=', 'rank', 2]],
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 13],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.12,
+        'text-max-width': 6.25,
+      },
+      paint: {
+        'text-color': '#cbd5e1',
+        'text-halo-color': '#060d1e',
+        'text-halo-width': 2.0,
+        'text-halo-blur': 0.5,
+      },
+    },
+    {
+      id: 'place_country_minor',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'country'], ['>', 'rank', 2]],
+      minzoom: 3,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 6, 13],
+        'text-max-width': 6.25,
+      },
+      paint: {
+        'text-color': '#94a3b8',
+        'text-halo-color': '#060d1e',
+        'text-halo-width': 1.8,
+      },
+    },
+    // 8. Major Cities
+    {
+      id: 'place_city_major',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'city'], ['<=', 'rank', 3]],
+      minzoom: 4,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 14],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#94a3b8',
+        'text-halo-color': '#060d1e',
+        'text-halo-width': 1.8,
+      },
+    },
+  ],
+};

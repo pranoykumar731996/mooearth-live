@@ -1023,7 +1023,7 @@ export default function CityMapViewer({
     if (activeLayer === 'satellite' || activeLayer === 'clouds') {
       setActiveStyleKey('atmospheric-satellite');
     } else if (activeLayer === 'wind') {
-      setActiveStyleKey('dark');
+      setActiveStyleKey('wind-dark');
     }
   }, [activeLayer]);
 
