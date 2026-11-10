@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import type { GlobalGridPointData } from '@/services/weather/globalGridService';
 import { interpolateGridWeatherAt } from '@/services/weather/globalGridService';
 import { GriddedWindField, getGlobalWindField } from '@/services/weather/griddedWindService';
+import { isOcean, getOceanWeight } from '@/services/map/landSeaMaskService';
 
 interface WindParticle {
   lat: number;
@@ -101,9 +102,24 @@ export class WindParticleSystem {
 
   private createRandomParticle(): WindParticle {
     const maxAge = 70 + Math.floor(Math.random() * 90);
+    // 85% ocean / 15% land bias matching Windy & Zoom Earth parity
+    const targetOcean = Math.random() < 0.85;
+    let bestLat = (Math.random() - 0.5) * 160;
+    let bestLng = (Math.random() - 0.5) * 360;
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const testLat = (Math.random() - 0.5) * 160;
+      const testLng = (Math.random() - 0.5) * 360;
+      if (isOcean(testLat, testLng) === targetOcean) {
+        bestLat = testLat;
+        bestLng = testLng;
+        break;
+      }
+    }
+
     return {
-      lat: (Math.random() - 0.5) * 160, // -80 to +80 deg
-      lng: (Math.random() - 0.5) * 360, // -180 to +180 deg
+      lat: bestLat,
+      lng: bestLng,
       age: Math.floor(Math.random() * maxAge), // Uniform initial birth distribution
       maxAge, // 70-160 frames
       speed: 15,
@@ -232,7 +248,9 @@ export class WindParticleSystem {
       const color = getWindColor(p.speed);
       const progress = Math.min(1.0, p.age / p.maxAge);
       const alpha = Math.sin(progress * Math.PI);
-      const intensity = alpha * 1.35 + 0.15;
+      const oceanWeight = getOceanWeight(p.lat, p.lng);
+      const landAtten = 0.28 + 0.72 * oceanWeight;
+      const intensity = (alpha * 1.35 + 0.15) * landAtten;
       const r = Math.min(1.0, color.r * intensity);
       const g = Math.min(1.0, color.g * intensity);
       const b = Math.min(1.0, color.b * intensity);

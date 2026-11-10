@@ -98,9 +98,9 @@ export async function GET(request: NextRequest) {
           name: 'Satellite Metadata (NASA GIBS)',
           category: 'clouds',
           target: '/api/weather/satellite?mode=visible',
-          passed: Boolean(meta.tileUrlTemplate && meta.date),
+          passed: Boolean(meta.tileUrlTemplate && (meta.observationDate || meta.date)),
           latencyMs,
-          details: `Date: ${meta.date}, Swath Offset: ${meta.offsetHours}h, Mode: ${meta.mode}`,
+          details: `Date: ${meta.observationDate || meta.date}, Swath Offset: ${meta.offsetHours ?? 0}h, Mode: ${meta.spectralMode || meta.mode}`,
         });
       } else {
         checks.push({
