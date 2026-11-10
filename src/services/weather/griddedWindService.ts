@@ -12,6 +12,7 @@
 // 5. Shared across 3D Three.js Globe and 2D MapLibre Canvas overlay.
 
 import { interpolateGridWeatherAt, GlobalGridPointData } from './globalGridService';
+import { getOceanWeight } from '../map/landSeaMaskService';
 
 export const GRID_LAT_STEPS = 73; // 90°N to -90°S in 2.5° steps
 export const GRID_LNG_STEPS = 144; // -180° to +177.5° in 2.5° steps
@@ -433,7 +434,30 @@ export class GriddedWindField {
         const sample = this.sampleAt(lat, lng);
         const kt = sample.speed * 0.539957; // km/h to knots
         const lutIdx = Math.min(255, Math.max(0, (kt * 3) | 0));
-        buf32[rowOffset + x] = lut[lutIdx];
+        const color = lut[lutIdx];
+        const oceanWeight = getOceanWeight(lat, lng);
+
+        if (oceanWeight > 0.05) {
+          // Oceans, seas, gulfs, and coastal waters: vibrant wind velocity palette
+          if (oceanWeight < 0.95) {
+            const origA = (color >>> 24) & 0xff;
+            const blendedA = Math.round(origA * oceanWeight);
+            buf32[rowOffset + x] = (color & 0x00ffffff) | ((blendedA & 0xff) << 24);
+          } else {
+            buf32[rowOffset + x] = color;
+          }
+        } else {
+          // Terrestrial Landmass: Clean, dark cartographic silhouette (Windy Parity)
+          if (kt > 45) {
+            // Storm-force gale on land: subtle muted warning tint
+            const origA = (color >>> 24) & 0xff;
+            const subtleA = Math.round(origA * 0.28);
+            buf32[rowOffset + x] = (color & 0x00ffffff) | ((subtleA & 0xff) << 24);
+          } else {
+            // Calm to moderate winds on land: clean transparency so basemap & borders shine through
+            buf32[rowOffset + x] = 0;
+          }
+        }
       }
     }
 

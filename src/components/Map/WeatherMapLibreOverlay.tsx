@@ -23,6 +23,7 @@ import {
   getBeaufortCategory,
   getCardinalDirection,
 } from '@/services/weather/griddedWindService';
+import { isOcean, getOceanWeight } from '@/services/map/landSeaMaskService';
 
 interface WeatherMapLibreOverlayProps {
   map: MapLibreMap | null;
@@ -567,7 +568,7 @@ export default function WeatherMapLibreOverlay({
 
     const windField = windFieldRef.current;
 
-    // Speed-weighted importance sampling particle spawner
+    // Ocean-centric importance sampling particle spawner (Windy Parity: 85% ocean / 15% land)
     const spawnParticle = (): Particle2D => {
       const bounds = map.getBounds();
       const west = bounds.getWest();
@@ -575,20 +576,23 @@ export default function WeatherMapLibreOverlay({
       const south = Math.max(-80, bounds.getSouth());
       const north = Math.min(80, bounds.getNorth());
 
+      // 85% target bias towards oceans, seas, and coastal waters
+      const targetOcean = Math.random() < 0.85;
       let bestLat = south + Math.random() * (north - south);
       let bestLng = west + Math.random() * (east - west);
 
-      // 2-sample importance check: prefer areas with active wind
-      const sample1 = windField.sampleAt(bestLat, bestLng);
-      if (sample1.speed < 4) {
-        const candidateLat = south + Math.random() * (north - south);
-        const candidateLng = west + Math.random() * (east - west);
-        const sample2 = windField.sampleAt(candidateLat, candidateLng);
-        if (sample2.speed > sample1.speed) {
-          bestLat = candidateLat;
-          bestLng = candidateLng;
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const testLat = south + Math.random() * (north - south);
+        const testLng = west + Math.random() * (east - west);
+        if (isOcean(testLat, testLng) === targetOcean) {
+          bestLat = testLat;
+          bestLng = testLng;
+          break;
         }
       }
+
+      // Sample local wind vector
+      const sample = windField.sampleAt(bestLat, bestLng);
 
       // Staggered lifecycle (60 to 140 frames) for continuous fluid flow without pulsing waves
       const maxAge = 60 + Math.floor(Math.random() * 80);
@@ -598,7 +602,7 @@ export default function WeatherMapLibreOverlay({
         trail: [{ lat: bestLat, lng: bestLng }],
         age: Math.floor(Math.random() * maxAge),
         maxAge,
-        speed: Math.max(5, sample1.speed),
+        speed: Math.max(5, sample.speed),
       };
     };
 
@@ -736,11 +740,16 @@ export default function WeatherMapLibreOverlay({
         const lifeProgress = Math.min(1.0, p.age / p.maxAge);
         const lifeAlpha = Math.sin(lifeProgress * Math.PI);
 
+        // Ocean vs Land density & opacity modulation (Windy Parity)
+        // Oceans & seas get full bright streaming comets; Land is attenuated by 70% so continents stay clean & legible
+        const oceanWeight = getOceanWeight(p.lat, p.lng);
+        const landAtten = 0.28 + 0.72 * oceanWeight;
+
         // Draw aerodynamic comet streamline from fading tail to bright head
         for (let j = 0; j < trailLen - 1; j++) {
           const f = (j + 1) / (trailLen - 1); // 0.0 at tail -> 1.0 at head
-          const segAlpha = Math.min(0.96, Math.max(0.04, Math.pow(f, 1.5) * lifeAlpha * 0.95));
-          const segWidth = (isMobile ? 0.7 : 0.9) + f * (isMobile ? 1.0 : 1.5);
+          const segAlpha = Math.min(0.96, Math.max(0.02, Math.pow(f, 1.5) * lifeAlpha * 0.95 * landAtten));
+          const segWidth = ((isMobile ? 0.6 : 0.8) + f * (isMobile ? 0.9 : 1.4)) * (0.65 + 0.35 * oceanWeight);
 
           // Color attributions:
           // Cyclone/storm (> 75 km/h): vivid magenta/crimson/white head
@@ -765,14 +774,14 @@ export default function WeatherMapLibreOverlay({
 
         // Draw crisp bright head cap on particle leader
         const headPt = pts[trailLen - 1];
-        const headAlpha = Math.min(0.98, lifeAlpha * 0.95);
+        const headAlpha = Math.min(0.98, lifeAlpha * 0.95 * landAtten);
         ctx.fillStyle = p.speed > 75
           ? `rgba(255, 230, 255, ${headAlpha.toFixed(2)})`
           : p.speed > 40
           ? `rgba(255, 245, 205, ${headAlpha.toFixed(2)})`
           : `rgba(255, 255, 255, ${headAlpha.toFixed(2)})`;
         ctx.beginPath();
-        ctx.arc(headPt.x, headPt.y, isMobile ? 1.0 : 1.3, 0, Math.PI * 2);
+        ctx.arc(headPt.x, headPt.y, (isMobile ? 0.9 : 1.2) * (0.7 + 0.3 * oceanWeight), 0, Math.PI * 2);
         ctx.fill();
       }
 
