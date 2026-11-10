@@ -196,6 +196,13 @@ export default function WeatherMapLibreOverlay({
     if (!isWindActive) return;
     // Asynchronously synchronize live planetary wind vectors in background
     loadLiveWindField().catch(() => {});
+
+    // Continuously keep wind vectors fresh 24/7 (polls updated GFS/ECMWF model cycles every 15 mins)
+    const liveSyncInterval = setInterval(() => {
+      loadLiveWindField().catch(() => {});
+    }, 15 * 60 * 1000);
+
+    return () => clearInterval(liveSyncInterval);
   }, [isWindActive]);
 
   // ── 2. MapLibre Wind Velocity Heatmap Raster Layer Lifecycle ───────────
