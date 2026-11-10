@@ -979,7 +979,7 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
-  spectralMode = 'blue',
+  spectralMode = 'visible',
   onSelectSpectralMode,
   particlesEnabled = true,
   showPressureIsobars = false,
@@ -2646,7 +2646,7 @@ export default function CityMapViewer({
 
         // Tune opacity & contrast based on spectral band (Blue moisture, Infra thermal, or Visible daylight)
         const isVisibleMode = spectralMode === 'visible';
-        const isBlue = (spectralMode || 'blue') === 'blue';
+        const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
         const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.30 : 0.12;
 

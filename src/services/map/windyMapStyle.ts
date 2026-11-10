@@ -209,6 +209,15 @@ export const WIND_DARK_MAP_STYLE: any = {
       attribution:
         'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
     },
+    esri_hillshade: {
+      type: 'raster',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+      ],
+      tileSize: 256,
+      maxzoom: 16,
+      attribution: 'Hillshade &copy; Esri',
+    },
     openmaptiles: {
       type: 'vector',
       url: 'https://tiles.openfreemap.org/planet',
@@ -219,15 +228,15 @@ export const WIND_DARK_MAP_STYLE: any = {
   sprite: 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm',
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   layers: [
-    // 1. Deep Navy Ocean Background
+    // 1. Deep Space Black/Navy Base
     {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#060d1e',
+        'background-color': '#050a16',
       },
     },
-    // 2. Satellite Imagery at Low Opacity — makes continents clearly visible as darker shapes
+    // 2. High-Definition Earth Satellite Surface (Esri World Imagery) - Rich, clearly visible continents
     {
       id: 'esri_satellite_imagery_layer',
       type: 'raster',
@@ -235,37 +244,26 @@ export const WIND_DARK_MAP_STYLE: any = {
       minzoom: 0,
       maxzoom: 19,
       paint: {
-        'raster-opacity': 0.32,
-        'raster-brightness-max': 0.55,
-        'raster-contrast': 0.15,
-        'raster-saturation': -0.65,
+        'raster-opacity': 0.78,
+        'raster-brightness-max': 0.90,
+        'raster-contrast': 0.20,
+        'raster-saturation': -0.15,
         'raster-resampling': 'linear',
       },
     },
-    // 3. Land fill — subtle dark green-grey tint to make continents pop
+    // 3. 3D Topographic Hillshade Relief
     {
-      id: 'landcover_grass',
-      type: 'fill',
-      source: 'openmaptiles',
-      'source-layer': 'landcover',
-      filter: ['==', 'class', 'grass'],
+      id: 'esri_hillshade_layer',
+      type: 'raster',
+      source: 'esri_hillshade',
+      maxzoom: 16,
       paint: {
-        'fill-color': '#0f1d14',
-        'fill-opacity': 0.25,
+        'raster-opacity': 0.18,
+        'raster-contrast': 0.20,
+        'raster-resampling': 'linear',
       },
     },
-    // 4. Water bodies — reinforced dark navy
-    {
-      id: 'water',
-      type: 'fill',
-      source: 'openmaptiles',
-      'source-layer': 'water',
-      paint: {
-        'fill-color': '#050c1a',
-        'fill-opacity': 0.85,
-      },
-    },
-    // 5. Country Boundaries — crisp and visible
+    // 4. Country Sovereign Boundaries — crisp, razor-sharp white lines
     {
       id: 'boundary_country_z0-4',
       type: 'line',
@@ -274,9 +272,9 @@ export const WIND_DARK_MAP_STYLE: any = {
       maxzoom: 5,
       filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
       paint: {
-        'line-color': '#94a3b8',
-        'line-width': 0.8,
-        'line-opacity': 0.40,
+        'line-color': '#ffffff',
+        'line-width': 1.1,
+        'line-opacity': 0.52,
       },
     },
     {
@@ -287,12 +285,12 @@ export const WIND_DARK_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#94a3b8',
-        'line-width': 1.0,
-        'line-opacity': 0.45,
+        'line-color': '#ffffff',
+        'line-width': 1.3,
+        'line-opacity': 0.58,
       },
     },
-    // 6. Marine Ocean Labels
+    // 5. Marine Ocean Labels
     {
       id: 'water_name_marine',
       type: 'symbol',
@@ -308,13 +306,13 @@ export const WIND_DARK_MAP_STYLE: any = {
         'text-max-width': 9,
       },
       paint: {
-        'text-color': '#475569',
-        'text-halo-color': '#060d1e',
-        'text-halo-width': 1.5,
-        'text-opacity': 0.70,
+        'text-color': '#93c5fd',
+        'text-halo-color': '#050a16',
+        'text-halo-width': 1.8,
+        'text-opacity': 0.85,
       },
     },
-    // 7. Country Labels
+    // 6. Sovereign Country Labels
     {
       id: 'place_country_major',
       type: 'symbol',
@@ -330,8 +328,8 @@ export const WIND_DARK_MAP_STYLE: any = {
         'text-max-width': 6.25,
       },
       paint: {
-        'text-color': '#cbd5e1',
-        'text-halo-color': '#060d1e',
+        'text-color': '#ffffff',
+        'text-halo-color': '#050814',
         'text-halo-width': 2.0,
         'text-halo-blur': 0.5,
       },
@@ -350,12 +348,12 @@ export const WIND_DARK_MAP_STYLE: any = {
         'text-max-width': 6.25,
       },
       paint: {
-        'text-color': '#94a3b8',
-        'text-halo-color': '#060d1e',
+        'text-color': '#f8fafc',
+        'text-halo-color': '#050814',
         'text-halo-width': 1.8,
       },
     },
-    // 8. Major Cities
+    // 7. Major Cities
     {
       id: 'place_city_major',
       type: 'symbol',
@@ -370,8 +368,8 @@ export const WIND_DARK_MAP_STYLE: any = {
         'text-max-width': 7,
       },
       paint: {
-        'text-color': '#94a3b8',
-        'text-halo-color': '#060d1e',
+        'text-color': '#ffffff',
+        'text-halo-color': '#050814',
         'text-halo-width': 1.8,
       },
     },

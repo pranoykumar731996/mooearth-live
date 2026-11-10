@@ -310,16 +310,18 @@ export interface ColorStop {
 }
 
 export const WINDY_COLOR_STOPS: ColorStop[] = [
-  { kt: 0, r: 24, g: 35, b: 72, a: 160 },    // Deep dark ocean navy
-  { kt: 5, r: 30, g: 69, b: 126, a: 175 },   // Slate blue (typical land 3-6 kt)
-  { kt: 10, r: 27, g: 136, b: 147, a: 190 }, // Marine teal (light ocean breeze)
-  { kt: 15, r: 34, g: 197, b: 94, a: 200 },  // Emerald green (steady trade wind)
-  { kt: 20, r: 132, g: 204, b: 22, a: 215 }, // Chartreuse / lime (fresh ocean wind)
-  { kt: 28, r: 234, g: 179, b: 8, a: 225 },  // Amber yellow (strong breeze)
-  { kt: 35, r: 249, g: 115, b: 22, a: 235 }, // Vivid orange (near gale)
-  { kt: 45, r: 239, g: 68, b: 68, a: 245 },  // Storm red (gale / storm)
-  { kt: 60, r: 217, g: 70, b: 239, a: 250 }, // Deep magenta (cyclone eyewall)
-  { kt: 85, r: 168, g: 85, b: 247, a: 255 }, // Violet (extreme hurricane core)
+  { kt: 0, r: 18, g: 15, b: 50, a: 150 },     // Deep indigo navy (calm 0-5 km/h)
+  { kt: 5, r: 24, g: 52, b: 120, a: 165 },    // Royal navy (light air 10 km/h)
+  { kt: 10, r: 14, g: 120, b: 155, a: 180 },  // Marine teal (light ocean breeze 18 km/h)
+  { kt: 16, r: 6, g: 182, b: 212, a: 195 },   // Electric cyan (steady trade wind 30 km/h)
+  { kt: 23, r: 34, g: 197, b: 94, a: 210 },   // Emerald green (42 km/h)
+  { kt: 30, r: 132, g: 204, b: 22, a: 220 },  // Chartreuse / lime (fresh breeze 55 km/h)
+  { kt: 38, r: 234, g: 179, b: 8, a: 230 },   // Golden amber yellow (strong breeze 70 km/h)
+  { kt: 48, r: 249, g: 115, b: 22, a: 240 },  // Vivid orange (near gale 89 km/h)
+  { kt: 60, r: 239, g: 68, b: 68, a: 245 },   // Storm red (gale / storm 111 km/h)
+  { kt: 75, r: 217, g: 70, b: 239, a: 250 },  // Deep magenta / fuchsia (cyclone eyewall 139 km/h)
+  { kt: 95, r: 168, g: 85, b: 247, a: 255 },  // Violet (severe hurricane 176 km/h)
+  { kt: 120, r: 250, g: 245, b: 255, a: 255 },// Blinding white-violet core (cat 5 hurricane 222+ km/h)
 ];
 
 let cachedWindColorLut: Uint32Array | null = null;

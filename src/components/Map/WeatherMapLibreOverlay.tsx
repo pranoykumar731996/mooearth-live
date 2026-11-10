@@ -37,8 +37,7 @@ interface WeatherMapLibreOverlayProps {
 interface Particle2D {
   lat: number;
   lng: number;
-  prevLat: number;
-  prevLng: number;
+  trail: { lat: number; lng: number }[];
   age: number;
   maxAge: number;
   speed: number;
@@ -177,7 +176,7 @@ export default function WeatherMapLibreOverlay({
   windSpeedUnit = 'km/h',
   isMobile = false,
   reducedMotion = false,
-  showStationMarkers = false,
+  showStationMarkers = true,
 }: WeatherMapLibreOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
@@ -188,7 +187,7 @@ export default function WeatherMapLibreOverlay({
   const lastFrameTimeRef = useRef<number>(0);
   const isMapMovingRef = useRef<boolean>(false);
 
-  const particleCount = isMobile ? 2000 : 4800;
+  const particleCount = isMobile ? 1800 : 3600;
   const isWindActive = activeLayer === 'wind';
 
   // ── 1. Live Planetary Grid Synchronization ─────────────────────────────
@@ -225,6 +224,7 @@ export default function WeatherMapLibreOverlay({
 
       // Position wind heatmap below country boundaries and place names for crisp labels
       const beforeLayerId =
+        map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
         map.getLayer('place_country_major') ? 'place_country_major' :
         map.getLayer('place_country_minor') ? 'place_country_minor' :
         map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
@@ -247,7 +247,7 @@ export default function WeatherMapLibreOverlay({
           type: 'raster',
           source: WIND_HEATMAP_SOURCE_ID,
           paint: {
-            'raster-opacity': 0.62,
+            'raster-opacity': 0.70,
             'raster-fade-duration': 250,
             'raster-resampling': 'linear',
           },
@@ -590,16 +590,15 @@ export default function WeatherMapLibreOverlay({
         }
       }
 
-      // Wide distribution (75 to 195 frames) with uniform random initial age to eliminate pulsing waves
-      const maxAge = 75 + Math.floor(Math.random() * 120);
+      // Staggered lifecycle (60 to 140 frames) for continuous fluid flow without pulsing waves
+      const maxAge = 60 + Math.floor(Math.random() * 80);
       return {
         lat: bestLat,
         lng: bestLng,
-        prevLat: bestLat,
-        prevLng: bestLng,
+        trail: [{ lat: bestLat, lng: bestLng }],
         age: Math.floor(Math.random() * maxAge),
         maxAge,
-        speed: 15,
+        speed: Math.max(5, sample1.speed),
       };
     };
 
@@ -643,109 +642,138 @@ export default function WeatherMapLibreOverlay({
       const zoom = map.getZoom();
 
       // Delta time calculation clamped between 6ms (~165fps) and 40ms (25fps)
-      // Standardizes particle velocity to exact physical speed across 60Hz, 90Hz, 120Hz, 144Hz displays
       const lastTime = lastFrameTimeRef.current || now;
       const elapsedSec = (now - lastTime) / 1000;
       lastFrameTimeRef.current = now;
       const dtSec = Math.min(0.040, Math.max(0.006, elapsedSec));
       const dtRatio = dtSec / 0.016667;
 
-      // Dynamic zoom-adaptive time scale:
-      // In Web Mercator, 1 deg lat/lng spans exponentially more pixels as zoom increases (2^z).
-      // k(z) = 2^(-(z-2.5)*0.82) maintains a constant physical perceptual velocity across zooms 1 to 14+.
-      const zoomFactor = Math.pow(2, -(zoom - 2.5) * 0.82);
-      const baseScale = reducedMotion ? 0.04 : 0.16;
-      const timeScale = Math.max(0.0004, baseScale * zoomFactor) * dtRatio;
+      // In Web Mercator: pxPerDegLng = (256 * 2^zoom) / 360
+      const pxPerDegLng = (256 * Math.pow(2, zoom)) / 360;
 
-      // Zoom-adaptive aerodynamic trail persistence & stroke styling
-      // Scale trail fade rate with delta time so trail persistence is identical across different frame rates
-      const baseTrailFade = isMapMovingRef.current
-        ? 0.35 // Accelerated fade during active drag/pan to prevent trail smearing
-        : (zoom <= 4 ? 0.038 : zoom <= 8 ? 0.048 : 0.058);
-      const effectiveFade = 1 - Math.pow(1 - baseTrailFade, dtRatio);
-
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = `rgba(0, 0, 0, ${effectiveFade.toFixed(3)})`;
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.globalCompositeOperation = 'lighter';
-      const lineWidth = isMobile
-        ? (zoom <= 4 ? 1.0 : zoom <= 8 ? 1.2 : 1.5)
-        : (zoom <= 4 ? 1.1 : zoom <= 8 ? 1.4 : 1.8);
-      ctx.lineWidth = lineWidth;
+      // Clear canvas each frame for crisp, razor-sharp streamline comets
+      ctx.clearRect(0, 0, width, height);
       ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
       const particles = particlesRef.current;
       const bounds = map.getBounds();
-      const maxDistSq = zoom <= 5 ? 10000 : zoom <= 9 ? 6400 : 2500;
+      const southLimit = bounds.getSouth() - 4;
+      const northLimit = bounds.getNorth() + 4;
+      const westLimit = bounds.getWest() - 4;
+      const eastLimit = bounds.getEast() + 4;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        p.prevLat = p.lat;
-        p.prevLng = p.lng;
-
-        // Sample true wind vector at current coordinate
+        // Sample meteorological wind vector at current coordinate
         const sample = windField.sampleAt(p.lat, p.lng);
         p.speed = sample.speed;
+        const currentSpeed = Math.max(2, sample.speed);
 
-        // Smooth Sub-Linear Velocity Curve (Windy & Zoom Earth Parity):
-        // Replaces artificial hard speed floor (which previously multiplied calm 0.5 km/h winds by 24x!)
-        // Smoothly maps low-wind areas to a gentle laminar crawl (0.65x) up to high-speed jet streams (1.6x)
-        // without any sudden velocity steps, stuttering, or visual jerking.
-        const speedScale = 0.65 + 0.35 * Math.min(2.8, Math.pow(Math.max(0.1, sample.speed) / 15, 0.55));
+        // Perceptual screen velocity in pixels per frame (Windy & Zoom Earth Parity)
+        // Gentle breeze: ~1.2 - 1.8 px/frame; Moderate: ~2.2 - 3.2 px/frame; Storm: ~4.5 - 7.5 px/frame
+        const pxStep = (1.1 + 0.042 * Math.min(110, currentSpeed)) * dtRatio * (reducedMotion ? 0.45 : 1.0);
 
-        // Advect particle along meteorological U/V vectors using RK2 midpoint integration
-        const advected = windField.advectParticle(p.lat, p.lng, timeScale * speedScale);
-        p.lat = advected.nextLat;
-        p.lng = advected.nextLng;
+        // Convert screen pixel step into latitude/longitude displacement degrees along (u, v)
+        const latRad = p.lat * (Math.PI / 180);
+        const pxPerDegLat = pxPerDegLng / Math.max(0.12, Math.cos(latRad));
+        const vMag = Math.max(0.1, Math.hypot(sample.u, sample.v));
+        const dLng = (sample.u / vMag) * (pxStep / pxPerDegLng);
+        const dLat = (sample.v / vMag) * (pxStep / pxPerDegLat);
+
+        const nextLng = ((((p.lng + dLng + 180) % 360) + 360) % 360) - 180;
+        const nextLat = Math.max(-80, Math.min(80, p.lat + dLat));
+
+        // Dynamically adjust trail length by speed: faster winds have longer, sleeker streaks
+        const targetTrailLen = currentSpeed > 65 ? 11 : currentSpeed > 30 ? 9 : 7;
+        p.trail.push({ lat: nextLat, lng: nextLng });
+        while (p.trail.length > targetTrailLen) {
+          p.trail.shift();
+        }
+
+        p.lat = nextLat;
+        p.lng = nextLng;
         p.age += dtRatio;
 
-        // Respawn if aged or drifted outside viewport
+        // Respawn if aged out or drifted outside viewport
         if (
           p.age >= p.maxAge ||
-          p.lat < bounds.getSouth() - 2 ||
-          p.lat > bounds.getNorth() + 2 ||
-          p.lng < bounds.getWest() - 2 ||
-          p.lng > bounds.getEast() + 2
+          p.lat < southLimit ||
+          p.lat > northLimit ||
+          p.lng < westLimit ||
+          p.lng > eastLimit
         ) {
           particles[i] = spawnParticle();
           continue;
         }
 
-        // Project geographic coordinates to screen pixels
-        const p0 = map.project([p.prevLng, p.prevLat]);
-        const p1 = map.project([p.lng, p.lat]);
+        const trailLen = p.trail.length;
+        if (trailLen < 2) continue;
 
-        // Antimeridian or sudden camera jump guard
-        const distSq = (p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2;
-        if (distSq > maxDistSq) {
+        // Project streamline history points to screen pixels
+        const pts = new Array(trailLen);
+        let hasWrapBreak = false;
+        for (let t = 0; t < trailLen; t++) {
+          const pt = map.project([p.trail[t].lng, p.trail[t].lat]);
+          pts[t] = pt;
+          if (t > 0) {
+            const dx = pt.x - pts[t - 1].x;
+            const dy = pt.y - pts[t - 1].y;
+            if (dx * dx + dy * dy > 6400) {
+              hasWrapBreak = true;
+              break;
+            }
+          }
+        }
+
+        if (hasWrapBreak) {
           particles[i] = spawnParticle();
           continue;
         }
 
-        // Streamlines styled with aerodynamic velocity color attribution (Windy & Zoom Earth Parity)
-        const progress = Math.min(1.0, p.age / p.maxAge);
-        const alpha = Math.sin(progress * Math.PI) * 0.92;
+        // Smooth sinusoidal lifecycle alpha fade-in / fade-out
+        const lifeProgress = Math.min(1.0, p.age / p.maxAge);
+        const lifeAlpha = Math.sin(lifeProgress * Math.PI);
 
-        if (p.speed > 75) {
-          // Storm / eyewall / jet stream winds (> 75 km/h): vivid magenta/crimson/white
-          ctx.strokeStyle = `rgba(255, 220, 255, ${alpha.toFixed(2)})`;
-        } else if (p.speed > 40) {
-          // Strong winds / gale (40-75 km/h): luminous amber/yellow
-          ctx.strokeStyle = `rgba(255, 240, 180, ${(alpha * 0.95).toFixed(2)})`;
-        } else if (p.speed > 15) {
-          // Moderate steady breeze (15-40 km/h): bright electric cyan/white
-          ctx.strokeStyle = `rgba(220, 255, 255, ${(alpha * 0.90).toFixed(2)})`;
-        } else {
-          // Gentle calm breeze (< 15 km/h): silky translucent cyan
-          ctx.strokeStyle = `rgba(175, 235, 255, ${(alpha * 0.75).toFixed(2)})`;
+        // Draw aerodynamic comet streamline from fading tail to bright head
+        for (let j = 0; j < trailLen - 1; j++) {
+          const f = (j + 1) / (trailLen - 1); // 0.0 at tail -> 1.0 at head
+          const segAlpha = Math.min(0.96, Math.max(0.04, Math.pow(f, 1.5) * lifeAlpha * 0.95));
+          const segWidth = (isMobile ? 0.7 : 0.9) + f * (isMobile ? 1.0 : 1.5);
+
+          // Color attributions:
+          // Cyclone/storm (> 75 km/h): vivid magenta/crimson/white head
+          // Strong breeze (40-75 km/h): warm amber-white
+          // Steady breeze: crisp aerodynamic white
+          let strokeColor: string;
+          if (p.speed > 75) {
+            strokeColor = `rgba(255, 230, 255, ${segAlpha.toFixed(2)})`;
+          } else if (p.speed > 40) {
+            strokeColor = `rgba(255, 245, 205, ${segAlpha.toFixed(2)})`;
+          } else {
+            strokeColor = `rgba(255, 255, 255, ${segAlpha.toFixed(2)})`;
+          }
+
+          ctx.lineWidth = segWidth;
+          ctx.strokeStyle = strokeColor;
+          ctx.beginPath();
+          ctx.moveTo(pts[j].x, pts[j].y);
+          ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
+          ctx.stroke();
         }
 
+        // Draw crisp bright head cap on particle leader
+        const headPt = pts[trailLen - 1];
+        const headAlpha = Math.min(0.98, lifeAlpha * 0.95);
+        ctx.fillStyle = p.speed > 75
+          ? `rgba(255, 230, 255, ${headAlpha.toFixed(2)})`
+          : p.speed > 40
+          ? `rgba(255, 245, 205, ${headAlpha.toFixed(2)})`
+          : `rgba(255, 255, 255, ${headAlpha.toFixed(2)})`;
         ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.stroke();
+        ctx.arc(headPt.x, headPt.y, isMobile ? 1.0 : 1.3, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       animFrameIdRef.current = requestAnimationFrame(render);
