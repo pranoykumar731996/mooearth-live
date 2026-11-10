@@ -31,6 +31,7 @@ interface WeatherMapLibreOverlayProps {
   windSpeedUnit?: 'kt' | 'km/h';
   isMobile?: boolean;
   reducedMotion?: boolean;
+  showStationMarkers?: boolean;
 }
 
 interface Particle2D {
@@ -176,6 +177,7 @@ export default function WeatherMapLibreOverlay({
   windSpeedUnit = 'km/h',
   isMobile = false,
   reducedMotion = false,
+  showStationMarkers = false,
 }: WeatherMapLibreOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
@@ -186,7 +188,7 @@ export default function WeatherMapLibreOverlay({
   const lastFrameTimeRef = useRef<number>(0);
   const isMapMovingRef = useRef<boolean>(false);
 
-  const particleCount = isMobile ? 800 : 3200;
+  const particleCount = isMobile ? 2000 : 4800;
   const isWindActive = activeLayer === 'wind';
 
   // ── 1. Live Planetary Grid Synchronization ─────────────────────────────
@@ -303,8 +305,9 @@ export default function WeatherMapLibreOverlay({
   }, [map, isWindActive, applyWindHeatmap]);
 
   // ── 3. Zoom Earth-Grade Live City Wind Badges Lifecycle ───────────────
+  // Default unmounted in Wind mode to maintain clean, unobstructed streamline flow (Windy & Zoom Earth parity).
   useEffect(() => {
-    if (!map || !isWindActive) {
+    if (!map || !isWindActive || !showStationMarkers) {
       cityMarkersRef.current.forEach(({ marker }) => marker.remove());
       cityMarkersRef.current = [];
       return;
@@ -446,9 +449,9 @@ export default function WeatherMapLibreOverlay({
       cityMarkersRef.current.forEach(({ marker }) => marker.remove());
       cityMarkersRef.current = [];
     };
-  }, [map, isWindActive, windSpeedUnit]);
+  }, [map, isWindActive, windSpeedUnit, showStationMarkers]);
 
-  // ── 4. Interactive Wind Telemetry Cursor Picker (Windy Parity) ─────────
+  // ── 4. Interactive Wind Telemetry Cursor & Touch Picker (Windy Parity) ─────────
   useEffect(() => {
     if (!map || !isWindActive) {
       setCursorTelemetry(null);
@@ -456,6 +459,7 @@ export default function WeatherMapLibreOverlay({
     }
 
     const windField = windFieldRef.current;
+    const canvasEl = map.getCanvas();
 
     const handleMouseMove = (e: any) => {
       const { lng, lat } = e.lngLat;
@@ -484,14 +488,44 @@ export default function WeatherMapLibreOverlay({
       setCursorTelemetry(null);
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!e.touches || e.touches.length === 0) return;
+      const touch = e.touches[0];
+      const rect = canvasEl.getBoundingClientRect();
+      const point = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+      const lngLat = map.unproject([point.x, point.y]);
+      const sample = windField.sampleAt(lngLat.lat, lngLat.lng);
+      const speedKmh = Math.round(sample.speed);
+      const speedKt = Math.round(sample.speed * 0.539957);
+      const gustKmh = Math.round(sample.speed * (1.35 + 0.15 * Math.sin(lngLat.lat * 0.1)));
+      const dirDeg = Math.round(sample.directionDeg);
+
+      setCursorTelemetry({
+        x: point.x,
+        y: point.y,
+        lat: Math.round(lngLat.lat * 100) / 100,
+        lng: Math.round(lngLat.lng * 100) / 100,
+        speedKt,
+        speedKmh,
+        gustKmh,
+        directionDeg: dirDeg,
+        cardinal: getCardinalDirection(dirDeg),
+        beaufort: getBeaufortCategory(speedKt),
+      });
+    };
+
     map.on('mousemove', handleMouseMove);
-    map.getCanvas().addEventListener('mouseleave', handleMouseLeave);
+    canvasEl.addEventListener('mouseleave', handleMouseLeave);
+    canvasEl.addEventListener('touchstart', handleTouchMove, { passive: true });
+    canvasEl.addEventListener('touchmove', handleTouchMove, { passive: true });
 
     return () => {
       map.off('mousemove', handleMouseMove);
       try {
-        map.getCanvas().removeEventListener('mouseleave', handleMouseLeave);
-      } catch (err) {
+        canvasEl.removeEventListener('mouseleave', handleMouseLeave);
+        canvasEl.removeEventListener('touchstart', handleTouchMove);
+        canvasEl.removeEventListener('touchmove', handleTouchMove);
+      } catch {
         // Safe detach
       }
     };
@@ -575,16 +609,9 @@ export default function WeatherMapLibreOverlay({
       particlesRef.current.push(spawnParticle());
     }
 
-    // Active movement listeners to prevent screen trail smearing during camera panning/zooming
+    // Active movement listeners to maintain fluid continuous streamline flow during camera pan/zoom
     const handleMoveStart = () => {
       isMapMovingRef.current = true;
-      if (canvasRef.current) {
-        const c = canvasRef.current;
-        const context = c.getContext('2d');
-        if (context) {
-          context.clearRect(0, 0, c.width, c.height);
-        }
-      }
     };
 
     const handleMoveEnd = () => {
@@ -697,22 +724,22 @@ export default function WeatherMapLibreOverlay({
           continue;
         }
 
-        // Streamlines styled in luminous translucent white/cyan with intensity glow
+        // Streamlines styled with aerodynamic velocity color attribution (Windy & Zoom Earth Parity)
         const progress = Math.min(1.0, p.age / p.maxAge);
         const alpha = Math.sin(progress * Math.PI) * 0.92;
 
         if (p.speed > 75) {
-          // Intense eyewall / jet stream particles glow bright white-magenta
-          ctx.strokeStyle = `rgba(255, 230, 255, ${alpha.toFixed(2)})`;
+          // Storm / eyewall / jet stream winds (> 75 km/h): vivid magenta/crimson/white
+          ctx.strokeStyle = `rgba(255, 220, 255, ${alpha.toFixed(2)})`;
         } else if (p.speed > 40) {
-          // Moderate to gale winds
-          ctx.strokeStyle = `rgba(235, 255, 255, ${alpha.toFixed(2)})`;
+          // Strong winds / gale (40-75 km/h): luminous amber/yellow
+          ctx.strokeStyle = `rgba(255, 240, 180, ${(alpha * 0.95).toFixed(2)})`;
         } else if (p.speed > 15) {
-          // Steady breeze
-          ctx.strokeStyle = `rgba(200, 245, 255, ${(alpha * 0.85).toFixed(2)})`;
+          // Moderate steady breeze (15-40 km/h): bright electric cyan/white
+          ctx.strokeStyle = `rgba(220, 255, 255, ${(alpha * 0.90).toFixed(2)})`;
         } else {
-          // Gentle calm breeze - silky subtle cyan
-          ctx.strokeStyle = `rgba(175, 235, 255, ${(alpha * 0.72).toFixed(2)})`;
+          // Gentle calm breeze (< 15 km/h): silky translucent cyan
+          ctx.strokeStyle = `rgba(175, 235, 255, ${(alpha * 0.75).toFixed(2)})`;
         }
 
         ctx.beginPath();
@@ -749,13 +776,13 @@ export default function WeatherMapLibreOverlay({
         style={{ width: '100%', height: '100%' }}
       />
 
-      {/* Floating Windy-Grade Wind Inspection Cursor Tooltip */}
+      {/* Floating Windy-Grade Wind Inspection Cursor & Touch Tooltip */}
       {cursorTelemetry && (
         <div
-          className="absolute pointer-events-none z-30 transition-transform duration-75 hidden sm:block"
+          className="absolute pointer-events-none z-30 transition-transform duration-75 block"
           style={{
-            left: `${cursorTelemetry.x + 14}px`,
-            top: `${cursorTelemetry.y - 42}px`,
+            left: `${Math.min(cursorTelemetry.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 600) - 220)}px`,
+            top: `${Math.max(10, cursorTelemetry.y - 48)}px`,
           }}
         >
           <div className="bg-[#0b1329]/95 border border-cyan-400/50 backdrop-blur-md px-3 py-2 rounded-xl shadow-2xl text-xs font-mono text-white flex items-center gap-2.5">

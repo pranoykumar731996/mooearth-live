@@ -1022,6 +1022,8 @@ export default function CityMapViewer({
     setIsRadarNoticeDismissed(false);
     if (activeLayer === 'satellite' || activeLayer === 'clouds') {
       setActiveStyleKey('atmospheric-satellite');
+    } else if (activeLayer === 'wind') {
+      setActiveStyleKey('dark');
     }
   }, [activeLayer]);
 
@@ -1457,7 +1459,7 @@ export default function CityMapViewer({
     });
     disasterMarkersRef.current = [];
 
-    if (!showDisasters && activeLayer !== 'hurricane') return;
+    if ((!showDisasters && activeLayer !== 'hurricane') || activeLayer === 'wind') return;
 
     // Canonical storm deduplication helper
     const extractStormDesignator = (nameOrTitle: string, id: string = '') => {
@@ -2456,7 +2458,7 @@ export default function CityMapViewer({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded) return;
-    const isIsobarsActive = (showPressureIsobars || activeLayer === 'pressure') && (activeLayer === 'wind' || activeLayer === 'pressure');
+    const isIsobarsActive = activeLayer === 'pressure' || (showPressureIsobars && activeLayer === 'pressure');
     const ISOBAR_SOURCE_ID = 'mooearth-isobars-source';
     const ISOBAR_LINE_LAYER_ID = 'mooearth-isobars-line-layer';
     const ISOBAR_CENTERS_LAYER_ID = 'mooearth-isobars-centers-layer';
@@ -2625,7 +2627,14 @@ export default function CityMapViewer({
       'nasa-gibs-satellite-layer',
     ];
 
-    if (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') {
+    const shouldMountSatelliteClouds =
+      (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') &&
+      activeLayer !== 'wind' &&
+      activeLayer !== 'radar' &&
+      activeLayer !== 'temperature' &&
+      activeLayer !== 'rain';
+
+    if (shouldMountSatelliteClouds) {
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
@@ -2758,7 +2767,7 @@ export default function CityMapViewer({
               },
               {
                 id: 'europe-africa',
-                layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
+                layerName: europeAfricaDay ? 'msg_fes:vis006' : 'mumi:worldcloudmap_ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
                 isSubHourly: true,
@@ -2804,7 +2813,7 @@ export default function CityMapViewer({
               },
               {
                 id: 'europe-africa',
-                layerName: 'msg_fes:ir108',
+                layerName: 'mumi:worldcloudmap_ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
                 isSubHourly: true,
@@ -2891,12 +2900,20 @@ export default function CityMapViewer({
             );
           }
 
+          const sectorBounds: Record<string, [number, number, number, number]> = {
+            'himawari': [50.0, -65.0, 180.0, 65.0],
+            'goes-east': [-145.0, -65.0, -10.0, 65.0],
+            'goes-west': [-180.0, -65.0, -60.0, 65.0],
+            'europe-africa': [-35.0, -65.0, 65.0, 65.0],
+            'eumet-iodc': [10.0, -65.0, 90.0, 65.0],
+          };
+
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
             const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
-            const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_');
+            const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
             const iodcParam = isIodcActive ? '&has_iodc=1' : '';
             const tileUrl = isEumet
@@ -2905,7 +2922,7 @@ export default function CityMapViewer({
 
             const secAttribution = sec.layerName.includes('iodc')
               ? 'EUMETSAT Meteosat-9 IODC (45.5°E)'
-              : sec.layerName.startsWith('msg_')
+              : sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:')
               ? 'EUMETSAT Meteosat High Rate SEVIRI'
               : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data';
 
@@ -2919,6 +2936,7 @@ export default function CityMapViewer({
                   tiles: [tileUrl],
                   tileSize: 256,
                   maxzoom: sec.maxzoom,
+                  bounds: sectorBounds[sec.id],
                   attribution: secAttribution,
                 });
                 map.addLayer(
@@ -2947,6 +2965,7 @@ export default function CityMapViewer({
                 tiles: [tileUrl],
                 tileSize: 256,
                 maxzoom: sec.maxzoom,
+                bounds: sectorBounds[sec.id],
                 attribution: secAttribution,
               });
               map.addLayer(
@@ -3151,7 +3170,7 @@ export default function CityMapViewer({
 
 
       {/* ── Geostationary Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
+      {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
         <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
           <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
             {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
@@ -3381,7 +3400,7 @@ export default function CityMapViewer({
               <span className="hidden sm:inline">Full World</span>
             </button>
             {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
-            {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && isSatelliteHudDismissed && (
+            {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && isSatelliteHudDismissed && (
               <button
                 type="button"
                 data-testid="show-satellite-hud-btn"

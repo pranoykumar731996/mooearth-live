@@ -604,7 +604,12 @@ if (typeof self !== 'undefined' && self.addProtocol) {
   function eumetUrlToWms(url) {
     const match = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
     if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
-    const layer = match[1];
+    let layer = match[1];
+    // Optimize European/African infrared cloud cache: use fast pre-rendered worldcloudmap_ir108 (sub-second)
+    // rather than on-the-fly msg_fes:ir108 which times out after 3.5s
+    if (layer === 'msg_fes:ir108') {
+      layer = 'mumi:worldcloudmap_ir108';
+    }
     const z = parseInt(match[2], 10);
     const y = parseInt(match[3], 10);
     const x = parseInt(match[4], 10);
@@ -624,7 +629,7 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     try {
       const realUrl = eumetUrlToWms(params.url);
       const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+      const timeoutId = setTimeout(() => timeoutController.abort(), 6000);
       abortController.signal.addEventListener('abort', () => timeoutController.abort());
       const res = await fetch(realUrl, { signal: timeoutController.signal });
       clearTimeout(timeoutId);
