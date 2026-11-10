@@ -31,6 +31,13 @@ export async function GET(request: NextRequest) {
         passedChecks: state.checks.filter((c) => c.passed).length,
         failedChecks: state.checks.filter((c) => !c.passed).length,
       },
+      categories: {
+        clouds: state.checks.filter((c) => c.category === 'clouds'),
+        winds: state.checks.filter((c) => c.category === 'winds'),
+        weather: state.checks.filter((c) => c.category === 'weather'),
+        time: state.checks.filter((c) => c.category === 'time'),
+        games: state.checks.filter((c) => c.category === 'games'),
+      },
       system: {
         uptime: process.uptime ? Math.round(process.uptime()) : 86400,
         nodeVersion: process.version,
