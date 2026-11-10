@@ -14,6 +14,7 @@ import { GeoQuestion, GeoQuestionType, SteDifficulty } from '@/engines/game/stop
 export type { GeoQuestion, GeoQuestionType, SteDifficulty };
 import { ALL_WORLD_PLACES, ICONIC_LANDMARKS, FAMOUS_METROPOLISES, WORLD_CAPITALS, WorldPlace } from '@/data/worldPlaces';
 import { CANONICAL_COUNTRIES } from '@/data/countries';
+import { VERIFIED_COUNTRY_LANDMARKS } from '@/data/countries/landmarkCoordinates';
 import { locations } from '@/data/locations';
 
 // ---- Fingerprint Generation ----
@@ -234,24 +235,25 @@ function buildCountryMetadataQuestions(): GeoQuestion[] {
 
   for (const country of CANONICAL_COUNTRIES) {
     const cc = country.iso2.toUpperCase();
+    const verifiedLandmark = VERIFIED_COUNTRY_LANDMARKS[cc];
 
-    // Add landmark question if not already in world places
-    if (country.landmark && !existingPlaceNames.has(country.landmark.toLowerCase())) {
-      const fp = generateFingerprint(country.landmark, country.name, 'landmark');
+    // Only create landmark questions when verified with exact coordinates and non-duplicate
+    if (verifiedLandmark && !existingPlaceNames.has(verifiedLandmark.placeName.toLowerCase())) {
+      const fp = generateFingerprint(verifiedLandmark.placeName, country.name, 'landmark');
       if (!seenFingerprints.has(fp)) {
         seenFingerprints.add(fp);
         questions.push({
           id: `ste-${cc.toLowerCase()}-landmark-${country.slug}`,
           placeId: `landmark-${country.slug}`,
-          placeName: country.landmark,
+          placeName: verifiedLandmark.placeName,
           country: country.name,
           countryCode: cc,
           type: 'landmark',
           difficulty: 'medium',
-          coordinates: { lat: country.coordinates.lat, lng: country.coordinates.lng },
+          coordinates: { lat: verifiedLandmark.lat, lng: verifiedLandmark.lng },
           toleranceKm: getToleranceKm('medium', cc),
-          questionText: `Find ${country.landmark} in ${country.name}`,
-          explanation: `${country.landmark} is a famous landmark in ${country.name}.`,
+          questionText: `Find ${verifiedLandmark.placeName} in ${country.name}`,
+          explanation: verifiedLandmark.description || `${verifiedLandmark.placeName} is a famous landmark in ${country.name}.`,
           region: country.subregion || country.region,
           fingerprint: fp,
           verified: true,

@@ -9,6 +9,7 @@
 // Zero bare country entities: each entry represents a particular place.
 
 import { CANONICAL_COUNTRIES } from './countries';
+import { SOVEREIGN_CAPITAL_COORDINATES } from './countries/capitalCoordinates';
 import { haversineDistance } from '@/engines/game/ValidationEngine';
 import { GeoCoordinate } from '@/engines/game/types';
 
@@ -729,20 +730,22 @@ export const FAMOUS_METROPOLISES: WorldPlace[] = [
 
 // ── 3. Build All 195 Sovereign Capitals ──
 function buildCapitalPlaces(): WorldPlace[] {
-  return CANONICAL_COUNTRIES.map((country) => ({
-    id: `place-capital-${country.id}`,
-    name: country.capital,
-    country: country.name,
-    countryCode: country.id.toUpperCase(),
-    type: 'capital',
-    coordinates: {
-      lat: country.coordinates.lat,
-      lng: country.coordinates.lng,
-    },
-    region: country.region,
-    description: `Capital city of ${country.name}`,
-    flag: country.flag,
-  }));
+  return CANONICAL_COUNTRIES.map((country) => {
+    const verifiedCapital = SOVEREIGN_CAPITAL_COORDINATES[country.iso2.toUpperCase()];
+    return {
+      id: `place-capital-${country.id}`,
+      name: verifiedCapital?.capital || country.capital,
+      country: country.name,
+      countryCode: country.id.toUpperCase(),
+      type: 'capital',
+      coordinates: verifiedCapital
+        ? { lat: verifiedCapital.lat, lng: verifiedCapital.lng }
+        : { lat: country.coordinates.lat, lng: country.coordinates.lng },
+      region: country.region,
+      description: `Capital city of ${country.name}`,
+      flag: country.flag,
+    };
+  });
 }
 
 export const WORLD_CAPITALS: WorldPlace[] = buildCapitalPlaces();

@@ -199,28 +199,32 @@ export default function StopTheEarthClient() {
   // ---- Show Answer on Satellite Map ----
 
   const showAnswerOnMap = useCallback(async (
-    guess: { lat: number; lng: number },
+    guess: { lat: number; lng: number } | null,
     answer: { lat: number; lng: number },
-    placeName: string
+    placeName: string,
+    isTimeoutFallback: boolean = false
   ) => {
     const map = mapRef.current;
     if (!map) return;
     const maplibregl = await import('maplibre-gl');
 
-    // 1. Add target marker
+    // 1. Add target marker with precision SVG vector needle pin & radar halo
     if (answerMarkerRef.current) {
       answerMarkerRef.current.remove();
     }
     const el = document.createElement('div');
     el.className = 'ste-target-marker';
     el.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;">
-        <div style="background:#10b981;color:#fff;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,0.6);margin-bottom:2px;white-space:nowrap;letter-spacing:0.3px;display:flex;align-items:center;gap:4px;">
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;">
+        <div class="ste-target-pulse-ring" style="position:absolute;bottom:0;width:44px;height:44px;border-radius:50%;background:rgba(16,185,129,0.35);border:2px solid #10b981;transform:translateY(50%);"></div>
+        <div style="background:#10b981;color:#fff;padding:4px 11px;border-radius:12px;font-size:12px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,0.6);margin-bottom:3px;white-space:nowrap;letter-spacing:0.3px;display:flex;align-items:center;gap:4px;border:1px solid rgba(255,255,255,0.4);z-index:2;">
           <span>🎯</span><span>${placeName}</span>
         </div>
-        <div style="font-size:34px;filter:drop-shadow(0 0 12px rgba(16,185,129,0.9));line-height:1;">
-          📍
-        </div>
+        <svg width="34" height="42" viewBox="0 0 34 42" fill="none" style="filter:drop-shadow(0 4px 10px rgba(0,0,0,0.7));z-index:2;">
+          <path d="M17 0C7.61116 0 0 7.61116 0 17C0 27.5 17 42 17 42C17 42 34 27.5 34 17C34 7.61116 26.3888 0 17 0Z" fill="#10b981"/>
+          <circle cx="17" cy="17" r="7.5" fill="#ffffff"/>
+          <circle cx="17" cy="17" r="4" fill="#059669"/>
+        </svg>
       </div>
     `;
 
@@ -231,48 +235,61 @@ export default function StopTheEarthClient() {
       .setLngLat([answer.lng, answer.lat])
       .addTo(map);
 
-    // 2. Add connecting distance line
     const lineId = 'ste-distance-line';
-    const geojsonData: any = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: [
-          [guess.lng, guess.lat],
-          [answer.lng, answer.lat],
-        ],
-      },
-    };
 
-    if (map.getSource(lineId)) {
-      (map.getSource(lineId) as any).setData(geojsonData);
-    } else {
-      map.addSource(lineId, {
-        type: 'geojson',
-        data: geojsonData,
-      });
-      map.addLayer({
-        id: lineId,
-        type: 'line',
-        source: lineId,
-        paint: {
-          'line-color': '#f43f5e',
-          'line-width': 3.5,
-          'line-dasharray': [3, 2],
+    // 2. If user made a real guess, connect with distance line and fit bounds
+    if (guess && !isTimeoutFallback) {
+      const geojsonData: any = {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [guess.lng, guess.lat],
+            [answer.lng, answer.lat],
+          ],
         },
+      };
+
+      if (map.getSource(lineId)) {
+        (map.getSource(lineId) as any).setData(geojsonData);
+      } else {
+        map.addSource(lineId, {
+          type: 'geojson',
+          data: geojsonData,
+        });
+        map.addLayer({
+          id: lineId,
+          type: 'line',
+          source: lineId,
+          paint: {
+            'line-color': '#f43f5e',
+            'line-width': 3.5,
+            'line-dasharray': [3, 2],
+          },
+        });
+      }
+
+      // 3. Fit bounds smoothly to show both markers with comfortable margin
+      const bounds = new maplibregl.LngLatBounds();
+      bounds.extend([guess.lng, guess.lat]);
+      bounds.extend([answer.lng, answer.lat]);
+      map.fitBounds(bounds, {
+        padding: { top: 90, bottom: 90, left: 90, right: 90 },
+        duration: 1400,
+        maxZoom: 14,
+      });
+    } else {
+      // If timeout without user guess, clean up line and fly directly to answer
+      if (map.getLayer(lineId)) map.removeLayer(lineId);
+      if (map.getSource(lineId)) map.removeSource(lineId);
+
+      map.flyTo({
+        center: [answer.lng, answer.lat],
+        zoom: 9.5,
+        duration: 1500,
       });
     }
-
-    // 3. Fit bounds smoothly to show both markers with comfortable margin
-    const bounds = new maplibregl.LngLatBounds();
-    bounds.extend([guess.lng, guess.lat]);
-    bounds.extend([answer.lng, answer.lat]);
-    map.fitBounds(bounds, {
-      padding: { top: 90, bottom: 90, left: 90, right: 90 },
-      duration: 1400,
-      maxZoom: 14,
-    });
   }, []);
 
   // ---- Gameplay Actions ----
@@ -338,8 +355,8 @@ export default function StopTheEarthClient() {
       setAnswerResult(result);
       setScreen('answer-reveal');
 
-      // Show answer on map
-      showAnswerOnMap({ lat: fallbackLat, lng: fallbackLng }, result.correctCoordinates, result.placeName);
+      // Show answer on map without fake line
+      showAnswerOnMap(null, result.correctCoordinates, result.placeName, true);
 
       if (result.gameComplete && result.summary && selectedCountry) {
         saveBestScore(selectedCountry.name, difficulty, result.totalScore);
@@ -540,12 +557,14 @@ export default function StopTheEarthClient() {
           el.className = 'ste-guess-marker';
           el.innerHTML = `
             <div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;">
-              <div style="background:#2563eb;color:#fff;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.6);margin-bottom:2px;white-space:nowrap;letter-spacing:0.3px;">
+              <div style="background:#2563eb;color:#fff;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.6);margin-bottom:3px;white-space:nowrap;letter-spacing:0.3px;border:1px solid rgba(255,255,255,0.3);">
                 Your Guess
               </div>
-              <div style="font-size:32px;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.7));line-height:1;">
-                📍
-              </div>
+              <svg width="30" height="38" viewBox="0 0 34 42" fill="none" style="filter:drop-shadow(0 4px 8px rgba(0,0,0,0.7));">
+                <path d="M17 0C7.61116 0 0 7.61116 0 17C0 27.5 17 42 17 42C17 42 34 27.5 34 17C34 7.61116 26.3888 0 17 0Z" fill="#2563eb"/>
+                <circle cx="17" cy="17" r="6.5" fill="#ffffff"/>
+                <circle cx="17" cy="17" r="3.5" fill="#1d4ed8"/>
+              </svg>
             </div>
           `;
           guessMarkerRef.current = new maplibregl.Marker({
@@ -608,6 +627,15 @@ export default function StopTheEarthClient() {
       display: 'flex',
       flexDirection: 'column',
     }}>
+      <style jsx global>{`
+        @keyframes ste-pulse-anim {
+          0% { transform: translateY(50%) scale(0.6); opacity: 1; }
+          100% { transform: translateY(50%) scale(2.4); opacity: 0; }
+        }
+        .ste-target-pulse-ring {
+          animation: ste-pulse-anim 2s infinite ease-out !important;
+        }
+      `}</style>
       {/* ---- Global Top Nav Bar ---- */}
       <header style={{
         height: '60px',
