@@ -799,7 +799,13 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLocalizedCountryName } from '@/lib/i18n';
 import type { WorldEvent } from '@/types';
-import type { SatelliteSpectralMode, WeatherLayerMode } from '@/services/weather/types';
+import type {
+  SatelliteSpectralMode,
+  WeatherLayerMode,
+  GeographicFeatureType,
+  SearchFocusMode,
+} from '@/services/weather/types';
+import type { GlobalWeatherGridResponse } from '@/services/weather/globalGridService';
 import {
   type TropicalCyclone,
   interpolateForecastPosition,
@@ -854,6 +860,11 @@ export interface CityMapViewerProps {
   countryName?: string;
   timezone?: string;
   initialZoom?: number;
+  featureType?: GeographicFeatureType;
+  flyTriggerSeq?: number;
+  searchFocusMode?: SearchFocusMode;
+  onFocusModeChange?: (mode: SearchFocusMode) => void;
+  weatherGridData?: GlobalWeatherGridResponse | null;
   initialMapStyle?: MapStyleKey;
   weatherSummary?: CityWeatherSummary | null;
   activeLayer?: string;
@@ -936,6 +947,13 @@ function createLocationPopupHtml(
         <span>${typeof latitude === 'number' && typeof longitude === 'number' ? `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°` : ''}</span>
         ${timeInfo ? `<span style="color: rgba(255,255,255,0.45); font-family: monospace;">${timeInfo.tzOffset}</span>` : ''}
       </div>
+
+      ${cityName !== 'World Map' ? `
+        <div style="display: flex; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <button type="button" data-moo-action="zoom-max" style="flex: 1; padding: 4px 6px; border-radius: 6px; background: rgba(6,182,212,0.18); border: 1px solid rgba(6,182,212,0.45); color: #a5f3fc; font-size: 9px; font-weight: 700; cursor: pointer;">🔭 Zoom In Max</button>
+          <button type="button" data-moo-action="temp-view" style="flex: 1; padding: 4px 6px; border-radius: 6px; background: rgba(245,158,11,0.18); border: 1px solid rgba(245,158,11,0.45); color: #fde68a; font-size: 9px; font-weight: 700; cursor: pointer;">🌡️ Temperature</button>
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -972,6 +990,11 @@ export default function CityMapViewer({
   countryName,
   timezone,
   initialZoom = 12.8,
+  featureType,
+  flyTriggerSeq = 0,
+  searchFocusMode = 'place-max',
+  onFocusModeChange,
+  weatherGridData = null,
   initialMapStyle = 'atmospheric-satellite',
   weatherSummary,
   activeLayer = 'wind',
@@ -1143,7 +1166,7 @@ export default function CityMapViewer({
           center: [initCoords.longitude, initCoords.latitude],
           zoom: initCoords.initialZoom,
           minZoom: 1.8,
-          maxZoom: 18,
+          maxZoom: 18.5,
           renderWorldCopies: false,
           pitch: 0,
           bearing: 0,
@@ -1332,12 +1355,83 @@ export default function CityMapViewer({
     };
   }, [initMap, activeStyleKey]);
 
-  // Handle fly-to coordinate updates ONLY when the destination actually changes
+  const placeMaxTargetZoom = useMemo(() => {
+    if (
+      featureType === 'landmark' ||
+      featureType === 'street' ||
+      featureType === 'address' ||
+      featureType === 'park' ||
+      featureType === 'airport' ||
+      featureType === 'station' ||
+      featureType === 'water'
+    ) {
+      return 18.0;
+    }
+    if (featureType === 'mountain') return 15.5;
+    if (featureType === 'city') return 16.0;
+    if (featureType === 'administrative') return 10.5;
+    if (featureType === 'country') return 5.5;
+    return Math.max(initialZoom, 17.5);
+  }, [featureType, initialZoom]);
+
+  const handleQuickZoomMax = useCallback(() => {
+    onFocusModeChange?.('place-max');
+    if (activeLayer === 'temperature') {
+      onLayerChange?.('satellite');
+    }
+    if (mapRef.current && cityName && cityName !== 'World Map') {
+      mapRef.current.flyTo({
+        center: [longitude, latitude],
+        zoom: placeMaxTargetZoom,
+        pitch: 0,
+        bearing: 0,
+        speed: 1.35,
+        essential: true,
+      });
+    }
+  }, [onFocusModeChange, activeLayer, onLayerChange, cityName, longitude, latitude, placeMaxTargetZoom]);
+
+  const handleQuickTempView = useCallback(() => {
+    onFocusModeChange?.('temperature');
+    onLayerChange?.('temperature');
+    onOpenWeather?.();
+    if (mapRef.current && cityName && cityName !== 'World Map') {
+      mapRef.current.flyTo({
+        center: [longitude, latitude],
+        zoom: featureType === 'country' ? 5.0 : 9.0,
+        pitch: 0,
+        bearing: 0,
+        speed: 1.25,
+        essential: true,
+      });
+    }
+  }, [onFocusModeChange, onLayerChange, onOpenWeather, cityName, longitude, latitude, featureType]);
+
+  // Delegated click handler for popup quick-action buttons ("Zoom In Max" & "Temperature")
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+    const onPopupActionClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const btn = target?.closest('[data-moo-action]') as HTMLElement | null;
+      if (!btn) return;
+      const action = btn.getAttribute('data-moo-action');
+      if (action === 'zoom-max') {
+        handleQuickZoomMax();
+      } else if (action === 'temp-view') {
+        handleQuickTempView();
+      }
+    };
+    container.addEventListener('click', onPopupActionClick);
+    return () => container.removeEventListener('click', onPopupActionClick);
+  }, [handleQuickZoomMax, handleQuickTempView]);
+
+  // Handle fly-to coordinate updates ONLY when the destination or explicit search trigger changes
   useEffect(() => {
     if (!mapRef.current || !isMapLoaded) return;
     if (!cityName || cityName === 'World Map') return;
 
-    const targetKey = `${cityName}:${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    const targetKey = `${cityName}:${latitude.toFixed(4)},${longitude.toFixed(4)}:${flyTriggerSeq}:${initialZoom.toFixed(1)}`;
     if (lastFlownTargetRef.current === targetKey) {
       // Already at this target - DO NOT disrupt user's free panning or zooming!
       return;
@@ -1350,6 +1444,7 @@ export default function CityMapViewer({
     mapRef.current.flyTo({
       center: [longitude, latitude],
       zoom: targetZoom,
+      speed: 1.35,
       essential: true,
     });
 
@@ -1392,7 +1487,7 @@ export default function CityMapViewer({
         // popup display optional
       }
     }
-  }, [latitude, longitude, cityName, countryName, initialZoom, isMapLoaded]);
+  }, [latitude, longitude, cityName, countryName, initialZoom, flyTriggerSeq, isMapLoaded]);
 
   // Live ticking local time DOM update for active map pin popup without re-rendering MapLibre (Option 1)
   useEffect(() => {
@@ -3117,12 +3212,13 @@ export default function CityMapViewer({
         className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
       />
 
-      {/* ── Synchronized 2D Weather Overlay (Wind Streamlines) ── */}
+      {/* ── Synchronized 2D Weather Overlay (Wind Streamlines & Temperature Thermal Grid) ── */}
       {isMapLoaded && mapRef.current && (
         <WeatherMapLibreOverlay
           map={mapRef.current}
           activeLayer={activeLayer}
           particlesEnabled={particlesEnabled}
+          weatherGridData={weatherGridData}
         />
       )}
 
@@ -3331,6 +3427,45 @@ export default function CityMapViewer({
               </button>
             )}
           </div>
+
+          {/* Quick Mode Switcher: Zoom In to Place (Max) vs Temperature */}
+          {cityName !== 'World Map' && (
+            <div className="flex items-center gap-1.5 w-fit max-w-full bg-[#050512]/90 backdrop-blur-xl border border-white/10 p-1 rounded-2xl shadow-2xl">
+              <button
+                type="button"
+                data-testid="place-max-zoom-pill"
+                onClick={handleQuickZoomMax}
+                className={`px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  searchFocusMode === 'place-max' && activeLayer !== 'temperature'
+                    ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title={`Auto-zoom directly into ${cityName} at maximum HD satellite zoom`}
+              >
+                <span>🔭</span>
+                <span>Zoom In to Place</span>
+              </button>
+              <button
+                type="button"
+                data-testid="place-temperature-pill"
+                onClick={handleQuickTempView}
+                className={`px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  activeLayer === 'temperature' || searchFocusMode === 'temperature'
+                    ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
+                }`}
+                title={`Switch to Temperature thermal map & live telemetry for ${cityName}`}
+              >
+                <span>🌡️</span>
+                <span>
+                  Temperature
+                  {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number'
+                    ? ` (${Math.round(activeWeatherSummary.temperature)}°${activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'})`
+                    : ''}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Nearby Places Discovery */}
           {cityName !== 'World Map' && (

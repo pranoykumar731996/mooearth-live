@@ -9,13 +9,20 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { GeocodingResult, GeocodingResponse, GeographicFeatureType } from '@/services/weather/types';
+import type {
+  GeocodingResult,
+  GeocodingResponse,
+  GeographicFeatureType,
+  SearchFocusMode,
+} from '@/services/weather/types';
 
 interface WeatherSearchProps {
-  onSelectLocation: (result: GeocodingResult) => void;
+  onSelectLocation: (result: GeocodingResult, mode?: SearchFocusMode) => void;
   onClear?: () => void;
   placeholder?: string;
   initialQuery?: string;
+  focusMode?: SearchFocusMode;
+  onFocusModeChange?: (mode: SearchFocusMode) => void;
 }
 
 const FEATURE_CONFIG: Record<
@@ -84,6 +91,8 @@ export default function WeatherSearch({
   onClear,
   placeholder = 'Search cities, streets, landmarks, airports...',
   initialQuery,
+  focusMode,
+  onFocusModeChange,
 }: WeatherSearchProps) {
   const [query, setQuery] = useState(initialQuery || '');
   const [results, setResults] = useState<GeocodingResult[]>([]);
@@ -93,6 +102,15 @@ export default function WeatherSearch({
   const [hasSearched, setHasSearched] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [internalFocusMode, setInternalFocusMode] = useState<SearchFocusMode>('place-max');
+  const activeFocusMode: SearchFocusMode = focusMode ?? internalFocusMode;
+  const setFocusModeValue = useCallback(
+    (mode: SearchFocusMode) => {
+      setInternalFocusMode(mode);
+      onFocusModeChange?.(mode);
+    },
+    [onFocusModeChange]
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -186,27 +204,20 @@ export default function WeatherSearch({
     onClear?.();
   }, [onClear]);
 
-  // Handle selection with full display name
+  // Handle selection with full display name & optional explicit mode override
   const handleSelect = useCallback(
-    (result: GeocodingResult) => {
-      const displayName =
-        result.displayName ||
-        [
-          result.name,
-          result.admin1 && result.admin1.toLowerCase() !== result.name.toLowerCase()
-            ? result.admin1
-            : null,
-          result.country,
-        ]
-          .filter(Boolean)
-          .join(', ');
+    (result: GeocodingResult, overrideMode?: SearchFocusMode) => {
+      const chosenMode: SearchFocusMode = overrideMode || activeFocusMode;
+      if (overrideMode) {
+        setFocusModeValue(overrideMode);
+      }
 
       setQuery(result.name);
       setIsOpen(false);
       setResults([]);
-      onSelectLocation(result);
+      onSelectLocation(result, chosenMode);
     },
-    [onSelectLocation]
+    [onSelectLocation, activeFocusMode, setFocusModeValue]
   );
 
   // Keyboard navigation
@@ -220,9 +231,10 @@ export default function WeatherSearch({
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setActiveIndex(prev => Math.max(prev - 1, 0));
-      } else if (e.key === 'Enter' && activeIndex >= 0 && results[activeIndex]) {
+      } else if (e.key === 'Enter' && results.length > 0) {
         e.preventDefault();
-        handleSelect(results[activeIndex]);
+        const target = results[activeIndex >= 0 ? activeIndex : 0];
+        if (target) handleSelect(target);
       } else if (e.key === 'Escape') {
         setIsOpen(false);
       }
@@ -314,6 +326,45 @@ export default function WeatherSearch({
                      border border-white/10 shadow-2xl shadow-black/80 divide-y divide-white/5"
           role="listbox"
         >
+          {/* Default Focus Mode Toggle Strip (Max Zoom vs Temperature) */}
+          <div className="px-3 py-2 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between gap-2 text-[10px] font-mono">
+            <span className="text-white/50 uppercase tracking-wider shrink-0">On Select:</span>
+            <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFocusModeValue('place-max');
+                }}
+                className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeFocusMode === 'place-max'
+                    ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/40 shadow-sm'
+                    : 'text-white/55 hover:text-white/90'
+                }`}
+                title="Fly directly to place at maximum HD zoom"
+              >
+                <span>🔭</span>
+                <span>Max Zoom</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFocusModeValue('temperature');
+                }}
+                className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                  activeFocusMode === 'temperature'
+                    ? 'bg-amber-500/25 text-amber-200 border border-amber-400/40 shadow-sm'
+                    : 'text-white/55 hover:text-white/90'
+                }`}
+                title="Open Temperature thermal map and live telemetry"
+              >
+                <span>🌡️</span>
+                <span>Temperature</span>
+              </button>
+            </div>
+          </div>
+
           {/* Error State */}
           {error && (
             <div className="px-4 py-4 text-center">
@@ -348,12 +399,18 @@ export default function WeatherSearch({
               : [result.admin1, result.country].filter(Boolean).join(', ');
 
             return (
-              <button
+              <div
                 key={`${result.id}-${idx}`}
-                type="button"
+                tabIndex={0}
                 onClick={() => handleSelect(result)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelect(result);
+                  }
+                }}
                 onMouseEnter={() => setActiveIndex(idx)}
-                className={`w-full text-left px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-start gap-2.5 sm:gap-3 transition-colors
+                className={`w-full text-left px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-start gap-2.5 sm:gap-3 transition-colors cursor-pointer
                   ${idx === activeIndex ? 'bg-cyan-500/15' : 'hover:bg-white/[0.04]'}`}
                 role="option"
                 aria-selected={idx === activeIndex}
@@ -365,15 +422,51 @@ export default function WeatherSearch({
 
                 <div className="min-w-0 flex-1">
                   {/* Primary Name & Category Tag */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-white leading-snug break-words">
-                      {result.name}
-                    </span>
-                    <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded-full border uppercase tracking-wider font-mono font-medium ${feature.badgeClass}`}
-                    >
-                      {feature.label}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="text-sm font-semibold text-white leading-snug break-words">
+                        {result.name}
+                      </span>
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded-full border uppercase tracking-wider font-mono font-medium ${feature.badgeClass}`}
+                      >
+                        {feature.label}
+                      </span>
+                    </div>
+
+                    {/* Direct Quick Actions: Max Zoom vs Temperature */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelect(result, 'place-max');
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold border transition-all cursor-pointer ${
+                          activeFocusMode === 'place-max'
+                            ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40 hover:bg-cyan-500/35'
+                            : 'bg-white/5 text-white/65 border-white/10 hover:bg-cyan-500/20 hover:text-cyan-200 hover:border-cyan-400/40'
+                        }`}
+                        title={`Zoom straight into ${result.name} at maximum HD detail`}
+                      >
+                        🔭 Zoom
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelect(result, 'temperature');
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold border transition-all cursor-pointer ${
+                          activeFocusMode === 'temperature'
+                            ? 'bg-amber-500/20 text-amber-200 border-amber-400/40 hover:bg-amber-500/35'
+                            : 'bg-white/5 text-white/65 border-white/10 hover:bg-amber-500/20 hover:text-amber-200 hover:border-amber-400/40'
+                        }`}
+                        title={`View temperature map & telemetry for ${result.name}`}
+                      >
+                        🌡️ Temp
+                      </button>
+                    </div>
                   </div>
 
                   {/* Subtitle / Full Address Line */}
@@ -400,7 +493,7 @@ export default function WeatherSearch({
                     )}
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
 

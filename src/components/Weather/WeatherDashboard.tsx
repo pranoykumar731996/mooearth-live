@@ -42,7 +42,39 @@ import WindyHurricaneTrackerSidebar from './WindyHurricaneTrackerSidebar';
 import { CYCLONE_TIMELINE_STEPS, CYCLONE_LIVE_STEP_INDEX } from './WindyTimeScrubber';
 import { BASELINE_LIGHTNING_EVENTS, BASELINE_SEISMIC_EVENTS, BASELINE_WILDFIRE_EVENTS, BASELINE_SPACE_WEATHER_EVENTS } from '@/components/Globe/WeatherLayers';
 import { useWeatherData } from '@/hooks/useWeatherData';
-import { WEATHER_LAYERS, type WeatherLayerMode, type GeocodingResult, type UnitPreferences, type ForecastResponse, type SatelliteSpectralMode } from '@/services/weather/types';
+import {
+  WEATHER_LAYERS,
+  type WeatherLayerMode,
+  type GeocodingResult,
+  type GeographicFeatureType,
+  type SearchFocusMode,
+  type UnitPreferences,
+  type ForecastResponse,
+  type SatelliteSpectralMode,
+} from '@/services/weather/types';
+
+function getMaxZoomForFeature(featureType?: GeographicFeatureType): number {
+  switch (featureType) {
+    case 'landmark':
+    case 'street':
+    case 'address':
+    case 'park':
+    case 'airport':
+    case 'station':
+    case 'water':
+      return 18.0;
+    case 'mountain':
+      return 15.5;
+    case 'city':
+      return 16.0;
+    case 'administrative':
+      return 10.5;
+    case 'country':
+      return 5.5;
+    default:
+      return 17.5;
+  }
+}
 import type { GlobeApi } from '@/hooks/useGlobeControls';
 import type { WorldEvent } from '@/types';
 import { getCoordinatesForCountry } from '@/lib/constants';
@@ -163,6 +195,8 @@ export default function WeatherDashboard() {
   const [viewMode, setViewMode] = useState<'globe' | 'city-map'>('city-map');
   const [isPanelMinimized, setIsPanelMinimized] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [searchFocusMode, setSearchFocusMode] = useState<SearchFocusMode>('place-max');
+  const [flyTriggerSeq, setFlyTriggerSeq] = useState(0);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
   const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('visible');
@@ -726,8 +760,28 @@ export default function WeatherDashboard() {
 
   // Search selection handler
   // Search selection handler with adaptive feature altitude & mode synchronization
+  const handleFocusModeChange = useCallback(
+    (mode: SearchFocusMode) => {
+      setSearchFocusMode(mode);
+      setFlyTriggerSeq(seq => seq + 1);
+      setViewMode('city-map');
+      if (mode === 'temperature') {
+        weather.setActiveLayer('temperature');
+        setIsPanelOpen(true);
+        setIsPanelMinimized(false);
+      } else if (weather.activeLayer === 'temperature') {
+        weather.setActiveLayer('satellite');
+      }
+    },
+    [weather]
+  );
+
   const handleSelectLocation = useCallback(
-    (result: GeocodingResult) => {
+    (result: GeocodingResult, requestedMode?: SearchFocusMode) => {
+      const mode: SearchFocusMode = requestedMode || searchFocusMode;
+      setSearchFocusMode(mode);
+      setFlyTriggerSeq(seq => seq + 1);
+
       weather.fetchWeatherForLocation({
         latitude: result.latitude,
         longitude: result.longitude,
@@ -735,6 +789,8 @@ export default function WeatherDashboard() {
         country: result.country,
         timezone: result.timezone,
         source: 'search',
+        featureType: result.type,
+        boundingBox: result.boundingBox,
       });
       saveUserLocation({
         latitude: result.latitude,
@@ -761,7 +817,8 @@ export default function WeatherDashboard() {
           result.type === 'landmark' ||
           result.type === 'airport' ||
           result.type === 'mountain' ||
-          result.type === 'park'
+          result.type === 'park' ||
+          result.type === 'station'
         ) {
           altitude = 0.85;
         }
@@ -781,17 +838,47 @@ export default function WeatherDashboard() {
         result.longitude,
         result.name,
         result.country,
-        viewMode
+        'city-map'
       );
-      // Auto-open weather panel on mobile when user searches for a location
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+
+      setViewMode('city-map');
+      if (mode === 'temperature') {
+        weather.setActiveLayer('temperature');
         setIsPanelOpen(true);
+      } else {
+        if (weather.activeLayer === 'temperature') {
+          weather.setActiveLayer('satellite');
+        }
+        // Auto-open weather panel on mobile when user searches for a location
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+          setIsPanelOpen(true);
+        }
       }
       setIsPanelMinimized(false);
       setTimelineIndex(0);
     },
-    [weather, updateUrlParams, getFlyDuration, viewMode]
+    [weather, searchFocusMode, updateUrlParams, getFlyDuration]
   );
+
+  const computedCityMapZoom = useMemo(() => {
+    const sel = weather.selectedLocation;
+    if (!sel || sel.name === 'World Map') {
+      return 3.3;
+    }
+    if (searchFocusMode === 'temperature') {
+      return sel.featureType === 'country' ? 5.0 : 9.0;
+    }
+    if (sel.source === 'search' || flyTriggerSeq > 0) {
+      return getMaxZoomForFeature(sel.featureType);
+    }
+    if (weather.activeLayer === 'satellite' || weather.activeLayer === 'clouds') {
+      return 3.3;
+    }
+    if (searchParams.get('lat') || searchParams.get('city')) {
+      return sel.featureType ? getMaxZoomForFeature(sel.featureType) : 12.8;
+    }
+    return 3.3;
+  }, [weather.selectedLocation, weather.activeLayer, searchFocusMode, flyTriggerSeq, searchParams]);
 
   // Globe country tap handler
   const handleCountrySelect = useCallback(
@@ -1058,10 +1145,12 @@ export default function WeatherDashboard() {
             <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md min-w-[110px] sm:min-w-[160px]">
               <WeatherSearch
                 onSelectLocation={handleSelectLocation}
+                focusMode={searchFocusMode}
+                onFocusModeChange={handleFocusModeChange}
                 onClear={() => {
                   setSelectedCountryOnGlobe(null);
                 }}
-                placeholder="Search..."
+                placeholder="Search monuments, places, cities..."
                 initialQuery={
                   weather.selectedLocation
                     ? weather.selectedLocation.country &&
@@ -1485,15 +1574,12 @@ export default function WeatherDashboard() {
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
                 timezone={weather.selectedLocation?.timezone || displayedForecast?.timezone}
-                initialZoom={
-                  weather.activeLayer === 'satellite' || weather.activeLayer === 'clouds'
-                    ? 3.3
-                    : weather.selectedLocation?.source === 'search' && (searchParams.get('city') || weather.selectedLocation?.country)
-                    ? 12.8
-                    : searchParams.get('lat') || searchParams.get('city')
-                    ? 4.5
-                    : 3.3
-                }
+                initialZoom={computedCityMapZoom}
+                featureType={weather.selectedLocation?.featureType}
+                flyTriggerSeq={flyTriggerSeq}
+                searchFocusMode={searchFocusMode}
+                onFocusModeChange={handleFocusModeChange}
+                weatherGridData={gridData}
                 initialMapStyle="atmospheric-satellite"
                 activeLayer={weather.activeLayer}
                 onLayerChange={weather.setActiveLayer}

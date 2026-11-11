@@ -24,6 +24,11 @@ import {
   getCardinalDirection,
 } from '@/services/weather/griddedWindService';
 import { isOcean, getOceanWeight } from '@/services/map/landSeaMaskService';
+import { getThermalColorRgb } from '@/components/Globe/WeatherLayers/TemperatureHeatmapLayer';
+import {
+  interpolateGridWeatherAt,
+  type GlobalWeatherGridResponse,
+} from '@/services/weather/globalGridService';
 
 interface WeatherMapLibreOverlayProps {
   map: MapLibreMap | null;
@@ -33,6 +38,16 @@ interface WeatherMapLibreOverlayProps {
   isMobile?: boolean;
   reducedMotion?: boolean;
   showStationMarkers?: boolean;
+  weatherGridData?: GlobalWeatherGridResponse | null;
+}
+
+interface TempCursorTelemetry {
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
+  temperature: number;
+  windSpeed: number;
 }
 
 interface Particle2D {
@@ -169,6 +184,46 @@ export const WIND_CITY_STATIONS: WindCityStation[] = [
 
 const WIND_HEATMAP_SOURCE_ID = 'mooearth-wind-velocity-raster-source';
 const WIND_HEATMAP_LAYER_ID = 'mooearth-wind-velocity-raster-layer';
+const TEMP_HEATMAP_SOURCE_ID = 'mooearth-temp-thermal-raster-source';
+const TEMP_HEATMAP_LAYER_ID = 'mooearth-temp-thermal-raster-layer';
+
+/**
+ * Generates a Web Mercator temperature raster DataURL mapped to [-180..180, -85.0511..85.0511].
+ */
+function buildMercatorTempHeatmapDataUrl(
+  stations: GlobalWeatherGridResponse['stations'],
+  width = 360,
+  height = 180
+): string | null {
+  if (typeof document === 'undefined' || !stations || stations.length === 0) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  const imgData = ctx.createImageData(width, height);
+  const data = imgData.data;
+
+  for (let y = 0; y < height; y++) {
+    const mercY = Math.PI * (1 - (2 * (y + 0.5)) / height);
+    const lat = Math.max(-85.0511, Math.min(85.0511, (Math.atan(Math.sinh(mercY)) * 180) / Math.PI));
+    const rowOffset = y * width * 4;
+    for (let x = 0; x < width; x++) {
+      const lng = -180 + (360 * (x + 0.5)) / width;
+      const sample = interpolateGridWeatherAt(lat, lng, stations, 0);
+      const [r, g, b, a] = getThermalColorRgb(sample.temperature);
+      const idx = rowOffset + x * 4;
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = Math.round(a * 0.85);
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  return canvas.toDataURL('image/png');
+}
 
 export default function WeatherMapLibreOverlay({
   map,
@@ -178,18 +233,24 @@ export default function WeatherMapLibreOverlay({
   isMobile = false,
   reducedMotion = false,
   showStationMarkers = true,
+  weatherGridData = null,
 }: WeatherMapLibreOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const particlesRef = useRef<Particle2D[]>([]);
   const windFieldRef = useRef<GriddedWindField>(getGlobalWindField());
   const cityMarkersRef = useRef<CityWindMarkerEntry[]>([]);
+  const tempMarkersRef = useRef<CityWindMarkerEntry[]>([]);
   const [cursorTelemetry, setCursorTelemetry] = useState<WindCursorTelemetry | null>(null);
+  const [tempCursorTelemetry, setTempCursorTelemetry] = useState<TempCursorTelemetry | null>(null);
+  const [localGridData, setLocalGridData] = useState<GlobalWeatherGridResponse | null>(null);
   const lastFrameTimeRef = useRef<number>(0);
   const isMapMovingRef = useRef<boolean>(false);
 
   const particleCount = isMobile ? 1800 : 3600;
   const isWindActive = activeLayer === 'wind';
+  const isTempActive = activeLayer === 'temperature';
+  const activeGridData = weatherGridData || localGridData;
 
   // ── 1. Live Planetary Grid Synchronization ─────────────────────────────
   useEffect(() => {
@@ -810,18 +871,218 @@ export default function WeatherMapLibreOverlay({
     };
   }, [map, isWindActive, particlesEnabled, isMobile, reducedMotion, particleCount]);
 
-  if (!isWindActive) return null;
+  // ── 6. Live 2D Temperature Heatmap Fallback Fetch + Raster + City Badges + Cursor ──
+  useEffect(() => {
+    if (!isTempActive || weatherGridData || localGridData) return;
+    let cancelled = false;
+    fetch('/api/weather/grid')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: GlobalWeatherGridResponse | null) => {
+        if (!cancelled && data?.stations?.length) {
+          setLocalGridData(data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isTempActive, weatherGridData, localGridData]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const cleanupTempLayer = () => {
+      try {
+        if (map.getLayer(TEMP_HEATMAP_LAYER_ID)) {
+          map.removeLayer(TEMP_HEATMAP_LAYER_ID);
+        }
+        if (map.getSource(TEMP_HEATMAP_SOURCE_ID)) {
+          map.removeSource(TEMP_HEATMAP_SOURCE_ID);
+        }
+      } catch {
+        // Safe cleanup
+      }
+    };
+
+    if (!isTempActive || !activeGridData?.stations?.length) {
+      cleanupTempLayer();
+      return;
+    }
+
+    const mountTempHeatmap = () => {
+      try {
+        const dataUrl = buildMercatorTempHeatmapDataUrl(activeGridData.stations, 360, 180);
+        if (!dataUrl) return;
+
+        const existingSource = map.getSource(TEMP_HEATMAP_SOURCE_ID) as any;
+        if (existingSource && typeof existingSource.updateImage === 'function') {
+          existingSource.updateImage({
+            url: dataUrl,
+            coordinates: [
+              [-180, 85.0511],
+              [180, 85.0511],
+              [180, -85.0511],
+              [-180, -85.0511],
+            ],
+          });
+          return;
+        }
+
+        if (map.getSource(TEMP_HEATMAP_SOURCE_ID)) return;
+
+        const beforeLayerId =
+          map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
+          map.getLayer('place_country_major') ? 'place_country_major' :
+          map.getLayer('place_country_minor') ? 'place_country_minor' :
+          map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
+          map.getLayer('carto-labels-layer') ? 'carto-labels-layer' : undefined;
+
+        map.addSource(TEMP_HEATMAP_SOURCE_ID, {
+          type: 'image',
+          url: dataUrl,
+          coordinates: [
+            [-180, 85.0511],
+            [180, 85.0511],
+            [180, -85.0511],
+            [-180, -85.0511],
+          ],
+        });
+
+        map.addLayer(
+          {
+            id: TEMP_HEATMAP_LAYER_ID,
+            type: 'raster',
+            source: TEMP_HEATMAP_SOURCE_ID,
+            paint: {
+              'raster-opacity': 0.58,
+              'raster-fade-duration': 250,
+              'raster-resampling': 'linear',
+            },
+          },
+          beforeLayerId
+        );
+      } catch (err) {
+        console.warn('[MapLibre Temp] Heatmap mount error:', err);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      mountTempHeatmap();
+    } else {
+      map.once('style.load', mountTempHeatmap);
+    }
+
+    return cleanupTempLayer;
+  }, [map, isTempActive, activeGridData]);
+
+  // 2D City Temperature Badges
+  useEffect(() => {
+    if (!map || !isTempActive || !showStationMarkers || !activeGridData?.stations?.length) {
+      tempMarkersRef.current.forEach(({ marker }) => marker.remove());
+      tempMarkersRef.current = [];
+      return;
+    }
+
+    const stations = activeGridData.stations;
+    const markers: CityWindMarkerEntry[] = [];
+
+    for (const station of WIND_CITY_STATIONS) {
+      const sample = interpolateGridWeatherAt(station.lat, station.lng, stations, 0);
+      const tempRounded = Math.round(sample.temperature);
+      const [r, g, b] = getThermalColorRgb(sample.temperature);
+
+      const el = document.createElement('div');
+      el.className = 'mooearth-city-temp-badge cursor-pointer select-none transition-transform hover:scale-105';
+      el.style.cssText =
+        'display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:9999px;background:rgba(10,14,32,0.86);backdrop-filter:blur(6px);border:1px solid rgba(251,191,36,0.45);color:#fef3c7;font-size:10px;font-family:monospace;box-shadow:0 2px 10px rgba(0,0,0,0.6);white-space:nowrap;';
+      el.innerHTML = `<span style="width:7px;height:7px;border-radius:9999px;background:rgb(${r},${g},${b});display:inline-block;"></span><span style="color:#e2e8f0;font-weight:600;">${station.name}</span><span style="font-weight:800;color:#fde68a;">${tempRounded}°C</span>`;
+
+      const popup = new Popup({
+        offset: 12,
+        closeButton: true,
+        closeOnClick: true,
+        maxWidth: '210px',
+      }).setHTML(`
+        <div style="background:#090e1e;border:1px solid rgba(251,191,36,0.45);border-radius:10px;padding:10px;color:#f8fafc;font-family:monospace;font-size:11px;">
+          <div style="font-size:13px;font-weight:bold;color:#fde68a;margin-bottom:2px;">${station.name}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:6px;">${station.country}</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>Temp:</span><span style="font-weight:800;color:#fbbf24;">${sample.temperature.toFixed(1)}°C</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>Wind:</span><span>${Math.round(sample.windSpeed)} km/h</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Precip:</span><span>${sample.precipitation.toFixed(1)} mm</span></div>
+        </div>
+      `);
+
+      const marker = new Marker({ element: el, anchor: 'center' })
+        .setLngLat([station.lng, station.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      markers.push({ marker, station });
+    }
+
+    tempMarkersRef.current = markers;
+
+    const updateVisibility = () => {
+      const z = map.getZoom();
+      for (const item of tempMarkersRef.current) {
+        const element = item.marker.getElement();
+        if (element) {
+          element.style.display = z >= item.station.minZoom ? 'flex' : 'none';
+        }
+      }
+    };
+    updateVisibility();
+    map.on('zoom', updateVisibility);
+
+    return () => {
+      map.off('zoom', updateVisibility);
+      tempMarkersRef.current.forEach(({ marker }) => marker.remove());
+      tempMarkersRef.current = [];
+    };
+  }, [map, isTempActive, showStationMarkers, activeGridData]);
+
+  // 2D Cursor Temperature Readout
+  useEffect(() => {
+    if (!map || !isTempActive || !activeGridData?.stations?.length) {
+      setTempCursorTelemetry(null);
+      return;
+    }
+    const stations = activeGridData.stations;
+    const onMove = (e: any) => {
+      if (!e.lngLat || !e.point) return;
+      const sample = interpolateGridWeatherAt(e.lngLat.lat, e.lngLat.lng, stations, 0);
+      setTempCursorTelemetry({
+        x: e.point.x,
+        y: e.point.y,
+        lat: e.lngLat.lat,
+        lng: e.lngLat.lng,
+        temperature: sample.temperature,
+        windSpeed: sample.windSpeed,
+      });
+    };
+    const onLeave = () => setTempCursorTelemetry(null);
+    map.on('mousemove', onMove);
+    map.on('mouseout', onLeave);
+    return () => {
+      map.off('mousemove', onMove);
+      map.off('mouseout', onLeave);
+    };
+  }, [map, isTempActive, activeGridData]);
+
+  if (!isWindActive && !isTempActive) return null;
 
   return (
     <>
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-10"
-        style={{ width: '100%', height: '100%' }}
-      />
+      {isWindActive && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none z-10"
+          style={{ width: '100%', height: '100%' }}
+        />
+      )}
 
       {/* Floating Windy-Grade Wind Inspection Cursor & Touch Tooltip */}
-      {cursorTelemetry && (
+      {isWindActive && cursorTelemetry && (
         <div
           className="absolute pointer-events-none z-30 transition-transform duration-75 block"
           style={{
@@ -852,6 +1113,29 @@ export default function WeatherMapLibreOverlay({
                 <span>·</span>
                 <span className="text-cyan-200/70">{cursorTelemetry.cardinal} ({cursorTelemetry.directionDeg}°)</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating 2D Temperature Inspection Tooltip */}
+      {isTempActive && tempCursorTelemetry && (
+        <div
+          className="absolute pointer-events-none z-30 transition-transform duration-75 block"
+          style={{
+            left: `${Math.min(tempCursorTelemetry.x + 14, (typeof window !== 'undefined' ? window.innerWidth : 600) - 200)}px`,
+            top: `${Math.max(10, tempCursorTelemetry.y - 44)}px`,
+          }}
+        >
+          <div className="bg-[#0b1329]/95 border border-amber-400/50 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-2xl text-xs font-mono text-white flex items-center gap-2">
+            <span>🌡️</span>
+            <div className="flex flex-col leading-tight">
+              <span className="font-bold text-sm text-amber-300">
+                {tempCursorTelemetry.temperature.toFixed(1)}°C
+              </span>
+              <span className="text-[9px] text-white/60 font-sans">
+                Wind {Math.round(tempCursorTelemetry.windSpeed)} km/h · {tempCursorTelemetry.lat.toFixed(2)}°, {tempCursorTelemetry.lng.toFixed(2)}°
+              </span>
             </div>
           </div>
         </div>

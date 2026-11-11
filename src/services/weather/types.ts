@@ -341,6 +341,8 @@ export interface WeatherFetchState<T> {
 
 // ── Selected Location ─────────────────────────────────────────
 
+export type SearchFocusMode = 'place-max' | 'temperature';
+
 export interface SelectedWeatherLocation {
   latitude: number;
   longitude: number;
@@ -348,6 +350,8 @@ export interface SelectedWeatherLocation {
   country?: string;
   timezone: string;
   source: 'search' | 'globe-click' | 'station' | 'url';
+  featureType?: GeographicFeatureType;
+  boundingBox?: [number, number, number, number];
 }
 
 // ── Cache Metrics ─────────────────────────────────────────────
