@@ -1117,7 +1117,7 @@ export default function WeatherDashboard() {
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none h-[52px] sm:h-[54px] flex items-center">
         <div className="w-full px-3 sm:px-5 lg:px-6 py-2 flex items-center justify-between gap-2 lg:gap-4">
           {/* Left Zone: Brand Logo & Search */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0 flex-1 max-w-xl">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
             {/* MooEarth Brand Logo */}
             <Link
               href="/"
@@ -1142,7 +1142,7 @@ export default function WeatherDashboard() {
             </Link>
 
             {/* Search Bar */}
-            <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md min-w-[110px] sm:min-w-[160px]">
+            <div className="w-[155px] sm:w-[220px] lg:w-[210px] xl:w-[260px] 2xl:w-[300px] shrink-0">
               <WeatherSearch
                 onSelectLocation={handleSelectLocation}
                 focusMode={searchFocusMode}
@@ -1150,7 +1150,7 @@ export default function WeatherDashboard() {
                 onClear={() => {
                   setSelectedCountryOnGlobe(null);
                 }}
-                placeholder="Search monuments, places, cities..."
+                placeholder="Search monuments, places..."
                 initialQuery={
                   weather.selectedLocation
                     ? weather.selectedLocation.country &&
@@ -1165,8 +1165,8 @@ export default function WeatherDashboard() {
           </div>
 
           {/* Center Zone: Adaptive Telemetry, Quick Cities Popover & Hazards */}
-          <div className="hidden lg:flex items-center gap-2 xl:gap-2.5 shrink-0">
-            {/* Active Location Telemetry Pill */}
+          <div className="hidden lg:flex items-center gap-1.5 xl:gap-2.5 shrink-0">
+            {/* Active Location Telemetry Pill (shown cleanly on wide viewports) */}
             {weather.selectedLocation && displayedForecast?.current && (
               <button
                 type="button"
@@ -1174,17 +1174,17 @@ export default function WeatherDashboard() {
                   setIsPanelOpen(true);
                   setIsPanelMinimized(false);
                 }}
-                className="px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-xs font-mono text-cyan-200 flex items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all hover:scale-[1.02]"
+                className="hidden 2xl:flex px-2.5 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-xs font-mono text-cyan-200 items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.15)] transition-all hover:scale-[1.02]"
                 title="View full telemetry for active location"
               >
                 <span className="text-sm">📍</span>
-                <span className="font-bold text-white max-w-[90px] xl:max-w-[130px] truncate">
+                <span className="font-bold text-white max-w-[110px] truncate">
                   {weather.selectedLocation.name}
                 </span>
                 <span className="font-black text-cyan-300">
                   {Math.round(displayedForecast.current.temperature)}°{weather.units === 'fahrenheit' ? 'F' : 'C'}
                 </span>
-                <span className="text-white/50 text-[11px] hidden xl:inline truncate max-w-[85px]">
+                <span className="text-white/50 text-[11px] truncate max-w-[85px]">
                   {displayedForecast.current.weatherDescription}
                 </span>
               </button>

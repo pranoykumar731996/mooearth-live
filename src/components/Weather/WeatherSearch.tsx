@@ -320,7 +320,7 @@ export default function WeatherSearch({
       {/* Results Dropdown */}
       {isOpen && (
         <div
-          className="fixed left-3 right-3 top-[54px] sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:w-full z-50 sm:mt-2
+          className="fixed left-3 right-3 top-[54px] sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:w-full sm:min-w-[360px] md:min-w-[400px] z-50 sm:mt-2
                      max-h-[68vh] sm:max-h-[460px] overflow-y-auto overscroll-contain
                      rounded-2xl bg-[#080816]/95 backdrop-blur-2xl 
                      border border-white/10 shadow-2xl shadow-black/80 divide-y divide-white/5"

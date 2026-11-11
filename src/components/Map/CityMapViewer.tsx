@@ -3265,107 +3265,6 @@ export default function CityMapViewer({
 
 
 
-      {/* ── Geostationary Satellite & Nowcast Lightning Telemetry HUD ── */}
-      {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
-        <div className="absolute top-20 left-4 z-40 pointer-events-auto max-w-[95%] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
-          <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
-            {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base shrink-0">🛰️</span>
-                <span className="font-bold text-white text-[11px] tracking-wide">
-                  Geostationary Satellite Clouds
-                </span>
-                <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/30">
-                  REAL CLOUDS
-                </span>
-                {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('iodc') || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true') && (
-                  <span className="text-[9px] font-mono font-bold text-amber-300 px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-500/30" title="EUMETSAT Meteosat-9 IODC (45.5°E) Prototype Active">
-                    IODC 45.5°E
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 ml-auto">
-                {/* Amber Live Latency Pill or HD Ground Detail indicator */}
-                {currentZoom >= 11.8 ? (
-                  <div className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-mono font-bold text-[10px] tracking-wide flex items-center gap-1 shrink-0">
-                    <span>✨</span>
-                    <span>HD Places Active</span>
-                  </div>
-                ) : (
-                  <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                    <span>Live • {satelliteLatencyLabel}</span>
-                  </div>
-                )}
-
-                {/* Crossbar to hide the HUD */}
-                <button
-                  type="button"
-                  data-testid="close-satellite-hud-btn"
-                  onClick={() => setIsSatelliteHudDismissed(true)}
-                  className="w-6 h-6 rounded-lg bg-white/10 hover:bg-rose-500/30 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold transition-all border border-white/10 hover:border-rose-400/50 cursor-pointer shrink-0 active:scale-95"
-                  title="Hide Satellite Clouds HUD"
-                  aria-label="Hide Satellite Clouds HUD"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
-              <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
-                {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
-                  const isActive = (spectralMode || 'visible') === mode;
-                  const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => onSelectSpectralMode?.(mode)}
-                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                          : 'text-white/60 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Nowcast Lightning Toggle Button */}
-              {lightningFeed && (
-                <button
-                  type="button"
-                  onClick={() => setShowLightning(!showLightning)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all border cursor-pointer ${
-                    showLightning
-                      ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
-                  }`}
-                  title="Toggle Nowcast Lightning strikes overlay"
-                >
-                  <span className="animate-pulse">⚡</span>
-                  <span>Nowcast Lightning</span>
-                  <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
-                    {lightningFeed.totalCount}
-                  </span>
-                </button>
-              )}
-            </div>
-
-            {/* Bottom Subtitle */}
-            <div className="text-[9px] font-mono text-white/40 truncate">
-              {satelliteObservationUtc || satelliteObservation.utcStr || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('iodc') || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true') ? 'EUMETSAT IODC (45.5°E) / NASA EOSDIS / NOAA GOES • 10-15m Scans' : 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain')}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Top Floating Navigation HUD ──────────────── */}
       <div className="absolute top-3 left-2.5 right-2.5 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
         {/* Left: "Return to Earth" Action & City Badge */}
@@ -3464,6 +3363,107 @@ export default function CityMapViewer({
                     : ''}
                 </span>
               </button>
+            </div>
+          )}
+
+          {/* Geostationary Satellite & Nowcast Lightning Telemetry HUD */}
+          {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
+            <div className="w-fit max-w-[92vw] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
+              <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
+                {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base shrink-0">🛰️</span>
+                    <span className="font-bold text-white text-[11px] tracking-wide">
+                      Geostationary Satellite Clouds
+                    </span>
+                    <span className="text-[9px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-500/20 border border-emerald-500/30">
+                      REAL CLOUDS
+                    </span>
+                    {typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('iodc') || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true') && (
+                      <span className="text-[9px] font-mono font-bold text-amber-300 px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-500/30" title="EUMETSAT Meteosat-9 IODC (45.5°E) Prototype Active">
+                        IODC 45.5°E
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    {/* Amber Live Latency Pill or HD Ground Detail indicator */}
+                    {currentZoom >= 11.8 ? (
+                      <div className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-mono font-bold text-[10px] tracking-wide flex items-center gap-1 shrink-0">
+                        <span>✨</span>
+                        <span>HD Places Active</span>
+                      </div>
+                    ) : (
+                      <div className="px-2 py-0.5 rounded-full bg-amber-400 text-black font-extrabold text-[10px] tracking-wide shadow-[0_0_12px_rgba(251,191,36,0.8)] flex items-center gap-1 shrink-0 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                        <span>Live • {satelliteLatencyLabel}</span>
+                      </div>
+                    )}
+
+                    {/* Crossbar to hide the HUD */}
+                    <button
+                      type="button"
+                      data-testid="close-satellite-hud-btn"
+                      onClick={() => setIsSatelliteHudDismissed(true)}
+                      className="w-6 h-6 rounded-lg bg-white/10 hover:bg-rose-500/30 text-white/70 hover:text-white flex items-center justify-center text-xs font-bold transition-all border border-white/10 hover:border-rose-400/50 cursor-pointer shrink-0 active:scale-95"
+                      title="Hide Satellite Clouds HUD"
+                      aria-label="Hide Satellite Clouds HUD"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
+                  <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                    {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
+                      const isActive = (spectralMode || 'visible') === mode;
+                      const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => onSelectSpectralMode?.(mode)}
+                          className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Nowcast Lightning Toggle Button */}
+                  {lightningFeed && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLightning(!showLightning)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                        showLightning
+                          ? 'bg-rose-500/25 border-rose-400/60 text-white shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                          : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                      }`}
+                      title="Toggle Nowcast Lightning strikes overlay"
+                    >
+                      <span className="animate-pulse">⚡</span>
+                      <span>Nowcast Lightning</span>
+                      <span className="text-[9px] px-1 rounded bg-white/10 text-rose-300 font-bold">
+                        {lightningFeed.totalCount}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Bottom Subtitle */}
+                <div className="text-[9px] font-mono text-white/40 truncate">
+                  {satelliteObservationUtc || satelliteObservation.utcStr || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('iodc') || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true') ? 'EUMETSAT IODC (45.5°E) / NASA EOSDIS / NOAA GOES • 10-15m Scans' : 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain')}
+                </div>
+              </div>
             </div>
           )}
 
