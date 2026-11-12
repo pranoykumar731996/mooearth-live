@@ -316,7 +316,9 @@ async function queryNominatim(
           item.class === 'historic' ||
           item.class === 'amenity' ||
           item.class === 'building' ||
-          ['attraction', 'monument', 'memorial', 'artwork', 'theme_park'].includes(item.type || ''))
+          item.class === 'man_made' ||
+          ['attraction', 'monument', 'memorial', 'artwork', 'theme_park', 'tower'].includes(item.type || '') ||
+          (item.display_name && /eiffel|tower|monument|museum|statue|palace|castle|bridge/i.test(item.display_name)))
       ) {
         featureType = 'landmark';
       }

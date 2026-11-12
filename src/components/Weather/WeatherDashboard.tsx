@@ -55,6 +55,12 @@ import {
 
 function getMaxZoomForFeature(featureType?: GeographicFeatureType): number {
   switch (featureType) {
+    case 'country':
+      return 5.5;
+    case 'administrative':
+      return 10.5;
+    case 'mountain':
+      return 15.5;
     case 'landmark':
     case 'street':
     case 'address':
@@ -62,17 +68,8 @@ function getMaxZoomForFeature(featureType?: GeographicFeatureType): number {
     case 'airport':
     case 'station':
     case 'water':
-      return 18.0;
-    case 'mountain':
-      return 15.5;
-    case 'city':
-      return 16.0;
-    case 'administrative':
-      return 10.5;
-    case 'country':
-      return 5.5;
     default:
-      return 17.5;
+      return 18.0;
   }
 }
 import type { GlobeApi } from '@/hooks/useGlobeControls';

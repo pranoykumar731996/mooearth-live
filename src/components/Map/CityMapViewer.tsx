@@ -1356,23 +1356,11 @@ export default function CityMapViewer({
   }, [initMap, activeStyleKey]);
 
   const placeMaxTargetZoom = useMemo(() => {
-    if (
-      featureType === 'landmark' ||
-      featureType === 'street' ||
-      featureType === 'address' ||
-      featureType === 'park' ||
-      featureType === 'airport' ||
-      featureType === 'station' ||
-      featureType === 'water'
-    ) {
-      return 18.0;
-    }
-    if (featureType === 'mountain') return 15.5;
-    if (featureType === 'city') return 16.0;
-    if (featureType === 'administrative') return 10.5;
     if (featureType === 'country') return 5.5;
-    return Math.max(initialZoom, 17.5);
-  }, [featureType, initialZoom]);
+    if (featureType === 'administrative') return 10.5;
+    if (featureType === 'mountain') return 15.5;
+    return 18.0;
+  }, [featureType]);
 
   const handleQuickZoomMax = useCallback(() => {
     onFocusModeChange?.('place-max');
