@@ -306,9 +306,20 @@ async function queryNominatim(
       const lon = parseFloat(item.lon);
       const addr = item.address || {};
       const cityName = addr.city || addr.town || addr.village || addr.suburb;
+      const firstSegment = item.display_name ? item.display_name.split(',')[0].trim() : '';
       const primaryName =
-        addr.road || cityName || addr.county || item.display_name.split(',')[0].trim();
-      const featureType = classifyOsmFeature(item.class, item.type, item.type);
+        firstSegment || addr.road || cityName || addr.county || 'Location';
+      let featureType = classifyOsmFeature(item.class, item.type, item.type);
+      if (
+        featureType === 'city' &&
+        (item.class === 'tourism' ||
+          item.class === 'historic' ||
+          item.class === 'amenity' ||
+          item.class === 'building' ||
+          ['attraction', 'monument', 'memorial', 'artwork', 'theme_park'].includes(item.type || ''))
+      ) {
+        featureType = 'landmark';
+      }
 
       const bbox: [number, number, number, number] | undefined = item.boundingbox
         ? [
