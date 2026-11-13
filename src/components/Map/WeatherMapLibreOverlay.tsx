@@ -57,6 +57,70 @@ interface Particle2D {
   age: number;
   maxAge: number;
   speed: number;
+  spawnFrames?: number;
+}
+
+export interface ZoomWindConfig {
+  targetCount: number;
+  baseTrailLen: number;
+  baseStrokeWidth: number;
+  headRadius: number;
+}
+
+/**
+ * Multi-Scale Zoom-Adaptive Density, Trail Geometry & Stability (Windy / Zoom Earth Parity)
+ * Dynamically adjusts particle pool, trail length, stroke width, and spacing across zoom levels.
+ */
+export function getZoomWindConfig(zoom: number, isMobile: boolean): ZoomWindConfig {
+  const z = Math.max(1, Math.min(18, zoom));
+  let targetCount: number;
+  let baseTrailLen: number;
+  let baseStrokeWidth: number;
+  let headRadius: number;
+
+  if (z <= 3.5) {
+    // 1. Global / Planetary (z: 1.0 - 3.5) - Regularized spacing to keep continents clean
+    const t = Math.max(0, (z - 1.0) / 2.5);
+    targetCount = isMobile ? Math.round(900 + t * 400) : Math.round(1800 + t * 700);
+    baseTrailLen = Math.round(6 + t * 2); // 6 - 8
+    baseStrokeWidth = isMobile ? 0.75 + t * 0.15 : 0.95 + t * 0.2; // 0.95 - 1.15
+    headRadius = isMobile ? 0.8 + t * 0.2 : 1.1 + t * 0.2;
+  } else if (z <= 6.5) {
+    // 2. Synoptic / Subcontinent (z: 3.5 - 6.5) - Peak marine density (Windy parity over Arabian Sea / Bay of Bengal)
+    const t = (z - 3.5) / 3.0;
+    targetCount = isMobile ? Math.round(1300 + t * 500) : Math.round(2500 + t * 900); // 2500 -> 3400 desktop
+    baseTrailLen = Math.round(8 + t * 2.5); // 8 - 11
+    baseStrokeWidth = isMobile ? 0.9 + t * 0.3 : 1.15 + t * 0.35; // 1.15 - 1.5
+    headRadius = isMobile ? 1.0 + t * 0.2 : 1.3 + t * 0.3;
+  } else if (z <= 10.5) {
+    // 3. Regional / State (z: 6.5 - 10.5) - Gradually thinning so local vectors are crisp
+    const t = (z - 6.5) / 4.0;
+    targetCount = isMobile ? Math.round(1800 - t * 750) : Math.round(3400 - t * 1400); // 3400 -> 2000
+    baseTrailLen = Math.round(11 + t * 2.5); // 11 - 13
+    baseStrokeWidth = isMobile ? 1.2 + t * 0.3 : 1.5 + t * 0.45; // 1.5 - 1.95
+    headRadius = isMobile ? 1.2 + t * 0.25 : 1.6 + t * 0.35;
+  } else if (z <= 14.0) {
+    // 4. Metro / City (z: 10.5 - 14.0) - High clarity, no blizzard over streets
+    const t = (z - 10.5) / 3.5;
+    targetCount = isMobile ? Math.round(1050 - t * 450) : Math.round(2000 - t * 900); // 2000 -> 1100
+    baseTrailLen = Math.round(13 + t * 3); // 13 - 16
+    baseStrokeWidth = isMobile ? 1.5 + t * 0.4 : 1.95 + t * 0.5; // 1.95 - 2.45
+    headRadius = isMobile ? 1.45 + t * 0.3 : 1.95 + t * 0.4;
+  } else {
+    // 5. Street / Monument (z: > 14.0) - HD Places Protection: sparse, sleek aerodynamic comets
+    const t = Math.min(1.0, (z - 14.0) / 4.0);
+    targetCount = isMobile ? Math.round(600 - t * 250) : Math.round(1100 - t * 450); // 1100 -> 650
+    baseTrailLen = Math.round(16 + t * 2); // 16 - 18
+    baseStrokeWidth = isMobile ? 1.9 + t * 0.35 : 2.45 + t * 0.45; // 2.45 - 2.9
+    headRadius = isMobile ? 1.75 + t * 0.3 : 2.35 + t * 0.45;
+  }
+
+  return {
+    targetCount,
+    baseTrailLen,
+    baseStrokeWidth,
+    headRadius,
+  };
 }
 
 interface WindCursorTelemetry {
@@ -247,7 +311,6 @@ export default function WeatherMapLibreOverlay({
   const lastFrameTimeRef = useRef<number>(0);
   const isMapMovingRef = useRef<boolean>(false);
 
-  const particleCount = isMobile ? 1800 : 3600;
   const isWindActive = activeLayer === 'wind';
   const isTempActive = activeLayer === 'temperature';
   const activeGridData = weatherGridData || localGridData;
@@ -637,7 +700,7 @@ export default function WeatherMapLibreOverlay({
     const windField = windFieldRef.current;
 
     // Ocean-centric importance sampling particle spawner (Windy Parity: 85% ocean / 15% land)
-    const spawnParticle = (): Particle2D => {
+    const spawnParticle = (initialAgeRandom: boolean = true): Particle2D => {
       const bounds = map.getBounds();
       const west = bounds.getWest();
       const east = bounds.getEast();
@@ -668,16 +731,18 @@ export default function WeatherMapLibreOverlay({
         lat: bestLat,
         lng: bestLng,
         trail: [{ lat: bestLat, lng: bestLng }],
-        age: Math.floor(Math.random() * maxAge),
+        age: initialAgeRandom ? Math.floor(Math.random() * maxAge) : 0,
         maxAge,
         speed: Math.max(5, sample.speed),
+        spawnFrames: initialAgeRandom ? 12 : 0,
       };
     };
 
-    // Initialize screen particle pool
+    // Initialize screen particle pool based on current camera zoom
+    const initialConfig = getZoomWindConfig(map.getZoom(), isMobile);
     particlesRef.current = [];
-    for (let i = 0; i < particleCount; i++) {
-      particlesRef.current.push(spawnParticle());
+    for (let i = 0; i < initialConfig.targetCount; i++) {
+      particlesRef.current.push(spawnParticle(true));
     }
 
     // Active movement listeners to maintain fluid continuous streamline flow during camera pan/zoom
@@ -685,19 +750,21 @@ export default function WeatherMapLibreOverlay({
       isMapMovingRef.current = true;
     };
 
+    // Staggered recycling: advance out-of-bounds particles with random jitter towards expiration
+    // so they recycle gracefully over subsequent frames rather than flashing the canvas simultaneously
     const handleMoveEnd = () => {
       isMapMovingRef.current = false;
       const bounds = map.getBounds();
-      const west = bounds.getWest();
-      const east = bounds.getEast();
-      const south = Math.max(-80, bounds.getSouth());
-      const north = Math.min(80, bounds.getNorth());
+      const west = bounds.getWest() - 2;
+      const east = bounds.getEast() + 2;
+      const south = Math.max(-80, bounds.getSouth() - 2);
+      const north = Math.min(80, bounds.getNorth() + 2);
       const particles = particlesRef.current;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         if (p.lat < south || p.lat > north || p.lng < west || p.lng > east) {
-          particles[i] = spawnParticle();
+          p.age = Math.max(p.age, p.maxAge - Math.floor(Math.random() * 15));
         }
       }
     };
@@ -712,6 +779,7 @@ export default function WeatherMapLibreOverlay({
       const width = container.clientWidth;
       const height = container.clientHeight;
       const zoom = map.getZoom();
+      const windConfig = getZoomWindConfig(zoom, isMobile);
 
       // Delta time calculation clamped between 6ms (~165fps) and 40ms (25fps)
       const lastTime = lastFrameTimeRef.current || now;
@@ -729,6 +797,16 @@ export default function WeatherMapLibreOverlay({
       ctx.lineJoin = 'round';
 
       const particles = particlesRef.current;
+      const targetCount = windConfig.targetCount;
+
+      // Smooth pool expansion when zooming into higher-density tiers
+      if (particles.length < targetCount) {
+        const toAdd = Math.min(20, targetCount - particles.length);
+        for (let a = 0; a < toAdd; a++) {
+          particles.push(spawnParticle(false));
+        }
+      }
+
       const bounds = map.getBounds();
       const southLimit = bounds.getSouth() - 4;
       const northLimit = bounds.getNorth() + 4;
@@ -757,8 +835,9 @@ export default function WeatherMapLibreOverlay({
         const nextLng = ((((p.lng + dLng + 180) % 360) + 360) % 360) - 180;
         const nextLat = Math.max(-80, Math.min(80, p.lat + dLat));
 
-        // Dynamically adjust trail length by speed: faster winds have longer, sleeker streaks
-        const targetTrailLen = currentSpeed > 65 ? 11 : currentSpeed > 30 ? 9 : 7;
+        // Dynamically adjust trail length by speed & zoom
+        const speedMultiplier = currentSpeed > 65 ? 1.25 : currentSpeed > 30 ? 1.05 : 0.88;
+        const targetTrailLen = Math.max(4, Math.round(windConfig.baseTrailLen * speedMultiplier));
         p.trail.push({ lat: nextLat, lng: nextLng });
         while (p.trail.length > targetTrailLen) {
           p.trail.shift();
@@ -768,16 +847,23 @@ export default function WeatherMapLibreOverlay({
         p.lng = nextLng;
         p.age += dtRatio;
 
-        // Respawn if aged out or drifted outside viewport
-        if (
-          p.age >= p.maxAge ||
+        const isOutOfBounds =
           p.lat < southLimit ||
           p.lat > northLimit ||
           p.lng < westLimit ||
-          p.lng > eastLimit
-        ) {
-          particles[i] = spawnParticle();
-          continue;
+          p.lng > eastLimit;
+
+        // Respawn if aged out or drifted outside viewport
+        // If particle pool exceeds current zoom tier target, drain smoothly instead of respawning
+        if (p.age >= p.maxAge || isOutOfBounds) {
+          if (particles.length > targetCount) {
+            particles.splice(i, 1);
+            i--;
+            continue;
+          } else {
+            particles[i] = spawnParticle(false);
+            continue;
+          }
         }
 
         const trailLen = p.trail.length;
@@ -800,24 +886,36 @@ export default function WeatherMapLibreOverlay({
         }
 
         if (hasWrapBreak) {
-          particles[i] = spawnParticle();
-          continue;
+          if (particles.length > targetCount) {
+            particles.splice(i, 1);
+            i--;
+            continue;
+          } else {
+            particles[i] = spawnParticle(false);
+            continue;
+          }
         }
 
         // Smooth sinusoidal lifecycle alpha fade-in / fade-out
         const lifeProgress = Math.min(1.0, p.age / p.maxAge);
         const lifeAlpha = Math.sin(lifeProgress * Math.PI);
 
+        // Entrance ramp: newly spawned particles fade in over 10 frames for zero-flicker birth
+        p.spawnFrames = Math.min(12, (p.spawnFrames ?? 12) + 1);
+        const entranceAlpha = Math.min(1.0, p.spawnFrames / 10);
+        const combinedAlpha = lifeAlpha * entranceAlpha;
+
         // Ocean vs Land density & opacity modulation (Windy Parity)
-        // Oceans & seas get full bright streaming comets; Land is attenuated by 70% so continents stay clean & legible
+        // Oceans & seas get full bright streaming comets; Land is attenuated so continents stay clean & legible
         const oceanWeight = getOceanWeight(p.lat, p.lng);
-        const landAtten = 0.28 + 0.72 * oceanWeight;
+        const baseLandFloor = zoom >= 11 ? 0.35 : 0.28;
+        const landAtten = baseLandFloor + (1.0 - baseLandFloor) * oceanWeight;
 
         // Draw aerodynamic comet streamline from fading tail to bright head
         for (let j = 0; j < trailLen - 1; j++) {
           const f = (j + 1) / (trailLen - 1); // 0.0 at tail -> 1.0 at head
-          const segAlpha = Math.min(0.96, Math.max(0.02, Math.pow(f, 1.5) * lifeAlpha * 0.95 * landAtten));
-          const segWidth = ((isMobile ? 0.6 : 0.8) + f * (isMobile ? 0.9 : 1.4)) * (0.65 + 0.35 * oceanWeight);
+          const segAlpha = Math.min(0.96, Math.max(0.02, Math.pow(f, 1.45) * combinedAlpha * 0.95 * landAtten));
+          const segWidth = (windConfig.baseStrokeWidth * (0.75 + 0.45 * f)) * (0.65 + 0.35 * oceanWeight);
 
           // Color attributions:
           // Cyclone/storm (> 75 km/h): vivid magenta/crimson/white head
@@ -842,14 +940,14 @@ export default function WeatherMapLibreOverlay({
 
         // Draw crisp bright head cap on particle leader
         const headPt = pts[trailLen - 1];
-        const headAlpha = Math.min(0.98, lifeAlpha * 0.95 * landAtten);
+        const headAlpha = Math.min(0.98, combinedAlpha * 0.95 * landAtten);
         ctx.fillStyle = p.speed > 75
           ? `rgba(255, 230, 255, ${headAlpha.toFixed(2)})`
           : p.speed > 40
           ? `rgba(255, 245, 205, ${headAlpha.toFixed(2)})`
           : `rgba(255, 255, 255, ${headAlpha.toFixed(2)})`;
         ctx.beginPath();
-        ctx.arc(headPt.x, headPt.y, (isMobile ? 0.9 : 1.2) * (0.7 + 0.3 * oceanWeight), 0, Math.PI * 2);
+        ctx.arc(headPt.x, headPt.y, windConfig.headRadius * (0.7 + 0.3 * oceanWeight), 0, Math.PI * 2);
         ctx.fill();
       }
 
@@ -869,7 +967,7 @@ export default function WeatherMapLibreOverlay({
         animFrameIdRef.current = null;
       }
     };
-  }, [map, isWindActive, particlesEnabled, isMobile, reducedMotion, particleCount]);
+  }, [map, isWindActive, particlesEnabled, isMobile, reducedMotion]);
 
   // ── 6. Live 2D Temperature Heatmap Fallback Fetch + Raster + City Badges + Cursor ──
   useEffect(() => {
