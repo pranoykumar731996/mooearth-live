@@ -1166,7 +1166,7 @@ export default function CityMapViewer({
           center: [initCoords.longitude, initCoords.latitude],
           zoom: initCoords.initialZoom,
           minZoom: 1.8,
-          maxZoom: 18.5,
+          maxZoom: 18.0,
           renderWorldCopies: false,
           pitch: 0,
           bearing: 0,
@@ -1285,17 +1285,25 @@ export default function CityMapViewer({
         map.on('error', (e) => {
           // Check for critical style loading or authorization failures
           const errStr = e?.error?.message || '';
+          // Ignore non-fatal individual tile loading errors or raster 404s during rapid zoom/pan
+          if (
+            errStr.includes('tile') ||
+            errStr.includes('status: 404') ||
+            errStr.includes('status 404') ||
+            errStr.includes('HTTP 404') ||
+            errStr.includes('404')
+          ) {
+            return;
+          }
           const isCritical =
-            errStr.includes('Failed to fetch') ||
-            errStr.includes('style') ||
+            (errStr.includes('Failed to fetch') && (errStr.includes('style') || errStr.includes('sprite'))) ||
             errStr.includes('Worker failed to load') ||
             errStr.includes('401') ||
-            errStr.includes('403') ||
-            errStr.includes('404');
+            errStr.includes('403');
 
           if (isCritical) {
             console.warn(`[CityMapViewer] MapLibre error encountered on style "${styleKey}":`, e.error);
-            if (styleKey === 'satellite' || styleKey === 'windy-satellite' || styleKey === 'atmospheric-satellite') {
+            if (styleKey === 'satellite' || styleKey === 'windy-satellite' || styleKey === 'atmospheric-satellite' || styleKey === 'wind-dark') {
               // Atmospheric satellite has multiple fallback tile sources; do not trigger disruptive failover
               return;
             }
@@ -1359,7 +1367,7 @@ export default function CityMapViewer({
     if (featureType === 'country') return 5.5;
     if (featureType === 'administrative') return 10.5;
     if (featureType === 'mountain') return 15.5;
-    return 18.0;
+    return 17.5;
   }, [featureType]);
 
   const handleQuickZoomMax = useCallback(() => {

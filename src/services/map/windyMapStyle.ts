@@ -18,7 +18,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
-      maxzoom: 19,
+      maxzoom: 17,
       attribution:
         'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
     },
@@ -55,7 +55,7 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       type: 'raster',
       source: 'esri_satellite_imagery',
       minzoom: 0,
-      maxzoom: 19,
+      maxzoom: 22,
       paint: {
         'raster-opacity': 1.0,
         'raster-resampling': 'linear',
@@ -205,7 +205,7 @@ export const WIND_DARK_MAP_STYLE: any = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
-      maxzoom: 19,
+      maxzoom: 17,
       attribution:
         'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
     },
@@ -242,7 +242,7 @@ export const WIND_DARK_MAP_STYLE: any = {
       type: 'raster',
       source: 'esri_satellite_imagery',
       minzoom: 0,
-      maxzoom: 19,
+      maxzoom: 22,
       paint: {
         'raster-opacity': 0.78,
         'raster-brightness-max': 0.90,

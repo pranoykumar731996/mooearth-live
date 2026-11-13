@@ -1179,6 +1179,21 @@ export default function WeatherMapLibreOverlay({
         />
       )}
 
+      {/* Live Atmospheric Stream Model Badge (Windy & Zoom Earth Parity) */}
+      {isWindActive && (
+        <div
+          className="absolute bottom-4 left-3 pointer-events-auto z-20 flex items-center gap-2 bg-[#080e1e]/90 backdrop-blur-md border border-cyan-500/35 rounded-lg px-2.5 py-1.5 shadow-xl text-[10px] font-mono text-cyan-200 select-none"
+          title="Live atmospheric circulation vector field powered by NOAA Global Forecast System (GFS) and Open-Meteo with 10,512 regular planetary nodes."
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <span className="font-bold text-white tracking-wide">NOAA GFS</span>
+          <span className="text-white/30">|</span>
+          <span className="text-cyan-300">10,512 Live Vector Nodes</span>
+          <span className="text-white/30">|</span>
+          <span className="text-emerald-300 font-sans font-medium">Real Air Flow (10m)</span>
+        </div>
+      )}
+
       {/* Floating Windy-Grade Wind Inspection Cursor & Touch Tooltip */}
       {isWindActive && cursorTelemetry && (
         <div
