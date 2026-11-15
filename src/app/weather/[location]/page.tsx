@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getAllCountries, getCountryBySlug, resolveCanonicalSlug } from '@/data/countries';
 import { getAllCities, getCityBySlug, resolveCanonicalCitySlug, getNearbyCities } from '@/data/places';
 import { fetchCountryWeather } from '@/services/weatherService';
+import { universalSearchLocations } from '@/services/geocoding/universalGeocodingService';
 import { shouldIndexWeatherPage } from '@/lib/seo/weatherQualityGate';
 import LocationWeatherTemplate, { LocationWeatherViewData } from '@/components/Weather/LocationWeatherTemplate';
 
@@ -123,7 +124,56 @@ export async function generateMetadata({ params }: LocationWeatherPageProps): Pr
     };
   }
 
-  // 3. Not Found
+  // 3. Dynamic Global Geocoding Resolution for ANY City or Town Worldwide
+  try {
+    const query = decoded.replace(/-/g, ' ');
+    const searchRes = await universalSearchLocations(query, 1);
+    if (searchRes?.results && searchRes.results.length > 0) {
+      const loc = searchRes.results[0];
+      const weatherResult = await fetchCountryWeather(loc.latitude, loc.longitude);
+      const obs = weatherResult.observation;
+
+      let title = `${loc.name} Temperature Today: Live Weather & 7-Day Forecast | MooEarth Live`;
+      let description = `Real-time temperature and meteorological forecast for ${loc.name}, ${loc.country || ''}.`;
+
+      if (obs) {
+        const tempC = Math.round(obs.temperature);
+        const tempF = Math.round((obs.temperature * 9) / 5 + 32);
+        const tomorrow = obs.daily?.[1];
+        const tomorrowNote = tomorrow
+          ? ` Tomorrow: ${tomorrow.dayName} will be ${tomorrow.weatherDescription.toLowerCase()} with high of ${tomorrow.temperatureMax}°C (${Math.round((tomorrow.temperatureMax * 9) / 5 + 32)}°F).`
+          : '';
+
+        title = `${loc.name} Temperature Today: Live ${tempC}°C (${tempF}°F), Forecast & Radar | MooEarth Live`;
+        description = `Live weather in ${loc.name}, ${loc.country || ''}: current temperature is ${tempC}°C (${tempF}°F), feels like ${Math.round(obs.apparentTemperature)}°C, ${obs.weatherDescription.toLowerCase()}.${tomorrowNote} Hourly outlook, 7-day forecast, wind, humidity, pressure, and interactive 3D radar.`;
+      }
+
+      const canonicalUrl = `https://www.mooearth.live/weather/${decoded}`;
+
+      return {
+        title,
+        description,
+        alternates: { canonical: canonicalUrl },
+        robots: { index: true, follow: true },
+        openGraph: {
+          title,
+          description,
+          url: canonicalUrl,
+          type: 'website',
+          images: [{ url: 'https://www.mooearth.live/icons/icon-512.png', width: 512, height: 512, alt: `${loc.name} Weather` }],
+        },
+        twitter: {
+          card: 'summary_large_image',
+          title,
+          description,
+        },
+      };
+    }
+  } catch {
+    // ignore dynamic lookup error and proceed to 404
+  }
+
+  // 4. Not Found
   return {
     title: 'Weather Station Not Found | MooEarth Live',
     description: 'The requested geographic location could not be found.',
@@ -202,6 +252,41 @@ export default async function LocationWeatherPage({ params }: LocationWeatherPag
     };
 
     return <LocationWeatherTemplate data={viewData} />;
+  }
+
+  // 3. Dynamic Global Geocoding Resolution for ANY City or Town Worldwide
+  let dynamicViewData: LocationWeatherViewData | null = null;
+  try {
+    const query = decoded.replace(/-/g, ' ');
+    const searchRes = await universalSearchLocations(query, 1);
+    if (searchRes?.results && searchRes.results.length > 0) {
+      const loc = searchRes.results[0];
+      const weatherResult = await fetchCountryWeather(loc.latitude, loc.longitude);
+
+      dynamicViewData = {
+        slug: decoded,
+        name: loc.name,
+        type: 'city',
+        countryName: loc.country || 'Global',
+        countrySlug: (loc.country || 'global').toLowerCase().replace(/\s+/g, '-'),
+        state: loc.admin1,
+        region: loc.country || 'Global',
+        coordinates: { lat: loc.latitude, lng: loc.longitude },
+        timezone: loc.timezone || 'auto',
+        description: `${loc.name} is a global municipal destination located in ${loc.country || 'the world'}.`,
+        geographyContext: `${loc.name} is situated at latitude ${loc.latitude.toFixed(2)}°, longitude ${loc.longitude.toFixed(2)}°.`,
+        weather: weatherResult.observation,
+        isTemporaryError: weatherResult.isTemporaryError,
+        errorMessage: weatherResult.errorMessage,
+        nearbyOrSubLocations: [],
+      };
+    }
+  } catch {
+    // proceed to notFound
+  }
+
+  if (dynamicViewData) {
+    return <LocationWeatherTemplate data={dynamicViewData} />;
   }
 
   // Neither city nor country

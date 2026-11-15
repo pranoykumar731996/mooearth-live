@@ -62,7 +62,6 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
     description,
     geographyContext,
     weather,
-    isTemporaryError,
     errorMessage,
     nearbyOrSubLocations = [],
   } = data;
@@ -127,6 +126,15 @@ export default function LocationWeatherTemplate({ data }: LocationWeatherTemplat
 
   if (weather) {
     placeJsonLd.description = `Verified real-time meteorological observation for ${name} (${countryName}): ${Math.round(weather.temperature)}°C, ${weather.weatherDescription}. Atmospheric pressure: ${Math.round(weather.surfacePressure)} hPa, wind: ${weather.windSpeed} km/h.`;
+    placeJsonLd.additionalProperty = [
+      { '@type': 'PropertyValue', name: 'Current Temperature', value: `${Math.round(weather.temperature)}°C` },
+      { '@type': 'PropertyValue', name: 'Temperature Fahrenheit', value: `${Math.round((weather.temperature * 9) / 5 + 32)}°F` },
+      { '@type': 'PropertyValue', name: 'Feels Like', value: `${Math.round(weather.apparentTemperature)}°C` },
+      { '@type': 'PropertyValue', name: 'Weather Condition', value: weather.weatherDescription },
+      { '@type': 'PropertyValue', name: 'Relative Humidity', value: `${weather.relativeHumidity}%` },
+      { '@type': 'PropertyValue', name: 'Wind Speed', value: `${weather.windSpeed} km/h` },
+      { '@type': 'PropertyValue', name: 'Surface Pressure', value: `${Math.round(weather.surfacePressure)} hPa` },
+    ];
   }
 
   const tomorrowForecast = weather?.daily?.[1];
