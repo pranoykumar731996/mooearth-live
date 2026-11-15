@@ -104,6 +104,20 @@ if (typeof esri.style === 'object') {
     source.attribution.includes('Esri') && source.attribution.includes('OpenStreetMap'),
     'Esri attribution honors Esri and OpenStreetMap licenses'
   );
+  assert(
+    source.maxzoom <= 17,
+    `Esri street source maxzoom (${source.maxzoom}) is <= 17 to prevent "Map data not yet available" dummy tiles at high zoom`
+  );
+}
+
+// Check Esri Topo Relief
+const terrain = MAP_STYLES.terrain;
+if (typeof terrain.style === 'object') {
+  const topoSource = (terrain.style.sources as any)['esri-topo-source'];
+  assert(
+    topoSource && topoSource.maxzoom <= 17,
+    `Esri topo source maxzoom (${topoSource?.maxzoom}) is <= 17 to prevent "Map data not yet available" dummy tiles at high zoom`
+  );
 }
 
 // Check MapTiler Streets Vector
@@ -191,6 +205,10 @@ assert(
 assert(
   getFailoverStyle('esri-street', true) === 'osm',
   'Esri Street secondary failover switches to OpenStreetMap standard'
+);
+assert(
+  getFailoverStyle('wind-dark', true) === 'satellite',
+  'Wind Dark failover preserves dark atmospheric satellite view instead of daytime street map'
 );
 assert(
   getFailoverStyle('liberty', false) === 'liberty',

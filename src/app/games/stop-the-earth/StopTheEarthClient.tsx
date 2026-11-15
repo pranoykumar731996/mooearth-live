@@ -61,6 +61,7 @@ const SATELLITE_STYLE: any = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
+      maxzoom: 17,
       attribution:
         'Tiles &copy; Esri &mdash; Maxar, Earthstar Geographics, USDA, USGS',
     },
@@ -70,6 +71,7 @@ const SATELLITE_STYLE: any = {
         'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
+      maxzoom: 17,
     },
   },
   layers: [
@@ -78,14 +80,14 @@ const SATELLITE_STYLE: any = {
       type: 'raster',
       source: 'esri-satellite',
       minzoom: 0,
-      maxzoom: 19,
+      maxzoom: 22,
     },
     {
       id: 'esri-labels-layer',
       type: 'raster',
       source: 'esri-labels',
       minzoom: 0,
-      maxzoom: 19,
+      maxzoom: 22,
       layout: {
         visibility: 'visible',
       },

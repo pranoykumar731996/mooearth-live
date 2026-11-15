@@ -148,7 +148,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
-            maxzoom: 18,
+            maxzoom: 17,
             attribution:
               'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, TomTom, USGS, Intermap, iPC, NRCAN, METI, OpenStreetMap contributors',
           },
@@ -159,7 +159,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
             type: 'raster',
             source: 'esri-street-source',
             minzoom: 0,
-            maxzoom: 19,
+            maxzoom: 22,
           },
         ],
       },
@@ -179,7 +179,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
             ],
             tileSize: 256,
-            maxzoom: 18,
+            maxzoom: 17,
             attribution:
               'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, NAVTEQ, OpenStreetMap contributors',
           },
@@ -190,7 +190,7 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
             type: 'raster',
             source: 'esri-topo-source',
             minzoom: 0,
-            maxzoom: 19,
+            maxzoom: 22,
           },
         ],
       },
@@ -353,7 +353,10 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
   if (currentKey === 'esri-street') {
     return 'osm';
   }
-  if (currentKey === 'voyager' || currentKey === 'dark' || currentKey === 'wind-dark') {
+  if (currentKey === 'wind-dark') {
+    return 'satellite';
+  }
+  if (currentKey === 'voyager' || currentKey === 'dark') {
     return 'esri-street';
   }
   return 'esri-street';

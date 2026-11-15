@@ -1260,16 +1260,21 @@ export default function CityMapViewer({
           onMapClickRef.current?.({ lat, lng });
         });
 
-        // Watchdog timer: If vector style hangs or network stalls for > 4.5s, failover safely
+        // Watchdog timer: If vector style hangs or network stalls for > 7.0s, failover safely
         watchdogTimerRef.current = setTimeout(() => {
           if (!mapRef.current) return;
-          if (styleKey === 'satellite' || styleKey === 'atmospheric-satellite') {
+          if (
+            styleKey === 'satellite' ||
+            styleKey === 'atmospheric-satellite' ||
+            styleKey === 'wind-dark' ||
+            styleKey === 'windy-satellite'
+          ) {
             setIsMapLoaded(true);
             return;
           }
           const isLoaded = mapRef.current.loaded();
           if (!isLoaded) {
-            console.warn(`[CityMapViewer] Tile watchdog timeout (4500ms) on style "${styleKey}". Initiating failover...`);
+            console.warn(`[CityMapViewer] Tile watchdog timeout (7000ms) on style "${styleKey}". Initiating failover...`);
             const failoverKey = getFailoverStyle(styleKey, true);
             if (failoverKey !== styleKey) {
               setFallbackNotice(
@@ -1280,7 +1285,7 @@ export default function CityMapViewer({
               setIsMapLoaded(true);
             }
           }
-        }, 4500);
+        }, 7000);
 
         map.on('error', (e) => {
           // Check for critical style loading or authorization failures
