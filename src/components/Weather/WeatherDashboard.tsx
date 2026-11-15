@@ -1128,14 +1128,14 @@ export default function WeatherDashboard() {
                   className="w-full h-full object-contain group-hover:scale-105 transition-transform"
                 />
               </div>
-              <div className="hidden sm:flex items-baseline gap-0.5">
+              <h1 className="hidden sm:flex items-baseline gap-0.5 m-0 p-0 font-normal">
                 <span className="text-sm sm:text-base font-black text-white tracking-tight group-hover:text-cyan-300 transition-colors">
                   MooEarth
                 </span>
                 <span className="text-[10px] sm:text-xs font-bold text-cyan-400 font-mono">
                   .live
                 </span>
-              </div>
+              </h1>
             </Link>
 
             {/* Search Bar */}

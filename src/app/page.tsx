@@ -12,6 +12,37 @@ import HomePageClient from './HomePageClient';
 const title = 'MooEarth Live — Interactive 3D Weather Radar & Earth Intelligence';
 const description = 'Explore real-time weather on an interactive 3D globe and live city radar map. Satellite spectral layers, precipitation radar, storm & cyclone tracking, wind streams, and 7-day meteorological forecasts.';
 
+const homePageSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': 'https://www.mooearth.live/#website',
+      url: 'https://www.mooearth.live',
+      name: 'MooEarth Live',
+      alternateName: ['MooEarth', 'Moo Earth', 'mooearth.live'],
+      description,
+      inLanguage: 'en',
+    },
+    {
+      '@type': 'WebApplication',
+      '@id': 'https://www.mooearth.live/#webapplication',
+      url: 'https://www.mooearth.live',
+      name: 'MooEarth',
+      alternateName: ['MooEarth Live', 'Moo Earth', 'mooearth.live'],
+      applicationCategory: 'WeatherApplication',
+      operatingSystem: 'All modern web browsers, iOS, Android, Windows, macOS, Linux',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      description,
+      screenshot: 'https://www.mooearth.live/icons/icon-512.png',
+    },
+  ],
+};
+
 export const metadata: Metadata = {
   title,
   description,
@@ -49,5 +80,16 @@ export interface HomePageProps {
 }
 
 export default function HomePage(_props?: HomePageProps) {
-  return <HomePageClient />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(homePageSchema),
+        }}
+      />
+      <h1 className="sr-only">MooEarth Live — Interactive 3D Weather Radar & Earth Intelligence</h1>
+      <HomePageClient />
+    </>
+  );
 }
