@@ -92,7 +92,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
     {
       id: 'europe-africa-ir',
       name: 'Meteosat Europe & Africa Clean Infrared',
-      layerName: 'msg_fes:ir108',
+      layerName: 'mumi:worldcloudmap_ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
     },
@@ -130,7 +130,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
     {
       id: 'europe-africa-blue',
       name: 'Meteosat Europe & Africa Upper Clouds',
-      layerName: 'msg_fes:ir108',
+      layerName: 'mumi:worldcloudmap_ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
     },

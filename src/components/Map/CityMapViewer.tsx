@@ -60,6 +60,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       if (absLat > 66.0) return 0.0;
       else if (absLat > 56.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 56.0) / 10.0)));
 
+      // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
+      // covering all 360 degrees of longitude without seams or partitions (Windy Parity)
+      if (url.includes('worldcloudmap') || url.includes('mumi')) {
+        return latWeight;
+      }
+
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
 
@@ -373,12 +379,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // VISIBLE / OPTICAL REFLECTANCE MODE
             // ==========================================
             if (isEumet && !isInfraLayer) {
-              // EUMETSAT IODC Daytime Visible Reflectance (msg_iodc:vis006)
-              if (sharp <= 80) {
+              // EUMETSAT Daytime Visible Reflectance (msg_fes:vis006 / msg_iodc:vis006)
+              if (sharp <= 28) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 80) / (205 - 80));
+              const norm = Math.min(1.0, (sharp - 28) / (180 - 28));
               const s = norm * norm * (3.0 - 2.0 * norm);
               const cloudAlpha = Math.round(246 * Math.pow(norm, 0.72) * spatWeight);
               if (cloudAlpha <= 2) {
@@ -575,6 +581,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         if (isoMatch) {
           const curIso = isoMatch[1];
           const curTime = new Date(curIso).getTime();
+
+          // Step 1: Try 3 previous 10-minute sub-hourly snapshots
           for (let step = 1; step <= 3 && !res.ok; step++) {
             const prev = new Date(curTime - step * 10 * 60000);
             const yyyy = prev.getUTCFullYear();
@@ -590,6 +598,20 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
                 res = fbRes;
                 realUrl = fbUrl;
                 break;
+              }
+            } catch {}
+          }
+
+          // Step 2: If all sub-hourly ISO timestamps failed, fall back to date-only
+          // NASA GIBS always serves a daily composite for geostationary layers
+          if (!res.ok) {
+            const dateOnly = curIso.slice(0, 10); // "2026-11-16"
+            const dateOnlyUrl = realUrl.replace(isoMatch[0], dateOnly);
+            try {
+              const dateRes = await fetch(dateOnlyUrl, { signal: abortController.signal });
+              if (dateRes.ok) {
+                res = dateRes;
+                realUrl = dateOnlyUrl;
               }
             } catch {}
           }
@@ -2954,7 +2976,7 @@ export default function CityMapViewer({
               },
               {
                 id: 'europe-africa',
-                layerName: europeAfricaDay ? 'msg_fes:vis006' : 'mumi:worldcloudmap_ir108',
+                layerName: 'mumi:worldcloudmap_ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
                 isSubHourly: true,
@@ -3091,9 +3113,8 @@ export default function CityMapViewer({
             'himawari': [50.0, -65.0, 180.0, 65.0],
             'goes-east': [-145.0, -65.0, -10.0, 65.0],
             'goes-west': [-180.0, -65.0, -60.0, 65.0],
-            // EUMETSAT Meteosat Prime (0°) covers all of Europe, Africa, Middle East & Atlantic
-            // mumi:worldcloudmap_ir108 is a GLOBAL composite so we expand bounds for full coverage
-            'europe-africa': [-45.0, -68.0, 75.0, 68.0],
+            // EUMETSAT WorldCloudMap (mumi:worldcloudmap_ir108) is a global composite spanning all 360° of longitude
+            'europe-africa': [-180.0, -85.0, 180.0, 85.0],
             'eumet-iodc': [10.0, -65.0, 90.0, 65.0],
           };
 
@@ -3112,7 +3133,7 @@ export default function CityMapViewer({
             const secAttribution = sec.layerName.includes('iodc')
               ? 'EUMETSAT Meteosat-9 IODC (45.5°E)'
               : sec.layerName.startsWith('mumi:')
-              ? 'Hillshade © Esri | EUMETSAT Meteosat High Rate SEVIRI | NASA EOSDIS'
+              ? 'EUMETSAT Geostationary High-Rate SEVIRI / GOES / Himawari Global Mosaic | Esri'
               : sec.layerName.startsWith('msg_')
               ? 'EUMETSAT Meteosat High Rate SEVIRI'
               : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data';
