@@ -623,16 +623,28 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       }
     });
 
-    function eumetUrlToWms(url: string): string {
+    function eumetUrlToProxyOrWms(url: string): string {
       const match = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
       if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
       const layer = match[1];
       const z = parseInt(match[2], 10);
       const y = parseInt(match[3], 10);
       const x = parseInt(match[4], 10);
-      const n = Math.pow(2, z);
-      const worldSize = 20037508.342789244 * 2;
+      // Route through our edge-cached proxy API for reliable, fast delivery
+      return `/api/weather/satellite/eumet-tile?z=${z}&x=${x}&y=${y}&layer=${encodeURIComponent(layer)}`;
+    }
+
+    // Keep direct WMS fallback for when proxy is unavailable
+    function eumetUrlToWmsDirect(url: string): string {
+      const match = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
+      if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
+      const layer = match[1];
+      const z = parseInt(match[2], 10);
+      const y = parseInt(match[3], 10);
+      const x = parseInt(match[4], 10);
       const originShift = 20037508.342789244;
+      const worldSize = originShift * 2;
+      const n = Math.pow(2, z);
       const res = worldSize / n;
       const minX = x * res - originShift;
       const maxX = (x + 1) * res - originShift;
@@ -643,11 +655,28 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
     addProtocol('eumet-alpha', async (params, abortController) => {
       try {
-        const wmsUrl = eumetUrlToWms(params.url);
+        // Primary: edge-cached proxy (fast, reliable, CDN-backed)
+        const proxyUrl = eumetUrlToProxyOrWms(params.url);
         const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+        const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
         abortController.signal.addEventListener('abort', () => timeoutController.abort());
-        const res = await fetch(wmsUrl, { signal: timeoutController.signal });
+        let res = await fetch(proxyUrl, { signal: timeoutController.signal });
+
+        // Fallback: direct EUMETSAT WMS if proxy fails
+        if (!res.ok) {
+          const directUrl = eumetUrlToWmsDirect(params.url);
+          const fallbackController = new AbortController();
+          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 12000);
+          abortController.signal.addEventListener('abort', () => fallbackController.abort());
+          try {
+            const directRes = await fetch(directUrl, { signal: fallbackController.signal });
+            clearTimeout(fallbackTimeout);
+            if (directRes.ok) res = directRes;
+          } catch {
+            clearTimeout(fallbackTimeout);
+          }
+        }
+
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const blob = await res.blob();
@@ -3060,7 +3089,9 @@ export default function CityMapViewer({
             'himawari': [50.0, -65.0, 180.0, 65.0],
             'goes-east': [-145.0, -65.0, -10.0, 65.0],
             'goes-west': [-180.0, -65.0, -60.0, 65.0],
-            'europe-africa': [-35.0, -65.0, 65.0, 65.0],
+            // EUMETSAT Meteosat Prime (0°) covers all of Europe, Africa, Middle East & Atlantic
+            // mumi:worldcloudmap_ir108 is a GLOBAL composite so we expand bounds for full coverage
+            'europe-africa': [-45.0, -68.0, 75.0, 68.0],
             'eumet-iodc': [10.0, -65.0, 90.0, 65.0],
           };
 
@@ -3078,7 +3109,9 @@ export default function CityMapViewer({
 
             const secAttribution = sec.layerName.includes('iodc')
               ? 'EUMETSAT Meteosat-9 IODC (45.5°E)'
-              : sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:')
+              : sec.layerName.startsWith('mumi:')
+              ? 'Hillshade © Esri | EUMETSAT Meteosat High Rate SEVIRI | NASA EOSDIS'
+              : sec.layerName.startsWith('msg_')
               ? 'EUMETSAT Meteosat High Rate SEVIRI'
               : 'NASA GIBS / NOAA GOES / JMA Himawari Earth Science Open Data';
 
