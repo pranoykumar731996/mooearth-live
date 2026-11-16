@@ -1101,9 +1101,9 @@ export default function WeatherDashboard() {
     <div className="w-full h-screen bg-[#020208] text-white relative overflow-hidden flex flex-col">
       {/* ── Top Header Bar ────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#020208]/90 backdrop-blur-xl border-b border-white/5 select-none h-[52px] sm:h-[54px] flex items-center">
-        <div className="w-full px-3 sm:px-5 lg:px-6 py-2 flex items-center justify-between gap-2 lg:gap-4">
+        <div className="w-full px-2 sm:px-5 lg:px-6 py-2 flex items-center justify-between gap-1.5 sm:gap-3 lg:gap-4">
           {/* Left Zone: Brand Logo & Search */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0 max-w-[240px] sm:max-w-md lg:max-w-xl">
             {/* MooEarth Brand Logo */}
             <Link
               href="/"
@@ -1128,7 +1128,7 @@ export default function WeatherDashboard() {
             </Link>
 
             {/* Search Bar */}
-            <div className="w-[155px] sm:w-[220px] lg:w-[210px] xl:w-[260px] 2xl:w-[300px] shrink-0">
+            <div className="flex-1 min-w-[90px] max-w-[170px] sm:max-w-[220px] lg:max-w-[260px] 2xl:max-w-[320px]">
               <WeatherSearch
                 onSelectLocation={handleSelectLocation}
                 focusMode={searchFocusMode}
@@ -1343,27 +1343,25 @@ export default function WeatherDashboard() {
                 </span>
               </Link>
 
-              {/* Destination 3: Earth Games (ALWAYS VISIBLE WITH FULL PROMINENCE!) */}
+              {/* Destination 3: Earth Games (ALWAYS VISIBLE WITH IRRESISTIBLE NEON GLOW & BLINKING BEACON!) */}
               <Link
                 href="/games"
                 data-testid="header-games-hub-btn"
-                className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/60 hover:border-purple-300 shadow-[0_0_16px_rgba(147,51,234,0.55)] hover:shadow-[0_0_22px_rgba(147,51,234,0.7)] transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0"
+                className="relative h-7 sm:h-8 px-2 sm:px-3 rounded-lg sm:rounded-xl flex items-center gap-1 sm:gap-1.5 text-xs font-black tracking-wide bg-gradient-to-r from-fuchsia-600 via-purple-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white border-2 border-fuchsia-400/80 hover:border-fuchsia-300 shadow-[0_0_20px_rgba(217,70,239,0.75)] hover:shadow-[0_0_28px_rgba(217,70,239,0.95)] transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 shrink-0"
                 title="Play Earth Games — Geography Quiz, Flag Quizzes & World Challenges"
                 aria-label="Earth Games"
               >
                 <span className="text-sm shrink-0">🎮</span>
-                <span className="font-black whitespace-nowrap text-xs">
+                <span className="font-black whitespace-nowrap text-xs text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                   <span className="hidden sm:inline">Earth </span>Games
                 </span>
-                {dailyStreak > 0 ? (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-400/30 text-amber-200 border border-amber-400/50 hidden sm:flex items-center gap-0.5">
-                    🔥${dailyStreak}
+                <span className="relative flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-black/60 text-amber-300 border border-amber-400/80 shadow-[0_0_10px_rgba(251,191,36,0.6)] shrink-0">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-90" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                   </span>
-                ) : (
-                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40 inline-block tracking-wider">
-                    PLAY
-                  </span>
-                )}
+                  <span className="font-extrabold tracking-wider">{dailyStreak > 0 ? `🔥${dailyStreak}` : 'PLAY'}</span>
+                </span>
               </Link>
             </div>
           </div>

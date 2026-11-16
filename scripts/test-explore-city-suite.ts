@@ -597,6 +597,53 @@ assert(seismicGeoJson.features.length === 1, 'Seismic GeoJSON feature collection
 assert(seismicGeoJson.features[0].geometry.coordinates[0] === 142.4, 'Seismic GeoJSON longitude correct');
 assert(seismicGeoJson.features[0].geometry.coordinates[1] === 38.3, 'Seismic GeoJSON latitude correct');
 
+// ── 11. Mobile PWA Responsive Layout & High-Visibility Games Contract ──────
+console.log('\n--- 11. Mobile PWA Responsive Layout & High-Visibility Games Contract ---');
+
+import * as fs from 'fs';
+import * as path from 'path';
+
+const weatherDashboardPath = path.join(__dirname, '../src/components/Weather/WeatherDashboard.tsx');
+const weatherDashboardContent = fs.readFileSync(weatherDashboardPath, 'utf8');
+
+const cityMapViewerPath = path.join(__dirname, '../src/components/Map/CityMapViewer.tsx');
+const cityMapViewerContent = fs.readFileSync(cityMapViewerPath, 'utf8');
+
+// Invariant 1: Top Navbar Search Bar must be fluid/responsive to prevent horizontal overflow on mobile
+assert(
+  weatherDashboardContent.includes('flex-1 min-w-[90px]') || weatherDashboardContent.includes('min-w-[100px] flex-1'),
+  'Top Navbar search bar container uses fluid flex-1 with responsive minimum width (no fixed shrink-0 w-[155px] forcing overflow)'
+);
+
+// Invariant 2: Earth Games button has neon glow aura and animated live ping beacon
+assert(
+  weatherDashboardContent.includes('from-fuchsia-600') &&
+  weatherDashboardContent.includes('shadow-[0_0_20px_rgba(217,70,239') &&
+  weatherDashboardContent.includes('animate-ping') &&
+  weatherDashboardContent.includes('bg-emerald-400'),
+  'Earth Games button features high-visibility neon fuchsia gradient, breathing aura, and live blinking radar beacon'
+);
+
+// Invariant 3: CityMapViewer floating navigation uses safe responsive bounding & wrapping
+assert(
+  cityMapViewerContent.includes('flex items-center justify-end gap-1 sm:gap-1.5 flex-wrap'),
+  'CityMapViewer right floating controls use responsive flex-wrap and end-alignment to prevent off-screen spillage'
+);
+
+// Invariant 4: CityMapViewer Return to Earth button has mobile-friendly compact label
+assert(
+  cityMapViewerContent.includes('<span className="truncate sm:hidden font-bold">3D Earth</span>') &&
+  cityMapViewerContent.includes('returnToEarth'),
+  'CityMapViewer Return to Earth button adapts to compact "3D Earth" on mobile screens'
+);
+
+// Invariant 5: CityMapViewer Weather Telemetry button adapts to compact label on mobile
+assert(
+  cityMapViewerContent.includes('<span className="hidden sm:inline">Weather Telemetry</span>') &&
+  cityMapViewerContent.includes('<span className="sm:hidden">Telemetry</span>'),
+  'CityMapViewer Weather Telemetry button shows compact "Telemetry" on mobile and full label on desktop'
+);
+
 // Final Summary
 console.log('\n============================================================');
 console.log(`📊 Test Results: ${passedTests} passed, ${failedTests} failed (${totalTests} total)`);

@@ -3259,18 +3259,19 @@ export default function CityMapViewer({
 
 
       {/* ── Top Floating Navigation HUD ──────────────── */}
-      <div className="absolute top-3 left-2.5 right-2.5 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
+      <div className="absolute top-2.5 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-30 pointer-events-none flex items-start justify-between gap-1.5 sm:gap-3">
         {/* Left: "Return to Earth" Action & City Badge */}
-        <div className="flex flex-col gap-1.5 sm:gap-2 pointer-events-auto min-w-0 max-w-[55%] sm:max-w-none">
+        <div className="flex flex-col gap-1.5 sm:gap-2 pointer-events-auto min-w-0 max-w-[45%] sm:max-w-none">
           <button
             type="button"
             data-testid="return-to-earth-btn"
             onClick={onReturnToEarth}
-            className="group px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-[11px] sm:text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 sm:gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit shrink-0"
+            className="group px-2 py-1 sm:px-3.5 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 text-[11px] sm:text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1 sm:gap-2 shadow-2xl transition-all active:scale-95 cursor-pointer w-fit shrink-0"
             title="Return to interactive 3D Earth globe"
           >
             <img src="/logo-icon.png" alt="MooEarth" className="w-4 h-4 sm:w-5 sm:h-5 rounded-md object-contain shrink-0 group-hover:rotate-12 transition-transform" />
-            <span className="truncate">{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
+            <span className="truncate sm:hidden font-bold">3D Earth</span>
+            <span className="truncate hidden sm:inline">{dict.cityMap?.returnToEarth || 'Return to Earth'}</span>
             <span className="text-[10px] text-cyan-400/60 font-normal hidden sm:inline">⟵ Orbit</span>
           </button>
 
@@ -3492,9 +3493,9 @@ export default function CityMapViewer({
         </div>
 
         {/* Right: Style Selector & Weather Telemetry Summary */}
-        <div className="flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto shrink-0 max-w-[45%] sm:max-w-none">
+        <div className="flex flex-col items-end gap-1 sm:gap-2 pointer-events-auto shrink-0 max-w-[65%] sm:max-w-none">
           {/* Top Controls Row: Style Selector Dropdown + Optional Satellite HUD Restore Pill */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-end gap-1 sm:gap-1.5 flex-wrap">
             {/* Full World Panoramic View (Windy / Zoom Earth View) */}
             <button
               type="button"
@@ -3510,7 +3511,7 @@ export default function CityMapViewer({
                   });
                 }
               }}
-              className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer"
+              className="px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer shrink-0"
               title="Full World View (Zoom to fit all continents & oceans)"
             >
               <span>🌐</span>
@@ -3522,28 +3523,28 @@ export default function CityMapViewer({
                 type="button"
                 data-testid="show-satellite-hud-btn"
                 onClick={() => setIsSatelliteHudDismissed(false)}
-                className="px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer"
+                className="px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-400/40 text-[10px] sm:text-[11px] font-mono text-cyan-300 hover:text-white flex items-center gap-1 shadow-lg transition-all cursor-pointer shrink-0"
                 title="Show Geostationary Satellite Clouds controls"
               >
                 <span>🛰️</span>
                 <span className="hidden sm:inline">Clouds</span>
                 <span className="text-[9px] px-1 rounded bg-cyan-500/20 text-cyan-300 font-bold">
-                  {spectralMode ? spectralMode.toUpperCase() : 'BLUE'}
+                  {spectralMode ? spectralMode.toUpperCase().slice(0, 3) : 'VIS'}
                 </span>
               </button>
             )}
 
             {/* Style Selector Dropdown Pill */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 type="button"
                 data-testid="map-style-selector-btn"
                 onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-                className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[10px] sm:text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer"
+                className="px-1.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-[#050512]/90 hover:bg-[#0a0a24] backdrop-blur-xl border border-white/10 hover:border-cyan-500/40 text-[10px] sm:text-[11px] font-mono text-white/80 hover:text-white flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer shrink-0"
                 title="Change Map Tiles & Styling"
               >
                 <span className="text-cyan-400">🗺️</span>
-                <span className="font-semibold truncate max-w-[80px] sm:max-w-none">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
+                <span className="font-semibold truncate max-w-[55px] sm:max-w-none">{MAP_STYLES[activeStyleKey]?.label || 'Map Style'}</span>
                 <span className="text-[8px] sm:text-[9px] text-white/40">▼</span>
               </button>
 
@@ -3658,11 +3659,12 @@ export default function CityMapViewer({
                 type="button"
                 data-testid="city-map-telemetry-btn"
                 onClick={onOpenWeather}
-                className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/35 backdrop-blur-xl border border-cyan-400/40 text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95"
+                className="px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/35 backdrop-blur-xl border border-cyan-400/40 text-[10px] sm:text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1 sm:gap-1.5 shadow-xl transition-all cursor-pointer active:scale-95 shrink-0 max-w-full truncate"
                 title="Open live meteorological telemetry"
               >
                 <span>📊</span>
-                <span>Weather Telemetry</span>
+                <span className="hidden sm:inline">Weather Telemetry</span>
+                <span className="sm:hidden">Telemetry</span>
               </button>
             )
           )}
