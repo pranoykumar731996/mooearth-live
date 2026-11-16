@@ -324,12 +324,14 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let s = 0;
 
             if (isEumet && isInfraLayer) {
-              // EUMETSAT linear infrared (38 threshold eliminates warm ground & ocean, preserves all clouds)
-              if (sharp <= 38) {
+              // EUMETSAT IR: warm ground/ocean peaks at lum 65-80, real clouds start at ~82+
+              // Threshold 82 eliminates ALL warm surface pixels (Sahara, Atlantic, etc.)
+              // Only genuine cloud features (cold cloud tops) pass through
+              if (sharp <= 82) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 38) / (205 - 38));
+              const norm = Math.min(1.0, (sharp - 82) / (178 - 82));
               s = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
             } else if (isGibsBand13) {
@@ -416,8 +418,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
             } else {
               // Nighttime infrared fallback
-              const thresh = isEumet ? 38 : 152;
-              const maxRange = isEumet ? 205 : 235;
+              const thresh = isEumet ? 82 : 152;
+              const maxRange = isEumet ? 178 : 235;
               if (sharp <= thresh) {
                 d[i + 3] = 0;
                 continue;
@@ -436,8 +438,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // ==========================================
             // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
             // ==========================================
-            const thresh = isEumet ? 38 : 152;
-            const maxRange = isEumet ? 205 : 235;
+            const thresh = isEumet ? 82 : 152;
+            const maxRange = isEumet ? 178 : 235;
             if (sharp <= thresh) {
               d[i + 3] = 0;
               continue;
