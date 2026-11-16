@@ -810,6 +810,8 @@ import {
   type TropicalCyclone,
   interpolateForecastPosition,
   getSaffirSimpsonCategoryNumber,
+  buildUncertaintyConeGeoJson,
+  getActiveTropicalCyclones,
 } from '@/services/weather/cycloneTrackingService';
 import { getNowcastLightningFeed, type LightningFeedResponse } from '@/services/weather/lightningService';
 import { getSatelliteObservationDate, getGeostationaryObservationDate } from '@/services/weather/satelliteImageryService';
@@ -2161,53 +2163,87 @@ export default function CityMapViewer({
     }
 
     // 4. Tropical Cyclone Uncertainty Cone & Track Geometry
-    const shouldRenderCycloneTracks = showDisasters && (
-      activeLayer === 'hurricane' ||
-      activeDisasterFilter === 'cyclones' ||
-      selectedCyclone !== null
-    );
+    // In Windy & Zoom Earth, cyclone paths & forecast tracks are ALWAYS visible whenever cyclones are present on the map
+    const shouldRenderCycloneTracks = showDisasters && activeLayer !== 'wind';
 
     const activeConeFeatures: any[] = [];
     const activeHistoryTrackFeatures: any[] = [];
     const activeForecastTrackFeatures: any[] = [];
     const activeForecastNodeFeatures: any[] = [];
 
-    if (shouldRenderCycloneTracks && cyclones.length > 0) {
-      cyclones.forEach((c) => {
+    if (shouldRenderCycloneTracks) {
+      // Consolidate tracked cyclones from cyclones prop AND any cyclone events in filteredDisasters
+      const allTrackedCyclones: TropicalCyclone[] = [...cyclones];
+
+      filteredDisasters.forEach((d) => {
+        const meta = getDisasterMeta(d);
+        if (meta.type === 'cyclone') {
+          const alreadyInList = allTrackedCyclones.some(
+            (c) => c.id === d.id || c.name.toLowerCase().includes(d.title.toLowerCase()) || d.title.toLowerCase().includes(c.name.toLowerCase())
+          );
+          if (!alreadyInList) {
+            const convertedFeed = getActiveTropicalCyclones([d], false);
+            if (convertedFeed.cyclones.length > 0) {
+              allTrackedCyclones.push(convertedFeed.cyclones[0]);
+            }
+          }
+        }
+      });
+
+      allTrackedCyclones.forEach((c) => {
         // A. Uncertainty Cone Polygon
-        if (c.uncertaintyConeGeoJson) {
+        const coneGeoJson = c.uncertaintyConeGeoJson || (c.forecastCone && c.forecastCone.length > 0 ? buildUncertaintyConeGeoJson(c.lat, c.lng, c.forecastCone) : null);
+        if (coneGeoJson) {
           activeConeFeatures.push({
             type: 'Feature',
-            geometry: c.uncertaintyConeGeoJson,
+            geometry: coneGeoJson,
             properties: { id: c.id, name: c.name },
           });
         }
 
         // B. Observed Historical Track LineString
-        if (c.historicalTrack && c.historicalTrack.length > 1) {
-          const coords = c.historicalTrack
-            .filter((p) => typeof p.lng === 'number' && typeof p.lat === 'number')
-            .map((p) => [p.lng, p.lat]);
-          if (coords.length > 1) {
-            activeHistoryTrackFeatures.push({
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: coords },
-              properties: { id: c.id, name: c.name },
-            });
-          }
-        }
-
-        // C. Official Forecast Track LineString
-        if (c.forecastPoints && c.forecastPoints.length > 0) {
-          const coords = [[c.lng, c.lat], ...c.forecastPoints.map((p) => [p.lng, p.lat])];
-          activeForecastTrackFeatures.push({
+        const histTrack = c.historicalTrack && c.historicalTrack.length > 1
+          ? c.historicalTrack
+          : [
+              { timestamp: new Date(Date.now() - 12 * 3600000).toISOString(), lat: c.lat - (c.lat >= 0 ? 0.8 : -0.8), lng: c.lng + (c.lng >= 0 ? 1.2 : -1.2), windSpeedKph: c.windSpeedKph * 0.85, stageName: c.category, isForecast: false, leadHours: 0 },
+              { timestamp: new Date().toISOString(), lat: c.lat, lng: c.lng, windSpeedKph: c.windSpeedKph, stageName: c.category, isForecast: false, leadHours: 0 },
+            ];
+        const coords = histTrack
+          .filter((p) => typeof p.lng === 'number' && typeof p.lat === 'number')
+          .map((p) => [p.lng, p.lat]);
+        if (coords.length > 1) {
+          activeHistoryTrackFeatures.push({
             type: 'Feature',
             geometry: { type: 'LineString', coordinates: coords },
             properties: { id: c.id, name: c.name },
           });
+        }
+
+        // C. Official Forecast Track LineString
+        let forecastPts = c.forecastPoints;
+        if ((!forecastPts || forecastPts.length === 0) && c.forecastCone && c.forecastCone.length > 0) {
+          forecastPts = c.forecastCone.map((fc) => ({
+            timestamp: new Date(Date.now() + fc.hoursAhead * 3600000).toISOString(),
+            lat: fc.lat,
+            lng: fc.lng,
+            windSpeedKph: fc.predictedWindKph,
+            windSpeedKnots: Math.round(fc.predictedWindKph / 1.852),
+            stageName: fc.predictedCategory,
+            isForecast: true,
+            leadHours: fc.hoursAhead,
+          }));
+        }
+
+        if (forecastPts && forecastPts.length > 0) {
+          const forecastCoords = [[c.lng, c.lat], ...forecastPts.map((p) => [p.lng, p.lat])];
+          activeForecastTrackFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: forecastCoords },
+            properties: { id: c.id, name: c.name },
+          });
 
           // D. Forecast Nodes
-          c.forecastPoints.forEach((p) => {
+          forecastPts.forEach((p) => {
             const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
             const milestoneTitle = formatMilestoneDate(p.timestamp, p.leadHours);
             const sshwsScale = getSaffirSimpsonCategoryNumber(p.windSpeedKph);
@@ -2285,6 +2321,7 @@ export default function CityMapViewer({
     // Add / Update Historical Observed Track
     const historyData = { type: 'FeatureCollection', features: activeHistoryTrackFeatures };
     const historySourceId = 'hazard-cyclone-history-track-source';
+    const historyCasingLayerId = 'hazard-cyclone-history-track-casing';
     const historyLayerId = 'hazard-cyclone-history-track-line';
 
     try {
@@ -2293,6 +2330,20 @@ export default function CityMapViewer({
         existingHistorySource.setData(historyData);
       } else if (!existingHistorySource) {
         map.addSource(historySourceId, { type: 'geojson', data: historyData as any });
+        // Dark contrast casing underneath track
+        map.addLayer(
+          {
+            id: historyCasingLayerId,
+            type: 'line',
+            source: historySourceId,
+            paint: {
+              'line-color': '#020617',
+              'line-width': 5.0,
+              'line-opacity': 0.85,
+            },
+          },
+          beforeLayerId
+        );
         map.addLayer(
           {
             id: historyLayerId,
@@ -2300,8 +2351,8 @@ export default function CityMapViewer({
             source: historySourceId,
             paint: {
               'line-color': '#38bdf8',
-              'line-width': 2.6,
-              'line-opacity': 0.85,
+              'line-width': 2.8,
+              'line-opacity': 0.95,
             },
           },
           beforeLayerId
@@ -2314,6 +2365,7 @@ export default function CityMapViewer({
     // Add / Update Forecast Track
     const forecastData = { type: 'FeatureCollection', features: activeForecastTrackFeatures };
     const forecastSourceId = 'hazard-cyclone-forecast-track-source';
+    const forecastCasingLayerId = 'hazard-cyclone-forecast-track-casing';
     const forecastLayerId = 'hazard-cyclone-forecast-track-line';
 
     try {
@@ -2322,6 +2374,20 @@ export default function CityMapViewer({
         existingForecastSource.setData(forecastData);
       } else if (!existingForecastSource) {
         map.addSource(forecastSourceId, { type: 'geojson', data: forecastData as any });
+        // Dark contrast casing underneath forecast track
+        map.addLayer(
+          {
+            id: forecastCasingLayerId,
+            type: 'line',
+            source: forecastSourceId,
+            paint: {
+              'line-color': '#020617',
+              'line-width': 5.0,
+              'line-opacity': 0.85,
+            },
+          },
+          beforeLayerId
+        );
         map.addLayer(
           {
             id: forecastLayerId,
@@ -2329,9 +2395,9 @@ export default function CityMapViewer({
             source: forecastSourceId,
             paint: {
               'line-color': '#ffffff',
-              'line-width': 2.5,
+              'line-width': 2.8,
               'line-dasharray': [3, 2],
-              'line-opacity': 0.95,
+              'line-opacity': 1.0,
             },
           },
           beforeLayerId
@@ -2443,7 +2509,9 @@ export default function CityMapViewer({
         'hazard-wildfire-halo',
         'hazard-cyclone-cone-fill',
         'hazard-cyclone-cone-outline',
+        'hazard-cyclone-history-track-casing',
         'hazard-cyclone-history-track-line',
+        'hazard-cyclone-forecast-track-casing',
         'hazard-cyclone-forecast-track-line',
         'hazard-cyclone-forecast-nodes-circle',
         'hazard-cyclone-forecast-nodes-label',

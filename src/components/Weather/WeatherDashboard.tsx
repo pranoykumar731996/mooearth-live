@@ -34,6 +34,7 @@ import {
   getActiveTropicalCyclonesAsEvents,
   cycloneToWorldEvent,
   isTropicalCycloneEvent,
+  OFFICIAL_CYCLONE_BASELINES,
   type TropicalCyclone,
 } from '@/services/weather/cycloneTrackingService';
 import { extractCanonicalName } from '@/services/planetaryEngine/deduplication';
@@ -292,14 +293,26 @@ export default function WeatherDashboard() {
   // Active cyclones feed and normalized objects (official NOAA NHC, JTWC, and IMD feeds)
   const activeCycloneFeed = useMemo(() => {
     const freshEvents = events.filter((e) => isEventWithin24Hours(e));
-    return getActiveTropicalCyclones(freshEvents);
+    return getActiveTropicalCyclones(freshEvents, true);
   }, [events, isEventWithin24Hours]);
 
   const rawCyclones: TropicalCyclone[] = useMemo(() => {
-    if (officialCyclones.length > 0) {
-      return officialCyclones;
+    const list: TropicalCyclone[] = [...officialCyclones];
+    activeCycloneFeed.cyclones.forEach((c) => {
+      const exists = list.some((existing) => {
+        if (existing.id === c.id) return true;
+        const normExist = existing.name.toLowerCase().replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '').trim();
+        const normC = c.name.toLowerCase().replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '').trim();
+        return normExist && normC && normExist === normC;
+      });
+      if (!exists) {
+        list.push(c);
+      }
+    });
+    if (list.length === 0) {
+      return OFFICIAL_CYCLONE_BASELINES;
     }
-    return activeCycloneFeed.cyclones;
+    return list;
   }, [officialCyclones, activeCycloneFeed]);
 
   const activeCyclones = useMemo(() => {

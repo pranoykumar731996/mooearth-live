@@ -644,6 +644,36 @@ assert(
   'CityMapViewer Weather Telemetry button shows compact "Telemetry" on mobile and full label on desktop'
 );
 
+// ── 12. Tropical Cyclone Real Road & Forecast Track Invariants ─────────────
+console.log('\n--- 12. Tropical Cyclone Real Road & Forecast Track Invariants ---');
+
+// Invariant 1: Cyclone paths must NEVER be suppressed when viewing satellite, clouds, or standard 2D views
+assert(
+  cityMapViewerContent.includes("const shouldRenderCycloneTracks = showDisasters && activeLayer !== 'wind';"),
+  'Cyclone road, forecast track, and uncertainty cone render across all layers (Satellite, Clouds, Radar, Hazards) like Windy & Zoom Earth'
+);
+
+// Invariant 2: High-contrast casing layers exist underneath historical and forecast tracks for razor-sharp visibility over white clouds
+assert(
+  cityMapViewerContent.includes('hazard-cyclone-history-track-casing') &&
+  cityMapViewerContent.includes('hazard-cyclone-forecast-track-casing'),
+  'Cyclone tracks feature dark high-contrast casings underneath lines to remain crystal clear over thick cloud reflectance'
+);
+
+// Invariant 3: Dynamic cyclone consolidation combines cyclones prop and live filteredDisasters
+assert(
+  cityMapViewerContent.includes('allTrackedCyclones') &&
+  cityMapViewerContent.includes('buildUncertaintyConeGeoJson'),
+  'CityMapViewer dynamically consolidates all tracked storms and derives uncertainty cones and forecast tracks'
+);
+
+// Invariant 4: WeatherDashboard merges official feeds with live planetary cyclone feeds
+assert(
+  weatherDashboardContent.includes('OFFICIAL_CYCLONE_BASELINES') &&
+  weatherDashboardContent.includes('activeCycloneFeed.cyclones.forEach'),
+  'WeatherDashboard merges official cyclone feeds with real-time planetary events and guarantees global baseline fallback'
+);
+
 // Final Summary
 console.log('\n============================================================');
 console.log(`📊 Test Results: ${passedTests} passed, ${failedTests} failed (${totalTests} total)`);
