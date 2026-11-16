@@ -184,7 +184,7 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
 };
 
 export function buildSectorTileUrl(sector: GeostationarySector, dateStr: string): string {
-  if (sector.layerName.startsWith('msg_')) {
+  if (sector.layerName.startsWith('msg_') || sector.layerName.startsWith('mumi:')) {
     return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sector.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`;
   }
   const ext = sector.format === 'image/jpeg' ? 'jpg' : 'png';

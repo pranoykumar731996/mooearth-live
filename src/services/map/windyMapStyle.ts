@@ -414,15 +414,15 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
   sprite: 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm',
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   layers: [
-    // 1. Windy Deep Marine Ocean Navy Base (#142036)
+    // 1. Windy Deep Marine Ocean Royal Blue Base (#2b4c8a)
     {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#142036',
+        'background-color': '#2b4c8a',
       },
     },
-    // 2. High-Contrast Stylized Olive-Relief Continents (#2e3b1f tone)
+    // 2. High-Contrast Stylized Olive-Relief Continents (#3e5425 tone)
     {
       id: 'esri_satellite_imagery_layer',
       type: 'raster',
@@ -430,12 +430,12 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
       minzoom: 0,
       maxzoom: 22,
       paint: {
-        'raster-opacity': 0.84,
-        'raster-brightness-max': 0.68,
-        'raster-brightness-min': 0.05,
-        'raster-contrast': 0.42,
-        'raster-saturation': -0.45,
-        'raster-hue-rotate': 28,
+        'raster-opacity': 0.88,
+        'raster-brightness-max': 0.76,
+        'raster-brightness-min': 0.08,
+        'raster-contrast': 0.35,
+        'raster-saturation': -0.36,
+        'raster-hue-rotate': 32,
         'raster-resampling': 'linear',
       },
     },
@@ -446,8 +446,8 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
       source: 'esri_hillshade',
       maxzoom: 16,
       paint: {
-        'raster-opacity': 0.38,
-        'raster-contrast': 0.40,
+        'raster-opacity': 0.45,
+        'raster-contrast': 0.45,
         'raster-resampling': 'linear',
       },
     },

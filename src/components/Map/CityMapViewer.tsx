@@ -56,15 +56,18 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
     // Circular partition of unity across all 360 degrees (Himawari, GOES-West, GOES-East, Meteosat)
     function getSectorSpatialWeight(url: string, lng: number, lat: number): number {
       const absLat = Math.abs(lat);
+
+      // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
+      // covering all 360 degrees of longitude up to 82.5°N and 75.0°S across Russia, Siberia, Northern Europe (Windy Parity)
+      if (url.includes('worldcloudmap') || url.includes('mumi')) {
+        if (absLat > 82.5) return 0.0;
+        if (absLat > 72.0) return 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 72.0) / 10.5)));
+        return 1.0;
+      }
+
       let latWeight = 1.0;
       if (absLat > 66.0) return 0.0;
       else if (absLat > 56.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 56.0) / 10.0)));
-
-      // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
-      // covering all 360 degrees of longitude without seams or partitions (Windy Parity)
-      if (url.includes('worldcloudmap') || url.includes('mumi')) {
-        return latWeight;
-      }
 
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
@@ -339,57 +342,52 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // ==========================================
             let cloudAlpha = 0;
             let baseTone = 236;
-            let isThinFringe = false;
 
             if (isEumet && isInfraLayer) {
               // EUMETSAT 10.8µm thermal infrared channel (WorldCloudMap / SEVIRI):
-              // Tier 1: Warm ground/warm ocean (< 82) -> Strictly 0 alpha transparent
-              if (sharp <= 82) {
+              // Tier 1: Warm ground/warm ocean (< 72) -> Strictly 0 alpha transparent
+              if (sharp <= 72) {
                 d[i + 3] = 0;
                 continue;
               }
 
-              if (sharp <= 112) {
-                // Tier 2: Low Stratus / Marine Fog (83 - 112) -> Soft translucent mist texture
-                const norm = (sharp - 82) / (112 - 82);
-                cloudAlpha = Math.round((22 + 53 * norm) * spatWeight);
-                baseTone = 218 + 14 * norm;
-                isThinFringe = true;
-              } else if (sharp <= 172) {
-                // Tier 3: Mid-Level Altocumulus / Cirrus (113 - 172) -> 3D billows & textured cloud waves
-                const norm = (sharp - 112) / (172 - 112);
+              if (sharp <= 105) {
+                // Tier 2: Low Stratus / Marine Fog / Thin Cirrus (73 - 105) -> Soft translucent texture
+                const norm = (sharp - 72) / (105 - 72);
+                cloudAlpha = Math.round((16 + 54 * norm) * spatWeight);
+                baseTone = 222 + 12 * norm;
+              } else if (sharp <= 168) {
+                // Tier 3: Mid-Level Altocumulus / Cirrus (106 - 168) -> 3D billows & textured cloud waves
+                const norm = (sharp - 105) / (168 - 105);
                 const s = norm * norm * (3.0 - 2.0 * norm);
-                cloudAlpha = Math.round((75 + 140 * s) * spatWeight);
-                baseTone = 232 + 18 * norm;
-                if (norm < 0.25) isThinFringe = true;
+                cloudAlpha = Math.round((70 + 145 * s) * spatWeight);
+                baseTone = 234 + 16 * norm;
               } else {
-                // Tier 4: Deep Convective Storm Cores & Frontal Bands (>= 173) -> Dense solid white
-                const norm = Math.min(1.0, (sharp - 172) / (235 - 172));
-                cloudAlpha = Math.min(252, Math.round((215 + 37 * norm) * spatWeight));
-                baseTone = 250;
+                // Tier 4: Deep Convective Storm Cores & Frontal Bands (>= 169) -> Dense solid white
+                const norm = Math.min(1.0, (sharp - 168) / (235 - 168));
+                cloudAlpha = Math.min(252, Math.round((220 + 32 * norm) * spatWeight));
+                baseTone = 252;
               }
             } else if (isGibsBand13) {
               // NASA GIBS Band 13 (GOES / Himawari Clean IR):
-              if (sharp <= 152) {
+              if (sharp <= 138) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 152) / (235 - 152));
+              const norm = Math.min(1.0, (sharp - 138) / (235 - 138));
               const s = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
               baseTone = 234 + 20 * s;
-              if (cloudAlpha < 75) isThinFringe = true;
             } else {
               // Visible optical channel:
-              if (sharp <= 82) {
+              if (sharp <= 78) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 82) / (210 - 82));
+              const norm = Math.min(1.0, (sharp - 78) / (210 - 78));
               const s = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
               baseTone = 234 + 20 * s;
-              if (cloudAlpha < 75) isThinFringe = true;
             }
 
             if (cloudAlpha <= 2) {
@@ -400,17 +398,10 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // Directional lighting & 3D relief emboss
             const tone = Math.min(255, Math.max(198, Math.round(baseTone * (0.91 + 0.22 * emboss))));
 
-            if (isThinFringe) {
-              // Crystalline Atmospheric Moisture Fringing (#7dd3fc cyan moisture refraction on thin edges)
-              d[i] = Math.max(0, tone - 10);
-              d[i + 1] = Math.max(0, tone - 2);
-              d[i + 2] = Math.min(255, tone + 14);
-            } else {
-              // Solid volumetric cloud tops: brilliant white with crisp relief contrast
-              d[i] = tone;
-              d[i + 1] = tone;
-              d[i + 2] = Math.min(255, tone + 2);
-            }
+            // Neutral white/gray with 3D solar relief shading (Windy Parity)
+            d[i] = tone;
+            d[i + 1] = tone;
+            d[i + 2] = Math.min(255, tone + 1);
             d[i + 3] = cloudAlpha;
 
           } else if (isVisMode) {
@@ -946,6 +937,28 @@ import {
 } from '@/services/map/disasterMapUtils';
 
 export { getDisasterMeta, type DisasterCategoryType, type DisasterMeta };
+
+// Canonical storm designator and distance helpers for cyclone deduplication
+function extractStormDesignator(nameOrTitle: string, id: string = ''): string {
+  const combined = `${nameOrTitle} ${id}`.toLowerCase();
+  const mNum = combined.match(/\b(?:invest\s*)?(\d{1,2}[a-z]?)\b/i);
+  if (mNum) return mNum[1].toUpperCase();
+  const mJtwc = combined.match(/\b([a-z]{2}\d{2,4})\b/i);
+  if (mJtwc) return mJtwc[1].toUpperCase();
+  return nameOrTitle
+    .toLowerCase()
+    .replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '')
+    .trim();
+}
+
+function calcDistKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export interface CityMapViewerProps {
   latitude: number;
@@ -1643,28 +1656,6 @@ export default function CityMapViewer({
 
     if ((!showDisasters && activeLayer !== 'hurricane') || activeLayer === 'wind') return;
 
-    // Canonical storm deduplication helper
-    const extractStormDesignator = (nameOrTitle: string, id: string = '') => {
-      const combined = `${nameOrTitle} ${id}`.toLowerCase();
-      const mNum = combined.match(/\b(?:invest\s*)?(\d{1,2}[a-z]?)\b/i);
-      if (mNum) return mNum[1].toUpperCase();
-      const mJtwc = combined.match(/\b([a-z]{2}\d{2,4})\b/i);
-      if (mJtwc) return mJtwc[1].toUpperCase();
-      return nameOrTitle
-        .toLowerCase()
-        .replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '')
-        .trim();
-    };
-
-    const calcDistKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLng = ((lng2 - lng1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
-
     // Guarantee that every tracked tropical cyclone has a representation when cyclones or hurricane layer are active
     const rawEvents: WorldEvent[] = [...(showDisasters ? filteredDisasters : [])];
     if (activeLayer === 'hurricane' || activeDisasterFilter === 'cyclones' || activeDisasterFilter === 'all') {
@@ -2269,10 +2260,17 @@ export default function CityMapViewer({
 
       filteredDisasters.forEach((d) => {
         const meta = getDisasterMeta(d);
-        if (meta.type === 'cyclone') {
-          const alreadyInList = allTrackedCyclones.some(
-            (c) => c.id === d.id || c.name.toLowerCase().includes(d.title.toLowerCase()) || d.title.toLowerCase().includes(c.name.toLowerCase())
-          );
+        if (meta.type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number') {
+          const dCode = extractStormDesignator(d.title, d.id);
+          const alreadyInList = allTrackedCyclones.some((c) => {
+            if (c.id === d.id) return true;
+            const cCode = extractStormDesignator(c.name, c.id);
+            if (cCode && dCode && cCode === dCode) return true;
+            if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+              return calcDistKm(c.lat, c.lng, d.lat, d.lng) < 350;
+            }
+            return false;
+          });
           if (!alreadyInList) {
             const convertedFeed = getActiveTropicalCyclones([d], false);
             if (convertedFeed.cyclones.length > 0) {
@@ -2282,7 +2280,34 @@ export default function CityMapViewer({
         }
       });
 
+      // Spatial & canonical deduplication to guarantee exactly ONE track per physical cyclone system
+      const uniqueTrackedCyclones: TropicalCyclone[] = [];
       allTrackedCyclones.forEach((c) => {
+        const cCode = extractStormDesignator(c.name, c.id);
+        const dupIdx = uniqueTrackedCyclones.findIndex((existing) => {
+          if (existing.id === c.id) return true;
+          const existCode = extractStormDesignator(existing.name, existing.id);
+          if (cCode && existCode && cCode === existCode) return true;
+          if (typeof existing.lat === 'number' && typeof existing.lng === 'number' && typeof c.lat === 'number' && typeof c.lng === 'number') {
+            return calcDistKm(existing.lat, existing.lng, c.lat, c.lng) < 350;
+          }
+          return false;
+        });
+
+        if (dupIdx >= 0) {
+          // Keep the record that has more forecast track points or higher reported intensity
+          const existing = uniqueTrackedCyclones[dupIdx];
+          const cPts = c.forecastPoints?.length || 0;
+          const existPts = existing.forecastPoints?.length || 0;
+          if (cPts > existPts || (cPts === existPts && c.windSpeedKph > existing.windSpeedKph)) {
+            uniqueTrackedCyclones[dupIdx] = c;
+          }
+        } else {
+          uniqueTrackedCyclones.push(c);
+        }
+      });
+
+      uniqueTrackedCyclones.forEach((c) => {
         // A. Uncertainty Cone Polygon
         const coneGeoJson = c.uncertaintyConeGeoJson || (c.forecastCone && c.forecastCone.length > 0 ? buildUncertaintyConeGeoJson(c.lat, c.lng, c.forecastCone) : null);
         if (coneGeoJson) {
@@ -2334,8 +2359,19 @@ export default function CityMapViewer({
             properties: { id: c.id, name: c.name },
           });
 
-          // D. Forecast Nodes
-          forecastPts.forEach((p) => {
+          // D. Forecast Nodes - Filter to milestones spaced >= 12h apart to prevent unreadable label collisions
+          const sortedPts = [...forecastPts].sort((a, b) => (a.leadHours || 0) - (b.leadHours || 0));
+          const filteredForecastPts: typeof forecastPts = [];
+          let lastLeadHours = -999;
+          sortedPts.forEach((p) => {
+            const lead = p.leadHours || 0;
+            if (lead === 0 || lead - lastLeadHours >= 12) {
+              filteredForecastPts.push(p);
+              lastLeadHours = lead;
+            }
+          });
+
+          filteredForecastPts.forEach((p) => {
             const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
             const milestoneTitle = formatMilestoneDate(p.timestamp, p.leadHours);
             const sshwsScale = getSaffirSimpsonCategoryNumber(p.windSpeedKph);
@@ -2545,7 +2581,8 @@ export default function CityMapViewer({
               'text-offset': [0, 1.8],
               'text-anchor': 'top',
               'text-justify': 'center',
-              'text-allow-overlap': true,
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
             },
             paint: {
               'text-color': '#ffffff',
@@ -3078,6 +3115,12 @@ export default function CityMapViewer({
           });
 
           // 4b. Astronomical Solar Terminator (Night Shadow & Golden Twilight Horizon)
+          // In Windy Satellite view, suppress night shadows and city lights for uniform 24/7 meteorological clarity
+          const isWindyStyle = activeStyleKey === 'windy-satellite';
+          const terminatorNightOpacity = isWindyStyle ? 0.0 : 0.60;
+          const terminatorTwilightOpacity = isWindyStyle ? 0.0 : 0.35;
+          const blackMarbleOpacity = isWindyStyle ? 0.0 : 0.85;
+
           const nightGeoJSON = getNightTerminatorGeoJSON(obsDate);
           const terminatorSrc = map.getSource('solar-terminator-source') as any;
           if (terminatorSrc) {
@@ -3088,7 +3131,9 @@ export default function CityMapViewer({
               data: nightGeoJSON,
             });
           }
-          if (!map.getLayer('solar-terminator-night-layer')) {
+          if (map.getLayer('solar-terminator-night-layer')) {
+            map.setPaintProperty('solar-terminator-night-layer', 'fill-opacity', terminatorNightOpacity);
+          } else {
             map.addLayer(
               {
                 id: 'solar-terminator-night-layer',
@@ -3096,13 +3141,15 @@ export default function CityMapViewer({
                 source: 'solar-terminator-source',
                 paint: {
                   'fill-color': '#01030a',
-                  'fill-opacity': 0.60,
+                  'fill-opacity': terminatorNightOpacity,
                 },
               },
               beforeLayerId
             );
           }
-          if (!map.getLayer('solar-terminator-twilight-layer')) {
+          if (map.getLayer('solar-terminator-twilight-layer')) {
+            map.setPaintProperty('solar-terminator-twilight-layer', 'line-opacity', terminatorTwilightOpacity);
+          } else {
             map.addLayer(
               {
                 id: 'solar-terminator-twilight-layer',
@@ -3111,7 +3158,7 @@ export default function CityMapViewer({
                 paint: {
                   'line-color': '#f59e0b',
                   'line-width': 3.5,
-                  'line-opacity': 0.35,
+                  'line-opacity': terminatorTwilightOpacity,
                   'line-blur': 8.0,
                 },
               },
@@ -3131,7 +3178,9 @@ export default function CityMapViewer({
               attribution: 'NASA EOSDIS / Earth Science Open Data (VIIRS Black Marble)',
             });
           }
-          if (!map.getLayer('nasa-black-marble-layer')) {
+          if (map.getLayer('nasa-black-marble-layer')) {
+            map.setPaintProperty('nasa-black-marble-layer', 'raster-opacity', blackMarbleOpacity);
+          } else {
             map.addLayer(
               {
                 id: 'nasa-black-marble-layer',
@@ -3139,7 +3188,7 @@ export default function CityMapViewer({
                 source: 'nasa-black-marble-source',
                 maxzoom: 12,
                 paint: {
-                  'raster-opacity': 0.85,
+                  'raster-opacity': blackMarbleOpacity,
                   'raster-resampling': 'linear',
                   'raster-fade-duration': 250,
                 },
