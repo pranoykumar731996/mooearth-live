@@ -720,19 +720,9 @@ export default function WeatherDashboard() {
       }
     }
 
-    // Dynamic initial location resolution (User's saved preference or local timezone)
-    // Eliminates hardcoded Tokyo, Japan on fresh site loads!
-    if (!weather.selectedLocation) {
-      const initialTarget = resolveInitialLocation();
-      weather.fetchWeatherForLocation({
-        latitude: initialTarget.latitude,
-        longitude: initialTarget.longitude,
-        name: initialTarget.name,
-        country: initialTarget.country,
-        timezone: initialTarget.timezone || 'auto',
-        source: 'search',
-      });
-    }
+    // On fresh visits without explicit URL parameters, start in the clean normal 2D globe view (World Map)
+    // without automatically hijacking the camera into a previous search city.
+    // If the user clicks Weather or searches a city, location data will resolve on demand.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -746,10 +736,9 @@ export default function WeatherDashboard() {
         altitude: 2.2,
       }, 1000);
     } else {
-      const initialTarget = resolveInitialLocation();
       api.flyTo({
-        lat: initialTarget.latitude,
-        lng: initialTarget.longitude,
+        lat: 20.0,
+        lng: 15.0,
         altitude: 2.3,
       }, 1000);
     }
@@ -1146,6 +1135,15 @@ export default function WeatherDashboard() {
                 onFocusModeChange={handleFocusModeChange}
                 onClear={() => {
                   setSelectedCountryOnGlobe(null);
+                  weather.clearSelectedLocation();
+                  if (typeof window !== 'undefined') {
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('city');
+                    params.delete('country');
+                    params.delete('lat');
+                    params.delete('lng');
+                    window.history.replaceState(null, '', `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`);
+                  }
                 }}
                 placeholder="Search monuments, places..."
                 initialQuery={
@@ -1566,8 +1564,8 @@ export default function WeatherDashboard() {
           {viewMode === 'city-map' && (
             <div className="absolute inset-0 w-full h-full z-10">
               <CityMapViewer
-                latitude={weather.selectedLocation?.latitude ?? resolveInitialLocation().latitude}
-                longitude={weather.selectedLocation?.longitude ?? resolveInitialLocation().longitude}
+                latitude={weather.selectedLocation?.latitude ?? 20.0}
+                longitude={weather.selectedLocation?.longitude ?? 15.0}
                 cityName={weather.selectedLocation?.name ?? 'World Map'}
                 countryName={weather.selectedLocation?.country ?? ''}
                 timezone={weather.selectedLocation?.timezone || displayedForecast?.timezone}

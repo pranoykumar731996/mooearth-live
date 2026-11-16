@@ -318,6 +318,18 @@ export function useWeatherData() {
     []
   );
 
+  const clearSelectedLocation = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      selectedLocation: null,
+      forecast: null,
+      airQuality: null,
+      elevation: null,
+      flood: null,
+      marine: null,
+    }));
+  }, []);
+
   return {
     ...state,
     units,
@@ -325,6 +337,7 @@ export function useWeatherData() {
     toggleUnits,
     setActiveLayer,
     fetchWeatherForLocation,
+    clearSelectedLocation,
     searchLocations: searchLocationsRaw,
     fetchForecast,
     fetchAirQuality,

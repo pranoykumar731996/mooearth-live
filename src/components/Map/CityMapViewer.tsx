@@ -1038,7 +1038,7 @@ export default function CityMapViewer({
   const [currentPitch, setCurrentPitch] = useState(0);
   const [currentBearing, setCurrentBearing] = useState(0);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
-  const [isSatelliteHudDismissed, setIsSatelliteHudDismissed] = useState(false);
+  const [isSatelliteHudDismissed, setIsSatelliteHudDismissed] = useState(true);
   const [isRadarNoticeDismissed, setIsRadarNoticeDismissed] = useState(false);
 
   useEffect(() => {
@@ -1232,14 +1232,6 @@ export default function CityMapViewer({
             watchdogTimerRef.current = null;
           }
           setIsMapLoaded(true);
-          // Auto-display popup for instant clarity if city marker exists
-          if (markerRef.current) {
-            try {
-              markerRef.current.getPopup()?.addTo(map);
-            } catch {
-              // popup display optional
-            }
-          }
         });
 
         map.on('move', () => {
@@ -3282,88 +3274,77 @@ export default function CityMapViewer({
             <span className="text-[10px] text-cyan-400/60 font-normal hidden sm:inline">⟵ Orbit</span>
           </button>
 
-          {/* City Badge & Recenter Button */}
-          <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-1.5 sm:gap-2 shadow-2xl max-w-full">
-            {activeWeatherSummary?.weatherEmoji ? (
-              <span className="text-base shrink-0">{activeWeatherSummary.weatherEmoji}</span>
-            ) : (
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
-                  {cityName === 'World Map' ? 'Global 2D Disaster & Climate Map' : cityName}
-                </span>
-                {cityName !== 'World Map' && liveTime && (
-                  <span
-                    className="text-cyan-300 font-mono text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shrink-0 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/20"
-                    title={`Local Time: ${liveTime.timeSeconds12} · ${liveTime.tzFullLabel}`}
-                  >
-                    <span>{liveTime.solar.icon}</span>
-                    <span>{liveTime.time12}</span>
-                  </span>
-                )}
-                {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number' && (
-                  <span className="font-black text-cyan-300 text-xs font-mono shrink-0">
-                    {Math.round(activeWeatherSummary.temperature)}°{activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}
-                  </span>
-                )}
-              </div>
-              <div className="text-[10px] text-white/50 truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
-                {cityName === 'World Map'
-                  ? 'Planetary Cyclones & Hazards'
-                  : `${activeWeatherSummary?.weatherDescription ? `${activeWeatherSummary.weatherDescription} · ` : ''}${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
-              </div>
-            </div>
-            {cityName !== 'World Map' && (
-              <button
-                type="button"
-                onClick={handleRecenter}
-                className="ml-1 p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer shrink-0"
-                title="Recenter camera on city marker"
-                aria-label="Recenter"
-              >
-                🎯
-              </button>
-            )}
-          </div>
-
-          {/* Quick Mode Switcher: Zoom In to Place (Max) vs Temperature */}
+          {/* City Badge & Quick Mode Controls (Shown only when exploring a specific city) */}
           {cityName !== 'World Map' && (
-            <div className="flex items-center gap-1.5 w-fit max-w-full bg-[#050512]/90 backdrop-blur-xl border border-white/10 p-1 rounded-2xl shadow-2xl">
-              <button
-                type="button"
-                data-testid="place-max-zoom-pill"
-                onClick={handleQuickZoomMax}
-                className={`px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                  searchFocusMode === 'place-max' && activeLayer !== 'temperature'
-                    ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
-                }`}
-                title={`Auto-zoom directly into ${cityName} at maximum HD satellite zoom`}
-              >
-                <span>🔭</span>
-                <span>Zoom In to Place</span>
-              </button>
-              <button
-                type="button"
-                data-testid="place-temperature-pill"
-                onClick={handleQuickTempView}
-                className={`px-2.5 py-1 rounded-xl text-[10px] sm:text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                  activeLayer === 'temperature' || searchFocusMode === 'temperature'
-                    ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-                    : 'text-white/70 hover:text-white hover:bg-white/10 border border-transparent'
-                }`}
-                title={`Switch to Temperature thermal map & live telemetry for ${cityName}`}
-              >
-                <span>🌡️</span>
-                <span>
-                  Temperature
-                  {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number'
-                    ? ` (${Math.round(activeWeatherSummary.temperature)}°${activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'})`
-                    : ''}
-                </span>
-              </button>
+            <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[#050512]/90 backdrop-blur-xl border border-white/10 text-xs font-mono flex items-center gap-1.5 sm:gap-2 shadow-2xl max-w-full">
+              {activeWeatherSummary?.weatherEmoji ? (
+                <span className="text-base shrink-0">{activeWeatherSummary.weatherEmoji}</span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-white truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
+                    {cityName}
+                  </span>
+                  {liveTime && (
+                    <span
+                      className="text-cyan-300 font-mono text-[10px] sm:text-[11px] font-bold flex items-center gap-1 shrink-0 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/20"
+                      title={`Local Time: ${liveTime.timeSeconds12} · ${liveTime.tzFullLabel}`}
+                    >
+                      <span>{liveTime.solar.icon}</span>
+                      <span>{liveTime.time12}</span>
+                    </span>
+                  )}
+                  {activeWeatherSummary && typeof activeWeatherSummary.temperature === 'number' && (
+                    <span className="font-black text-cyan-300 text-xs font-mono shrink-0">
+                      {Math.round(activeWeatherSummary.temperature)}°{activeWeatherSummary.units === 'fahrenheit' ? 'F' : 'C'}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-white/50 truncate max-w-[110px] min-[400px]:max-w-[140px] sm:max-w-[240px]">
+                  {`${activeWeatherSummary?.weatherDescription ? `${activeWeatherSummary.weatherDescription} · ` : ''}${(countryName ? getLocalizedCountryName(countryName, locale) : null) || 'Metropolis'} · ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 ml-1 shrink-0">
+                <button
+                  type="button"
+                  data-testid="place-max-zoom-pill"
+                  onClick={handleQuickZoomMax}
+                  className={`p-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    searchFocusMode === 'place-max' && activeLayer !== 'temperature'
+                      ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                      : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-transparent'
+                  }`}
+                  title={`Auto-zoom directly into ${cityName} at maximum HD satellite zoom`}
+                  aria-label="Zoom In to Place"
+                >
+                  🔭
+                </button>
+                <button
+                  type="button"
+                  data-testid="place-temperature-pill"
+                  onClick={handleQuickTempView}
+                  className={`p-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeLayer === 'temperature' || searchFocusMode === 'temperature'
+                      ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                      : 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-transparent'
+                  }`}
+                  title={`Switch to Temperature thermal map & live telemetry for ${cityName}`}
+                  aria-label="Temperature"
+                >
+                  🌡️
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRecenter}
+                  className="p-1 rounded-lg bg-white/5 hover:bg-cyan-500/20 text-white/60 hover:text-cyan-300 transition-colors cursor-pointer shrink-0"
+                  title="Recenter camera on city marker"
+                  aria-label="Recenter"
+                >
+                  🎯
+                </button>
+              </div>
             </div>
           )}
 
@@ -3600,8 +3581,8 @@ export default function CityMapViewer({
           </div>
         </div>
 
-          {/* Live Weather Summary Badge & Mobile Weather Telemetry Option */}
-          {activeWeatherSummary ? (
+          {/* Live Weather Summary Badge (Shown only when exploring a specific city) */}
+          {activeWeatherSummary && cityName !== 'World Map' ? (
             <div
               data-testid="city-weather-summary-card"
               className="px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-[#050512]/92 backdrop-blur-xl border border-cyan-500/30 shadow-2xl flex flex-col gap-1 max-w-[130px] min-[400px]:max-w-[160px] sm:max-w-[230px]"

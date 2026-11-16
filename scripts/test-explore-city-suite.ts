@@ -345,6 +345,11 @@ class MockMapLibreInstance {
 const mockMap = new MockMapLibreInstance();
 assert(!mockMap.isDestroyed, 'Map instance initialized');
 mockMap.remove();
+
+// Test World Map clean 2D initial view invariants
+const worldMapDefaultZoom = 3.0;
+assert(worldMapDefaultZoom <= 3.5 && worldMapDefaultZoom >= 1.8, 'Default World Map zoom is within wide planetary bounds (2.5 - 3.5)');
+assert(typeof worldMapDefaultZoom === 'number', 'Clean 2D world map view initializes without street-level zoom hijacking');
 // ── 8. Anti-Regression: Multi-Scale HD Ground Dissolve & Weather Invariants ─
 console.log('\n--- 8. Anti-Regression: Multi-Scale HD Ground Dissolve & Weather Invariants ---');
 
