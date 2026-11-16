@@ -282,16 +282,27 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           // Windy Unsharp Mask: sharp = l + 0.35 * (l - blur)
           const sharp = Math.min(255, Math.max(0, l + 0.35 * (l - bl)));
 
-          // 3D Directional Emboss Normal (upper-left sunlight illumination)
-          const dx = (lum[row + nextCol] - lum[row + prevCol]) * 0.5;
-          const dy = (lum[nextRow + x] - lum[prevRow + x]) * 0.5;
-          const emboss = Math.max(-0.45, Math.min(0.45, (-dx + 1.25 * dy) / 48.0));
+          // 8-tap 3x3 Sobel directional gradient (Northwest solar illumination L = (-1/√2, 1/√2))
+          // Eliminates 1D directional banding and provides deep natural volumetric cloud shading (Windy parity)
+          const sobelDx = (
+            -1.0 * lum[prevRow + prevCol] + 1.0 * lum[prevRow + nextCol] +
+            -2.0 * lum[row + prevCol]     + 2.0 * lum[row + nextCol] +
+            -1.0 * lum[nextRow + prevCol] + 1.0 * lum[nextRow + nextCol]
+          ) * 0.125;
+
+          const sobelDy = (
+            -1.0 * lum[prevRow + prevCol] - 2.0 * lum[prevRow + x] - 1.0 * lum[prevRow + nextCol] +
+             1.0 * lum[nextRow + prevCol] + 2.0 * lum[nextRow + x] + 1.0 * lum[nextRow + nextCol]
+          ) * 0.125;
+
+          // Directional Hillshade normal dot solar light vector (-0.707, 0.707)
+          const emboss = Math.max(-0.48, Math.min(0.48, (-0.707 * sobelDx + 0.707 * sobelDy) / 18.0));
 
           if (isConv) {
             // ==========================================
             // SOLID DEEP CONVECTIVE STORM TOP (Zero Donut Holes!)
             // ==========================================
-            const convAlpha = Math.min(250, Math.round(250 * spatWeight));
+            const convAlpha = Math.min(252, Math.round(250 * spatWeight));
             if (isInfraMode) {
               // Thermodynamic Color Scale (Kelvin / Celsius)
               if (r > 120 && b > 120 && g < 120) {
@@ -324,40 +335,61 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
           if (isBlueMode) {
             // ==========================================
-            // BLUE / HD ATMOSPHERIC SIGMOID CLOUD MODE (Windy HD Parity)
+            // BLUE / HD ATMOSPHERIC 4-TIER RADIOMETRIC CLOUD MODE (Windy HD Parity)
             // ==========================================
             let cloudAlpha = 0;
-            let s = 0;
+            let baseTone = 236;
+            let isThinFringe = false;
 
             if (isEumet && isInfraLayer) {
-              // EUMETSAT IR: warm ground/ocean peaks at lum 65-80, real clouds start at ~82+
-              // Threshold 82 eliminates ALL warm surface pixels (Sahara, Atlantic, etc.)
-              // Only genuine cloud features (cold cloud tops) pass through
+              // EUMETSAT 10.8µm thermal infrared channel (WorldCloudMap / SEVIRI):
+              // Tier 1: Warm ground/warm ocean (< 82) -> Strictly 0 alpha transparent
               if (sharp <= 82) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 82) / (178 - 82));
-              s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+
+              if (sharp <= 112) {
+                // Tier 2: Low Stratus / Marine Fog (83 - 112) -> Soft translucent mist texture
+                const norm = (sharp - 82) / (112 - 82);
+                cloudAlpha = Math.round((22 + 53 * norm) * spatWeight);
+                baseTone = 218 + 14 * norm;
+                isThinFringe = true;
+              } else if (sharp <= 172) {
+                // Tier 3: Mid-Level Altocumulus / Cirrus (113 - 172) -> 3D billows & textured cloud waves
+                const norm = (sharp - 112) / (172 - 112);
+                const s = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round((75 + 140 * s) * spatWeight);
+                baseTone = 232 + 18 * norm;
+                if (norm < 0.25) isThinFringe = true;
+              } else {
+                // Tier 4: Deep Convective Storm Cores & Frontal Bands (>= 173) -> Dense solid white
+                const norm = Math.min(1.0, (sharp - 172) / (235 - 172));
+                cloudAlpha = Math.min(252, Math.round((215 + 37 * norm) * spatWeight));
+                baseTone = 250;
+              }
             } else if (isGibsBand13) {
-              // NASA GIBS Band 13 grayscale clouds (-5°C threshold eliminates Tibet/India ground)
+              // NASA GIBS Band 13 (GOES / Himawari Clean IR):
               if (sharp <= 152) {
                 d[i + 3] = 0;
                 continue;
               }
               const norm = Math.min(1.0, (sharp - 152) / (235 - 152));
-              s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
+              baseTone = 234 + 20 * s;
+              if (cloudAlpha < 75) isThinFringe = true;
             } else {
-              // Visible optical channel (82 threshold eliminates ocean & land)
+              // Visible optical channel:
               if (sharp <= 82) {
                 d[i + 3] = 0;
                 continue;
               }
               const norm = Math.min(1.0, (sharp - 82) / (210 - 82));
-              s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
+              baseTone = 234 + 20 * s;
+              if (cloudAlpha < 75) isThinFringe = true;
             }
 
             if (cloudAlpha <= 2) {
@@ -365,13 +397,20 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               continue;
             }
 
-            // 3D Directional Shading & Tone
-            const baseTone = 236 + 18 * s;
-            const tone = Math.min(255, Math.max(200, Math.round(baseTone * (0.92 + 0.18 * emboss))));
+            // Directional lighting & 3D relief emboss
+            const tone = Math.min(255, Math.max(198, Math.round(baseTone * (0.91 + 0.22 * emboss))));
 
-            d[i] = tone;
-            d[i + 1] = tone;
-            d[i + 2] = Math.min(255, tone + 2);
+            if (isThinFringe) {
+              // Crystalline Atmospheric Moisture Fringing (#7dd3fc cyan moisture refraction on thin edges)
+              d[i] = Math.max(0, tone - 10);
+              d[i + 1] = Math.max(0, tone - 2);
+              d[i + 2] = Math.min(255, tone + 14);
+            } else {
+              // Solid volumetric cloud tops: brilliant white with crisp relief contrast
+              d[i] = tone;
+              d[i + 1] = tone;
+              d[i + 2] = Math.min(255, tone + 2);
+            }
             d[i + 3] = cloudAlpha;
 
           } else if (isVisMode) {
@@ -1050,7 +1089,7 @@ export default function CityMapViewer({
   searchFocusMode = 'place-max',
   onFocusModeChange,
   weatherGridData = null,
-  initialMapStyle = 'atmospheric-satellite',
+  initialMapStyle = 'windy-satellite',
   weatherSummary,
   activeLayer = 'wind',
   onLayerChange,
@@ -1099,7 +1138,7 @@ export default function CityMapViewer({
   useEffect(() => {
     setIsRadarNoticeDismissed(false);
     if (activeLayer === 'satellite' || activeLayer === 'clouds') {
-      setActiveStyleKey('atmospheric-satellite');
+      setActiveStyleKey('windy-satellite');
     } else if (activeLayer === 'wind') {
       setActiveStyleKey('wind-dark');
     }
@@ -2837,7 +2876,7 @@ export default function CityMapViewer({
     ];
 
     const shouldMountSatelliteClouds =
-      (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') &&
+      (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'overview' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'windy-satellite') &&
       activeLayer !== 'wind' &&
       activeLayer !== 'radar' &&
       activeLayer !== 'temperature' &&
@@ -3474,7 +3513,7 @@ export default function CityMapViewer({
           )}
 
           {/* Geostationary Satellite & Nowcast Lightning Telemetry HUD */}
-          {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && !isSatelliteHudDismissed && (
+          {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'windy-satellite') && !isSatelliteHudDismissed && (
             <div className="w-fit max-w-[92vw] sm:max-w-lg flex flex-col gap-1.5 animate-fade-in">
               <div className="rounded-2xl bg-[#060818]/94 backdrop-blur-2xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-2 sm:p-2.5 flex flex-col gap-2">
                 {/* Top row: Sensor Pass + Live Time Pill + Hide Crossbar */}
@@ -3543,6 +3582,36 @@ export default function CityMapViewer({
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Basemap Relief Toggle: Windy Relief vs Photo Earth */}
+                  <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      data-testid="basemap-windy-relief-btn"
+                      onClick={() => setActiveStyleKey('windy-satellite')}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        activeStyleKey === 'windy-satellite'
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      title="Windy High-Contrast Topographic Relief Basemap"
+                    >
+                      🌿 Windy Relief
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="basemap-photo-earth-btn"
+                      onClick={() => setActiveStyleKey('atmospheric-satellite')}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'satellite'
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      title="4K Photorealistic Satellite Earth Imagery"
+                    >
+                      🛰️ Photo Earth
+                    </button>
                   </div>
 
                   {/* Nowcast Lightning Toggle Button */}
@@ -3642,7 +3711,7 @@ export default function CityMapViewer({
               <span className="hidden sm:inline">Full World</span>
             </button>
             {/* If Satellite HUD is dismissed, show a sleek pill button to bring it back */}
-            {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite') && isSatelliteHudDismissed && (
+            {activeLayer !== 'wind' && (activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'hurricane' || activeStyleKey === 'satellite' || activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'windy-satellite') && isSatelliteHudDismissed && (
               <button
                 type="button"
                 data-testid="show-satellite-hud-btn"
