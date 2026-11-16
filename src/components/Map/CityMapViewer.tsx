@@ -2545,6 +2545,12 @@ export default function CityMapViewer({
       const existingNodesSource = map.getSource(nodesSourceId) as any;
       if (existingNodesSource && typeof existingNodesSource.setData === 'function') {
         existingNodesSource.setData(nodesData);
+        if (map.getLayer(nodesLabelLayerId)) {
+          map.setLayoutProperty(nodesLabelLayerId, 'text-field', ['get', 'nodeBadge']);
+          map.setLayoutProperty(nodesLabelLayerId, 'text-size', 9);
+          map.setLayoutProperty(nodesLabelLayerId, 'text-offset', [0, 0]);
+          map.setLayoutProperty(nodesLabelLayerId, 'text-anchor', 'center');
+        }
       } else if (!existingNodesSource) {
         map.addSource(nodesSourceId, { type: 'geojson', data: nodesData as any });
         map.addLayer(
@@ -2576,18 +2582,17 @@ export default function CityMapViewer({
             type: 'symbol',
             source: nodesSourceId,
             layout: {
-              'text-field': ['get', 'labelText'],
-              'text-size': 9.5,
-              'text-offset': [0, 1.8],
-              'text-anchor': 'top',
-              'text-justify': 'center',
-              'text-allow-overlap': false,
-              'text-ignore-placement': false,
+              'text-field': ['get', 'nodeBadge'],
+              'text-size': 9,
+              'text-offset': [0, 0],
+              'text-anchor': 'center',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
             },
             paint: {
               'text-color': '#ffffff',
               'text-halo-color': 'rgba(6, 8, 24, 0.95)',
-              'text-halo-width': 2.5,
+              'text-halo-width': 1.5,
             },
           },
           beforeLayerId
@@ -3115,11 +3120,11 @@ export default function CityMapViewer({
           });
 
           // 4b. Astronomical Solar Terminator (Night Shadow & Golden Twilight Horizon)
-          // In Windy Satellite view, suppress night shadows and city lights for uniform 24/7 meteorological clarity
-          const isWindyStyle = activeStyleKey === 'windy-satellite';
-          const terminatorNightOpacity = isWindyStyle ? 0.0 : 0.60;
-          const terminatorTwilightOpacity = isWindyStyle ? 0.0 : 0.35;
-          const blackMarbleOpacity = isWindyStyle ? 0.0 : 0.85;
+          // In Windy Satellite/Clouds view, suppress night shadows and city lights for uniform 24/7 meteorological clarity
+          const isSatelliteCloudsMode = activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'windy-satellite';
+          const terminatorNightOpacity = isSatelliteCloudsMode ? 0.0 : 0.60;
+          const terminatorTwilightOpacity = isSatelliteCloudsMode ? 0.0 : 0.35;
+          const blackMarbleOpacity = isSatelliteCloudsMode ? 0.0 : 0.85;
 
           const nightGeoJSON = getNightTerminatorGeoJSON(obsDate);
           const terminatorSrc = map.getSource('solar-terminator-source') as any;

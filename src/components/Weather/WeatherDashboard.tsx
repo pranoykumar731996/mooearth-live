@@ -303,7 +303,18 @@ export default function WeatherDashboard() {
         if (existing.id === c.id) return true;
         const normExist = existing.name.toLowerCase().replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '').trim();
         const normC = c.name.toLowerCase().replace(/^(advisory:?\s*|cyclone\s*|tropical\s*storm\s*|hurricane\s*|typhoon\s*|invest\s*)/i, '').trim();
-        return normExist && normC && normExist === normC;
+        if (normExist && normC && normExist === normC) return true;
+        if (typeof existing.lat === 'number' && typeof existing.lng === 'number' && typeof c.lat === 'number' && typeof c.lng === 'number') {
+          // Haversine spatial deduplication: same cyclone within 400km (e.g. INVEST 92B / BOB 09)
+          const dLat = ((c.lat - existing.lat) * Math.PI) / 180;
+          const dLng = ((c.lng - existing.lng) * Math.PI) / 180;
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((existing.lat * Math.PI) / 180) * Math.cos((c.lat * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+          const distKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return distKm < 400;
+        }
+        return false;
       });
       if (!exists) {
         list.push(c);
@@ -1586,7 +1597,7 @@ export default function WeatherDashboard() {
                 searchFocusMode={searchFocusMode}
                 onFocusModeChange={handleFocusModeChange}
                 weatherGridData={gridData}
-                initialMapStyle="atmospheric-satellite"
+                initialMapStyle="windy-satellite"
                 activeLayer={weather.activeLayer}
                 onLayerChange={weather.setActiveLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}
