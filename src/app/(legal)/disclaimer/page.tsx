@@ -32,6 +32,7 @@ export default function Disclaimer() {
             <li><strong>Atmospheric Variability:</strong> Meteorological models, radar estimates, and environmental telemetry represent numerical approximations based on available sensor stations and satellite sweeps. Numerical weather forecasts are subject to natural atmospheric dynamics.</li>
             <li><strong>Service Continuity:</strong> Upstream scientific data feeds may occasionally experience maintenance cycles, satellite pass delays, or telemetry recalibration.</li>
             <li><strong>Not for Life-Safety Directives:</strong> MooEarth.Live provides situational and educational planetary awareness. For urgent civil protection, flood evacuations, or severe weather life-safety directives, always follow official instructions from local emergency management authorities and national meteorological offices.</li>
+            <li><strong>Aviation & Marine Navigation Notice:</strong> MooEarth.Live is strictly an educational and visual awareness tool. It is NOT certified for aeronautical flight planning, marine navigation, or vessel routing. Pilots and mariners must strictly consult official certified aviation and maritime authorities (e.g. FAA, ICAO, IMO, NOAA Marine Warnings).</li>
           </ul>
         </section>
 

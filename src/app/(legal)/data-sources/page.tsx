@@ -35,7 +35,19 @@ export default function DataSources() {
               <strong>NASA Earth Observatory & FIRMS:</strong> Moderate Resolution Imaging Spectroradiometer (MODIS) and Visible Infrared Imaging Radiometer Suite (VIIRS) satellite imagery and thermal anomaly telemetry are made available through NASA open data initiatives.
             </li>
             <li>
+              <strong>NASA GIBS & NOAA GOES Satellite Constellation:</strong> High-resolution visible, clean infrared (10.4–10.8 µm), and upper-tropospheric water vapor imagery is ingested directly from the NASA Global Imagery Browse Services (GIBS), NOAA GOES-East (GOES-16), NOAA GOES-West (GOES-18), and Japan Meteorological Agency (JMA) Himawari-9. Data is in the public domain under NASA Earth Science Open Data Policy and 17 U.S.C. § 105.
+            </li>
+            <li>
+              <strong>EUMETSAT Geostationary Data:</strong> Meteosat Prime (0°) and Meteosat-9 Indian Ocean Data Coverage (IODC 45.5°E) imagery is accessed via open EUMETSAT Web Map Services (WMS) in accordance with the EUMETSAT Data Policy for non-exclusive public meteorological observation.
+            </li>
+            <li>
               <strong>Open-Meteo:</strong> Global meteorological forecasts, atmospheric pressure gradients, precipitation radar vectors, elevation models, and air quality telemetry are powered by Open-Meteo under the open Creative Commons Attribution (CC BY 4.0) license.
+            </li>
+            <li>
+              <strong>Esri World Imagery:</strong> Global satellite ground basemaps are powered by Esri ArcGIS Online under standard attribution: &quot;Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, and the GIS User Community&quot;.
+            </li>
+            <li>
+              <strong>Survey of India Official Boundary:</strong> Sovereign boundaries of the Republic of India are rendered strictly in accordance with the Survey of India administrative boundary specifications (National Geospatial Policy 2022).
             </li>
           </ul>
         </section>
@@ -74,7 +86,17 @@ export default function DataSources() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Questions & Data Inquiries</h2>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">5. Independent Platform & Trademark Disclaimer</h2>
+          <p>
+            MooEarth.Live is an independent, non-affiliated planetary visualization platform. Any references to third-party commercial portals, service providers, or trademarks (including Windy&reg;, Zoom Earth&reg;, Google Maps&trade;, or Apple Maps&trade;) in comparative technical benchmarks or informational text are strictly nominative fair use.
+          </p>
+          <p className="mt-2">
+            MooEarth.Live has no official affiliation with, sponsorship from, or endorsement by any commercial weather service. All weather data, satellite imagery, and telemetry are ingested independently from primary public open data repositories.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mt-8 mb-4">6. Questions & Data Inquiries</h2>
           <p>
             For questions regarding scientific attribution, API integrations, or institutional inquiries, please contact our research and legal team at <a href="mailto:legal@mooearth.live" className="text-cyan-400 hover:underline">legal@mooearth.live</a>.
           </p>

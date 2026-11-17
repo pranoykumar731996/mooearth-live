@@ -222,7 +222,7 @@ export default function StatusPage() {
           </h3>
           <ul className="text-xs text-white/60 space-y-2 list-disc list-inside">
             <li><strong className="text-white/80">Hourly Zero-Past-Hours Guarantee</strong>: Hourly timelines in all sovereign timezones strictly start at current hour with zero past hour cards.</li>
-            <li><strong className="text-white/80">Windy / Zoom Earth Parity</strong>: Gridded wind advection fields continuously ingest GFS atmospheric models and active tropical cyclone vortex eyewalls.</li>
+            <li><strong className="text-white/80">Meteorological Model Parity</strong>: Gridded wind advection fields continuously ingest GFS atmospheric models and active tropical cyclone vortex eyewalls.</li>
             <li><strong className="text-white/80">HD Place Photography Protection</strong>: At zoom $\ge 12.0$, cloud layers dissolve to strictly 0.00 opacity to guarantee razor-sharp 4K satellite ground views.</li>
             <li><strong className="text-white/80">Direct NASA Earthdata WMTS</strong>: NASA GIBS satellite tiles connect directly to official WMTS endpoints with automated swath threshold fallback.</li>
             <li><strong className="text-white/80">Zero Question Repetition</strong>: Game engine challenges and quizzes enforce strict non-repeating questions across sliding windows.</li>

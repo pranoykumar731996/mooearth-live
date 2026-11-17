@@ -3909,9 +3909,9 @@ export default function CityMapViewer({
                           ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-sm'
                           : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
-                      title="Windy High-Contrast Topographic Relief Basemap"
+                      title="High-Contrast Topographic Relief Basemap"
                     >
-                      🌿 Windy Relief
+                      🌿 Topographic Relief
                     </button>
                   </div>
 

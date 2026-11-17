@@ -315,7 +315,7 @@ export default function ProductionHealthDashboard() {
                 </div>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#f8fafc' }}>Winds & Gestures</div>
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>
-                  GFS 10,512 Vector Assimilation, 85% Ocean / 15% Land Bias (Windy Parity)
+                  GFS 10,512 Vector Assimilation, 85% Ocean / 15% Land Bias (Global GFS Standards)
                 </div>
               </div>
 

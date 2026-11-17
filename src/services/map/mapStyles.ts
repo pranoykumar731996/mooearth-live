@@ -129,8 +129,8 @@ export function buildMapStyles(): Record<MapStyleKey, MapStyleOption> {
     },
     'windy-satellite': {
       key: 'windy-satellite',
-      label: 'Windy Relief',
-      badge: 'Windy',
+      label: 'Topographic Relief',
+      badge: 'Relief',
       style: WINDY_RELIEF_MAP_STYLE,
       type: 'vector',
       attribution: '© Esri © OpenMapTiles © OpenStreetMap contributors © Natural Earth',
