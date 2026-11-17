@@ -392,7 +392,7 @@ export default function WeatherDashboard() {
     if (weather.activeLayer === 'hurricane') {
       return CYCLONE_TIMELINE_STEPS[timelineIndex % CYCLONE_TIMELINE_STEPS.length] ?? 0;
     }
-    return timelineIndex;
+    return 0;
   }, [weather.activeLayer, timelineIndex]);
 
   // Automatically synchronize hurricane weather layer with cyclone hazard filter, live frame, Clean Infrared clouds & auto-selection

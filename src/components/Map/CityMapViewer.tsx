@@ -1090,6 +1090,25 @@ function formatMilestoneDate(timestamp?: string, leadHours: number = 0): string 
   }
 }
 
+/**
+ * Formats forecast track waypoint timestamps matching Windy.com specifications
+ * Example: "Tue 18 12:00", "Wed 19 00:00" (concise UTC time milestone)
+ */
+function formatWindyTrackTime(timestamp?: string, leadHours: number = 0): string {
+  if (!timestamp) return `+${leadHours}h`;
+  try {
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return `+${leadHours}h`;
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const mins = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${weekday} ${day} ${hours}:${mins}`;
+  } catch {
+    return `+${leadHours}h`;
+  }
+}
+
 export default function CityMapViewer({
   latitude,
   longitude,
@@ -1656,76 +1675,110 @@ export default function CityMapViewer({
 
     if ((!showDisasters && activeLayer !== 'hurricane') || activeLayer === 'wind') return;
 
-    // Guarantee that every tracked tropical cyclone has a representation when cyclones or hurricane layer are active
-    const rawEvents: WorldEvent[] = [...(showDisasters ? filteredDisasters : [])];
-    if (activeLayer === 'hurricane' || activeDisasterFilter === 'cyclones' || activeDisasterFilter === 'all') {
-      cyclones.forEach((c) => {
-        const cCode = extractStormDesignator(c.name, c.id);
-        const alreadyExists = rawEvents.some((e) => {
-          if (e.id === c.id) return true;
-          const eMeta = getDisasterMeta(e);
-          if (eMeta.type !== 'cyclone') return false;
-          const eCode = extractStormDesignator(e.title, e.id);
-          if (cCode && eCode && cCode === eCode) return true;
-          if (typeof e.lat === 'number' && typeof e.lng === 'number' && typeof c.lat === 'number' && typeof c.lng === 'number') {
-            if (calcDistKm(e.lat, e.lng, c.lat, c.lng) < 350) return true;
+    // 1. Gather all tracked cyclones from cyclones prop AND any cyclone events in filteredDisasters
+    const allTrackedCyclones: TropicalCyclone[] = [...cyclones];
+    filteredDisasters.forEach((d) => {
+      const meta = getDisasterMeta(d);
+      if (meta.type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number') {
+        const dCode = extractStormDesignator(d.title, d.id);
+        const alreadyInList = allTrackedCyclones.some((c) => {
+          if (c.id === d.id) return true;
+          const cCode = extractStormDesignator(c.name, c.id);
+          if (cCode && dCode && cCode === dCode) return true;
+          if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+            return calcDistKm(c.lat, c.lng, d.lat, d.lng) < 350;
           }
           return false;
         });
-        if (!alreadyExists) {
-          rawEvents.push({
-            id: c.id,
-            title: `Cyclone ${c.name}`,
-            category: 'severe_weather',
-            lat: c.lat,
-            lng: c.lng,
-            city: c.basin,
-            country: c.agency,
-            summary: c.summary,
-            publishedAt: c.advisoryIssuedAt || new Date().toISOString(),
-            source: c.attribution,
-            planetaryTelemetry: {
-              windSpeedKph: c.windSpeedKph,
-              pressureHpa: c.pressureHpa,
-              stormWarningType: 'tropical_cyclone',
-            },
+        if (!alreadyInList) {
+          const convertedFeed = getActiveTropicalCyclones([d], false);
+          if (convertedFeed.cyclones.length > 0) {
+            allTrackedCyclones.push(convertedFeed.cyclones[0]);
+          }
+        }
+      }
+    });
+
+    // 2. Spatial & canonical deduplication to ensure exactly ONE authoritative cyclone per physical system
+    const uniqueTrackedCyclones: TropicalCyclone[] = [];
+    allTrackedCyclones.forEach((c) => {
+      const cCode = extractStormDesignator(c.name, c.id);
+      const dupIdx = uniqueTrackedCyclones.findIndex((existing) => {
+        if (existing.id === c.id) return true;
+        const existCode = extractStormDesignator(existing.name, existing.id);
+        if (cCode && existCode && cCode === existCode) return true;
+        if (typeof existing.lat === 'number' && typeof existing.lng === 'number' && typeof c.lat === 'number' && typeof c.lng === 'number') {
+          return calcDistKm(existing.lat, existing.lng, c.lat, c.lng) < 350;
+        }
+        return false;
+      });
+
+      if (dupIdx >= 0) {
+        const existing = uniqueTrackedCyclones[dupIdx];
+        const cPts = c.forecastPoints?.length || c.forecastCone?.length || 0;
+        const existPts = existing.forecastPoints?.length || existing.forecastCone?.length || 0;
+        if (cPts > existPts || (cPts === existPts && c.windSpeedKph > existing.windSpeedKph)) {
+          uniqueTrackedCyclones[dupIdx] = c;
+        }
+      } else {
+        uniqueTrackedCyclones.push(c);
+      }
+    });
+
+    // 3. Guarantee that EVERY tracked cyclone in uniqueTrackedCyclones has a dedicated animated spinning marker!
+    const eventsToRender: WorldEvent[] = [];
+    uniqueTrackedCyclones.forEach((c) => {
+      const matchInDisasters = filteredDisasters.find((d) => {
+        if (d.id === c.id) return true;
+        const meta = getDisasterMeta(d);
+        if (meta.type !== 'cyclone') return false;
+        const dCode = extractStormDesignator(d.title, d.id);
+        const cCode = extractStormDesignator(c.name, c.id);
+        return Boolean(cCode && dCode && cCode === dCode);
+      });
+
+      eventsToRender.push({
+        id: c.id,
+        title: matchInDisasters?.title || (c.name.toLowerCase().includes('cyclone') || c.name.toLowerCase().includes('tropical') || c.name.toLowerCase().includes('typhoon') ? c.name : `Cyclone ${c.name}`),
+        category: 'severe_weather',
+        lat: c.lat,
+        lng: c.lng,
+        city: c.basin,
+        country: c.agency,
+        summary: matchInDisasters?.summary || c.summary,
+        publishedAt: c.advisoryIssuedAt || c.lastUpdated || new Date().toISOString(),
+        source: c.attribution,
+        planetaryTelemetry: {
+          windSpeedKph: c.windSpeedKph,
+          pressureHpa: c.pressureHpa,
+          stormWarningType: 'tropical_cyclone',
+        },
+      });
+    });
+
+    // 4. Add non-cyclone disasters (seismic, wildfires, thunderstorms, etc.) and any standalone events
+    if (showDisasters) {
+      filteredDisasters.forEach((d) => {
+        const meta = getDisasterMeta(d);
+        if (meta.type === 'cyclone') {
+          const dCode = extractStormDesignator(d.title, d.id);
+          const alreadyRendered = eventsToRender.some((e) => {
+            if (e.id === d.id) return true;
+            const eCode = extractStormDesignator(e.title, e.id);
+            if (dCode && eCode && dCode === eCode) return true;
+            if (typeof e.lat === 'number' && typeof e.lng === 'number' && typeof d.lat === 'number' && typeof d.lng === 'number') {
+              return calcDistKm(e.lat, e.lng, d.lat, d.lng) < 350;
+            }
+            return false;
           });
+          if (!alreadyRendered) {
+            eventsToRender.push(d);
+          }
+        } else {
+          eventsToRender.push(d);
         }
       });
     }
-
-    // Deduplicate so no two cyclone markers exist within 350 km of each other (merges JTWC + GDACS into 1)
-    const eventsToRender: WorldEvent[] = [];
-    rawEvents.forEach((ev) => {
-      const meta = getDisasterMeta(ev);
-      if (meta.type === 'cyclone') {
-        const evCode = extractStormDesignator(ev.title, ev.id);
-        const duplicateIdx = eventsToRender.findIndex((existing) => {
-          if (getDisasterMeta(existing).type !== 'cyclone') return false;
-          if (existing.id === ev.id) return true;
-          const existCode = extractStormDesignator(existing.title, existing.id);
-          if (evCode && existCode && evCode === existCode) return true;
-          if (typeof existing.lat === 'number' && typeof existing.lng === 'number' && typeof ev.lat === 'number' && typeof ev.lng === 'number') {
-            return calcDistKm(existing.lat, existing.lng, ev.lat, ev.lng) < 350;
-          }
-          return false;
-        });
-        if (duplicateIdx >= 0) {
-          const existing = eventsToRender[duplicateIdx];
-          const existWind = existing.planetaryTelemetry?.windSpeedKph || 0;
-          const evWind = ev.planetaryTelemetry?.windSpeedKph || 0;
-          if (evWind > existWind || ev.id.startsWith('jtwc-') || ev.id.startsWith('nhc-')) {
-            eventsToRender[duplicateIdx] = {
-              ...existing,
-              ...ev,
-              title: existing.title.includes('INVEST') ? existing.title : ev.title,
-            };
-          }
-          return;
-        }
-      }
-      eventsToRender.push(ev);
-    });
 
     if (eventsToRender.length === 0) return;
 
@@ -1738,10 +1791,11 @@ export default function CityMapViewer({
 
       // Check if this event corresponds to an active tracked tropical cyclone
       const matchingCyclone = meta.type === 'cyclone'
-        ? (cyclones.find((c) => c.id === event.id || c.name.toLowerCase().includes(event.title.toLowerCase()) || event.title.toLowerCase().includes(c.name.toLowerCase())) || null)
+        ? (uniqueTrackedCyclones.find((c) => c.id === event.id || c.name.toLowerCase().includes(event.title.toLowerCase()) || event.title.toLowerCase().includes(c.name.toLowerCase())) ||
+           cyclones.find((c) => c.id === event.id || c.name.toLowerCase().includes(event.title.toLowerCase()) || event.title.toLowerCase().includes(c.name.toLowerCase())) || null)
         : null;
 
-      // Position computation: interpolate along official forecast/observed path when timeline scrubber moves
+      // Position computation: interpolate along official forecast/observed path ONLY when actively in hurricane layer
       let markerLat = event.lat;
       let markerLng = event.lng;
       let markerWind = event.planetaryTelemetry?.windSpeedKph || 120;
@@ -1749,7 +1803,7 @@ export default function CityMapViewer({
       let isForecast = false;
       let leadHours = 0;
 
-      if (matchingCyclone) {
+      if (matchingCyclone && activeLayer === 'hurricane' && timelineHoursAhead > 0) {
         const interpolated = interpolateForecastPosition(matchingCyclone, timelineHoursAhead);
         markerLat = interpolated.lat;
         markerLng = interpolated.lng;
@@ -2132,16 +2186,40 @@ export default function CityMapViewer({
       // Safe fallback if style is reloading
     }
 
-    // 2. Cyclone Wind Radii FeatureCollection
-    const cycloneFeatures: any[] = (!showDisasters ? [] : filteredDisasters)
-      .filter((d) => getDisasterMeta(d).type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number' && !isNaN(d.lat) && !isNaN(d.lng))
-      .map((d) => {
-        let ptLng = d.lng;
-        let ptLat = d.lat;
-        let ptWind = d.planetaryTelemetry?.windSpeedKph || 120;
-        const matchingCyclone = cyclones.find((c) => c.id === d.id || c.name.toLowerCase() === d.title.toLowerCase());
-        if (matchingCyclone && timelineHoursAhead !== 0) {
-          const interp = interpolateForecastPosition(matchingCyclone, timelineHoursAhead);
+    // 2. Cyclone Wind Radii FeatureCollection (centered on authoritative tracked cyclones)
+    const activeCyclonesForRadii: TropicalCyclone[] = [...cyclones];
+    if (showDisasters) {
+      filteredDisasters.forEach((d) => {
+        const meta = getDisasterMeta(d);
+        if (meta.type === 'cyclone' && typeof d.lat === 'number' && typeof d.lng === 'number') {
+          const dCode = extractStormDesignator(d.title, d.id);
+          const alreadyInList = activeCyclonesForRadii.some((c) => {
+            if (c.id === d.id) return true;
+            const cCode = extractStormDesignator(c.name, c.id);
+            if (cCode && dCode && cCode === dCode) return true;
+            if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+              return calcDistKm(c.lat, c.lng, d.lat, d.lng) < 350;
+            }
+            return false;
+          });
+          if (!alreadyInList) {
+            const convertedFeed = getActiveTropicalCyclones([d], false);
+            if (convertedFeed.cyclones.length > 0) {
+              activeCyclonesForRadii.push(convertedFeed.cyclones[0]);
+            }
+          }
+        }
+      });
+    }
+
+    const cycloneFeatures: any[] = activeCyclonesForRadii
+      .filter((c) => typeof c.lat === 'number' && typeof c.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng))
+      .map((c) => {
+        let ptLng = c.lng;
+        let ptLat = c.lat;
+        let ptWind = c.windSpeedKph || 120;
+        if (activeLayer === 'hurricane' && timelineHoursAhead > 0) {
+          const interp = interpolateForecastPosition(c, timelineHoursAhead);
           ptLng = interp.lng;
           ptLat = interp.lat;
           ptWind = interp.windSpeedKph;
@@ -2150,7 +2228,7 @@ export default function CityMapViewer({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [ptLng, ptLat] },
           properties: {
-            id: d.id,
+            id: c.id,
             wind: ptWind,
           },
         };
@@ -2374,6 +2452,7 @@ export default function CityMapViewer({
           filteredForecastPts.forEach((p) => {
             const windKt = p.windSpeedKnots || Math.round(p.windSpeedKph / 1.852);
             const milestoneTitle = formatMilestoneDate(p.timestamp, p.leadHours);
+            const timeLabel = formatWindyTrackTime(p.timestamp, p.leadHours);
             const sshwsScale = getSaffirSimpsonCategoryNumber(p.windSpeedKph);
             const sshwsText = sshwsScale > 0 ? `SSHWS category ${sshwsScale}` : (p.stageName || 'Tropical Cyclone');
             const cardSubtitle = `${windKt}kt${p.pressureHpa ? ` · ${p.pressureHpa}hPa` : ''}`;
@@ -2393,6 +2472,7 @@ export default function CityMapViewer({
                 stageName: p.stageName || sshwsText,
                 sshwsText,
                 milestoneTitle,
+                timeLabel,
                 cardSubtitle,
                 labelText,
                 nodeBadge,
@@ -2540,6 +2620,7 @@ export default function CityMapViewer({
     const nodesSourceId = 'hazard-cyclone-forecast-nodes-source';
     const nodesLayerId = 'hazard-cyclone-forecast-nodes-circle';
     const nodesLabelLayerId = 'hazard-cyclone-forecast-nodes-label';
+    const nodesTimeLayerId = 'hazard-cyclone-forecast-nodes-time';
 
     try {
       const existingNodesSource = map.getSource(nodesSourceId) as any;
@@ -2550,6 +2631,31 @@ export default function CityMapViewer({
           map.setLayoutProperty(nodesLabelLayerId, 'text-size', 9);
           map.setLayoutProperty(nodesLabelLayerId, 'text-offset', [0, 0]);
           map.setLayoutProperty(nodesLabelLayerId, 'text-anchor', 'center');
+        }
+        if (!map.getLayer(nodesTimeLayerId)) {
+          map.addLayer(
+            {
+              id: nodesTimeLayerId,
+              type: 'symbol',
+              source: nodesSourceId,
+              layout: {
+                'text-field': ['get', 'timeLabel'],
+                'text-size': 10,
+                'text-offset': [0, 1.45],
+                'text-anchor': 'top',
+                'text-allow-overlap': true,
+                'text-ignore-placement': true,
+              },
+              paint: {
+                'text-color': '#ffffff',
+                'text-halo-color': 'rgba(2, 6, 23, 0.95)',
+                'text-halo-width': 2.0,
+              },
+            },
+            beforeLayerId
+          );
+        } else {
+          map.setLayoutProperty(nodesTimeLayerId, 'text-field', ['get', 'timeLabel']);
         }
       } else if (!existingNodesSource) {
         map.addSource(nodesSourceId, { type: 'geojson', data: nodesData as any });
@@ -2593,6 +2699,27 @@ export default function CityMapViewer({
               'text-color': '#ffffff',
               'text-halo-color': 'rgba(6, 8, 24, 0.95)',
               'text-halo-width': 1.5,
+            },
+          },
+          beforeLayerId
+        );
+        map.addLayer(
+          {
+            id: nodesTimeLayerId,
+            type: 'symbol',
+            source: nodesSourceId,
+            layout: {
+              'text-field': ['get', 'timeLabel'],
+              'text-size': 10,
+              'text-offset': [0, 1.45],
+              'text-anchor': 'top',
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': 'rgba(2, 6, 23, 0.95)',
+              'text-halo-width': 2.0,
             },
           },
           beforeLayerId
@@ -2649,6 +2776,7 @@ export default function CityMapViewer({
         'hazard-cyclone-forecast-track-line',
         'hazard-cyclone-forecast-nodes-circle',
         'hazard-cyclone-forecast-nodes-label',
+        'hazard-cyclone-forecast-nodes-time',
       ].forEach((lId) => {
         try {
           if (map.getLayer(lId)) map.removeLayer(lId);
