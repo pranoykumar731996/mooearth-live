@@ -29,6 +29,17 @@ if (typeof self !== 'undefined' && self.addProtocol) {
   // Circular partition of unity across all 360 degrees (zero deviation globally):
   function getSectorSpatialWeight(url, lng, lat) {
     const absLat = Math.abs(lat);
+
+    // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
+    // covering all 360 degrees of longitude up to 82.5°N and 75.0°S across Russia, Siberia, Northern Europe (Windy Parity)
+    if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
+      if (absLat <= 56.0) return 0.15;
+      if (absLat > 82.5) return 0.0;
+      if (absLat > 75.0) return 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 75.0) / 7.5)));
+      const ramp = (absLat - 56.0) / 10.0;
+      return 0.15 + 0.85 * (0.5 * (1.0 - Math.cos(Math.PI * ramp)));
+    }
+
     let latWeight = 1.0;
     if (absLat > 66.0) return 0.0;
     else if (absLat > 56.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 56.0) / 10.0)));
@@ -262,34 +273,41 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
         if (isConv) {
           // ==========================================
-          // SOLID DEEP CONVECTIVE STORM TOP (Zero Donut Holes!)
+          // HIGH-DEFINITION CONVECTIVE STORM TOP & CYCLONE VORTEX (Windy & Zoom Earth Parity)
           // ==========================================
-          const convAlpha = Math.min(250, Math.round(250 * spatWeight));
           if (isInfraMode) {
-            // Thermodynamic Color Scale (Kelvin / Celsius)
+            // Authentic Dvorak BD Color Scale (Kelvin / Celsius)
             if (r > 120 && b > 120 && g < 120) {
-              // Overshooting top (-92°C to -80°C) -> Luminous White / Pink
-              d[i] = 255; d[i + 1] = 255; d[i + 2] = 255;
+              // Overshooting top (-92°C to -80°C) -> Luminous White / Lavender
+              d[i] = 255; d[i + 1] = 242; d[i + 2] = 255;
             } else if (convective[p] === 3 || (r > 20 && g < 35 && b < 35)) {
-              // Coldest BD Core (-80°C to -60°C) -> Intense Crimson
-              d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
+              // Coldest Eyewall Core (-80°C to -62°C) -> Intense Crimson
+              d[i] = 220; d[i + 1] = 38; d[i + 2] = 38;
             } else if (r > 180 && g > 50) {
-              // Deep Convection (-58°C to -44°C) -> Amber / Yellow
+              // Deep Convection (-62°C to -48°C) -> Vivid Amber / Yellow
               d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
             } else if (g > 100 && r < 200) {
-              // Moderate Convection (-44°C to -30°C) -> Emerald Green
+              // Moderate Convection (-48°C to -35°C) -> Emerald Green
               d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
             } else {
-              // Upper Cloud (-30°C to -20°C) -> Sky Blue
+              // Upper Convective Cloud (-35°C to -20°C) -> Cyan / Azure
               d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
             }
-            d[i + 3] = convAlpha;
+            d[i + 3] = Math.min(252, Math.round(248 * spatWeight));
           } else {
-            // Blue / Atmospheric / Visible: Solid dense white with crystalline sheen
-            const tone = Math.min(255, Math.max(220, Math.round(248 * (0.94 + 0.14 * emboss))));
-            d[i] = Math.max(220, tone - 6);
+            // Blue / Atmospheric / Visible: Rich Volumetric Convective Texturing
+            // Retains spiral arm striations, eye depth, and convective crests without flat white blowout
+            const convIntensity = isGibsBand13
+              ? Math.min(1.0, Math.max(0.0, (sharp - 110) / 115))
+              : Math.min(1.0, Math.max(0.0, (sharp - 125) / 110));
+
+            const baseConvTone = 205 + 46 * convIntensity;
+            const tone = Math.min(255, Math.max(178, Math.round(baseConvTone * (0.90 + 0.22 * emboss))));
+            const convAlpha = Math.min(250, Math.round((205 + 45 * convIntensity) * spatWeight));
+
+            d[i] = tone;
             d[i + 1] = tone;
-            d[i + 2] = 255;
+            d[i + 2] = Math.min(255, tone + 2);
             d[i + 3] = convAlpha;
           }
           continue;
@@ -297,38 +315,53 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
         if (isBlueMode) {
           // ==========================================
-          // BLUE / HD ATMOSPHERIC SIGMOID CLOUD MODE (Windy HD Parity)
+          // BLUE / HD ATMOSPHERIC 4-TIER RADIOMETRIC CLOUD MODE (Windy HD Parity)
           // ==========================================
           let cloudAlpha = 0;
           let s = 0;
 
           if (isEumet && isInfraLayer) {
-            // EUMETSAT linear infrared (38 threshold eliminates warm ground & ocean, preserves all clouds)
-            if (sharp <= 38) {
+            // EUMETSAT 10.8µm thermal infrared channel (SEVIRI / WorldCloudMap):
+            // Clear warm ocean/land surface (< 58) -> strictly transparent
+            if (sharp <= 58) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - 38) / (205 - 38));
-            s = norm * norm * (3.0 - 2.0 * norm);
-            cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+
+            if (sharp <= 95) {
+              // Low Stratus / Marine Fog / Thin Cirrus (59 - 95) -> Soft translucent feathering
+              const norm = (sharp - 58) / (95 - 58);
+              cloudAlpha = Math.round((14 + 52 * norm) * spatWeight);
+              s = norm * 0.35;
+            } else if (sharp <= 160) {
+              // Mid-Level Altocumulus / Cirrus (96 - 160) -> 3D billows & textured waves
+              const norm = (sharp - 95) / (160 - 95);
+              s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.round((66 + 144 * s) * spatWeight);
+            } else {
+              // Deep Convective Bands & Storm Cores (>= 161) -> Dense high-albedo cloud tops
+              const norm = Math.min(1.0, (sharp - 160) / (235 - 160));
+              s = 0.85 + 0.15 * norm;
+              cloudAlpha = Math.min(250, Math.round((210 + 40 * norm) * spatWeight));
+            }
           } else if (isGibsBand13) {
-            // NASA GIBS Band 13 grayscale clouds (-5°C threshold eliminates Tibet/India ground)
-            if (sharp <= 152) {
+            // NASA GIBS Band 13 (GOES / Himawari Clean IR):
+            if (sharp <= 108) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - 152) / (235 - 152));
+            const norm = Math.min(1.0, (sharp - 108) / (225 - 108));
             s = norm * norm * (3.0 - 2.0 * norm);
-            cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+            cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
           } else {
-            // Visible optical channel (82 threshold eliminates ocean & land)
-            if (sharp <= 82) {
+            // Visible optical channel:
+            if (sharp <= 68) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - 82) / (210 - 82));
+            const norm = Math.min(1.0, (sharp - 68) / (210 - 68));
             s = norm * norm * (3.0 - 2.0 * norm);
-            cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+            cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
           }
 
           if (cloudAlpha <= 2) {
@@ -336,10 +369,11 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             continue;
           }
 
-          // 3D Directional Shading & Tone
-          const baseTone = 236 + 18 * s;
-          const tone = Math.min(255, Math.max(200, Math.round(baseTone * (0.92 + 0.18 * emboss))));
+          // Directional lighting & 3D relief emboss
+          const baseTone = 195 + 55 * s;
+          const tone = Math.min(255, Math.max(165, Math.round(baseTone * (0.88 + 0.24 * emboss))));
 
+          // Neutral silver-white with 3D solar relief shading (Windy & Zoom Earth Parity)
           d[i] = tone;
           d[i + 1] = tone;
           d[i + 2] = Math.min(255, tone + 2);
@@ -350,73 +384,102 @@ if (typeof self !== 'undefined' && self.addProtocol) {
           // VISIBLE / OPTICAL REFLECTANCE MODE
           // ==========================================
           if (isEumet && !isInfraLayer) {
-            // EUMETSAT IODC Daytime Visible Reflectance (msg_iodc:vis006)
-            if (sharp <= 80) {
+            // EUMETSAT Daytime Visible Reflectance (msg_fes:vis006 / msg_iodc:vis006)
+            if (sharp <= 38) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - 80) / (205 - 80));
+            const norm = Math.min(1.0, (sharp - 38) / (185 - 38));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(246 * Math.pow(norm, 0.72) * spatWeight);
             if (cloudAlpha <= 2) {
               d[i + 3] = 0;
               continue;
             }
-            const tone = Math.min(255, Math.max(200, Math.round((236 + 18 * s) * (0.91 + 0.22 * emboss))));
+            const tone = Math.min(255, Math.max(180, Math.round((205 + 48 * s) * (0.88 + 0.24 * emboss))));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
           } else if (isHimawariVis) {
             const sharpVis = Math.min(255, Math.max(0, r + 0.65 * (r - bl)));
-            if (sharpVis <= 86) {
+            if (sharpVis <= 78) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharpVis - 86) / (195 - 86));
+            const norm = Math.min(1.0, (sharpVis - 78) / (195 - 78));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
             if (cloudAlpha <= 2) {
               d[i + 3] = 0;
               continue;
             }
-            const tone = Math.min(255, Math.max(198, Math.round((238 + 16 * s) * (0.91 + 0.22 * emboss))));
+            const tone = Math.min(255, Math.max(180, Math.round((205 + 46 * s) * (0.88 + 0.24 * emboss))));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
           } else if (isGeoColor) {
             const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-            if (isSand || sharp <= 88) {
+            if (isSand || sharp <= 80) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - 88) / (205 - 88));
+            const norm = Math.min(1.0, (sharp - 80) / (205 - 80));
             const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
             if (cloudAlpha <= 2) {
               d[i + 3] = 0;
               continue;
             }
-            const tone = Math.min(255, Math.max(200, Math.round((236 + 18 * norm) * (0.91 + 0.22 * emboss))));
+            const tone = Math.min(255, Math.max(180, Math.round((205 + 48 * norm) * (0.88 + 0.24 * emboss))));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
           } else {
-            // Nighttime infrared fallback
-            const thresh = isEumet ? 38 : 152;
-            const maxRange = isEumet ? 205 : 235;
-            if (sharp <= thresh) {
+            // Visible fallback
+            if (sharp <= 72) {
               d[i + 3] = 0;
               continue;
             }
-            const norm = Math.min(1.0, (sharp - thresh) / (maxRange - thresh));
+            const norm = Math.min(1.0, (sharp - 72) / (205 - 72));
             const s = norm * norm * (3.0 - 2.0 * norm);
-            const cloudAlpha = Math.min(246, Math.round(246 * s * spatWeight));
+            const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
             if (cloudAlpha <= 2) {
               d[i + 3] = 0;
               continue;
             }
-            const tone = Math.min(255, Math.max(200, Math.round((236 + 18 * s) * (0.91 + 0.22 * emboss))));
+            const tone = Math.min(255, Math.max(180, Math.round((205 + 46 * s) * (0.88 + 0.24 * emboss))));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
           }
         } else {
           // ==========================================
           // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
           // ==========================================
-          const thresh = isEumet ? 38 : 152;
-          const maxRange = isEumet ? 205 : 235;
+          const thresh = isEumet ? 72 : 118;
+          const maxRange = isEumet ? 180 : 230;
+          if (sharp <= thresh) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const norm = Math.min(1.0, (sharp - thresh) / (maxRange - thresh));
+          const finalAlpha = Math.round(245 * Math.pow(norm, 0.65) * spatWeight);
+          if (finalAlpha <= 2) {
+            d[i + 3] = 0;
+            continue;
+          }
+          // Unified thermodynamic Kelvin temperature palette across EUMETSAT, Himawari, and GOES:
+          if (norm < 0.25) {
+            // Cirrus & mid-troposphere clouds: soft luminous translucent moonlight-white
+            const tone = Math.min(255, Math.max(195, Math.round((210 + 35 * norm) * (0.92 + 0.18 * emboss))));
+            d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 4);
+          } else if (norm < 0.45) {
+            // Upper troposphere: dense white cloud top
+            const tone = Math.min(255, Math.max(220, Math.round((230 + 20 * norm) * (0.92 + 0.18 * emboss))));
+            d[i] = tone; d[i + 1] = tone; d[i + 2] = tone;
+          } else if (norm < 0.65) {
+            // Active convection (-40°C to -55°C): Emerald green storm mantle
+            d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
+          } else if (norm < 0.85) {
+            // Deep convective vortex (-55°C to -70°C): Vivid Amber / Yellow core
+            d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
+          } else {
+            // Coldest overshooting tops (< -70°C): Crimson / Luminous White storm core
+            d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
+          }
+          d[i + 3] = finalAlpha;
+        }
           if (sharp <= thresh) {
             d[i + 3] = 0;
             continue;
@@ -571,6 +634,19 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             }
           } catch {}
         }
+
+        // Step 2: Date-only fallback if sub-hourly frames are not yet generated
+        if (!res.ok) {
+          const dateOnly = curIso.slice(0, 10);
+          const dateOnlyUrl = realUrl.replace(isoMatch[0], dateOnly);
+          try {
+            const dateRes = await fetch(dateOnlyUrl, { signal: abortController.signal });
+            if (dateRes.ok) {
+              res = dateRes;
+              realUrl = dateOnlyUrl;
+            }
+          } catch {}
+        }
       }
     }
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -583,8 +659,6 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return { data: bitmap };
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
@@ -600,16 +674,22 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     return { data: await blob.arrayBuffer() };
   });
 
-  // Converts Slippy tile request URL to standard EUMETView OGC WMS EPSG:3857 BBOX query
-  function eumetUrlToWms(url) {
+  // Edge proxy helper for EUMETSAT tiles
+  function eumetUrlToProxy(url) {
     const match = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
     if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
-    let layer = match[1];
-    // Optimize European/African infrared cloud cache: use fast pre-rendered worldcloudmap_ir108 (sub-second)
-    // rather than on-the-fly msg_fes:ir108 which times out after 3.5s
-    if (layer === 'msg_fes:ir108') {
-      layer = 'mumi:worldcloudmap_ir108';
-    }
+    const layer = match[1];
+    const z = parseInt(match[2], 10);
+    const y = parseInt(match[3], 10);
+    const x = parseInt(match[4], 10);
+    return `/api/weather/satellite/eumet-tile?z=${z}&x=${x}&y=${y}&layer=${encodeURIComponent(layer)}`;
+  }
+
+  // Direct WMS fallback for EUMETSAT
+  function eumetUrlToWmsDirect(url) {
+    const match = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
+    if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
+    const layer = match[1];
     const z = parseInt(match[2], 10);
     const y = parseInt(match[3], 10);
     const x = parseInt(match[4], 10);
@@ -624,14 +704,29 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     return 'https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=' + minX + ',' + minY + ',' + maxX + ',' + maxY + '&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=' + layer + '&FORMAT=image/png';
   }
 
-  // Protocol 2: EUMETSAT Meteosat High Rate SEVIRI (Europe & Africa)
+  // Protocol 2: EUMETSAT Meteosat High Rate SEVIRI (Europe, Africa & Indian Ocean)
   self.addProtocol('eumet-alpha', async (params, abortController) => {
     try {
-      const realUrl = eumetUrlToWms(params.url);
+      const proxyUrl = eumetUrlToProxy(params.url);
       const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 6000);
+      const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
       abortController.signal.addEventListener('abort', () => timeoutController.abort());
-      const res = await fetch(realUrl, { signal: timeoutController.signal });
+      let res = await fetch(proxyUrl, { signal: timeoutController.signal });
+
+      if (!res.ok) {
+        const directUrl = eumetUrlToWmsDirect(params.url);
+        const fallbackController = new AbortController();
+        const fallbackTimeout = setTimeout(() => fallbackController.abort(), 12000);
+        abortController.signal.addEventListener('abort', () => fallbackController.abort());
+        try {
+          const directRes = await fetch(directUrl, { signal: fallbackController.signal });
+          clearTimeout(fallbackTimeout);
+          if (directRes.ok) res = directRes;
+        } catch {
+          clearTimeout(fallbackTimeout);
+        }
+      }
+
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const blob = await res.blob();

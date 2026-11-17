@@ -161,10 +161,10 @@ export class GeostationarySatelliteLayer {
     const geoObs = getGeostationaryObservationDate(0);
     const dateStr = geoObs.dateStr;
 
-    // Use live Himawari-9 Clean Infrared for infrared/blue, or VIIRS TrueColor for visible
+    // Use true global geostationary composite (Meteosat + Himawari + GOES) or VIIRS TrueColor
     const liveWmsUrl = this.spectralMode === 'visible'
       ? `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=VIIRS_SNPP_CorrectedReflectance_TrueColor&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=1024&HEIGHT=512&FORMAT=image/png&TIME=${dateStr}`
-      : `https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=Himawari_AHI_Band13_Clean_Infrared&CRS=EPSG:4326&BBOX=-90,-180,90,180&WIDTH=1024&HEIGHT=512&FORMAT=image/png&TIME=${geoObs.isoTimestamp}`;
+      : `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=-90,-180,90,180&CRS=EPSG:4326&WIDTH=1024&HEIGHT=512&LAYERS=mumi:worldcloudmap_ir108&FORMAT=image/png&TRANSPARENT=TRUE`;
 
     textureLoader.load(
       liveWmsUrl,
@@ -383,11 +383,17 @@ export class GeostationarySatelliteLayer {
               if (dLng < -180.0) dLng += 360.0;
 
               float dist = sqrt(dLat * dLat + dLng * dLng);
-              if (dist < sRadius * 2.5) {
-                float vortexFactor = 1.0 - smoothstep(0.0, sRadius * 2.5, dist);
-                // Dense eyewall & outer spiral bands
-                cloudDensity = mix(cloudDensity, 0.95, vortexFactor * sIntensity);
-                altitude = mix(altitude, 0.98, vortexFactor * sIntensity);
+              if (dist < sRadius * 2.8) {
+                float vortexFactor = 1.0 - smoothstep(0.0, sRadius * 2.8, dist);
+                // Physical logarithmic spiral dynamics: counter-clockwise in North, clockwise in South
+                float spinDir = sLat >= 0.0 ? 1.0 : -1.0;
+                float angle = atan(dLat, dLng);
+                float spiralArm = sin(angle * 2.0 - dist * 0.85 * spinDir + uTime * 0.4 * spinDir);
+                float eyewallRing = smoothstep(0.12, 0.40, dist / sRadius) * (1.0 - smoothstep(0.40, 1.15, dist / sRadius));
+
+                float stormCloud = clamp(eyewallRing * 0.85 + (spiralArm * 0.5 + 0.5) * vortexFactor * 0.75, 0.0, 1.0);
+                cloudDensity = mix(cloudDensity, 0.95, stormCloud * sIntensity);
+                altitude = mix(altitude, 0.98, stormCloud * sIntensity);
               }
             }
           }
