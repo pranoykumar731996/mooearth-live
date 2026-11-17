@@ -285,8 +285,8 @@ export const MAX_CITY_ZOOM = 18;
  * Determine default style based on environment configuration
  */
 export function getDefaultMapStyleKey(): MapStyleKey {
-  // Windy High-Contrast Relief Basemap for authentic meteorological cloud exploration
-  return 'windy-satellite';
+  // 4K Photorealistic Atmospheric Satellite Basemap with Day/Night Terminator & NASA Black Marble
+  return 'atmospheric-satellite';
 }
 
 /**
@@ -347,7 +347,7 @@ export function getFailoverStyle(currentKey: MapStyleKey, hasError: boolean): Ma
   if (currentKey === 'maptiler-streets' || currentKey === 'liberty' || currentKey === 'bright') {
     return 'esri-street';
   }
-  if (currentKey === 'satellite' || currentKey === 'windy-satellite' || currentKey === 'terrain') {
+  if (currentKey === 'satellite' || currentKey === 'windy-satellite' || currentKey === 'atmospheric-satellite' || currentKey === 'terrain') {
     return 'satellite';
   }
   if (currentKey === 'esri-street') {

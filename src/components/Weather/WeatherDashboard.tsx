@@ -1597,7 +1597,7 @@ export default function WeatherDashboard() {
                 searchFocusMode={searchFocusMode}
                 onFocusModeChange={handleFocusModeChange}
                 weatherGridData={gridData}
-                initialMapStyle="windy-satellite"
+                initialMapStyle="atmospheric-satellite"
                 activeLayer={weather.activeLayer}
                 onLayerChange={weather.setActiveLayer}
                 radarTileUrl={radarMetadata?.frames?.[radarFrameIndex]?.tileUrl}

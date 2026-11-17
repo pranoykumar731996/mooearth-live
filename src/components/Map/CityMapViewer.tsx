@@ -1126,7 +1126,7 @@ export default function CityMapViewer({
   searchFocusMode = 'place-max',
   onFocusModeChange,
   weatherGridData = null,
-  initialMapStyle = 'windy-satellite',
+  initialMapStyle = 'atmospheric-satellite',
   weatherSummary,
   activeLayer = 'wind',
   onLayerChange,
@@ -1175,7 +1175,7 @@ export default function CityMapViewer({
   useEffect(() => {
     setIsRadarNoticeDismissed(false);
     if (activeLayer === 'satellite' || activeLayer === 'clouds') {
-      setActiveStyleKey('windy-satellite');
+      setActiveStyleKey('atmospheric-satellite');
     } else if (activeLayer === 'wind') {
       setActiveStyleKey('wind-dark');
     }
@@ -3282,11 +3282,12 @@ export default function CityMapViewer({
           });
 
           // 4b. Astronomical Solar Terminator (Night Shadow & Golden Twilight Horizon)
-          // In Windy Satellite/Clouds view, suppress night shadows and city lights for uniform 24/7 meteorological clarity
-          const isSatelliteCloudsMode = activeLayer === 'satellite' || activeLayer === 'clouds' || activeStyleKey === 'windy-satellite';
-          const terminatorNightOpacity = isSatelliteCloudsMode ? 0.0 : 0.60;
-          const terminatorTwilightOpacity = isSatelliteCloudsMode ? 0.0 : 0.35;
-          const blackMarbleOpacity = isSatelliteCloudsMode ? 0.0 : 0.85;
+          // In Windy Relief style, suppress night shadow for flat chart view.
+          // In Atmospheric Satellite & other styles, enable photorealistic Day/Night terminator and Black Marble city lights.
+          const isWindyRelief = activeStyleKey === 'windy-satellite';
+          const terminatorNightOpacity = isWindyRelief ? 0.0 : 0.55;
+          const terminatorTwilightOpacity = isWindyRelief ? 0.0 : 0.35;
+          const blackMarbleOpacity = isWindyRelief ? 0.0 : 0.85;
 
           const nightGeoJSON = getNightTerminatorGeoJSON(obsDate);
           const terminatorSrc = map.getSource('solar-terminator-source') as any;
@@ -3884,8 +3885,21 @@ export default function CityMapViewer({
                     })}
                   </div>
 
-                  {/* Basemap Relief Toggle: Windy Relief vs Photo Earth */}
+                  {/* Basemap Relief Toggle: Atmospheric Satellite vs Windy Relief */}
                   <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      data-testid="basemap-photo-earth-btn"
+                      onClick={() => setActiveStyleKey('atmospheric-satellite')}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'satellite'
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      title="4K Photorealistic Atmospheric Satellite Earth Imagery"
+                    >
+                      🛰️ Atmospheric Satellite
+                    </button>
                     <button
                       type="button"
                       data-testid="basemap-windy-relief-btn"
@@ -3898,19 +3912,6 @@ export default function CityMapViewer({
                       title="Windy High-Contrast Topographic Relief Basemap"
                     >
                       🌿 Windy Relief
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="basemap-photo-earth-btn"
-                      onClick={() => setActiveStyleKey('atmospheric-satellite')}
-                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                        activeStyleKey === 'atmospheric-satellite' || activeStyleKey === 'satellite'
-                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
-                          : 'text-white/60 hover:text-white hover:bg-white/5'
-                      }`}
-                      title="4K Photorealistic Satellite Earth Imagery"
-                    >
-                      🛰️ Photo Earth
                     </button>
                   </div>
 
