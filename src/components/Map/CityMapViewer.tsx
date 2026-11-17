@@ -72,7 +72,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
 
-      const hasIodc = !url.includes('has_iodc=0');
+      const hasIodc = url.includes('has_iodc=1') || !url.includes('has_iodc=0');
       const isIodc = url.includes('msg_iodc') || url.includes('eumet-iodc');
       const isHimawari = url.includes('Himawari') || url.includes('himawari');
       const isEumet = (url.includes('msg_') || url.includes('eumet')) && !isIodc;
@@ -82,17 +82,17 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       if (hasIodc) {
         // Continuous 5-Satellite Partition of Unity with EUMETSAT IODC (45.5°E)
         if (isIodc) {
-          if (angle >= 25.0 && angle <= 45.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
-          } else if (angle > 45.0 && angle <= 75.0) {
+          if (angle >= 20.0 && angle <= 45.0) {
+            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 20.0) / 25.0)));
+          } else if (angle > 45.0 && angle <= 70.0) {
             lngWeight = 1.0;
-          } else if (angle > 75.0 && angle <= 95.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
+          } else if (angle > 70.0 && angle <= 95.0) {
+            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 70.0) / 25.0)));
           }
         } else if (isHimawari) {
-          if (angle >= 75.0 && angle <= 95.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
-          } else if (angle > 95.0 && angle <= 165.0) {
+          if (angle >= 55.0 && angle <= 80.0) {
+            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 55.0) / 25.0)));
+          } else if (angle > 80.0 && angle <= 165.0) {
             lngWeight = 1.0;
           } else if (angle > 165.0 && angle <= 195.0) {
             lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -123,11 +123,11 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           }
         }
       } else {
-        // Standard 4-Satellite Baseline Partition of Unity (Production Default)
+        // Standard 4-Satellite Baseline Partition of Unity (Fallback)
         if (isHimawari) {
-          if (angle >= 45.0 && angle <= 65.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
-          } else if (angle > 65.0 && angle <= 165.0) {
+          if (angle >= 50.0 && angle <= 75.0) {
+            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 50.0) / 25.0)));
+          } else if (angle > 75.0 && angle <= 165.0) {
             lngWeight = 1.0;
           } else if (angle > 165.0 && angle <= 195.0) {
             lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
@@ -2928,9 +2928,10 @@ export default function CityMapViewer({
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
+          map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
+          map.getLayer('india-official-boundary-layer') ? 'india-official-boundary-layer' :
           map.getLayer('place_country_major') ? 'place_country_major' :
           map.getLayer('place_country_minor') ? 'place_country_minor' :
-          map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
           map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
           undefined;
 
@@ -2998,8 +2999,8 @@ export default function CityMapViewer({
         }
 
         const isIodcActive = typeof window !== 'undefined'
-          ? (new URLSearchParams(window.location.search).get('iodc') === 'true' || new URLSearchParams(window.location.search).get('iodc') === '1')
-          : process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true';
+          ? (new URLSearchParams(window.location.search).get('iodc') !== 'false' && new URLSearchParams(window.location.search).get('iodc') !== '0')
+          : process.env.NEXT_PUBLIC_DISABLE_EUMETSAT_IODC !== 'true';
 
         const himawariDay = isSectorDaylight(140.0);
         const iodcDay = isSectorDaylight(45.5);
@@ -3218,7 +3219,7 @@ export default function CityMapViewer({
             const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
-            const iodcParam = isIodcActive ? '&has_iodc=1' : '';
+            const iodcParam = isIodcActive ? '&has_iodc=1' : '&has_iodc=0';
             const tileUrl = isEumet
               ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{y}/{x}.png?${spectralParam}${iodcParam}`
               : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}${iodcParam}`;
@@ -3397,6 +3398,90 @@ export default function CityMapViewer({
       }
     }
   }, [showLightning, lightningFeed, isMapLoaded]);
+
+  // Synchronize Official Survey of India Sovereign Boundary & Global Black Borders
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isMapLoaded) return;
+
+    const indiaSourceId = 'india-official-boundary-source';
+    const indiaLayerId = 'india-official-boundary-layer';
+    const globalSourceId = 'global-country-borders-source';
+    const globalLayerId = 'global-country-borders-layer';
+
+    const syncBoundaries = () => {
+      try {
+        const beforeLabelId =
+          map.getLayer('place_country_major') ? 'place_country_major' :
+          map.getLayer('place_country_minor') ? 'place_country_minor' :
+          undefined;
+
+        // 1. Official Survey of India Sovereign Boundary (J&K, Ladakh, Arunachal Pradesh intact)
+        if (!map.getSource(indiaSourceId)) {
+          map.addSource(indiaSourceId, {
+            type: 'geojson',
+            data: '/data/india-official-boundary.geojson',
+          });
+        }
+        if (!map.getLayer(indiaLayerId)) {
+          map.addLayer(
+            {
+              id: indiaLayerId,
+              type: 'line',
+              source: indiaSourceId,
+              paint: {
+                'line-color': '#000000',
+                'line-width': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  1, 1.8,
+                  4, 2.2,
+                  8, 3.0,
+                ],
+                'line-opacity': 0.98,
+              },
+            },
+            beforeLabelId
+          );
+        }
+
+        // 2. Global Black Country Borders for raster styles that lack boundary_country_z0-4
+        if (!map.getLayer('boundary_country_z0-4') && !map.getLayer(globalLayerId)) {
+          if (!map.getSource(globalSourceId)) {
+            map.addSource(globalSourceId, {
+              type: 'vector',
+              url: 'https://tiles.openfreemap.org/planet',
+            });
+          }
+          map.addLayer(
+            {
+              id: globalLayerId,
+              type: 'line',
+              source: globalSourceId,
+              'source-layer': 'boundary',
+              filter: ['all', ['==', 'admin_level', 2]],
+              paint: {
+                'line-color': '#000000',
+                'line-width': 1.6,
+                'line-opacity': 0.95,
+              },
+            },
+            beforeLabelId
+          );
+        }
+      } catch (err) {
+        console.warn('[MapLibre Boundary] Sync notice:', err);
+      }
+    };
+
+    syncBoundaries();
+
+    map.on('styledata', syncBoundaries);
+    return () => {
+      map.off('styledata', syncBoundaries);
+    };
+  }, [isMapLoaded, activeStyleKey]);
 
   // Center map on city marker
   const handleRecenter = () => {

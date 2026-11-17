@@ -73,18 +73,18 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Country Sovereign Boundaries (Subtle & Crisp over Satellite Ground)
+    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
     {
       id: 'boundary_country_z0-4',
       type: 'line',
       source: 'openmaptiles',
       'source-layer': 'boundary',
       maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
+      filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#f8fafc',
-        'line-width': 1.0,
-        'line-opacity': 0.38,
+        'line-color': '#000000',
+        'line-width': 1.5,
+        'line-opacity': 0.95,
       },
     },
     {
@@ -95,9 +95,9 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#f8fafc',
-        'line-width': 1.3,
-        'line-opacity': 0.42,
+        'line-color': '#000000',
+        'line-width': 1.8,
+        'line-opacity': 0.95,
       },
     },
     // 5. Marine Ocean Labels (e.g. INDIAN OCEAN, PACIFIC OCEAN)
@@ -263,18 +263,18 @@ export const WIND_DARK_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Country Sovereign Boundaries — crisp, razor-sharp white lines
+    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
     {
       id: 'boundary_country_z0-4',
       type: 'line',
       source: 'openmaptiles',
       'source-layer': 'boundary',
       maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
+      filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#ffffff',
-        'line-width': 1.1,
-        'line-opacity': 0.52,
+        'line-color': '#000000',
+        'line-width': 1.5,
+        'line-opacity': 0.95,
       },
     },
     {
@@ -285,9 +285,9 @@ export const WIND_DARK_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#ffffff',
-        'line-width': 1.3,
-        'line-opacity': 0.58,
+        'line-color': '#000000',
+        'line-width': 1.8,
+        'line-opacity': 0.95,
       },
     },
     // 5. Marine Ocean Labels
@@ -451,18 +451,18 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Subtle Dark Olive Sovereign Country Boundaries (Windy Style)
+    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
     {
       id: 'boundary_country_z0-4',
       type: 'line',
       source: 'openmaptiles',
       'source-layer': 'boundary',
       maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2], ['!has', 'claimed_by']],
+      filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#1a2618',
-        'line-width': 1.2,
-        'line-opacity': 0.70,
+        'line-color': '#000000',
+        'line-width': 1.5,
+        'line-opacity': 0.95,
       },
     },
     {
@@ -473,9 +473,9 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#1a2618',
-        'line-width': 1.4,
-        'line-opacity': 0.75,
+        'line-color': '#000000',
+        'line-width': 1.8,
+        'line-opacity': 0.95,
       },
     },
     // 5. Marine Ocean Labels
