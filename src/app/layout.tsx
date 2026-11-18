@@ -31,6 +31,15 @@ export const metadata: Metadata = {
     BRANDING.name,
     BRANDING.shortName,
     'Moo Earth',
+    'moo earth',
+    'mooearthlive',
+    'moo earth live',
+    'mooearth.live',
+    'mo earth',
+    'moo-earth',
+    'moo earth weather',
+    'moo earth radar',
+    'moo earth 3D globe',
     'mooearth',
     'live globe',
     '3D map',
@@ -44,6 +53,9 @@ export const metadata: Metadata = {
     'world map',
     'live events',
   ],
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+  },
   manifest: '/manifest.json',
   alternates: {
     canonical: 'https://www.mooearth.live',
@@ -126,6 +138,7 @@ export default function RootLayout({
               '@type': 'Organization',
               name: 'MooEarth Live',
               alternateName: BRANDING.alternateNames,
+              disambiguatingDescription: BRANDING.disambiguatingDescription,
               url: 'https://www.mooearth.live',
               logo: 'https://www.mooearth.live/icons/icon-512.png',
               sameAs: [
@@ -143,6 +156,7 @@ export default function RootLayout({
               '@type': 'WebSite',
               name: 'MooEarth Live',
               alternateName: BRANDING.alternateNames,
+              disambiguatingDescription: BRANDING.disambiguatingDescription,
               url: 'https://www.mooearth.live',
               description: BRANDING.description,
               potentialAction: {

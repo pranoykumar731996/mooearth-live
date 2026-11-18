@@ -20,7 +20,19 @@ const homePageSchema = {
       '@id': 'https://www.mooearth.live/#website',
       url: 'https://www.mooearth.live',
       name: 'MooEarth Live',
-      alternateName: ['MooEarth', 'Moo Earth', 'mooearth.live'],
+      alternateName: [
+        'MooEarth',
+        'Moo Earth',
+        'moo earth',
+        'mooearthlive',
+        'moo earth live',
+        'mooearth.live',
+        'Moo-Earth',
+        'Mo Earth',
+        'Moo Earth Weather',
+        'MooEarth 3D Globe',
+      ],
+      disambiguatingDescription: 'MooEarth Live (also known as Moo Earth or mooearthlive) is an interactive 3D globe and real-time world weather intelligence platform.',
       description,
       inLanguage: 'en',
     },
@@ -29,7 +41,16 @@ const homePageSchema = {
       '@id': 'https://www.mooearth.live/#webapplication',
       url: 'https://www.mooearth.live',
       name: 'MooEarth',
-      alternateName: ['MooEarth Live', 'Moo Earth', 'mooearth.live'],
+      alternateName: [
+        'MooEarth Live',
+        'Moo Earth',
+        'moo earth',
+        'mooearthlive',
+        'moo earth live',
+        'mooearth.live',
+        'Moo-Earth',
+        'Mo Earth',
+      ],
       applicationCategory: 'WeatherApplication',
       operatingSystem: 'All modern web browsers, iOS, Android, Windows, macOS, Linux',
       offers: {
@@ -88,7 +109,7 @@ export default function HomePage(_props?: HomePageProps) {
           __html: JSON.stringify(homePageSchema),
         }}
       />
-      <h1 className="sr-only">MooEarth Live — Interactive 3D Weather Radar & Earth Intelligence</h1>
+      <h1 className="sr-only">MooEarth Live (Moo Earth / mooearthlive / mooearth.live) — Interactive 3D Weather Radar & Earth Intelligence</h1>
       <HomePageClient />
     </>
   );

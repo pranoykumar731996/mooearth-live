@@ -69,7 +69,7 @@ export default function GlobalFooter({ locale = 'en' }: GlobalFooterProps) {
         </div>
 
         <div className="pt-8 border-t border-white/10 text-center text-gray-500 text-xs">
-          <p>&copy; {currentYear} MooEarth.Live. All rights reserved.</p>
+          <p>&copy; {currentYear} MooEarth Live (MooEarth / Moo Earth / mooearthlive). All rights reserved.</p>
           <p className="mt-2">Independent informational platform. All trademarks, logos, and brand names are the property of their respective owners.</p>
         </div>
       </div>
