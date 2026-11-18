@@ -356,7 +356,9 @@ export default function WeatherMapLibreOverlay({
 
       // Position wind heatmap below country boundaries and place names for crisp labels
       const beforeLayerId =
+        map.getLayer('world-country-boundaries-layer') ? 'world-country-boundaries-layer' :
         map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
+        map.getLayer('india-official-boundary-layer') ? 'india-official-boundary-layer' :
         map.getLayer('place_country_major') ? 'place_country_major' :
         map.getLayer('place_country_minor') ? 'place_country_minor' :
         map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :
@@ -1029,7 +1031,9 @@ export default function WeatherMapLibreOverlay({
         if (map.getSource(TEMP_HEATMAP_SOURCE_ID)) return;
 
         const beforeLayerId =
+          map.getLayer('world-country-boundaries-layer') ? 'world-country-boundaries-layer' :
           map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
+          map.getLayer('india-official-boundary-layer') ? 'india-official-boundary-layer' :
           map.getLayer('place_country_major') ? 'place_country_major' :
           map.getLayer('place_country_minor') ? 'place_country_minor' :
           map.getLayer('esri-satellite-labels-layer') ? 'esri-satellite-labels-layer' :

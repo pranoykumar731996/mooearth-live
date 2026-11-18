@@ -3061,6 +3061,7 @@ export default function CityMapViewer({
       try {
         // Position clouds below country borders and place names so cartography stays crisp
         const beforeLayerId =
+          map.getLayer('world-country-boundaries-layer') ? 'world-country-boundaries-layer' :
           map.getLayer('boundary_country_z0-4') ? 'boundary_country_z0-4' :
           map.getLayer('india-official-boundary-layer') ? 'india-official-boundary-layer' :
           map.getLayer('place_country_major') ? 'place_country_major' :
@@ -3561,13 +3562,15 @@ export default function CityMapViewer({
     }
   }, [showLightning, lightningFeed, isMapLoaded]);
 
-  // Synchronize Official Survey of India Sovereign Boundary & Global Black Borders
+  // Synchronize Worldwide Sovereign Country Boundaries & Official Survey of India Sovereign Boundary
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapLoaded) return;
 
     const indiaSourceId = 'india-official-boundary-source';
     const indiaLayerId = 'india-official-boundary-layer';
+    const worldSourceId = 'world-country-boundaries-source';
+    const worldLayerId = 'world-country-boundaries-layer';
     const globalSourceId = 'global-country-borders-source';
     const globalLayerId = 'global-country-borders-layer';
 
@@ -3576,9 +3579,43 @@ export default function CityMapViewer({
         const beforeLabelId =
           map.getLayer('place_country_major') ? 'place_country_major' :
           map.getLayer('place_country_minor') ? 'place_country_minor' :
+          map.getLayer('place_state') ? 'place_state' :
+          map.getLayer('place_city_major') ? 'place_city_major' :
           undefined;
 
-        // 1. Official Survey of India Sovereign Boundary (J&K, Ladakh, Arunachal Pradesh intact)
+        // 1. Worldwide Country Sovereign Boundaries (Natural Earth Admin-0, solid black #000000)
+        // Bundled locally so all 195+ countries worldwide display crisp borders at zoom 0-5+ with 0ms latency
+        if (!map.getSource(worldSourceId)) {
+          map.addSource(worldSourceId, {
+            type: 'geojson',
+            data: '/data/world-country-boundaries.geojson',
+          });
+        }
+        if (!map.getLayer(worldLayerId)) {
+          map.addLayer(
+            {
+              id: worldLayerId,
+              type: 'line',
+              source: worldSourceId,
+              paint: {
+                'line-color': '#000000',
+                'line-width': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  1, 1.4,
+                  4, 1.8,
+                  8, 2.4,
+                ],
+                'line-opacity': 0.92,
+              },
+            },
+            beforeLabelId
+          );
+        }
+
+        // 2. Official Survey of India Sovereign Boundary (J&K, Ladakh, Arunachal Pradesh intact)
+        // Placed on top of the world boundaries layer for 100% sovereign accuracy
         if (!map.getSource(indiaSourceId)) {
           map.addSource(indiaSourceId, {
             type: 'geojson',
@@ -3608,7 +3645,7 @@ export default function CityMapViewer({
           );
         }
 
-        // 2. Global Black Country Borders for raster styles that lack boundary_country_z0-4
+        // 3. Global Black Country Borders fallback for raster styles that lack vector boundaries
         if (!map.getLayer('boundary_country_z0-4') && !map.getLayer(globalLayerId)) {
           if (!map.getSource(globalSourceId)) {
             map.addSource(globalSourceId, {

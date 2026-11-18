@@ -2,7 +2,7 @@
 // MooEarth Live — PWA Service Worker
 // ============================================================
 
-const CACHE_NAME = 'mooearth-live-v44';
+const CACHE_NAME = 'mooearth-live-v45';
 
 // Assets to precache immediately on install
 const PRECACHE_ASSETS = [
@@ -14,6 +14,8 @@ const PRECACHE_ASSETS = [
   '/icons/icon-512.svg',
   '/file.svg',
   '/globe.svg',
+  '/data/india-official-boundary.geojson',
+  '/data/world-country-boundaries.geojson',
 ];
 
 self.addEventListener('install', (event) => {
@@ -214,4 +216,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Build Timestamp: 2026-11-16T19:08:45.303Z
+// Build Timestamp: 2026-11-18T15:19:03.966Z

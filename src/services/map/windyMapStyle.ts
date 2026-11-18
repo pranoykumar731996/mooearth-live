@@ -4,9 +4,275 @@
 // Professional meteorological satellite cartographic aesthetic for 2D satellite view:
 // - Photorealistic 4K Earth Surface: High-resolution Esri World Imagery (250m to sub-meter)
 // - Realistic Deserts, Forests, Mountains & Ocean Bathymetry
-// - Reference Boundaries: Crisp, subtle sovereign border lines (#e2e8f0 at 35-40% opacity)
-// - Reference Labels: High-contrast white glyphs with deep-space halo (#050814) for crystal readability
+// - Reference Boundaries: Crisp, subtle sovereign border lines (#000000 at 95% opacity)
+// - 8-Tier Progressive Labels: High-contrast white glyphs with deep-space halo (#050814) for crystal readability
 // - Fully licensed & compliant: Esri World Imagery, OpenMapTiles, Natural Earth (Public Domain / ODbL)
+
+/**
+ * 8-Tier Progressive Cartographic Reference Layers (OpenMapTiles / OpenFreeMap)
+ * Progressive disclosure across all zoom levels:
+ * - Zoom 0 to 5: Sovereign Country Borders (Crisp Black #000000)
+ * - Zoom 4 to 18: Vector Country & State/Provincial Boundaries
+ * - Zoom 0 to 5: Sovereign Country Names
+ * - Zoom 3.5 to 9: State/Province Boundaries & Names
+ * - Zoom 3.5 to 8: World Megacities & National Capitals (rank <= 3)
+ * - Zoom 5.5 to 11: Major Regional & Secondary Cities (rank 4 to 8, e.g. Bhubaneswar, Austin, Lyon)
+ * - Zoom 7.5 to 13: Minor Cities & Large Towns (rank > 8, class == 'town')
+ * - Zoom 10.5 to 16: Suburbs, Villages, Municipalities & Neighborhoods
+ * - Zoom 13 to 18: Points of Interest, Monuments, Airports & Landmarks
+ */
+export function createCartographicReferenceLayers(haloColor: string = '#050814', marineColor: string = '#93c5fd'): any[] {
+  return [
+    // 1. Country Sovereign Boundaries — Macro to Regional
+    {
+      id: 'boundary_country_z0-4',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      maxzoom: 5,
+      filter: ['all', ['==', 'admin_level', 2]],
+      paint: {
+        'line-color': '#000000',
+        'line-width': 1.5,
+        'line-opacity': 0.95,
+      },
+    },
+    {
+      id: 'boundary_country_z5-',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      minzoom: 5,
+      filter: ['all', ['==', 'admin_level', 2]],
+      paint: {
+        'line-color': '#000000',
+        'line-width': 1.8,
+        'line-opacity': 0.95,
+      },
+    },
+    // 2. State & Provincial Boundaries (e.g. US States, Canadian Provinces, Indian States)
+    {
+      id: 'boundary_state_z4-',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      minzoom: 4,
+      filter: ['all', ['==', 'admin_level', 4]],
+      paint: {
+        'line-color': '#475569',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 8, 1.4],
+        'line-dasharray': [3, 2],
+        'line-opacity': 0.70,
+      },
+    },
+    // 3. Marine Ocean & Sea Labels
+    {
+      id: 'water_name_marine',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'water_name',
+      filter: ['==', 'class', 'ocean'],
+      layout: {
+        'text-field': '{name:latin}\n{name:nonlatin}',
+        'text-font': ['Noto Sans Italic'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14],
+        'text-letter-spacing': 0.25,
+        'text-transform': 'uppercase',
+        'text-max-width': 9,
+      },
+      paint: {
+        'text-color': marineColor,
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.8,
+        'text-opacity': 0.85,
+      },
+    },
+    // 4. Sovereign Country Labels (Tier 1 & Tier 2)
+    {
+      id: 'place_country_major',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'country'], ['<=', 'rank', 2]],
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 13],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.12,
+        'text-max-width': 6.25,
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': haloColor,
+        'text-halo-width': 2.0,
+        'text-halo-blur': 0.5,
+      },
+    },
+    {
+      id: 'place_country_minor',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'country'], ['>', 'rank', 2]],
+      minzoom: 3,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 6, 13],
+        'text-max-width': 6.25,
+      },
+      paint: {
+        'text-color': '#f8fafc',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.8,
+      },
+    },
+    // 5. State / Province Names (Progressive Zoom 3.5 to 9)
+    {
+      id: 'place_state',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['in', 'class', 'state', 'province']],
+      minzoom: 3.5,
+      maxzoom: 9,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 9, 8, 12],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.15,
+        'text-max-width': 8,
+      },
+      paint: {
+        'text-color': '#94a3b8',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.6,
+      },
+    },
+    // 6. Major Capitals & Metropolitan Cities (rank <= 3)
+    {
+      id: 'place_city_major',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'city'], ['<=', 'rank', 3]],
+      minzoom: 3.5,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 15],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': haloColor,
+        'text-halo-width': 2.0,
+      },
+    },
+    // 7. Regional & Secondary Cities (rank 4 to 8: e.g. Bhubaneswar, Cuttack, Austin, Lyon, Manchester)
+    {
+      id: 'place_city_medium',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'city'], ['>', 'rank', 3], ['<=', 'rank', 8]],
+      minzoom: 5.5,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10, 10, 14],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#f8fafc',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.8,
+      },
+    },
+    // 8. Minor Cities (rank > 8)
+    {
+      id: 'place_city_minor',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['all', ['==', 'class', 'city'], ['>', 'rank', 8]],
+      minzoom: 7.5,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 12, 13],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#e2e8f0',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.6,
+      },
+    },
+    // 9. Towns and Municipalities (e.g. Puri, Konark, Khordha, Sub-districts)
+    {
+      id: 'place_town',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['==', 'class', 'town'],
+      minzoom: 8.0,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 12, 12.5],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#cbd5e1',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.5,
+      },
+    },
+    // 10. Suburbs, Villages, Districts & Neighborhoods
+    {
+      id: 'place_suburb_village',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      filter: ['in', 'class', 'suburb', 'village', 'neighbourhood', 'quarter'],
+      minzoom: 10.5,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9, 14, 11],
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#94a3b8',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.4,
+      },
+    },
+    // 11. Landmarks, Monuments & Transport Hubs (Zoom >= 13)
+    {
+      id: 'poi_landmark',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      filter: ['in', 'class', 'monument', 'attraction', 'aerodrome', 'railway'],
+      minzoom: 13.0,
+      layout: {
+        'text-field': '{name:latin}',
+        'text-font': ['Noto Sans Regular'],
+        'text-size': 10,
+        'text-max-width': 7,
+      },
+      paint: {
+        'text-color': '#38bdf8',
+        'text-halo-color': haloColor,
+        'text-halo-width': 1.5,
+      },
+    },
+  ];
+}
 
 export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
   version: 8,
@@ -73,116 +339,8 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
-    {
-      id: 'boundary_country_z0-4',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.5,
-        'line-opacity': 0.95,
-      },
-    },
-    {
-      id: 'boundary_country_z5-',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      minzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.8,
-        'line-opacity': 0.95,
-      },
-    },
-    // 5. Marine Ocean Labels (e.g. INDIAN OCEAN, PACIFIC OCEAN)
-    {
-      id: 'water_name_marine',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'water_name',
-      filter: ['==', 'class', 'ocean'],
-      layout: {
-        'text-field': '{name:latin}\n{name:nonlatin}',
-        'text-font': ['Noto Sans Italic'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14],
-        'text-letter-spacing': 0.25,
-        'text-transform': 'uppercase',
-        'text-max-width': 9,
-      },
-      paint: {
-        'text-color': '#93c5fd',
-        'text-halo-color': '#030712',
-        'text-halo-width': 1.8,
-        'text-opacity': 0.85,
-      },
-    },
-    // 6. Sovereign Country Labels
-    {
-      id: 'place_country_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['<=', 'rank', 2]],
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Bold'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 13],
-        'text-transform': 'uppercase',
-        'text-letter-spacing': 0.12,
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#050814',
-        'text-halo-width': 2.0,
-        'text-halo-blur': 0.5,
-      },
-    },
-    {
-      id: 'place_country_minor',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['>', 'rank', 2]],
-      minzoom: 3,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 6, 13],
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#f8fafc',
-        'text-halo-color': '#050814',
-        'text-halo-width': 1.8,
-      },
-    },
-    // 7. Major Capital & Metropolitan City Labels
-    {
-      id: 'place_city_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'city'], ['<=', 'rank', 3]],
-      minzoom: 4,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 14],
-        'text-max-width': 7,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#050814',
-        'text-halo-width': 1.8,
-      },
-    },
+    // 4. 8-Tier Progressive Cartographic Layers (Boundaries, Cities, Towns, POIs)
+    ...createCartographicReferenceLayers('#050814', '#93c5fd'),
   ],
 };
 
@@ -263,116 +421,8 @@ export const WIND_DARK_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
-    {
-      id: 'boundary_country_z0-4',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.5,
-        'line-opacity': 0.95,
-      },
-    },
-    {
-      id: 'boundary_country_z5-',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      minzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.8,
-        'line-opacity': 0.95,
-      },
-    },
-    // 5. Marine Ocean Labels
-    {
-      id: 'water_name_marine',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'water_name',
-      filter: ['==', 'class', 'ocean'],
-      layout: {
-        'text-field': '{name:latin}\n{name:nonlatin}',
-        'text-font': ['Noto Sans Italic'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14],
-        'text-letter-spacing': 0.25,
-        'text-transform': 'uppercase',
-        'text-max-width': 9,
-      },
-      paint: {
-        'text-color': '#93c5fd',
-        'text-halo-color': '#050a16',
-        'text-halo-width': 1.8,
-        'text-opacity': 0.85,
-      },
-    },
-    // 6. Sovereign Country Labels
-    {
-      id: 'place_country_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['<=', 'rank', 2]],
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Bold'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 13],
-        'text-transform': 'uppercase',
-        'text-letter-spacing': 0.12,
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#050814',
-        'text-halo-width': 2.0,
-        'text-halo-blur': 0.5,
-      },
-    },
-    {
-      id: 'place_country_minor',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['>', 'rank', 2]],
-      minzoom: 3,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 6, 13],
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#f8fafc',
-        'text-halo-color': '#050814',
-        'text-halo-width': 1.8,
-      },
-    },
-    // 7. Major Cities
-    {
-      id: 'place_city_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'city'], ['<=', 'rank', 3]],
-      minzoom: 4,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 14],
-        'text-max-width': 7,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#050814',
-        'text-halo-width': 1.8,
-      },
-    },
+    // 4. 8-Tier Progressive Cartographic Layers (Boundaries, Cities, Towns, POIs)
+    ...createCartographicReferenceLayers('#050a16', '#7dd3fc'),
   ],
 };
 
@@ -451,115 +501,7 @@ export const WINDY_RELIEF_MAP_STYLE: any = {
         'raster-resampling': 'linear',
       },
     },
-    // 4. Country Sovereign Boundaries — Crisp High-Contrast Black Lines
-    {
-      id: 'boundary_country_z0-4',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      maxzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.5,
-        'line-opacity': 0.95,
-      },
-    },
-    {
-      id: 'boundary_country_z5-',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      minzoom: 5,
-      filter: ['all', ['==', 'admin_level', 2]],
-      paint: {
-        'line-color': '#000000',
-        'line-width': 1.8,
-        'line-opacity': 0.95,
-      },
-    },
-    // 5. Marine Ocean Labels
-    {
-      id: 'water_name_marine',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'water_name',
-      filter: ['==', 'class', 'ocean'],
-      layout: {
-        'text-field': '{name:latin}\n{name:nonlatin}',
-        'text-font': ['Noto Sans Italic'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 14],
-        'text-letter-spacing': 0.25,
-        'text-transform': 'uppercase',
-        'text-max-width': 9,
-      },
-      paint: {
-        'text-color': '#7dd3fc',
-        'text-halo-color': '#0c1524',
-        'text-halo-width': 1.8,
-        'text-opacity': 0.85,
-      },
-    },
-    // 6. Sovereign Country Labels — Crisp White with Deep Shadow Halo
-    {
-      id: 'place_country_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['<=', 'rank', 2]],
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Bold'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 1, 9, 4, 13],
-        'text-transform': 'uppercase',
-        'text-letter-spacing': 0.12,
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#0f1810',
-        'text-halo-width': 2.0,
-        'text-halo-blur': 0.5,
-      },
-    },
-    {
-      id: 'place_country_minor',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'country'], ['>', 'rank', 2]],
-      minzoom: 3,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10, 6, 13],
-        'text-max-width': 6.25,
-      },
-      paint: {
-        'text-color': '#f8fafc',
-        'text-halo-color': '#0f1810',
-        'text-halo-width': 1.8,
-      },
-    },
-    // 7. Major Cities
-    {
-      id: 'place_city_major',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      filter: ['all', ['==', 'class', 'city'], ['<=', 'rank', 3]],
-      minzoom: 4,
-      layout: {
-        'text-field': '{name:latin}',
-        'text-font': ['Noto Sans Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 8, 14],
-        'text-max-width': 7,
-      },
-      paint: {
-        'text-color': '#ffffff',
-        'text-halo-color': '#0f1810',
-        'text-halo-width': 1.8,
-      },
-    },
+    // 4. 8-Tier Progressive Cartographic Layers (Boundaries, Cities, Towns, POIs)
+    ...createCartographicReferenceLayers('#0f1810', '#7dd3fc'),
   ],
 };
