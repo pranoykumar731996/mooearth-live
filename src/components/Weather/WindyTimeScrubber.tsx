@@ -389,7 +389,7 @@ export default function WindyTimeScrubber({
           {/* Satellite Mode Switcher (Blue | Visible | Infra) */}
           {(activeLayer === 'satellite' || activeLayer === 'clouds' || activeLayer === 'radar') ? (
             <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-xl border border-white/10">
-              {(['visible', 'blue', 'infra'] as SatelliteSpectralMode[]).map((mode) => {
+              {(['blue', 'visible', 'infra'] as SatelliteSpectralMode[]).map((mode) => {
                 const isActive = spectralMode === mode;
                 const label = mode === 'visible' ? 'Visible' : mode === 'blue' ? 'Blue' : 'Infra';
                 return (

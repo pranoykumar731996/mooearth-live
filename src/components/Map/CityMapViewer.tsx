@@ -206,17 +206,20 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         }
 
         if (isGibsBand13) {
-          const chroma = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-          if (chroma > 18) {
-            if (b > 50 || g > 30 || r > 30) {
-              convective[p] = 1; // 100% Genuine convective cloud top (-20°C to -92°C)
-            }
-          } else if (r <= 54 && g <= 54 && b <= 54) {
-            convective[p] = 2; // -72°C BD core candidate
+          // Band 13 Clean Infrared (NASA GIBS Himawari-9 / GOES):
+          // In grayscale Band 13, cold cloud tops are bright:
+          // Convective storm tops & cyclone eyewall (-38°C to -90°C) -> lum >= 155
+          // Active convective rainband candidate (-20°C to -38°C) -> lum >= 135
+          if (lum[p] >= 155) {
+            convective[p] = 1; // 100% Genuine convective cloud top
+          } else if (lum[p] >= 135) {
+            convective[p] = 2; // Convective rainband candidate
           }
         } else if (isEumet && isInfraLayer) {
-          if (lum[p] >= 185) {
+          if (lum[p] >= 155) {
             convective[p] = 1; // Genuine coldest convective cloud tops in EUMETSAT SEVIRI IR
+          } else if (lum[p] >= 135) {
+            convective[p] = 2;
           }
         }
       }
@@ -328,14 +331,14 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i + 3] = Math.min(252, Math.round(248 * spatWeight));
             } else {
               // Blue / Atmospheric / Visible: Rich Volumetric Convective Texturing
-              // Retains spiral arm striations, eye depth, and convective crests without flat white blowout
+              // Retains spiral arm striations, eye depth, and convective crests without flat white blowout (Windy Parity)
               const convIntensity = isGibsBand13
-                ? Math.min(1.0, Math.max(0.0, (sharp - 110) / 115))
-                : Math.min(1.0, Math.max(0.0, (sharp - 125) / 110));
+                ? Math.min(1.0, Math.max(0.0, (sharp - 135) / 95))
+                : Math.min(1.0, Math.max(0.0, (sharp - 135) / 95));
 
-              const baseConvTone = 205 + 46 * convIntensity;
-              const tone = Math.min(255, Math.max(178, Math.round(baseConvTone * (0.90 + 0.22 * emboss))));
-              const convAlpha = Math.min(250, Math.round((205 + 45 * convIntensity) * spatWeight));
+              const baseConvTone = 230 + 25 * convIntensity;
+              const tone = Math.min(255, Math.max(210, Math.round(baseConvTone * (0.92 + 0.20 * emboss))));
+              const convAlpha = Math.min(252, Math.round((232 + 22 * convIntensity) * spatWeight));
 
               d[i] = tone;
               d[i + 1] = tone;
@@ -363,28 +366,29 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               if (sharp <= 95) {
                 // Low Stratus / Marine Fog / Thin Cirrus (59 - 95) -> Soft translucent feathering
                 const norm = (sharp - 58) / (95 - 58);
-                cloudAlpha = Math.round((14 + 52 * norm) * spatWeight);
+                cloudAlpha = Math.round((25 + 65 * norm) * spatWeight);
                 s = norm * 0.35;
               } else if (sharp <= 160) {
                 // Mid-Level Altocumulus / Cirrus (96 - 160) -> 3D billows & textured waves
                 const norm = (sharp - 95) / (160 - 95);
                 s = norm * norm * (3.0 - 2.0 * norm);
-                cloudAlpha = Math.round((66 + 144 * s) * spatWeight);
+                cloudAlpha = Math.round((90 + 130 * s) * spatWeight);
               } else {
                 // Deep Convective Bands & Storm Cores (>= 161) -> Dense high-albedo cloud tops
                 const norm = Math.min(1.0, (sharp - 160) / (235 - 160));
                 s = 0.85 + 0.15 * norm;
-                cloudAlpha = Math.min(250, Math.round((210 + 40 * norm) * spatWeight));
+                cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
               }
             } else if (isGibsBand13) {
               // NASA GIBS Band 13 (GOES / Himawari Clean IR):
-              if (sharp <= 108) {
+              // Clear warm tropical sea surface (< 68) -> transparent
+              if (sharp <= 68) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 108) / (225 - 108));
+              const norm = Math.min(1.0, (sharp - 68) / (180 - 68));
               s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
+              cloudAlpha = Math.min(250, Math.round((50 + 198 * s) * spatWeight));
             } else {
               // Visible optical channel:
               if (sharp <= 68) {
@@ -459,8 +463,23 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               }
               const tone = Math.min(255, Math.max(180, Math.round((205 + 48 * norm) * (0.88 + 0.24 * emboss))));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+            } else if (isGibsBand13 || isInfraLayer) {
+              // Infrared fallback when in Visible mode at night (Himawari-9 / GOES Band 13 / EUMETSAT IR):
+              if (sharp <= 68) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (sharp - 68) / (180 - 68));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              const cloudAlpha = Math.min(250, Math.round((50 + 198 * s) * spatWeight));
+              if (cloudAlpha <= 2) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const tone = Math.min(255, Math.max(200, Math.round((220 + 35 * s) * (0.90 + 0.22 * emboss))));
+              d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 2); d[i + 3] = cloudAlpha;
             } else {
-              // Visible fallback
+              // Optical visible daytime reflectance
               if (sharp <= 72) {
                 d[i + 3] = 0;
                 continue;
@@ -1133,7 +1152,7 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
-  spectralMode = 'visible',
+  spectralMode = 'blue',
   onSelectSpectralMode,
   particlesEnabled = true,
   showPressureIsobars = false,
@@ -3290,6 +3309,16 @@ export default function CityMapViewer({
           const terminatorTwilightOpacity = isWindyRelief ? 0.0 : 0.35;
           const blackMarbleOpacity = isWindyRelief ? 0.0 : 0.85;
 
+          // Ground-level terminator position: Insert beneath clouds so atmospheric clouds float above night darkness
+          const firstCloudLayerId =
+            map.getLayer('nasa-gibs-global-polar-layer') ? 'nasa-gibs-global-polar-layer' :
+            map.getLayer('nasa-gibs-europe-africa-layer') ? 'nasa-gibs-europe-africa-layer' :
+            map.getLayer('nasa-gibs-eumet-iodc-layer') ? 'nasa-gibs-eumet-iodc-layer' :
+            map.getLayer('nasa-gibs-himawari-layer') ? 'nasa-gibs-himawari-layer' :
+            map.getLayer('nasa-gibs-goes-east-layer') ? 'nasa-gibs-goes-east-layer' :
+            map.getLayer('nasa-gibs-goes-west-layer') ? 'nasa-gibs-goes-west-layer' :
+            beforeLayerId;
+
           const nightGeoJSON = getNightTerminatorGeoJSON(obsDate);
           const terminatorSrc = map.getSource('solar-terminator-source') as any;
           if (terminatorSrc) {
@@ -3313,7 +3342,7 @@ export default function CityMapViewer({
                   'fill-opacity': terminatorNightOpacity,
                 },
               },
-              beforeLayerId
+              firstCloudLayerId
             );
           }
           if (map.getLayer('solar-terminator-twilight-layer')) {
@@ -3331,7 +3360,7 @@ export default function CityMapViewer({
                   'line-blur': 8.0,
                 },
               },
-              beforeLayerId
+              firstCloudLayerId
             );
           }
 
@@ -3362,7 +3391,7 @@ export default function CityMapViewer({
                   'raster-fade-duration': 250,
                 },
               },
-              beforeLayerId
+              firstCloudLayerId
             );
           }
 
@@ -3454,6 +3483,20 @@ export default function CityMapViewer({
               );
             }
           });
+
+          // Guarantee terminator & black marble are strictly beneath cloud layers so clouds remain 100% luminous white at night (Windy Parity)
+          const activeCloudLayerId = sectors.map((s) => `nasa-gibs-${s.id}-layer`).find((id) => map.getLayer(id));
+          if (activeCloudLayerId) {
+            if (map.getLayer('nasa-black-marble-layer')) {
+              try { map.moveLayer('nasa-black-marble-layer', activeCloudLayerId); } catch {}
+            }
+            if (map.getLayer('solar-terminator-twilight-layer')) {
+              try { map.moveLayer('solar-terminator-twilight-layer', activeCloudLayerId); } catch {}
+            }
+            if (map.getLayer('solar-terminator-night-layer')) {
+              try { map.moveLayer('solar-terminator-night-layer', activeCloudLayerId); } catch {}
+            }
+          }
       } catch (err) {
         console.warn('[MapLibre Satellite] Layer sync notice:', err);
       }
@@ -3902,9 +3945,9 @@ export default function CityMapViewer({
                 {/* Middle Row: Spectral Mode Switcher (Visible | Infra | Blue) & Lightning Toggle */}
                 <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 flex-wrap">
                   <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
-                    {(['visible', 'infra', 'blue'] as SatelliteSpectralMode[]).map((mode) => {
-                      const isActive = (spectralMode || 'visible') === mode;
-                      const label = mode === 'visible' ? 'Visible' : mode === 'infra' ? 'Infra (K)' : 'Blue (Moisture)';
+                    {(['blue', 'visible', 'infra'] as SatelliteSpectralMode[]).map((mode) => {
+                      const isActive = (spectralMode || 'blue') === mode;
+                      const label = mode === 'blue' ? 'Blue' : mode === 'visible' ? 'Visible' : 'Infra (K)';
                       return (
                         <button
                           key={mode}
@@ -4060,7 +4103,7 @@ export default function CityMapViewer({
                 <span>🛰️</span>
                 <span className="hidden sm:inline">Clouds</span>
                 <span className="text-[9px] px-1 rounded bg-cyan-500/20 text-cyan-300 font-bold">
-                  {spectralMode ? spectralMode.toUpperCase().slice(0, 3) : 'VIS'}
+                  {spectralMode ? spectralMode.toUpperCase().slice(0, 3) : 'BLU'}
                 </span>
               </button>
             )}
