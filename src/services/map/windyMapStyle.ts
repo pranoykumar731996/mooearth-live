@@ -32,9 +32,9 @@ export function createCartographicReferenceLayers(haloColor: string = '#050814',
       maxzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#000000',
-        'line-width': 1.5,
-        'line-opacity': 0.95,
+        'line-color': '#1e293b',
+        'line-width': 1.1,
+        'line-opacity': 0.70,
       },
     },
     {
@@ -45,24 +45,24 @@ export function createCartographicReferenceLayers(haloColor: string = '#050814',
       minzoom: 5,
       filter: ['all', ['==', 'admin_level', 2]],
       paint: {
-        'line-color': '#000000',
-        'line-width': 1.8,
-        'line-opacity': 0.95,
+        'line-color': '#1e293b',
+        'line-width': 1.3,
+        'line-opacity': 0.78,
       },
     },
-    // 2. State & Provincial Boundaries (e.g. US States, Canadian Provinces, Indian States)
+    // 2. State & Provincial Boundaries (Progressive Zoom 5.5+)
     {
       id: 'boundary_state_z4-',
       type: 'line',
       source: 'openmaptiles',
       'source-layer': 'boundary',
-      minzoom: 4,
+      minzoom: 5.5,
       filter: ['all', ['==', 'admin_level', 4]],
       paint: {
         'line-color': '#475569',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.8, 8, 1.4],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5.5, 0.8, 8, 1.2],
         'line-dasharray': [3, 2],
-        'line-opacity': 0.70,
+        'line-opacity': 0.45,
       },
     },
     // 3. Marine Ocean & Sea Labels
@@ -128,14 +128,14 @@ export function createCartographicReferenceLayers(haloColor: string = '#050814',
         'text-halo-width': 1.8,
       },
     },
-    // 5. State / Province Names (Progressive Zoom 3.5 to 9)
+    // 5. State / Province Names (Progressive Zoom 5.5 to 9)
     {
       id: 'place_state',
       type: 'symbol',
       source: 'openmaptiles',
       'source-layer': 'place',
       filter: ['all', ['in', 'class', 'state', 'province']],
-      minzoom: 3.5,
+      minzoom: 5.5,
       maxzoom: 9,
       layout: {
         'text-field': '{name:latin}',
@@ -325,6 +325,8 @@ export const ATMOSPHERIC_SATELLITE_MAP_STYLE: any = {
       paint: {
         'raster-opacity': 1.0,
         'raster-resampling': 'linear',
+        'raster-contrast': 0.10,
+        'raster-saturation': 0.12,
       },
     },
     // 3. Subtle 3D Topographic Hillshade Relief (subtle depth enhancement)

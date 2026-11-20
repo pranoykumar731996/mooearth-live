@@ -102,7 +102,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_iodc:ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [20.0, -68.0, 105.0, 68.0],
     },
   ],
   blue: [
@@ -140,7 +139,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_iodc:ir108',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [20.0, -68.0, 105.0, 68.0],
     },
   ],
   visible: [
@@ -178,7 +176,6 @@ export const GEOSTATIONARY_SECTORS: Record<SatelliteSpectralMode, GeostationaryS
       layerName: 'msg_iodc:vis006',
       tileMatrixSet: 'EPSG:3857',
       format: 'image/png',
-      bounds: [20.0, -68.0, 105.0, 68.0],
     },
   ],
 };
@@ -187,7 +184,7 @@ export function buildSectorTileUrl(sector: GeostationarySector, dateStr: string)
   if (sector.layerName.startsWith('msg_') || sector.layerName.startsWith('mumi:')) {
     return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${sector.layerName}&STYLES=&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE`;
   }
-  const ext = sector.format === 'image/jpeg' ? 'jpg' : 'png';
+  const ext = sector.format === 'image/jpeg' ? (sector.layerName.includes('VIIRS') ? 'jpeg' : 'jpg') : 'png';
   return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sector.layerName}/default/${dateStr}/${sector.tileMatrixSet}/{z}/{y}/{x}.${ext}`;
 }
 
@@ -197,7 +194,7 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
     name: 'VIIRS Corrected Reflectance (True Color)',
     agency: 'NASA EOSDIS / NOAA',
     instrument: 'VIIRS',
-    platform: 'NOAA-20 / Suomi NPP',
+    platform: 'NOAA-20',
     spectralMode: 'visible',
     format: 'image/jpeg',
     tileMatrixSet: 'GoogleMapsCompatible_Level9',
@@ -206,7 +203,7 @@ export const SATELLITE_PRODUCTS: Record<SatelliteSpectralMode, SatelliteProduct>
     attribution: 'NASA Global Imagery Browse Services (GIBS) / EOSDIS',
     license: 'NASA Earth Science Open Data Policy (Public Domain)',
     licenseUrl: 'https://earthdata.nasa.gov/collaborate/open-data-services-and-software/data-information-policy',
-    layerName: 'VIIRS_SNPP_CorrectedReflectance_TrueColor',
+    layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
   },
   blue: {
     id: 'nasa-gibs-himawari-blue',

@@ -60,11 +60,11 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
       // covering all 360 degrees of longitude up to 82.5°N and 75.0°S across Russia, Siberia, Northern Europe (Windy Parity)
       if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
-        if (absLat <= 56.0) return 0.15;
+        if (absLat <= 56.0) return 0.0;
         if (absLat > 82.5) return 0.0;
         if (absLat > 75.0) return 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 75.0) / 7.5)));
         const ramp = (absLat - 56.0) / 10.0;
-        return 0.15 + 0.85 * (0.5 * (1.0 - Math.cos(Math.PI * ramp)));
+        return 0.5 * (1.0 - Math.cos(Math.PI * ramp));
       }
 
       let latWeight = 1.0;
@@ -74,90 +74,67 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
 
-      const hasIodc = url.includes('has_iodc=1') || !url.includes('has_iodc=0');
-      const isIodc = url.includes('msg_iodc') || url.includes('eumet-iodc');
       const isHimawari = url.includes('Himawari') || url.includes('himawari');
-      const isEumet = (url.includes('msg_') || url.includes('eumet')) && !isIodc;
+      const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
+      const isMeteosatPrime = (url.includes('msg_fes') || url.includes('europe-africa')) && !isIodc;
       const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
       const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
-      if (hasIodc) {
-        // Continuous 5-Satellite Partition of Unity with EUMETSAT IODC (45.5°E)
-        if (isIodc) {
-          if (angle >= 25.0 && angle <= 45.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
-          } else if (angle > 45.0 && angle <= 75.0) {
-            lngWeight = 1.0;
-          } else if (angle > 75.0 && angle <= 95.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
-          }
-        } else if (isHimawari) {
-          if (angle >= 75.0 && angle <= 95.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
-          } else if (angle > 95.0 && angle <= 165.0) {
-            lngWeight = 1.0;
-          } else if (angle > 165.0 && angle <= 195.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
-          }
-        } else if (isGoesWest) {
-          if (angle >= 165.0 && angle <= 195.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
-          } else if (angle > 195.0 && angle <= 225.0) {
-            lngWeight = 1.0;
-          } else if (angle > 225.0 && angle <= 265.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
-          }
-        } else if (isGoesEast) {
-          if (angle >= 225.0 && angle <= 265.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
-          } else if (angle > 265.0 && angle <= 320.0) {
-            lngWeight = 1.0;
-          } else if (angle > 320.0 && angle <= 345.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-          }
-        } else if (isEumet) {
-          if (angle >= 320.0 && angle <= 345.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-          } else if (angle > 345.0 || angle <= 25.0) {
-            lngWeight = 1.0;
-          } else if (angle > 25.0 && angle <= 45.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
-          }
+      // 5-Sentinel Seamless Global Partition of Unity (Zero seams, zero scissors, sum of weights = 1.000 everywhere):
+      if (isHimawari) {
+        // Himawari-9 (140.7°E): Covers East Asia, India, Bay of Bengal, Australia, Western Pacific (70°E to 195°E)
+        if (angle >= 70.0 && angle <= 85.0) {
+          // Smooth blend with Meteosat-IODC over Central/Eastern India (70°E to 85°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 70.0) / 15.0)));
+        } else if (angle > 85.0 && angle <= 165.0) {
+          lngWeight = 1.0; // 100% full coverage across East India, Bay of Bengal, China, Japan, Australia
+        } else if (angle > 165.0 && angle <= 195.0) {
+          // Smooth blend with GOES-West over Western Pacific / Dateline (165°E to 195°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
         }
-      } else {
-        // Standard 4-Satellite Baseline Partition of Unity (Fallback)
-        if (isHimawari) {
-          if (angle >= 45.0 && angle <= 65.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
-          } else if (angle > 65.0 && angle <= 165.0) {
-            lngWeight = 1.0;
-          } else if (angle > 165.0 && angle <= 195.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
-          }
-        } else if (isGoesWest) {
-          if (angle >= 165.0 && angle <= 195.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
-          } else if (angle > 195.0 && angle <= 225.0) {
-            lngWeight = 1.0;
-          } else if (angle > 225.0 && angle <= 265.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
-          }
-        } else if (isGoesEast) {
-          if (angle >= 225.0 && angle <= 265.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
-          } else if (angle > 265.0 && angle <= 320.0) {
-            lngWeight = 1.0;
-          } else if (angle > 320.0 && angle <= 345.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-          }
-        } else if (isEumet) {
-          if (angle >= 320.0 && angle <= 345.0) {
-            lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
-          } else if (angle > 345.0 || angle <= 45.0) {
-            lngWeight = 1.0;
-          } else if (angle > 45.0 && angle <= 65.0) {
-            lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 45.0) / 20.0)));
-          }
+      } else if (isIodc) {
+        // Meteosat-9 IODC (45.5°E): Covers Indian Ocean, Arabian Sea, Madagascar, Middle East (15°E to 85°E)
+        if (angle >= 15.0 && angle <= 30.0) {
+          // Smooth blend with Meteosat Prime over East Africa / Red Sea (15°E to 30°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 15.0) / 15.0)));
+        } else if (angle > 30.0 && angle <= 70.0) {
+          lngWeight = 1.0; // 100% full coverage across Indian Ocean, Arabian Sea, Madagascar, Persian Gulf
+        } else if (angle > 70.0 && angle <= 85.0) {
+          // Smooth blend with Himawari over Central/Eastern India (70°E to 85°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 70.0) / 15.0)));
+        }
+      } else if (isMeteosatPrime) {
+        // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (315° to 30°E)
+        if (angle >= 315.0 && angle <= 340.0) {
+          // Smooth blend with GOES-East over Mid-Atlantic (315° to 340°)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 315.0) / 25.0)));
+        } else if (angle > 340.0 || angle <= 15.0) {
+          lngWeight = 1.0;
+        } else if (angle > 15.0 && angle <= 30.0) {
+          // Smooth blend with Meteosat-IODC over East Africa / Red Sea (15°E to 30°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 15.0) / 15.0)));
+        }
+      } else if (isGoesWest) {
+        // GOES-West (137.2°W): Covers Central/Eastern Pacific (165°E to 115°W / 245°)
+        if (angle >= 165.0 && angle <= 195.0) {
+          // Smooth blend with Himawari
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
+        } else if (angle > 195.0 && angle <= 225.0) {
+          lngWeight = 1.0;
+        } else if (angle > 225.0 && angle <= 245.0) {
+          // Smooth blend with GOES-East over West Coast / Rockies (225° to 245°)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 20.0)));
+        }
+      } else if (isGoesEast) {
+        // GOES-East (75.2°W): Covers Americas, Caribbean, Atlantic (225° to 340° / 20°W)
+        if (angle >= 225.0 && angle <= 245.0) {
+          // Smooth blend with GOES-West
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 20.0)));
+        } else if (angle > 245.0 && angle <= 315.0) {
+          lngWeight = 1.0;
+        } else if (angle > 315.0 && angle <= 340.0) {
+          // Smooth blend with Meteosat Prime over Mid-Atlantic (315° to 340°)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 315.0) / 25.0)));
         }
       }
 
@@ -168,12 +145,23 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const len = d.length;
       const totalPixels = width * height;
 
-      const coordMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
       let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
-      if (coordMatch) {
-        tileZ = parseInt(coordMatch[1], 10);
-        tileY = parseInt(coordMatch[2], 10);
-        tileX = parseInt(coordMatch[3], 10);
+      const wmtsMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+      const queryMatch = realUrl.match(/[?&]z=(\d+)[&]x=(\d+)[&]y=(\d+)/i) || realUrl.match(/[?&]z=(\d+)[&]y=(\d+)[&]x=(\d+)/i);
+      if (wmtsMatch) {
+        tileZ = parseInt(wmtsMatch[1], 10);
+        tileY = parseInt(wmtsMatch[2], 10);
+        tileX = parseInt(wmtsMatch[3], 10);
+        hasCoords = true;
+      } else if (queryMatch) {
+        tileZ = parseInt(queryMatch[1], 10);
+        if (realUrl.includes('x=' + queryMatch[2])) {
+          tileX = parseInt(queryMatch[2], 10);
+          tileY = parseInt(queryMatch[3], 10);
+        } else {
+          tileY = parseInt(queryMatch[2], 10);
+          tileX = parseInt(queryMatch[3], 10);
+        }
         hasCoords = true;
       }
 
@@ -191,11 +179,26 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
       const isGeoColor = realUrl.includes('GeoColor');
       const isEumet = realUrl.includes('msg_') || realUrl.includes('eumet');
+      const isHimawari = realUrl.includes('Himawari') || realUrl.includes('himawari');
+      const isGoes = realUrl.includes('GOES') || realUrl.includes('goes');
 
-      // Pass 1: Fast Per-Pixel Luminance & Convective Core Tagging (Windy Parity)
+      // TrueColor Swaths (VIIRS NOAA-20 250m Level 9):
+      // Natural optical daylight true color composite. Pass through cleanly without processing as single-channel IR.
+      const isTrueColor = realUrl.includes('TrueColor') || realUrl.includes('CorrectedReflectance');
+      if (isTrueColor) {
+        for (let p = 0, idx = 0; idx < len; idx += 4, p++) {
+          const r = d[idx], g = d[idx + 1], b = d[idx + 2];
+          // Black background outside orbital swath
+          if (r < 8 && g < 8 && b < 8) {
+            d[idx + 3] = 0;
+          }
+        }
+        return;
+      }
+
+      // Pass 1: Fast Per-Pixel Radiance & Convective Core Tagging
       const lum = new Float32Array(totalPixels);
       const convective = new Uint8Array(totalPixels);
-      const isGibsBand13 = isInfraLayer && !isEumet;
 
       for (let p = 0, idx = 0; idx < len; idx += 4, p++) {
         const r = d[idx], g = d[idx + 1], b = d[idx + 2];
@@ -205,26 +208,17 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           lum[p] = 0.299 * r + 0.587 * g + 0.114 * b;
         }
 
-        if (isGibsBand13) {
-          // Band 13 Clean Infrared (NASA GIBS Himawari-9 / GOES):
-          // In grayscale Band 13, cold cloud tops are bright:
-          // Convective storm tops & cyclone eyewall (-38°C to -90°C) -> lum >= 155
-          // Active convective rainband candidate (-20°C to -38°C) -> lum >= 135
-          if (lum[p] >= 155) {
-            convective[p] = 1; // 100% Genuine convective cloud top
-          } else if (lum[p] >= 135) {
+        if (isInfraLayer) {
+          // Standardized thermodynamic convection threshold across all satellites:
+          if (lum[p] >= 180) {
+            convective[p] = 1; // Deep convective core
+          } else if (lum[p] >= 162) {
             convective[p] = 2; // Convective rainband candidate
-          }
-        } else if (isEumet && isInfraLayer) {
-          if (lum[p] >= 155) {
-            convective[p] = 1; // Genuine coldest convective cloud tops in EUMETSAT SEVIRI IR
-          } else if (lum[p] >= 135) {
-            convective[p] = 2;
           }
         }
       }
 
-      // Pass 2: Fast 3x3 Box Blur & BD Core Morphology (Eliminates Hollow Donut Voids)
+      // Pass 2: Fast 3x3 Box Blur
       const blur = new Float32Array(totalPixels);
       for (let y = 0; y < height; y++) {
         const row = y * width;
@@ -252,25 +246,22 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
                 }
               }
             }
-            if (hasConvNeighbor) {
-              convective[p] = 3; // Confirmed -72°C BD Convective Core
-            }
+            if (hasConvNeighbor) convective[p] = 3;
           }
         }
       }
 
-      // Pass 3: Windy-Parity Directional Emboss Shading & Continuous Cloud Rendering
+      // Pass 3: Physically-Accurate Non-Destructive Cloud Transfer Function (Windy & Zoom Earth Parity)
+      // Zero artificial Sobel noise, zero unsharp distortion, and zero inter-tile boundary seams!
       for (let y = 0; y < height; y++) {
         const row = y * width;
-        const prevRow = (y > 0 ? y - 1 : y) * width;
-        const nextRow = (y < height - 1 ? y + 1 : y) * width;
         for (let x = 0; x < width; x++) {
           const p = row + x;
           const i = p * 4;
           const r = d[i], g = d[i + 1], b = d[i + 2];
           const isConv = convective[p] === 1 || convective[p] === 3;
 
-          // Off-disk deep black space void (convective cores are protected)
+          // Off-disk deep black space void
           if (lum[p] < 28 && !isConv) {
             d[i + 3] = 0;
             continue;
@@ -282,67 +273,34 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             continue;
           }
 
-          const prevCol = x > 0 ? x - 1 : x;
-          const nextCol = x < width - 1 ? x + 1 : x;
           const l = lum[p];
           const bl = blur[p];
-
-          // Windy Unsharp Mask: sharp = l + 0.35 * (l - blur)
-          const sharp = Math.min(255, Math.max(0, l + 0.35 * (l - bl)));
-
-          // 8-tap 3x3 Sobel directional gradient (Northwest solar illumination L = (-1/√2, 1/√2))
-          // Eliminates 1D directional banding and provides deep natural volumetric cloud shading (Windy parity)
-          const sobelDx = (
-            -1.0 * lum[prevRow + prevCol] + 1.0 * lum[prevRow + nextCol] +
-            -2.0 * lum[row + prevCol]     + 2.0 * lum[row + nextCol] +
-            -1.0 * lum[nextRow + prevCol] + 1.0 * lum[nextRow + nextCol]
-          ) * 0.125;
-
-          const sobelDy = (
-            -1.0 * lum[prevRow + prevCol] - 2.0 * lum[prevRow + x] - 1.0 * lum[prevRow + nextCol] +
-             1.0 * lum[nextRow + prevCol] + 2.0 * lum[nextRow + x] + 1.0 * lum[nextRow + nextCol]
-          ) * 0.125;
-
-          // Directional Hillshade normal dot solar light vector (-0.707, 0.707)
-          const emboss = Math.max(-0.48, Math.min(0.48, (-0.707 * sobelDx + 0.707 * sobelDy) / 18.0));
+          const baseRadiance = 0.65 * l + 0.35 * bl;
 
           if (isConv) {
-            // ==========================================
-            // HIGH-DEFINITION CONVECTIVE STORM TOP & CYCLONE VORTEX (Windy & Zoom Earth Parity)
-            // ==========================================
+            // High-definition convective storm tops & cyclone eyewall
             if (isInfraMode) {
-              // Authentic Dvorak BD Color Scale (Kelvin / Celsius)
+              // Authentic Dvorak BD Color Scale
               if (r > 120 && b > 120 && g < 120) {
-                // Overshooting top (-92°C to -80°C) -> Luminous White / Lavender
                 d[i] = 255; d[i + 1] = 242; d[i + 2] = 255;
               } else if (convective[p] === 3 || (r > 20 && g < 35 && b < 35)) {
-                // Coldest Eyewall Core (-80°C to -62°C) -> Intense Crimson
                 d[i] = 220; d[i + 1] = 38; d[i + 2] = 38;
               } else if (r > 180 && g > 50) {
-                // Deep Convection (-62°C to -48°C) -> Vivid Amber / Yellow
                 d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
               } else if (g > 100 && r < 200) {
-                // Moderate Convection (-48°C to -35°C) -> Emerald Green
                 d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
               } else {
-                // Upper Convective Cloud (-35°C to -20°C) -> Cyan / Azure
                 d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
               }
               d[i + 3] = Math.min(252, Math.round(248 * spatWeight));
             } else {
-              // Blue / Atmospheric / Visible: Rich Volumetric Convective Texturing
-              // Retains spiral arm striations, eye depth, and convective crests without flat white blowout (Windy Parity)
-              const convIntensity = isGibsBand13
-                ? Math.min(1.0, Math.max(0.0, (sharp - 135) / 95))
-                : Math.min(1.0, Math.max(0.0, (sharp - 135) / 95));
-
-              const baseConvTone = 230 + 25 * convIntensity;
-              const tone = Math.min(255, Math.max(210, Math.round(baseConvTone * (0.92 + 0.20 * emboss))));
-              const convAlpha = Math.min(252, Math.round((232 + 22 * convIntensity) * spatWeight));
-
-              d[i] = tone;
-              d[i + 1] = tone;
-              d[i + 2] = Math.min(255, tone + 2);
+              // Blue / Atmospheric / Visible: Natural Convective Cloud Tops with Soft Highlights
+              const convIntensity = Math.min(1.0, Math.max(0.0, (baseRadiance - 150) / 60));
+              const convTone = Math.min(255, Math.round(225 + 28 * convIntensity));
+              const convAlpha = Math.min(252, Math.round((235 + 18 * convIntensity) * spatWeight));
+              d[i] = convTone;
+              d[i + 1] = convTone;
+              d[i + 2] = Math.min(255, convTone + 2);
               d[i + 3] = convAlpha;
             }
             continue;
@@ -355,47 +313,35 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let cloudAlpha = 0;
             let s = 0;
 
-            if (isEumet && isInfraLayer) {
-              // EUMETSAT 10.8µm thermal infrared channel (SEVIRI / WorldCloudMap):
-              // Clear warm ocean/land surface (< 58) -> strictly transparent
-              if (sharp <= 58) {
+            if (isInfraLayer) {
+              // Standardized clean-ocean threshold across all geostationary IR instruments:
+              const irThresh = 148;
+              if (baseRadiance <= irThresh) {
                 d[i + 3] = 0;
                 continue;
               }
-
-              if (sharp <= 95) {
-                // Low Stratus / Marine Fog / Thin Cirrus (59 - 95) -> Soft translucent feathering
-                const norm = (sharp - 58) / (95 - 58);
-                cloudAlpha = Math.round((25 + 65 * norm) * spatWeight);
-                s = norm * 0.35;
-              } else if (sharp <= 160) {
-                // Mid-Level Altocumulus / Cirrus (96 - 160) -> 3D billows & textured waves
-                const norm = (sharp - 95) / (160 - 95);
-                s = norm * norm * (3.0 - 2.0 * norm);
-                cloudAlpha = Math.round((90 + 130 * s) * spatWeight);
+              if (baseRadiance <= 170) {
+                const norm = (baseRadiance - irThresh) / (170 - irThresh);
+                const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round((28 + 115 * Math.pow(smoothNorm, 1.2)) * spatWeight);
+                s = smoothNorm * 0.40;
+              } else if (baseRadiance <= 190) {
+                const norm = (baseRadiance - 170) / (190 - 170);
+                const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round((143 + 82 * smoothNorm) * spatWeight);
+                s = 0.40 + 0.45 * smoothNorm;
               } else {
-                // Deep Convective Bands & Storm Cores (>= 161) -> Dense high-albedo cloud tops
-                const norm = Math.min(1.0, (sharp - 160) / (235 - 160));
+                const norm = Math.min(1.0, (baseRadiance - 190) / (235 - 190));
                 s = 0.85 + 0.15 * norm;
                 cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
               }
-            } else if (isGibsBand13) {
-              // NASA GIBS Band 13 (GOES / Himawari Clean IR):
-              // Clear warm tropical sea surface (< 68) -> transparent
-              if (sharp <= 68) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharp - 68) / (180 - 68));
-              s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(250, Math.round((50 + 198 * s) * spatWeight));
             } else {
               // Visible optical channel:
-              if (sharp <= 68) {
+              if (baseRadiance <= 68) {
                 d[i + 3] = 0;
                 continue;
               }
-              const norm = Math.min(1.0, (sharp - 68) / (210 - 68));
+              const norm = Math.min(1.0, (baseRadiance - 68) / (205 - 68));
               s = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
             }
@@ -405,11 +351,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               continue;
             }
 
-            // Directional lighting & 3D relief emboss
-            const baseTone = 195 + 55 * s;
-            const tone = Math.min(255, Math.max(165, Math.round(baseTone * (0.88 + 0.24 * emboss))));
-
-            // Neutral silver-white with 3D solar relief shading (Windy & Zoom Earth Parity)
+            const tone = Math.min(255, Math.max(185, Math.round(195 + 58 * s)));
             d[i] = tone;
             d[i + 1] = tone;
             d[i + 2] = Math.min(255, tone + 2);
@@ -417,116 +359,72 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
           } else if (isVisMode) {
             // ==========================================
-            // VISIBLE / OPTICAL REFLECTANCE MODE
+            // VISIBLE / OPTICAL REFLECTANCE MODE (Natural Day / Fallback Night)
             // ==========================================
             if (isEumet && !isInfraLayer) {
-              // EUMETSAT Daytime Visible Reflectance (msg_fes:vis006 / msg_iodc:vis006)
-              if (sharp <= 38) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharp - 38) / (185 - 38));
+              if (l <= 36) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 36) / (185 - 36));
               const s = norm * norm * (3.0 - 2.0 * norm);
-              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.72) * spatWeight);
-              if (cloudAlpha <= 2) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const tone = Math.min(255, Math.max(180, Math.round((205 + 48 * s) * (0.88 + 0.24 * emboss))));
+              const cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+              if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+              const tone = Math.min(255, Math.max(180, Math.round(180 + 72 * s)));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
             } else if (isHimawariVis) {
-              const sharpVis = Math.min(255, Math.max(0, r + 0.65 * (r - bl)));
-              if (sharpVis <= 78) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharpVis - 78) / (195 - 78));
+              if (r <= 42) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (r - 42) / (195 - 42));
               const s = norm * norm * (3.0 - 2.0 * norm);
-              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
-              if (cloudAlpha <= 2) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const tone = Math.min(255, Math.max(180, Math.round((205 + 46 * s) * (0.88 + 0.24 * emboss))));
-              d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+              const cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
+              if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+              const tone = Math.min(255, Math.max(185, Math.round(185 + 70 * s)));
+              d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 2); d[i + 3] = cloudAlpha;
             } else if (isGeoColor) {
               const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-              if (isSand || sharp <= 80) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharp - 80) / (205 - 80));
-              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
-              if (cloudAlpha <= 2) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const tone = Math.min(255, Math.max(180, Math.round((205 + 48 * norm) * (0.88 + 0.24 * emboss))));
-              d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
-            } else if (isGibsBand13 || isInfraLayer) {
-              // Infrared fallback when in Visible mode at night (Himawari-9 / GOES Band 13 / EUMETSAT IR):
-              if (sharp <= 68) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharp - 68) / (180 - 68));
+              if (isSand || l <= 55) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 55) / (205 - 55));
               const s = norm * norm * (3.0 - 2.0 * norm);
-              const cloudAlpha = Math.min(250, Math.round((50 + 198 * s) * spatWeight));
-              if (cloudAlpha <= 2) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const tone = Math.min(255, Math.max(200, Math.round((220 + 35 * s) * (0.90 + 0.22 * emboss))));
+              const cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+              if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+              const tone = Math.min(255, Math.max(185, Math.round(185 + 68 * s)));
+              d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+            } else if (isInfraLayer) {
+              const irThresh = 148;
+              if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (baseRadiance - irThresh) / (215 - irThresh));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              const cloudAlpha = Math.min(252, Math.round(250 * Math.pow(s, 0.95) * spatWeight));
+              if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+              const tone = Math.min(255, Math.max(185, Math.round(195 + 58 * s)));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 2); d[i + 3] = cloudAlpha;
             } else {
-              // Optical visible daytime reflectance
-              if (sharp <= 72) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (sharp - 72) / (205 - 72));
+              if (l <= 50) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 50) / (205 - 50));
               const s = norm * norm * (3.0 - 2.0 * norm);
-              const cloudAlpha = Math.round(246 * Math.pow(norm, 0.75) * spatWeight);
-              if (cloudAlpha <= 2) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const tone = Math.min(255, Math.max(180, Math.round((205 + 46 * s) * (0.88 + 0.24 * emboss))));
+              const cloudAlpha = Math.round(246 * Math.pow(s, 0.85) * spatWeight);
+              if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+              const tone = Math.min(255, Math.max(185, Math.round(185 + 68 * s)));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
             }
           } else {
             // ==========================================
             // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
             // ==========================================
-            const thresh = isEumet ? 72 : 118;
-            const maxRange = isEumet ? 180 : 230;
-            if (sharp <= thresh) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const norm = Math.min(1.0, (sharp - thresh) / (maxRange - thresh));
-            const finalAlpha = Math.round(245 * Math.pow(norm, 0.65) * spatWeight);
-            if (finalAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            // Unified thermodynamic Kelvin temperature palette across EUMETSAT, Himawari, and GOES:
+            const thresh = 118;
+            const maxRange = 230;
+            if (l <= thresh) { d[i + 3] = 0; continue; }
+            const norm = Math.min(1.0, (l - thresh) / (maxRange - thresh));
+            const finalAlpha = Math.round(245 * Math.pow(norm, 0.70) * spatWeight);
+            if (finalAlpha <= 2) { d[i + 3] = 0; continue; }
             if (norm < 0.25) {
-              // Cirrus & mid-troposphere clouds: soft luminous translucent moonlight-white
-              const tone = Math.min(255, Math.max(195, Math.round((210 + 35 * norm) * (0.92 + 0.18 * emboss))));
+              const tone = Math.min(255, Math.max(195, Math.round(210 + 35 * norm)));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 4);
             } else if (norm < 0.45) {
-              // Upper troposphere: dense white cloud top
-              const tone = Math.min(255, Math.max(220, Math.round((230 + 20 * norm) * (0.92 + 0.18 * emboss))));
+              const tone = Math.min(255, Math.max(220, Math.round(230 + 20 * norm)));
               d[i] = tone; d[i + 1] = tone; d[i + 2] = tone;
             } else if (norm < 0.65) {
-              // Active convection (-40°C to -55°C): Emerald green storm mantle
               d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
             } else if (norm < 0.85) {
-              // Deep convective vortex (-55°C to -70°C): Vivid Amber / Yellow core
               d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
             } else {
-              // Coldest overshooting tops (< -70°C): Crimson / Luminous White storm core
               d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
             }
             d[i + 3] = finalAlpha;
@@ -534,8 +432,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         }
       }
 
-      // Sub-Pixel Spatial Anti-Aliasing (Windy Parity):
-      // Softens tile alpha transitions and eliminates single-pixel sensor noise spikes over ocean
+      // Sub-Pixel Spatial Anti-Aliasing (Gentle, preserves natural cloud gradients):
       applyMainThreadSpatialSmoothing(d, width, height);
     }
 
@@ -546,80 +443,41 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         alphaCopy[p] = d[(p << 2) + 3];
       }
 
-      // Step 0: Pinhole Hole Filling (Ensures solid convective storm tops without single-pixel dark voids)
+      // Step A: Deep Sensor Noise Speckle Elimination (Eradicates isolated 1-2px noise spikes over ocean)
       for (let y = 1; y < height - 1; y++) {
         const row = y * width;
         for (let x = 1; x < width - 1; x++) {
           const p = row + x;
-          if (alphaCopy[p] === 0) {
-            let denseNeighborCount = 0;
-            if (alphaCopy[p - width] >= 200) denseNeighborCount++;
-            if (alphaCopy[p + width] >= 200) denseNeighborCount++;
-            if (alphaCopy[p - 1] >= 200) denseNeighborCount++;
-            if (alphaCopy[p + 1] >= 200) denseNeighborCount++;
-            if (denseNeighborCount >= 3) {
-              d[(p << 2) + 3] = 246;
-              d[p << 2] = 248;
-              d[(p << 2) + 1] = 250;
-              d[(p << 2) + 2] = 255;
-              alphaCopy[p] = 246;
-            }
-          }
-        }
-      }
-
-      // Step A: Deep Sensor Noise Speckle Elimination (Eradicates isolated 1-3px spikes over land & sea)
-      for (let y = 1; y < height - 1; y++) {
-        const row = y * width;
-        for (let x = 1; x < width - 1; x++) {
-          const p = row + x;
-          if (alphaCopy[p] > 0) {
-            let neighborCount = 0;
-            let neighborSum = 0;
-            for (let dy = -1; dy <= 1; dy++) {
-              const ny = (y + dy) * width;
-              for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue;
-                const na = alphaCopy[ny + (x + dx)];
-                if (na > 0) {
-                  neighborCount++;
-                  neighborSum += na;
-                }
-              }
-            }
-            if (neighborCount < 3 || neighborSum < 80) {
+          const a = alphaCopy[p];
+          if (a > 0) {
+            const aN = alphaCopy[p - width];
+            const aS = alphaCopy[p + width];
+            const aW = alphaCopy[p - 1];
+            const aE = alphaCopy[p + 1];
+            if (aN === 0 && aS === 0 && aW === 0 && aE === 0) {
               d[(p << 2) + 3] = 0;
             }
           }
         }
       }
 
-      // Step B: Silky Gaussian-Weighted Edge Anti-Aliasing (Clean Cloud White RGB, Zero Dirty Fringe)
+      // Step B: Gentle Bilinear Anti-Aliasing across translucent cloud borders
       for (let p = 0; p < numPixels; p++) {
         alphaCopy[p] = d[(p << 2) + 3];
       }
       for (let y = 1; y < height - 1; y++) {
-        const rowOffset = y * width;
+        const row = y * width;
         for (let x = 1; x < width - 1; x++) {
-          const idx = rowOffset + x;
-          const center = alphaCopy[idx];
-          const top = idx - width;
-          const bottom = idx + width;
-          const nSum = alphaCopy[top] + alphaCopy[bottom] + alphaCopy[idx - 1] + alphaCopy[idx + 1];
-
-          if (center > 0 && nSum > 30) {
-            const smoothed = (
-              alphaCopy[top - 1] + (alphaCopy[top] << 1) + alphaCopy[top + 1] +
-              (alphaCopy[idx - 1] << 1) + (center << 2) + (alphaCopy[idx + 1] << 1) +
-              alphaCopy[bottom - 1] + (alphaCopy[bottom] << 1) + alphaCopy[bottom + 1]
-            ) >> 4;
-
-            d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
-            const rgbIdx = idx << 2;
-            if (d[rgbIdx] < 200) {
-              d[rgbIdx] = 238;
-              d[rgbIdx + 1] = 238;
-              d[rgbIdx + 2] = 242;
+          const p = row + x;
+          const a = alphaCopy[p];
+          if (a > 0 && a < 180) {
+            const aN = alphaCopy[p - width];
+            const aS = alphaCopy[p + width];
+            const aW = alphaCopy[p - 1];
+            const aE = alphaCopy[p + 1];
+            if (aN === 0 || aS === 0 || aW === 0 || aE === 0) {
+              const smoothed = Math.round(0.40 * a + 0.15 * (aN + aS + aW + aE));
+              d[(p << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
             }
           }
         }
@@ -1226,6 +1084,9 @@ export default function CityMapViewer({
   // Real-time Nowcast Lightning telemetry feed (default false to match Windy's clean aesthetic)
   const [lightningFeed, setLightningFeed] = useState<LightningFeedResponse | null>(null);
   const [showLightning, setShowLightning] = useState(false);
+
+  // Satellite Resolution Mode: 'live' (10-15m geostationary) vs 'hd' (250m NOAA-20 VIIRS TrueColor swath)
+  const [satelliteResolution, setSatelliteResolution] = useState<'live' | 'hd'>('live');
 
   // 3-minute auto-refresh heartbeat for live satellite data (sub-hourly cadence like Windy)
   const [satelliteRefreshTick, setSatelliteRefreshTick] = useState(0);
@@ -3092,7 +2953,7 @@ export default function CityMapViewer({
         const isVisibleMode = spectralMode === 'visible';
         const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterContrast = isVisibleMode ? 0.08 : isBlue ? 0.16 : 0.12;
+        const rasterContrast = isVisibleMode ? 0.12 : isBlue ? 0.22 : 0.16;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
         // - Planetary/Regional (zoom <= 8.5): Clouds remain 88% opaque showing real cyclone spirals & storms.
@@ -3110,21 +2971,35 @@ export default function CityMapViewer({
           12.0, 0.0,
         ];
 
-        const geostationaryOpacityExpression: any = [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          7.0, isBlue ? 0.86 : 0.88,
-          8.5, isBlue ? 0.80 : 0.84,
-          9.5, 0.65,
-          10.5, 0.35,
-          11.5, 0.10,
-          12.0, 0.0,
-        ];
+        const isHdMode = satelliteResolution === 'hd';
+
+        const geostationaryOpacityExpression: any = spectralMode === 'infra'
+          ? [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              4.0, 0.88,
+              6.5, 0.85,
+              7.5, 0.60,
+              8.5, 0.25,
+              9.0, 0.0,
+              12.0, 0.0,
+            ]
+          : [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              7.0, isBlue ? 0.86 : 0.88,
+              8.5, isBlue ? 0.80 : 0.84,
+              9.5, 0.65,
+              10.5, 0.35,
+              11.5, 0.10,
+              12.0, 0.0,
+            ];
 
         // Observation date string: for geostationary infrared & moisture, stream today's live real-time frames
         const geoObs = getGeostationaryObservationDate(timelineHoursAhead < 0 ? Math.abs(timelineHoursAhead) : 0);
-        const dateStr = isVisibleMode
+        const dateStr = isVisibleMode || isHdMode
           ? getSatelliteObservationDate(0, 'visible').dateStr
           : geoObs.dateStr;
 
@@ -3171,7 +3046,19 @@ export default function CityMapViewer({
           format: 'image/png' | 'image/jpeg';
           isSubHourly: boolean;
           maxzoom: number;
-        }[] = isVisibleMode
+        }[] = isHdMode
+          ? [
+              // Genuine 250m Resolution Polar Swath (NOAA-20 VIIRS TrueColor Level 9 - Zoom Earth Parity)
+              {
+                id: 'hd-swath',
+                layerName: 'VIIRS_NOAA20_CorrectedReflectance_TrueColor',
+                tileMatrixSet: 'GoogleMapsCompatible_Level9',
+                format: 'image/jpeg',
+                isSubHourly: false,
+                maxzoom: 9,
+              },
+            ]
+          : isVisibleMode
           ? [
               // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 56° lat)
               {
@@ -3191,7 +3078,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: 6,
               },
-              // 2. Indian Ocean & South Asia (Meteosat-9 IODC 45.5°E)
+              // 1b. Indian Ocean & Middle East (Meteosat-9 IODC 45.5°E Full Earth Scan - Zoom Earth & Windy Parity)
               ...(isIodcActive
                 ? [
                     {
@@ -3204,7 +3091,7 @@ export default function CityMapViewer({
                     },
                   ]
                 : []),
-              // 3. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
+              // 2. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
               {
                 id: 'himawari',
                 layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
@@ -3213,7 +3100,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: himawariDay ? 7 : 6,
               },
-              // 4. Americas & Atlantic (GOES-East 75.2°W)
+              // 3. Americas & Atlantic (GOES-East 75.2°W)
               {
                 id: 'goes-east',
                 layerName: goesEastDay ? 'GOES-East_ABI_GeoColor' : 'GOES-East_ABI_Band13_Clean_Infrared',
@@ -3222,7 +3109,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: goesEastDay ? 7 : 6,
               },
-              // 5. Pacific & Americas West (GOES-West 137.2°W)
+              // 4. Pacific & Americas West (GOES-West 137.2°W)
               {
                 id: 'goes-west',
                 layerName: goesWestDay ? 'GOES-West_ABI_GeoColor' : 'GOES-West_ABI_Band13_Clean_Infrared',
@@ -3251,7 +3138,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: 6,
               },
-              // 2. Indian Ocean & South Asia (Meteosat-9 IODC 45.5°E)
+              // 1b. Indian Ocean & Middle East (Meteosat-9 IODC 45.5°E Full Earth Scan - Zoom Earth & Windy Parity)
               ...(isIodcActive
                 ? [
                     {
@@ -3264,7 +3151,7 @@ export default function CityMapViewer({
                     },
                   ]
                 : []),
-              // 3. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
+              // 2. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
               {
                 id: 'himawari',
                 layerName: 'Himawari_AHI_Band13_Clean_Infrared',
@@ -3273,7 +3160,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: 6,
               },
-              // 4. Americas & Atlantic (GOES-East 75.2°W)
+              // 3. Americas & Atlantic (GOES-East 75.2°W)
               {
                 id: 'goes-east',
                 layerName: 'GOES-East_ABI_Band13_Clean_Infrared',
@@ -3282,7 +3169,7 @@ export default function CityMapViewer({
                 isSubHourly: true,
                 maxzoom: 6,
               },
-              // 5. Pacific & Americas West (GOES-West 137.2°W)
+              // 4. Pacific & Americas West (GOES-West 137.2°W)
               {
                 id: 'goes-west',
                 layerName: 'GOES-West_ABI_Band13_Clean_Infrared',
@@ -3294,7 +3181,7 @@ export default function CityMapViewer({
             ];
           // Clean up unused sectors (including obsolete VIIRS thermal brightness sectors)
           const activeSectorIds = new Set(sectors.map((s) => s.id));
-          ['himawari', 'eumet-iodc', 'goes-east', 'goes-west', 'europe-africa', 'global-polar', 'arctic-polar', 'antarctic-polar'].forEach((sId) => {
+          ['himawari', 'eumet-iodc', 'goes-east', 'goes-west', 'europe-africa', 'global-polar', 'hd-swath', 'arctic-polar', 'antarctic-polar'].forEach((sId) => {
             if (!activeSectorIds.has(sId)) {
               if (map.getLayer(`nasa-gibs-${sId}-layer`)) map.removeLayer(`nasa-gibs-${sId}-layer`);
               if (map.getSource(`nasa-gibs-${sId}-source`)) map.removeSource(`nasa-gibs-${sId}-source`);
@@ -3311,6 +3198,7 @@ export default function CityMapViewer({
 
           // Ground-level terminator position: Insert beneath clouds so atmospheric clouds float above night darkness
           const firstCloudLayerId =
+            map.getLayer('nasa-gibs-hd-swath-layer') ? 'nasa-gibs-hd-swath-layer' :
             map.getLayer('nasa-gibs-global-polar-layer') ? 'nasa-gibs-global-polar-layer' :
             map.getLayer('nasa-gibs-europe-africa-layer') ? 'nasa-gibs-europe-africa-layer' :
             map.getLayer('nasa-gibs-eumet-iodc-layer') ? 'nasa-gibs-eumet-iodc-layer' :
@@ -3395,28 +3283,22 @@ export default function CityMapViewer({
             );
           }
 
-          const sectorBounds: Record<string, [number, number, number, number]> = {
-            'global-polar': [-180.0, -85.0, 180.0, 85.0],
-            'europe-africa': [-65.0, -75.0, 50.0, 75.0],
-            'eumet-iodc': [15.0, -75.0, 105.0, 75.0],
-            'himawari': [65.0, -75.0, 180.0, 75.0],
-            'goes-east': [-145.0, -75.0, 0.0, 75.0],
-            'goes-west': [-180.0, -75.0, -70.0, 75.0],
-          };
+
 
           sectors.forEach((sec) => {
             const sId = `nasa-gibs-${sec.id}-source`;
             const lId = `nasa-gibs-${sec.id}-layer`;
             const tileTime = sec.isSubHourly ? geoObs.isoTimestamp : geoObs.dateStr;
-            const ext = sec.format === 'image/jpeg' ? 'jpg' : 'png';
+            const ext = sec.format === 'image/jpeg' ? (sec.layerName.includes('VIIRS') ? 'jpeg' : 'jpg') : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
-            const iodcParam = isIodcActive ? '&has_iodc=1' : '&has_iodc=0';
             const tileUrl = isEumet
-              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{y}/{x}.png?${spectralParam}${iodcParam}`
-              : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}${iodcParam}`;
+              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{y}/{x}.png?${spectralParam}`
+              : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
-            const secAttribution = sec.layerName.includes('iodc')
+            const secAttribution = sec.id === 'hd-swath'
+              ? 'NASA EOSDIS / NOAA-20 VIIRS TrueColor (250m)'
+              : sec.layerName.includes('iodc')
               ? 'EUMETSAT Meteosat-9 IODC (45.5°E)'
               : sec.layerName.startsWith('mumi:')
               ? 'EUMETSAT Geostationary High-Rate SEVIRI / GOES / Himawari Global Mosaic | Esri'
@@ -3434,7 +3316,6 @@ export default function CityMapViewer({
                   tiles: [tileUrl],
                   tileSize: 256,
                   maxzoom: sec.maxzoom,
-                  bounds: sectorBounds[sec.id],
                   attribution: secAttribution,
                 });
                 map.addLayer(
@@ -3463,7 +3344,6 @@ export default function CityMapViewer({
                 tiles: [tileUrl],
                 tileSize: 256,
                 maxzoom: sec.maxzoom,
-                bounds: sectorBounds[sec.id],
                 attribution: secAttribution,
               });
               map.addLayer(
@@ -3512,7 +3392,7 @@ export default function CityMapViewer({
         // Silently ignore cleanup errors
       }
     }
-  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey, timelineHoursAhead, selectedCyclone, satelliteRefreshTick]);
+  }, [activeLayer, isMapLoaded, satelliteTileUrl, spectralMode, satelliteObservationUtc, activeStyleKey, timelineHoursAhead, selectedCyclone, satelliteRefreshTick, satelliteResolution]);
 
   // Synchronize Nowcast Lightning GeoJSON layer on MapLibre
   useEffect(() => {
@@ -3963,6 +3843,36 @@ export default function CityMapViewer({
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Satellite Resolution Engine: Live Geostationary (10m) vs Genuine 250m HD Swath (Zoom Earth Parity) */}
+                  <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      data-testid="satellite-res-live-btn"
+                      onClick={() => setSatelliteResolution('live')}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        satelliteResolution === 'live'
+                          ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      title="Live Geostationary Satellite Constellation (10-15m cadence)"
+                    >
+                      🛰️ Live (10m)
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="satellite-res-hd-btn"
+                      onClick={() => setSatelliteResolution('hd')}
+                      className={`px-2 py-0.8 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        satelliteResolution === 'hd'
+                          ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50 shadow-sm'
+                          : 'text-white/60 hover:text-white hover:bg-white/5'
+                      }`}
+                      title="True 250m High-Definition Polar Swath (NOAA-20 VIIRS TrueColor)"
+                    >
+                      ✨ HD (250m)
+                    </button>
                   </div>
 
                   {/* Basemap Relief Toggle: Atmospheric Satellite vs Windy Relief */}
