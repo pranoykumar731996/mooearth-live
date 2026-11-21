@@ -302,14 +302,14 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             }
             d[i + 3] = Math.min(252, Math.round(248 * spatWeight));
           } else {
-            // Blue / Atmospheric / Visible: Natural Convective Cloud Tops with Soft Highlights
+            // Blue / Atmospheric / Visible: Natural Convective Cloud Tops with Authentic Sensor Radiance
             const convIntensity = isHimawari
               ? Math.min(1.0, Math.max(0.0, (baseRadiance - 155) / 60))
               : isGoes
               ? Math.min(1.0, Math.max(0.0, (baseRadiance - 142) / 60))
               : Math.min(1.0, Math.max(0.0, (baseRadiance - 132) / 60));
 
-            const convTone = Math.min(255, Math.round(225 + 28 * convIntensity));
+            const convTone = Math.min(255, Math.max(190, Math.round(baseRadiance)));
             const convAlpha = Math.min(252, Math.round((235 + 18 * convIntensity) * spatWeight));
 
             d[i] = convTone;
@@ -322,79 +322,34 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
         if (isBlueMode) {
           // ==========================================
-          // BLUE / HD ATMOSPHERIC 4-TIER RADIOMETRIC CLOUD MODE (Windy HD Parity)
+          // BLUE / HD ATMOSPHERIC RADIOMETRIC CLOUD MODE (Zoom Earth & Windy Parity)
           // ==========================================
           let cloudAlpha = 0;
           let s = 0;
 
-          if (isHimawari && isInfraLayer) {
-            // Himawari-9 Band 13 Clean Infrared (East Asia, India, Bay of Bengal, Australia, Pacific):
-            // Clear warm tropical sea surface & warm land (baseRadiance <= 148) -> STRICTLY 100% TRANSPARENT
-            // Eliminates marine boundary layer humidity noise over the Arabian Sea (Windy & Zoom Earth Parity)
-            if (baseRadiance <= 148) {
+          if (isInfraLayer) {
+            // High-Altitude Cold Land Surface Filtering (Tibetan Plateau / Himalayas 24.5°N–42°N, 72°E–105°E):
+            const isColdPlateau = hasCoords &&
+              tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
+              tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
+            const irThresh = isColdPlateau ? 184 : 154;
+
+            if (baseRadiance <= irThresh) {
               d[i + 3] = 0;
               continue;
             }
-            if (baseRadiance <= 168) {
-              // Low clouds & marine stratus (149 - 168) -> smooth organic cubic feathering
-              const norm = (baseRadiance - 148) / (168 - 148);
+            if (baseRadiance <= 176) {
+              const norm = (baseRadiance - irThresh) / (176 - irThresh);
               const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.round((28 + 115 * Math.pow(smoothNorm, 1.2)) * spatWeight);
               s = smoothNorm * 0.40;
-            } else if (baseRadiance <= 186) {
-              // Mid-level altocumulus & cloud bands (169 - 186) -> continuous solid cloud deck with 3D billows
-              const norm = (baseRadiance - 168) / (186 - 168);
+            } else if (baseRadiance <= 196) {
+              const norm = (baseRadiance - 176) / (196 - 176);
               const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
               cloudAlpha = Math.round((143 + 82 * smoothNorm) * spatWeight);
               s = 0.40 + 0.45 * smoothNorm;
             } else {
-              // Deep convective bands & cyclone eyewalls (>= 187) -> dense solid opaque cloud (Windy Parity)
-              const norm = Math.min(1.0, (baseRadiance - 186) / (235 - 186));
-              s = 0.85 + 0.15 * norm;
-              cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
-            }
-          } else if (isGoes && isInfraLayer) {
-            // GOES-East / GOES-West Band 13 Clean Infrared (Americas, Atlantic, Pacific):
-            // Rejects nocturnal desert plateau cooling in North/South America (<= 138)
-            if (baseRadiance <= 138) {
-              d[i + 3] = 0;
-              continue;
-            }
-            if (baseRadiance <= 158) {
-              const norm = (baseRadiance - 138) / (158 - 138);
-              const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.round((28 + 115 * Math.pow(smoothNorm, 1.2)) * spatWeight);
-              s = smoothNorm * 0.40;
-            } else if (baseRadiance <= 176) {
-              const norm = (baseRadiance - 158) / (176 - 158);
-              const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.round((143 + 82 * smoothNorm) * spatWeight);
-              s = 0.40 + 0.45 * smoothNorm;
-            } else {
-              const norm = Math.min(1.0, (baseRadiance - 176) / (225 - 176));
-              s = 0.85 + 0.15 * norm;
-              cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
-            }
-          } else if (isEumet && isInfraLayer) {
-            // EUMETSAT 10.8µm thermal infrared channel (Meteosat Prime / Meteosat-9 IODC / WorldCloudMap):
-            // Rejects cold nocturnal radiational soil cooling in Gujarat, Rajasthan, and Pakistan (baseRadiance <= 168)
-            // Guarantees zero false ghost clouds over Gujarat, Rajasthan, and Pakistan while preserving 100% of Cyclone Akvan (Windy & Zoom Earth Parity)
-            if (baseRadiance <= 168) {
-              d[i + 3] = 0;
-              continue;
-            }
-            if (baseRadiance <= 184) {
-              const norm = (baseRadiance - 168) / (184 - 168);
-              const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.round((28 + 115 * Math.pow(smoothNorm, 1.2)) * spatWeight);
-              s = smoothNorm * 0.40;
-            } else if (baseRadiance <= 200) {
-              const norm = (baseRadiance - 184) / (200 - 184);
-              const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.round((143 + 82 * smoothNorm) * spatWeight);
-              s = 0.40 + 0.45 * smoothNorm;
-            } else {
-              const norm = Math.min(1.0, (baseRadiance - 200) / (235 - 200));
+              const norm = Math.min(1.0, (baseRadiance - 196) / (235 - 196));
               s = 0.85 + 0.15 * norm;
               cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
             }
@@ -414,97 +369,66 @@ if (typeof self !== 'undefined' && self.addProtocol) {
             continue;
           }
 
-          // Silky, smooth natural silver-white cloud tone (Windy Parity)
-          const tone = Math.min(255, Math.max(185, Math.round(195 + 58 * s)));
-          d[i] = tone;
-          d[i + 1] = tone;
-          d[i + 2] = Math.min(255, tone + 2);
-          d[i + 3] = cloudAlpha;
+          if (isInfraLayer) {
+            // PRESERVE GENUINE SATELLITE RADIANCE (Truth in Remote Sensing - Zoom Earth & Windy Parity)
+            const naturalLum = Math.min(255, Math.max(160, Math.round(baseRadiance * 1.05)));
+            d[i] = naturalLum;
+            d[i + 1] = naturalLum;
+            d[i + 2] = Math.min(255, naturalLum + 2);
+            d[i + 3] = cloudAlpha;
+          } else {
+            // Optical channels: Keep actual photographic RGB values from the satellite sensor!
+            d[i] = r;
+            d[i + 1] = g;
+            d[i + 2] = b;
+            d[i + 3] = cloudAlpha;
+          }
 
         } else if (isVisMode) {
           // ==========================================
           // VISIBLE / OPTICAL REFLECTANCE MODE (Natural Day / Fallback Night)
           // ==========================================
           if (isEumet && !isInfraLayer) {
-            // EUMETSAT Daytime Visible Reflectance (msg_fes:vis006 / msg_iodc:vis006)
-            if (l <= 36) {
-              d[i + 3] = 0;
-              continue;
-            }
+            if (l <= 36) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (l - 36) / (185 - 36));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
-            if (cloudAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const tone = Math.min(255, Math.max(180, Math.round(180 + 72 * s)));
-            d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
           } else if (isHimawariVis) {
-            // Himawari-9 Band 3 Red Visible (0.64µm):
-            // Clear ocean and low-albedo land is <= 42
-            if (r <= 42) {
-              d[i + 3] = 0;
-              continue;
-            }
+            if (r <= 42) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (r - 42) / (195 - 42));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
-            if (cloudAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            // Preserve natural optical albedo
-            const tone = Math.min(255, Math.max(185, Math.round(185 + 70 * s)));
-            d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 2); d[i + 3] = cloudAlpha;
+            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
           } else if (isGeoColor) {
-            // GOES GeoColor: keys out desert sand & deep water
             const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-            if (isSand || l <= 55) {
-              d[i + 3] = 0;
-              continue;
-            }
+            if (isSand || l <= 55) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (l - 55) / (205 - 55));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
-            if (cloudAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const tone = Math.min(255, Math.max(185, Math.round(185 + 68 * s)));
-            d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
           } else if (isInfraLayer) {
-            // Infrared fallback when in Visible mode at night:
-            // Smooth Hermite transfer function without noise or Sobel artifacts
-            const irThresh = isHimawari ? 148 : isGoes ? 138 : 168;
-            if (baseRadiance <= irThresh) {
-              d[i + 3] = 0;
-              continue;
-            }
+            const isColdPlateau = hasCoords &&
+              tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
+              tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
+            const irThresh = isColdPlateau ? 184 : 154;
+            if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (baseRadiance - irThresh) / (215 - irThresh));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.min(252, Math.round(250 * Math.pow(s, 0.95) * spatWeight));
-            if (cloudAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const tone = Math.min(255, Math.max(185, Math.round(195 + 58 * s)));
-            d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 2); d[i + 3] = cloudAlpha;
+            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+            const naturalLum = Math.min(255, Math.max(160, Math.round(baseRadiance * 1.05)));
+            d[i] = naturalLum; d[i + 1] = naturalLum; d[i + 2] = Math.min(255, naturalLum + 2); d[i + 3] = cloudAlpha;
           } else {
-            // Visible optical fallback
-            if (l <= 50) {
-              d[i + 3] = 0;
-              continue;
-            }
+            if (l <= 50) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (l - 50) / (205 - 50));
             const s = norm * norm * (3.0 - 2.0 * norm);
             const cloudAlpha = Math.round(246 * Math.pow(s, 0.85) * spatWeight);
-            if (cloudAlpha <= 2) {
-              d[i + 3] = 0;
-              continue;
-            }
-            const tone = Math.min(255, Math.max(185, Math.round(185 + 68 * s)));
-            d[i] = tone; d[i + 1] = tone; d[i + 2] = tone; d[i + 3] = cloudAlpha;
+            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
+            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
           }
         } else {
           // ==========================================
