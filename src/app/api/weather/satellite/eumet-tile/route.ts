@@ -81,43 +81,53 @@ export async function GET(request: NextRequest) {
     `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
     `&LAYERS=${encodeURIComponent(layer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
 
-  // Retry logic: try up to 2 times with 12s timeout each
+  // Resilience logic: try primary layer on attempt 0, fallback to global worldcloudmap on attempt 1
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
+      const activeLayer = (attempt === 1 && layer !== 'mumi:worldcloudmap_ir108')
+        ? 'mumi:worldcloudmap_ir108'
+        : layer;
+
+      const wmsUrl =
+        `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
+        `&BBOX=${minX},${minY},${maxX},${maxY}` +
+        `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
+        `&LAYERS=${encodeURIComponent(activeLayer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
+
       const res = await fetch(wmsUrl, {
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(10000),
         headers: {
           'User-Agent': 'MooEarth-Live-WeatherEngine/2.0',
         },
       });
 
       if (!res.ok) {
-        if (attempt === 0) continue; // retry once
+        if (attempt === 0) continue; // retry with worldcloudmap fallback
         break;
       }
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('image')) {
-        if (attempt === 0) continue;
+        if (attempt === 0) continue; // retry with worldcloudmap fallback
         break;
       }
 
       const arrayBuf = await res.arrayBuffer();
 
-      // Serve the raw EUMETSAT tile with edge caching
-      // s-maxage=600 = 10 minutes on Vercel CDN edge
-      // stale-while-revalidate=900 = serve stale for 15 min while revalidating
+      // Serve the EUMETSAT tile with edge CDN caching:
+      // s-maxage=900 = 15 minutes on Vercel CDN edge
+      // stale-while-revalidate=86400 = 24h stale revalidation for instant response
       return new NextResponse(new Uint8Array(arrayBuf), {
         headers: {
           'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=900',
-          'X-EUMETSAT-Layer': layer,
+          'Cache-Control': 'public, max-age=300, s-maxage=900, stale-while-revalidate=86400',
+          'X-EUMETSAT-Layer': activeLayer,
           'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
           'Access-Control-Allow-Origin': '*',
         },
       });
     } catch (err) {
-      if (attempt === 0) continue; // retry on timeout/network error
+      if (attempt === 0) continue; // retry with worldcloudmap on timeout/error
       console.warn(`[EUMETSAT Tile Proxy] Failed after retries: z=${z} x=${x} y=${y} layer=${layer}`, err);
     }
   }

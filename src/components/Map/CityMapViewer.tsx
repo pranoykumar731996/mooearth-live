@@ -58,18 +58,16 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const absLat = Math.abs(lat);
 
       // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
-      // covering all 360 degrees of longitude up to 82.5°N and 75.0°S across Russia, Siberia, Northern Europe (Windy Parity)
+      // covering all 360 degrees of longitude across Europe, Africa, Asia, Americas
       if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
-        if (absLat <= 56.0) return 0.0;
-        if (absLat > 82.5) return 0.0;
-        if (absLat > 75.0) return 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 75.0) / 7.5)));
-        const ramp = (absLat - 56.0) / 10.0;
-        return 0.5 * (1.0 - Math.cos(Math.PI * ramp));
+        if (absLat > 85.0) return 0.0;
+        if (absLat >= 48.0) return 1.0;
+        return 0.5 * (1.0 - Math.cos(Math.PI * (absLat / 48.0)));
       }
 
       let latWeight = 1.0;
-      if (absLat > 66.0) return 0.0;
-      else if (absLat > 56.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 56.0) / 10.0)));
+      if (absLat > 68.0) return 0.0;
+      else if (absLat > 58.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 58.0) / 10.0)));
 
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
@@ -80,13 +78,14 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
       const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
-      // 5-Sentinel Seamless Global Partition of Unity (Zero seams, zero scissors, sum of weights = 1.000 everywhere):
+      // 5-Sentinel Seamless Global Partition of Unity:
+      // Expanded overlap regions eliminate any risk of blank gaps or hard angular scissors!
       if (isHimawari) {
-        // Himawari-9 (140.7°E): Covers East Asia, India, Bay of Bengal, Australia, Western Pacific (70°E to 195°E)
-        if (angle >= 70.0 && angle <= 85.0) {
-          // Smooth blend with Meteosat-IODC over Central/Eastern India (70°E to 85°E)
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 70.0) / 15.0)));
-        } else if (angle > 85.0 && angle <= 165.0) {
+        // Himawari-9 (140.7°E): Covers East Asia, India, Bay of Bengal, Australia, Western Pacific (52°E to 195°E)
+        if (angle >= 52.0 && angle <= 76.0) {
+          // Smooth blend with Meteosat-IODC over Arabian Sea & Western India (52°E to 76°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 52.0) / 24.0)));
+        } else if (angle > 76.0 && angle <= 165.0) {
           lngWeight = 1.0; // 100% full coverage across East India, Bay of Bengal, China, Japan, Australia
         } else if (angle > 165.0 && angle <= 195.0) {
           // Smooth blend with GOES-West over Western Pacific / Dateline (165°E to 195°E)
@@ -94,25 +93,25 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         }
       } else if (isIodc) {
         // Meteosat-9 IODC (45.5°E): Covers Indian Ocean, Arabian Sea, Madagascar, Middle East (15°E to 85°E)
-        if (angle >= 15.0 && angle <= 30.0) {
-          // Smooth blend with Meteosat Prime over East Africa / Red Sea (15°E to 30°E)
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 15.0) / 15.0)));
-        } else if (angle > 30.0 && angle <= 70.0) {
+        if (angle >= 15.0 && angle <= 35.0) {
+          // Smooth blend with Meteosat Prime over East Africa / Red Sea (15°E to 35°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 15.0) / 20.0)));
+        } else if (angle > 35.0 && angle <= 65.0) {
           lngWeight = 1.0; // 100% full coverage across Indian Ocean, Arabian Sea, Madagascar, Persian Gulf
-        } else if (angle > 70.0 && angle <= 85.0) {
-          // Smooth blend with Himawari over Central/Eastern India (70°E to 85°E)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 70.0) / 15.0)));
+        } else if (angle > 65.0 && angle <= 85.0) {
+          // Smooth blend with Himawari over Central/Eastern India (65°E to 85°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 65.0) / 20.0)));
         }
       } else if (isMeteosatPrime) {
-        // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (315° to 30°E)
+        // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (315° to 35°E)
         if (angle >= 315.0 && angle <= 340.0) {
           // Smooth blend with GOES-East over Mid-Atlantic (315° to 340°)
           lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 315.0) / 25.0)));
-        } else if (angle > 340.0 || angle <= 15.0) {
+        } else if (angle > 340.0 || angle <= 20.0) {
           lngWeight = 1.0;
-        } else if (angle > 15.0 && angle <= 30.0) {
-          // Smooth blend with Meteosat-IODC over East Africa / Red Sea (15°E to 30°E)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 15.0) / 15.0)));
+        } else if (angle > 20.0 && angle <= 35.0) {
+          // Smooth blend with Meteosat-IODC over East Africa / Red Sea (20°E to 35°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 20.0) / 15.0)));
         }
       } else if (isGoesWest) {
         // GOES-West (137.2°W): Covers Central/Eastern Pacific (165°E to 115°W / 245°)
@@ -146,14 +145,11 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const totalPixels = width * height;
 
       let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
+      const isGibs = realUrl.includes('gibs.earthdata.nasa.gov') || realUrl.includes('GoogleMapsCompatible') || realUrl.includes('gibs-alpha');
       const wmtsMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
       const queryMatch = realUrl.match(/[?&]z=(\d+)[&]x=(\d+)[&]y=(\d+)/i) || realUrl.match(/[?&]z=(\d+)[&]y=(\d+)[&]x=(\d+)/i);
-      if (wmtsMatch) {
-        tileZ = parseInt(wmtsMatch[1], 10);
-        tileY = parseInt(wmtsMatch[2], 10);
-        tileX = parseInt(wmtsMatch[3], 10);
-        hasCoords = true;
-      } else if (queryMatch) {
+
+      if (queryMatch) {
         tileZ = parseInt(queryMatch[1], 10);
         if (realUrl.includes('x=' + queryMatch[2])) {
           tileX = parseInt(queryMatch[2], 10);
@@ -161,6 +157,18 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         } else {
           tileY = parseInt(queryMatch[2], 10);
           tileX = parseInt(queryMatch[3], 10);
+        }
+        hasCoords = true;
+      } else if (wmtsMatch) {
+        tileZ = parseInt(wmtsMatch[1], 10);
+        if (isGibs) {
+          // NASA GIBS WMTS uses TileMatrix/TileRow/TileCol -> {z}/{y}/{x}
+          tileY = parseInt(wmtsMatch[2], 10);
+          tileX = parseInt(wmtsMatch[3], 10);
+        } else {
+          // Standard Slippy Tile format -> {z}/{x}/{y}
+          tileX = parseInt(wmtsMatch[2], 10);
+          tileY = parseInt(wmtsMatch[3], 10);
         }
         hasCoords = true;
       }
@@ -317,27 +325,31 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               // High-Altitude Cold Land Surface Filtering (Tibetan Plateau / Himalayas 24.5°N–42°N, 72°E–105°E):
               // Autumn/Winter nocturnal land cools to -15°C to -30°C (radiance 148–178).
               // Genuine convective storm clouds and cyclone cloud tops reach -40°C to -80°C (radiance >= 184).
+              // EUMETSAT SEVIRI IR 10.8 (Europe & Africa): Radiance scale maps authentic cloud structures starting at ~92.
               const isColdPlateau = hasCoords &&
                 tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
                 tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
-              const irThresh = isColdPlateau ? 184 : 154;
+              const irThresh = isEumet ? 92 : (isColdPlateau ? 184 : 154);
 
               if (baseRadiance <= irThresh) {
                 d[i + 3] = 0;
                 continue;
               }
-              if (baseRadiance <= 176) {
-                const norm = (baseRadiance - irThresh) / (176 - irThresh);
+              const midRange = isEumet ? 140 : 176;
+              const highRange = isEumet ? 185 : 196;
+              const maxRange = isEumet ? 220 : 235;
+              if (baseRadiance <= midRange) {
+                const norm = (baseRadiance - irThresh) / (midRange - irThresh);
                 const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
                 cloudAlpha = Math.round((28 + 115 * Math.pow(smoothNorm, 1.2)) * spatWeight);
                 s = smoothNorm * 0.40;
-              } else if (baseRadiance <= 196) {
-                const norm = (baseRadiance - 176) / (196 - 176);
+              } else if (baseRadiance <= highRange) {
+                const norm = (baseRadiance - midRange) / (highRange - midRange);
                 const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
                 cloudAlpha = Math.round((143 + 82 * smoothNorm) * spatWeight);
                 s = 0.40 + 0.45 * smoothNorm;
               } else {
-                const norm = Math.min(1.0, (baseRadiance - 196) / (235 - 196));
+                const norm = Math.min(1.0, (baseRadiance - highRange) / (maxRange - highRange));
                 s = 0.85 + 0.15 * norm;
                 cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
               }
@@ -404,9 +416,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               const isColdPlateau = hasCoords &&
                 tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
                 tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
-              const irThresh = isColdPlateau ? 184 : 154;
+              const irThresh = isEumet ? 92 : (isColdPlateau ? 184 : 154);
               if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (baseRadiance - irThresh) / (215 - irThresh));
+              const norm = Math.min(1.0, (baseRadiance - irThresh) / ((isEumet ? 210 : 215) - irThresh));
               const s = norm * norm * (3.0 - 2.0 * norm);
               const cloudAlpha = Math.min(252, Math.round(250 * Math.pow(s, 0.95) * spatWeight));
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
@@ -580,8 +592,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
       const layer = match[1];
       const z = parseInt(match[2], 10);
-      const y = parseInt(match[3], 10);
-      const x = parseInt(match[4], 10);
+      const x = parseInt(match[3], 10);
+      const y = parseInt(match[4], 10);
       // Route through our edge-cached proxy API for reliable, fast delivery
       return `/api/weather/satellite/eumet-tile?z=${z}&x=${x}&y=${y}&layer=${encodeURIComponent(layer)}`;
     }
@@ -592,8 +604,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       if (!match) return url.replace(/^eumet-alpha:\/\//, 'https://');
       const layer = match[1];
       const z = parseInt(match[2], 10);
-      const y = parseInt(match[3], 10);
-      const x = parseInt(match[4], 10);
+      const x = parseInt(match[3], 10);
+      const y = parseInt(match[4], 10);
       const originShift = 20037508.342789244;
       const worldSize = originShift * 2;
       const n = Math.pow(2, z);
@@ -602,20 +614,28 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       const maxX = (x + 1) * res - originShift;
       const maxY = originShift - y * res;
       const minY = originShift - (y + 1) * res;
-      return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=${minX},${minY},${maxX},${maxY}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=${layer}&FORMAT=image/png`;
+      return `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=${minX},${minY},${maxX},${maxY}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=${encodeURIComponent(layer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
     }
 
     addProtocol('eumet-alpha', async (params, abortController) => {
       try {
-        // Primary: edge-cached proxy (fast, reliable, CDN-backed)
-        const proxyUrl = eumetUrlToProxyOrWms(params.url);
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
-        abortController.signal.addEventListener('abort', () => timeoutController.abort());
-        let res = await fetch(proxyUrl, { signal: timeoutController.signal });
+        let res: Response | null = null;
 
-        // Fallback: direct EUMETSAT WMS if proxy fails
-        if (!res.ok) {
+        // Primary: edge-cached proxy (fast, reliable, CDN-backed)
+        try {
+          const proxyUrl = eumetUrlToProxyOrWms(params.url);
+          const timeoutController = new AbortController();
+          const timeoutId = setTimeout(() => timeoutController.abort(), 7000);
+          abortController.signal.addEventListener('abort', () => timeoutController.abort());
+          const proxyRes = await fetch(proxyUrl, { signal: timeoutController.signal });
+          clearTimeout(timeoutId);
+          if (proxyRes.ok) res = proxyRes;
+        } catch {
+          // Proxy threw or timed out, fall through to direct WMS
+        }
+
+        // Fallback: direct EUMETSAT WMS if proxy fails or errors
+        if (!res) {
           const directUrl = eumetUrlToWmsDirect(params.url);
           const fallbackController = new AbortController();
           const fallbackTimeout = setTimeout(() => fallbackController.abort(), 12000);
@@ -629,8 +649,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
           }
         }
 
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res || !res.ok) throw new Error('All EUMETSAT tile sources failed');
         const blob = await res.blob();
 
         if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
@@ -3323,7 +3342,7 @@ export default function CityMapViewer({
             const tileUrl = sec.id === 'hd-swath'
               ? `https://wmts.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`
               : isEumet
-              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{y}/{x}.png?${spectralParam}`
+              ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png?${spectralParam}`
               : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
             const secAttribution = sec.id === 'hd-swath'
