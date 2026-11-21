@@ -81,12 +81,10 @@ export async function GET(request: NextRequest) {
     `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
     `&LAYERS=${encodeURIComponent(layer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
 
-  // Resilience logic: try primary layer on attempt 0, fallback to global worldcloudmap on attempt 1
+  // Robust fetch with retry for requested layer (never fall back to worldcloudmap to prevent internal seams)
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const activeLayer = (attempt === 1 && layer !== 'mumi:worldcloudmap_ir108')
-        ? 'mumi:worldcloudmap_ir108'
-        : layer;
+      const activeLayer = layer;
 
       const wmsUrl =
         `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
@@ -102,13 +100,13 @@ export async function GET(request: NextRequest) {
       });
 
       if (!res.ok) {
-        if (attempt === 0) continue; // retry with worldcloudmap fallback
+        if (attempt === 0) continue; // retry once
         break;
       }
 
       const contentType = res.headers.get('content-type') || '';
       if (!contentType.includes('image')) {
-        if (attempt === 0) continue; // retry with worldcloudmap fallback
+        if (attempt === 0) continue; // retry once
         break;
       }
 

@@ -252,7 +252,10 @@ export function isIodcFeatureEnabled(): boolean {
     }
     return true;
   }
-  return process.env.NEXT_PUBLIC_DISABLE_EUMETSAT_IODC !== 'true';
+  if (process.env.NEXT_PUBLIC_DISABLE_EUMETSAT_IODC === 'true' || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'false') {
+    return false;
+  }
+  return true;
 }
 
 /**

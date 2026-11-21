@@ -57,87 +57,136 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
     function getSectorSpatialWeight(url: string, lng: number, lat: number): number {
       const absLat = Math.abs(lat);
 
-      // EUMETSAT Global World Cloud Map (mumi:worldcloudmap_ir108) is a global composite
-      // covering all 360 degrees of longitude across Europe, Africa, Asia, Americas
+      // Polar Underlay: strictly 0.0 below 58°, smooth ramp 58°-65°, 1.0 above 65° up to 85°
       if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
         if (absLat > 85.0) return 0.0;
-        if (absLat >= 48.0) return 1.0;
-        return 0.5 * (1.0 - Math.cos(Math.PI * (absLat / 48.0)));
+        if (absLat >= 65.0) return 1.0;
+        if (absLat <= 58.0) return 0.0;
+        return 0.5 * (1.0 - Math.cos(Math.PI * ((absLat - 58.0) / 7.0)));
       }
 
       let latWeight = 1.0;
-      if (absLat > 68.0) return 0.0;
-      else if (absLat > 58.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 58.0) / 10.0)));
+      if (absLat > 65.0) return 0.0;
+      else if (absLat > 55.0) latWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((absLat - 55.0) / 10.0)));
 
       const angle = (((lng % 360) + 360) % 360);
       let lngWeight = 0.0;
+      let satLng = 0.0;
 
       const isHimawari = url.includes('Himawari') || url.includes('himawari');
       const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
-      const isMeteosatPrime = (url.includes('msg_fes') || url.includes('europe-africa')) && !isIodc;
+      const isMeteosatPrime = (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
       const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
       const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
 
-      // 5-Sentinel Seamless Global Partition of Unity:
-      // Expanded overlap regions eliminate any risk of blank gaps or hard angular scissors!
-      if (isHimawari) {
-        // Himawari-9 (140.7°E): Covers East Asia, India, Bay of Bengal, Australia, Western Pacific (52°E to 195°E)
-        if (angle >= 52.0 && angle <= 76.0) {
-          // Smooth blend with Meteosat-IODC over Arabian Sea & Western India (52°E to 76°E)
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 52.0) / 24.0)));
-        } else if (angle > 76.0 && angle <= 165.0) {
-          lngWeight = 1.0; // 100% full coverage across East India, Bay of Bengal, China, Japan, Australia
+      // 5-Sentinel Exact Mathematical Partition of Unity (sum == 1.000 everywhere):
+      if (isIodc) {
+        satLng = 45.5;
+        // Meteosat-9 IODC (45.5°E): Covers East Africa, Middle East, Arabian Sea, India, Bay of Bengal (25°E to 95°E)
+        if (angle >= 25.0 && angle <= 45.0) {
+          // Smooth blend with Meteosat Prime (25°E to 45°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
+        } else if (angle > 45.0 && angle <= 75.0) {
+          lngWeight = 1.0; // 100% full coverage across Arabian Sea, Persian Gulf, Pakistan, NW India
+        } else if (angle > 75.0 && angle <= 95.0) {
+          // Smooth blend with Himawari across Central/Eastern India and Bay of Bengal (75°E to 95°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
+        }
+      } else if (isHimawari) {
+        satLng = 140.7;
+        // Himawari-9 (140.7°E): Covers India, China, SE Asia, Japan, Australia, Western Pacific (75°E to 195°E)
+        if (angle >= 75.0 && angle <= 95.0) {
+          // Smooth blend with Meteosat-IODC across Central/Eastern India and Bay of Bengal (75°E to 95°E)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
+        } else if (angle > 95.0 && angle <= 165.0) {
+          lngWeight = 1.0; // 100% full coverage across China, Japan, Korea, SE Asia, Australia
         } else if (angle > 165.0 && angle <= 195.0) {
           // Smooth blend with GOES-West over Western Pacific / Dateline (165°E to 195°E)
           lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
         }
-      } else if (isIodc) {
-        // Meteosat-9 IODC (45.5°E): Covers Indian Ocean, Arabian Sea, Madagascar, Middle East (15°E to 85°E)
-        if (angle >= 15.0 && angle <= 35.0) {
-          // Smooth blend with Meteosat Prime over East Africa / Red Sea (15°E to 35°E)
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 15.0) / 20.0)));
-        } else if (angle > 35.0 && angle <= 65.0) {
-          lngWeight = 1.0; // 100% full coverage across Indian Ocean, Arabian Sea, Madagascar, Persian Gulf
-        } else if (angle > 65.0 && angle <= 85.0) {
-          // Smooth blend with Himawari over Central/Eastern India (65°E to 85°E)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 65.0) / 20.0)));
-        }
-      } else if (isMeteosatPrime) {
-        // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (315° to 35°E)
-        if (angle >= 315.0 && angle <= 340.0) {
-          // Smooth blend with GOES-East over Mid-Atlantic (315° to 340°)
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 315.0) / 25.0)));
-        } else if (angle > 340.0 || angle <= 20.0) {
-          lngWeight = 1.0;
-        } else if (angle > 20.0 && angle <= 35.0) {
-          // Smooth blend with Meteosat-IODC over East Africa / Red Sea (20°E to 35°E)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 20.0) / 15.0)));
-        }
       } else if (isGoesWest) {
-        // GOES-West (137.2°W): Covers Central/Eastern Pacific (165°E to 115°W / 245°)
+        satLng = 222.8; // 137.2°W
+        // GOES-West (137.2°W / 222.8°E): Covers Central/Eastern Pacific & US West (165°E to 265°E)
         if (angle >= 165.0 && angle <= 195.0) {
-          // Smooth blend with Himawari
+          // Smooth blend with Himawari over Western Pacific / Dateline (165°E to 195°E)
           lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
         } else if (angle > 195.0 && angle <= 225.0) {
-          lngWeight = 1.0;
-        } else if (angle > 225.0 && angle <= 245.0) {
-          // Smooth blend with GOES-East over West Coast / Rockies (225° to 245°)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 20.0)));
+          lngWeight = 1.0; // 100% full coverage across Hawaii, Central/East Pacific
+        } else if (angle > 225.0 && angle <= 265.0) {
+          // Smooth blend with GOES-East over Western North America / US West Coast / Rockies (225° to 265°)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
         }
       } else if (isGoesEast) {
-        // GOES-East (75.2°W): Covers Americas, Caribbean, Atlantic (225° to 340° / 20°W)
-        if (angle >= 225.0 && angle <= 245.0) {
-          // Smooth blend with GOES-West
-          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 20.0)));
-        } else if (angle > 245.0 && angle <= 315.0) {
-          lngWeight = 1.0;
-        } else if (angle > 315.0 && angle <= 340.0) {
-          // Smooth blend with Meteosat Prime over Mid-Atlantic (315° to 340°)
-          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 315.0) / 25.0)));
+        satLng = 284.8; // 75.2°W
+        // GOES-East (75.2°W / 284.8°E): Covers Americas, Caribbean, Atlantic (225°E to 345°E)
+        if (angle >= 225.0 && angle <= 265.0) {
+          // Smooth blend with GOES-West over Rockies / Great Plains (225° to 265°)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
+        } else if (angle > 265.0 && angle <= 320.0) {
+          lngWeight = 1.0; // 100% full coverage across Eastern US, Caribbean, South America, Western Atlantic
+        } else if (angle > 320.0 && angle <= 345.0) {
+          // Smooth blend with Meteosat Prime over Mid-Atlantic (320° to 345°)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
+        }
+      } else if (isMeteosatPrime) {
+        satLng = 0.0;
+        // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (320° to 45°E)
+        if (angle >= 320.0 && angle <= 345.0) {
+          // Smooth blend with GOES-East over Mid-Atlantic (320° to 345°)
+          lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
+        } else if (angle > 345.0 || angle <= 25.0) {
+          lngWeight = 1.0; // 100% full coverage across UK, France, Germany, Spain, West Africa
+        } else if (angle > 25.0 && angle <= 45.0) {
+          // Smooth blend with Meteosat-IODC over Eastern Europe / Red Sea / East Africa (25°E to 45°E)
+          lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
         }
       }
 
-      return Math.max(0.0, Math.min(1.0, lngWeight * latWeight));
+      // Geostationary Earth Disk Horizon / Limb Feathering:
+      // Smoothly feathers out disk edge (74° to 81° angular distance from sub-satellite point)
+      let limbWeight = 1.0;
+      if (isHimawari || isIodc || isMeteosatPrime || isGoesEast || isGoesWest) {
+        const dLng = Math.abs((((lng - satLng + 540) % 360) - 180)) * (Math.PI / 180);
+        const dLat = (lat * Math.PI) / 180;
+        const cosPsi = Math.cos(dLat) * Math.cos(dLng);
+        // cos(74°) ≈ 0.2756, cos(81°) ≈ 0.1564
+        if (cosPsi <= 0.1564) {
+          limbWeight = 0.0;
+        } else if (cosPsi < 0.2756) {
+          const t = (cosPsi - 0.1564) / (0.2756 - 0.1564);
+          limbWeight = 0.5 * (1.0 - Math.cos(Math.PI * t));
+        }
+      }
+
+      return Math.max(0.0, Math.min(1.0, lngWeight * latWeight * limbWeight));
+    }
+
+    // Physical Elevation & Latitude Lapse-Rate Thermal Ground Discriminator
+    // Rejects nocturnal freezing ground in high elevation (Tibet > 3500m) and cold winter interiors
+    function getLocalThermalThreshold(lng: number, lat: number, isEumet: boolean): number {
+      let thresh = isEumet ? 70 : 72;
+      const absLat = Math.abs(lat);
+
+      // 1. Tibetan Plateau & High Himalayas (26°N-39°N, 74°E-104°E, elevation 3,800m-5,500m):
+      if (lat >= 26.0 && lat <= 39.0 && lng >= 74.0 && lng <= 104.0) {
+        const edgeX = Math.min(lng - 74.0, 104.0 - lng) / 4.0;
+        const edgeY = Math.min(lat - 26.0, 39.0 - lat) / 3.0;
+        const coreFactor = Math.max(0.0, Math.min(1.0, Math.min(edgeX, edgeY)));
+        thresh += 102 * coreFactor; // Peaks at 174 in plateau center
+      }
+      // 2. Central Asian & Mongolian Cold Continental Steppe (39°N-55°N, 70°E-125°E):
+      else if (lat > 39.0 && lat <= 55.0 && lng >= 70.0 && lng <= 125.0) {
+        const edgeX = Math.min(lng - 70.0, 125.0 - lng) / 8.0;
+        const edgeY = Math.min(lat - 39.0, 55.0 - lat) / 4.0;
+        const coreFactor = Math.max(0.0, Math.min(1.0, Math.min(edgeX, edgeY)));
+        thresh += 88 * coreFactor; // Peaks at 160 over northern cold interior
+      }
+      // 3. High-latitude cold sub-polar continental land (> 55°N):
+      else if (absLat > 55.0 && absLat <= 65.0) {
+        const polarFactor = (absLat - 55.0) / 10.0;
+        thresh += 50 * polarFactor;
+      }
+      return thresh;
     }
 
     function processMainThreadTile(d: Uint8ClampedArray, width: number, height: number, realUrl: string) {
@@ -322,14 +371,14 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let s = 0;
 
             if (isInfraLayer) {
-              const irThresh = isEumet ? 70 : 72;
+              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
               if (baseRadiance <= irThresh) {
                 d[i + 3] = 0;
                 continue;
               }
-              const midRange = isEumet ? 135 : 145;
-              const highRange = isEumet ? 175 : 185;
-              const maxRange = isEumet ? 220 : 230;
+              const midRange = Math.max(irThresh + 38, isEumet ? 135 : 145);
+              const highRange = Math.max(midRange + 32, isEumet ? 175 : 185);
+              const maxRange = Math.max(highRange + 30, isEumet ? 220 : 230);
               if (baseRadiance <= midRange) {
                 const norm = (baseRadiance - irThresh) / (midRange - irThresh);
                 const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
@@ -427,8 +476,8 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             } else if (isInfraLayer) {
               // Clean Infrared Band 13 (Truth in Remote Sensing - Zoom Earth & Windy Parity)
               // Warm ocean and land background has radiance < 68-72.
-              // Low clouds start at 72. Full convective storm tops reach 205+.
-              const irThresh = isEumet ? 70 : 72;
+              // Cold freezing plateau (Tibet) and continental winter interior (Mongolia) rejected via localIrThresh
+              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
               if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
               const norm = Math.min(1.0, (baseRadiance - irThresh) / (205 - irThresh));
               const s = norm * norm * (3.0 - 2.0 * norm);
@@ -3002,7 +3051,7 @@ export default function CityMapViewer({
         const isVisibleMode = spectralMode === 'visible';
         const isBlue = spectralMode === 'blue';
         const isInfra = spectralMode === 'infra';
-        const rasterContrast = isVisibleMode ? 0.12 : isBlue ? 0.22 : 0.16;
+        const rasterContrast = isVisibleMode ? 0.0 : isBlue ? 0.04 : 0.0;
 
         // Progressive Zoom-Dependent Atmospheric Cloud Dissolve Expressions:
         // - Planetary/Regional (zoom <= 8.5): Clouds remain 88% opaque showing real cyclone spirals & storms.
@@ -3107,6 +3156,7 @@ export default function CityMapViewer({
           format: 'image/png' | 'image/jpeg';
           isSubHourly: boolean;
           maxzoom: number;
+          bounds?: [number, number, number, number];
         }[] = isHdMode
           ? [
               // Genuine 250m Resolution Polar Swath (NOAA-20 VIIRS TrueColor Level 9 - Zoom Earth Parity)
@@ -3121,7 +3171,7 @@ export default function CityMapViewer({
             ]
           : !isInfra
           ? [
-              // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 56° lat)
+              // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 58° lat)
               {
                 id: 'global-polar',
                 layerName: 'mumi:worldcloudmap_ir108',
@@ -3133,7 +3183,7 @@ export default function CityMapViewer({
               // 1. Europe & Africa (Meteosat Prime 0°E Full Earth Scan)
               {
                 id: 'europe-africa',
-                layerName: europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108',
+                layerName: isVisibleMode ? (europeAfricaDay ? 'msg_fes:vis006' : 'msg_fes:ir108') : 'msg_fes:ir108',
                 tileMatrixSet: 'EPSG:3857',
                 format: 'image/png',
                 isSubHourly: true,
@@ -3144,7 +3194,7 @@ export default function CityMapViewer({
                 ? [
                     {
                       id: 'eumet-iodc',
-                      layerName: iodcDay ? 'msg_iodc:vis006' : 'msg_iodc:ir108',
+                      layerName: isVisibleMode ? (iodcDay ? 'msg_iodc:vis006' : 'msg_iodc:ir108') : 'msg_iodc:ir108',
                       tileMatrixSet: 'EPSG:3857',
                       format: 'image/png' as const,
                       isSubHourly: true,
@@ -3155,33 +3205,33 @@ export default function CityMapViewer({
               // 2. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
               {
                 id: 'himawari',
-                layerName: himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
-                tileMatrixSet: himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
+                layerName: isVisibleMode && himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
+                tileMatrixSet: isVisibleMode && himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 isSubHourly: true,
-                maxzoom: himawariDay ? 7 : 6,
+                maxzoom: isVisibleMode && himawariDay ? 7 : 6,
               },
               // 3. Americas & Atlantic (GOES-East 75.2°W)
               {
                 id: 'goes-east',
-                layerName: goesEastDay ? 'GOES-East_ABI_GeoColor' : 'GOES-East_ABI_Band13_Clean_Infrared',
-                tileMatrixSet: goesEastDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
+                layerName: isVisibleMode && !goesEastDay ? 'GOES-East_ABI_Band13_Clean_Infrared' : 'GOES-East_ABI_GeoColor',
+                tileMatrixSet: isVisibleMode && !goesEastDay ? 'GoogleMapsCompatible_Level6' : 'GoogleMapsCompatible_Level7',
                 format: 'image/png',
                 isSubHourly: true,
-                maxzoom: goesEastDay ? 7 : 6,
+                maxzoom: isVisibleMode && !goesEastDay ? 6 : 7,
               },
               // 4. Pacific & Americas West (GOES-West 137.2°W)
               {
                 id: 'goes-west',
-                layerName: goesWestDay ? 'GOES-West_ABI_GeoColor' : 'GOES-West_ABI_Band13_Clean_Infrared',
-                tileMatrixSet: goesWestDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
+                layerName: isVisibleMode && !goesWestDay ? 'GOES-West_ABI_Band13_Clean_Infrared' : 'GOES-West_ABI_GeoColor',
+                tileMatrixSet: isVisibleMode && !goesWestDay ? 'GoogleMapsCompatible_Level6' : 'GoogleMapsCompatible_Level7',
                 format: 'image/png',
                 isSubHourly: true,
-                maxzoom: goesWestDay ? 7 : 6,
+                maxzoom: isVisibleMode && !goesWestDay ? 6 : 7,
               },
             ]
           : [
-              // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 56° lat)
+              // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 58° lat)
               {
                 id: 'global-polar',
                 layerName: 'mumi:worldcloudmap_ir108',
@@ -3337,7 +3387,7 @@ export default function CityMapViewer({
                 paint: {
                   'raster-opacity': blackMarbleOpacity,
                   'raster-resampling': 'linear',
-                  'raster-fade-duration': 250,
+                  'raster-fade-duration': 0,
                 },
               },
               firstCloudLayerId
@@ -3394,7 +3444,7 @@ export default function CityMapViewer({
                       'raster-opacity': activeOpacityExpr,
                       'raster-contrast': activeContrast,
                       'raster-resampling': 'linear',
-                      'raster-fade-duration': 200,
+                      'raster-fade-duration': 0,
                     },
                   },
                   beforeLayerId
@@ -3422,7 +3472,7 @@ export default function CityMapViewer({
                     'raster-opacity': activeOpacityExpr,
                     'raster-contrast': activeContrast,
                     'raster-resampling': 'linear',
-                    'raster-fade-duration': 250,
+                    'raster-fade-duration': 0,
                   },
                 },
                 beforeLayerId
