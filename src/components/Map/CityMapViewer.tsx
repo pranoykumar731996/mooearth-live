@@ -322,22 +322,14 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let s = 0;
 
             if (isInfraLayer) {
-              // High-Altitude Cold Land Surface Filtering (Tibetan Plateau / Himalayas 24.5°N–42°N, 72°E–105°E):
-              // Autumn/Winter nocturnal land cools to -15°C to -30°C (radiance 148–178).
-              // Genuine convective storm clouds and cyclone cloud tops reach -40°C to -80°C (radiance >= 184).
-              // EUMETSAT SEVIRI IR 10.8 (Europe & Africa): Radiance scale maps authentic cloud structures starting at ~92.
-              const isColdPlateau = hasCoords &&
-                tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
-                tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
-              const irThresh = isEumet ? 92 : (isColdPlateau ? 184 : 154);
-
+              const irThresh = isEumet ? 70 : 72;
               if (baseRadiance <= irThresh) {
                 d[i + 3] = 0;
                 continue;
               }
-              const midRange = isEumet ? 140 : 176;
-              const highRange = isEumet ? 185 : 196;
-              const maxRange = isEumet ? 220 : 235;
+              const midRange = isEumet ? 135 : 145;
+              const highRange = isEumet ? 175 : 185;
+              const maxRange = isEumet ? 220 : 230;
               if (baseRadiance <= midRange) {
                 const norm = (baseRadiance - irThresh) / (midRange - irThresh);
                 const smoothNorm = norm * norm * (3.0 - 2.0 * norm);
@@ -356,14 +348,15 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             } else {
               // Visible optical channels (Himawari Band 3, GOES GeoColor, Meteosat vis006):
               if (isGeoColor) {
+                const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
                 const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-                if (isSand || l <= 55) { d[i + 3] = 0; continue; }
-                const norm = Math.min(1.0, (l - 55) / (205 - 55));
+                if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (l - 62) / (205 - 62));
                 const s = norm * norm * (3.0 - 2.0 * norm);
                 cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
               } else if (isHimawariVis) {
-                if (r <= 42) { d[i + 3] = 0; continue; }
-                const norm = Math.min(1.0, (r - 42) / (195 - 42));
+                if (r <= 58) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (r - 58) / (195 - 58));
                 const s = norm * norm * (3.0 - 2.0 * norm);
                 cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
               } else if (isEumet) {
@@ -416,31 +409,33 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
             } else if (isHimawariVis) {
-              if (r <= 42) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (r - 42) / (195 - 42));
+              if (r <= 58) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (r - 58) / (195 - 58));
               const s = norm * norm * (3.0 - 2.0 * norm);
               const cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
             } else if (isGeoColor) {
+              const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
               const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-              if (isSand || l <= 55) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 55) / (205 - 55));
+              if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 62) / (205 - 62));
               const s = norm * norm * (3.0 - 2.0 * norm);
               const cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
             } else if (isInfraLayer) {
-              const isColdPlateau = hasCoords &&
-                tileLats[y] >= 24.5 && tileLats[y] <= 42.0 &&
-                tileLngs[x] >= 72.0 && tileLngs[x] <= 105.0;
-              const irThresh = isEumet ? 92 : (isColdPlateau ? 184 : 154);
+              // Clean Infrared Band 13 (Truth in Remote Sensing - Zoom Earth & Windy Parity)
+              // Warm ocean and land background has radiance < 68-72.
+              // Low clouds start at 72. Full convective storm tops reach 205+.
+              const irThresh = isEumet ? 70 : 72;
               if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (baseRadiance - irThresh) / ((isEumet ? 210 : 215) - irThresh));
+              const norm = Math.min(1.0, (baseRadiance - irThresh) / (205 - irThresh));
               const s = norm * norm * (3.0 - 2.0 * norm);
-              const cloudAlpha = Math.min(252, Math.round(250 * Math.pow(s, 0.95) * spatWeight));
+              const cloudAlpha = Math.round(248 * Math.pow(s, 0.82) * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-              const naturalLum = Math.min(255, Math.max(160, Math.round(baseRadiance * 1.05)));
+              // Soft natural luminance following sensor radiance (NO Math.max(160) chalk clamping!)
+              const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
               d[i] = naturalLum; d[i + 1] = naturalLum; d[i + 2] = Math.min(255, naturalLum + 2); d[i + 3] = cloudAlpha;
             } else {
               if (l <= 50) { d[i + 3] = 0; continue; }
@@ -752,17 +747,18 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
           const r = d[i], g = d[i + 1], b = d[i + 2];
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-          if (lum < 16) {
+          if (lum < 14) {
             d[i + 3] = 0;
             continue;
           }
 
-          const intensity = Math.min(1.0, (lum - 16) / 110.0);
-          const alpha = Math.min(245, Math.round(245 * intensity * nightWeight));
+          // City lights & populated centers: warm golden radiance (Zoom Earth parity)
+          const intensity = Math.min(1.0, Math.pow((lum - 14) / 75.0, 0.65));
+          const alpha = Math.min(252, Math.round(250 * intensity * nightWeight));
 
-          d[i] = Math.min(255, Math.round(r * 1.15 + 16));
-          d[i + 1] = Math.min(255, Math.round(g * 1.05 + 10));
-          d[i + 2] = Math.max(0, Math.round(b * 0.90));
+          d[i] = Math.min(255, Math.round(r * 1.35 + 28));
+          d[i + 1] = Math.min(255, Math.round(g * 1.20 + 18));
+          d[i + 2] = Math.min(255, Math.round(b * 0.85 + 4));
           d[i + 3] = alpha;
         }
       }
@@ -3257,9 +3253,9 @@ export default function CityMapViewer({
           // In Windy Relief style, suppress night shadow for flat chart view.
           // In Atmospheric Satellite & other styles, enable photorealistic Day/Night terminator and Black Marble city lights.
           const isWindyRelief = activeStyleKey === 'windy-satellite';
-          const terminatorNightOpacity = isWindyRelief ? 0.0 : 0.55;
-          const terminatorTwilightOpacity = isWindyRelief ? 0.0 : 0.35;
-          const blackMarbleOpacity = isWindyRelief ? 0.0 : 0.85;
+          const terminatorNightOpacity = isWindyRelief ? 0.0 : 0.82;
+          const terminatorTwilightOpacity = isWindyRelief ? 0.0 : 0.45;
+          const blackMarbleOpacity = isWindyRelief ? 0.0 : 0.92;
 
           // Ground-level terminator position: Insert beneath clouds so atmospheric clouds float above night darkness
           const firstCloudLayerId =
