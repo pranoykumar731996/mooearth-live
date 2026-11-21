@@ -354,14 +354,32 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
                 cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
               }
             } else {
-              // Visible optical channel:
-              if (baseRadiance <= 68) {
-                d[i + 3] = 0;
-                continue;
+              // Visible optical channels (Himawari Band 3, GOES GeoColor, Meteosat vis006):
+              if (isGeoColor) {
+                const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
+                if (isSand || l <= 55) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (l - 55) / (205 - 55));
+                const s = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+              } else if (isHimawariVis) {
+                if (r <= 42) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (r - 42) / (195 - 42));
+                const s = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
+              } else if (isEumet) {
+                if (l <= 36) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (l - 36) / (185 - 36));
+                const s = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+              } else {
+                if (baseRadiance <= 68) {
+                  d[i + 3] = 0;
+                  continue;
+                }
+                const norm = Math.min(1.0, (baseRadiance - 68) / (205 - 68));
+                s = norm * norm * (3.0 - 2.0 * norm);
+                cloudAlpha = Math.round(248 * s * spatWeight);
               }
-              const norm = Math.min(1.0, (baseRadiance - 68) / (205 - 68));
-              s = norm * norm * (3.0 - 2.0 * norm);
-              cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
             }
 
             if (cloudAlpha <= 2) {
@@ -373,7 +391,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               // PRESERVE GENUINE SATELLITE RADIANCE (Truth in Remote Sensing - Zoom Earth & Windy Parity)
               // Instead of a flat artificial monochrome bucket-fill, the cloud's true sensor radiance
               // directly modulates pixel brightness, preserving natural 3D highlights, shadows, and vortices!
-              const naturalLum = Math.min(255, Math.max(160, Math.round(baseRadiance * 1.05)));
+              const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
               d[i] = naturalLum;
               d[i + 1] = naturalLum;
               d[i + 2] = Math.min(255, naturalLum + 2);
@@ -1045,7 +1063,7 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
-  spectralMode = 'blue',
+  spectralMode = 'visible',
   onSelectSpectralMode,
   particlesEnabled = true,
   showPressureIsobars = false,
@@ -3105,7 +3123,7 @@ export default function CityMapViewer({
                 maxzoom: 9,
               },
             ]
-          : isVisibleMode
+          : !isInfra
           ? [
               // 0. Global Polar Baseline Underlay (provides high-latitude coverage > 56° lat)
               {
@@ -3573,16 +3591,16 @@ export default function CityMapViewer({
               type: 'line',
               source: worldSourceId,
               paint: {
-                'line-color': '#000000',
+                'line-color': activeLayer === 'satellite' ? 'rgba(255, 255, 255, 0.40)' : '#000000',
                 'line-width': [
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  1, 1.4,
-                  4, 1.8,
-                  8, 2.4,
+                  1, activeLayer === 'satellite' ? 0.8 : 1.4,
+                  4, activeLayer === 'satellite' ? 1.0 : 1.8,
+                  8, activeLayer === 'satellite' ? 1.4 : 2.4,
                 ],
-                'line-opacity': 0.92,
+                'line-opacity': activeLayer === 'satellite' ? 0.50 : 0.92,
               },
             },
             beforeLabelId
@@ -3604,16 +3622,16 @@ export default function CityMapViewer({
               type: 'line',
               source: indiaSourceId,
               paint: {
-                'line-color': '#000000',
+                'line-color': activeLayer === 'satellite' ? 'rgba(255, 255, 255, 0.60)' : '#000000',
                 'line-width': [
                   'interpolate',
                   ['linear'],
                   ['zoom'],
-                  1, 1.8,
-                  4, 2.2,
-                  8, 3.0,
+                  1, activeLayer === 'satellite' ? 1.0 : 1.8,
+                  4, activeLayer === 'satellite' ? 1.2 : 2.2,
+                  8, activeLayer === 'satellite' ? 1.6 : 3.0,
                 ],
-                'line-opacity': 0.98,
+                'line-opacity': activeLayer === 'satellite' ? 0.65 : 0.98,
               },
             },
             beforeLabelId

@@ -197,7 +197,7 @@ export default function WeatherDashboard() {
   const [flyTriggerSeq, setFlyTriggerSeq] = useState(0);
   const [timelineIndex, setTimelineIndex] = useState(0);
   const [isTimelinePlaying, setIsTimelinePlaying] = useState(false);
-  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('blue');
+  const [spectralMode, setSpectralMode] = useState<SatelliteSpectralMode>('visible');
   const [overlayRadar, setOverlayRadar] = useState(false);
   const [showPressureIsobars, setShowPressureIsobars] = useState(false);
   const [particlesEnabled, setParticlesEnabled] = useState(true);

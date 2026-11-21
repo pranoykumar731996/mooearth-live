@@ -367,14 +367,32 @@ if (typeof self !== 'undefined' && self.addProtocol) {
               cloudAlpha = Math.min(252, Math.round((225 + 27 * norm) * spatWeight));
             }
           } else {
-            // Visible optical channel:
-            if (baseRadiance <= 68) {
-              d[i + 3] = 0;
-              continue;
+            // Visible optical channels (Himawari Band 3, GOES GeoColor, Meteosat vis006):
+            if (isGeoColor) {
+              const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
+              if (isSand || l <= 55) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 55) / (205 - 55));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+            } else if (isHimawariVis) {
+              if (r <= 42) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (r - 42) / (195 - 42));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.round(250 * Math.pow(s, 0.85) * spatWeight);
+            } else if (isEumet) {
+              if (l <= 36) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 36) / (185 - 36));
+              const s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.round(248 * Math.pow(s, 0.85) * spatWeight);
+            } else {
+              if (baseRadiance <= 68) {
+                d[i + 3] = 0;
+                continue;
+              }
+              const norm = Math.min(1.0, (baseRadiance - 68) / (205 - 68));
+              s = norm * norm * (3.0 - 2.0 * norm);
+              cloudAlpha = Math.round(248 * s * spatWeight);
             }
-            const norm = Math.min(1.0, (baseRadiance - 68) / (205 - 68));
-            s = norm * norm * (3.0 - 2.0 * norm);
-            cloudAlpha = Math.min(248, Math.round(248 * s * spatWeight));
           }
 
           if (cloudAlpha <= 2) {
@@ -384,7 +402,7 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
           if (isInfraLayer) {
             // PRESERVE GENUINE SATELLITE RADIANCE (Truth in Remote Sensing - Zoom Earth & Windy Parity)
-            const naturalLum = Math.min(255, Math.max(160, Math.round(baseRadiance * 1.05)));
+            const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
             d[i] = naturalLum;
             d[i + 1] = naturalLum;
             d[i + 2] = Math.min(255, naturalLum + 2);
