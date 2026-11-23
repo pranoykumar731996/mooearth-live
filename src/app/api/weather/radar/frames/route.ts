@@ -29,7 +29,7 @@ export async function GET() {
   if (cachedRadarPayload && now - cachedRadarPayload.cachedAt < CACHE_TTL_MS) {
     return NextResponse.json(cachedRadarPayload.data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600',
         'X-Cache-Status': 'HIT',
       },
     });
@@ -51,7 +51,7 @@ export async function GET() {
 
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600',
         'X-Cache-Status': 'MISS',
       },
     });

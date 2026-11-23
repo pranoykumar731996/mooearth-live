@@ -273,7 +273,7 @@ export default function CountryReactionPanel({
     const catParam = activeCategory ? `&category=${activeCategory}` : '';
     let aborted = false;
 
-    fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}&t=${Date.now()}`)
+    fetch(`/api/reactions?country=${encodeURIComponent(country)}${catParam}`)
       .then(res => res.json())
       .then(data => {
         if (aborted) return;

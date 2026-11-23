@@ -41,7 +41,7 @@ export async function GET() {
   const active = db.filter((c: any) => !c.reports || c.reports < 3);
   return NextResponse.json({ celebrations: active }, {
     headers: {
-      'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
     }
   });
 }

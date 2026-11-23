@@ -124,7 +124,7 @@ export async function fetchCountryWeather(
 
     const res = await fetch(url, {
       signal: AbortSignal.timeout(7000),
-      next: { revalidate: 120 }, // 2 minutes Next.js cache (tight live sync)
+      next: { revalidate: 1800 }, // 30 minutes Next.js ISR cache (reduces compute while client live-polls)
     });
 
     if (!res.ok) {

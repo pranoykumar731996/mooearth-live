@@ -140,8 +140,8 @@ async function fetchWithRetry(
     try {
       const res = await fetch(url, {
         signal: AbortSignal.timeout(timeoutMs),
-        // Next.js ISR cache — revalidate every 10 minutes
-        next: { revalidate: 120 }, // 2 minutes cache (tight live sync)
+        // Next.js ISR cache — revalidate every 30 minutes
+        next: { revalidate: 1800 }, // 30 minutes cache (drastically saves Vercel Active CPU)
       });
 
       if (res.ok) return res;

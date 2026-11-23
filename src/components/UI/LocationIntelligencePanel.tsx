@@ -265,7 +265,7 @@ export default function LocationIntelligencePanel({
 
       if (loc.type === 'country') {
         const catParam = activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : '';
-        const res = await fetch(`/api/reactions?country=${encodeURIComponent(loc.name)}${catParam}&t=${Date.now()}`);
+        const res = await fetch(`/api/reactions?country=${encodeURIComponent(loc.name)}${catParam}`);
         if (!res.ok) throw new Error('Failed to retrieve national headlines');
         const data = await res.json();
         newsItems = data.reaction?.headlines || [];

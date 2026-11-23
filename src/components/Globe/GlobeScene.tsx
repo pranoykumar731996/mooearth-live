@@ -613,7 +613,7 @@ const GlobeScene = React.memo(function GlobeScene({
       })
       .catch((err) => console.error('Failed to load geojson', err));
 
-    fetch(`/api/global-mood?t=${Date.now()}`)
+    fetch('/api/global-mood')
       .then((res) => res.json())
       .then((data) => {
         if (data.globalMood) setGlobalMood(data.globalMood);

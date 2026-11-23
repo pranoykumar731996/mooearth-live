@@ -744,29 +744,29 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     try {
       let res = null;
 
-      // Primary: edge proxy
+      // Primary: direct EUMETSAT WMS (Zero Vercel Serverless CPU cost, native CORS + 7-day browser cache)
       try {
-        const proxyUrl = eumetUrlToProxy(params.url);
+        const directUrl = eumetUrlToWmsDirect(params.url);
         const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), 7000);
+        const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
         abortController.signal.addEventListener('abort', () => timeoutController.abort());
-        const proxyRes = await fetch(proxyUrl, { signal: timeoutController.signal });
+        const directRes = await fetch(directUrl, { signal: timeoutController.signal });
         clearTimeout(timeoutId);
-        if (proxyRes.ok) res = proxyRes;
+        if (directRes.ok) res = directRes;
       } catch {
-        // Fall through to direct WMS
+        // Direct WMS failed/timed out, fall through to edge proxy fallback
       }
 
-      // Fallback: direct EUMETSAT WMS if proxy fails or errors
+      // Fallback: edge proxy ONLY if direct WMS fails (e.g. strict firewall or network block)
       if (!res) {
-        const directUrl = eumetUrlToWmsDirect(params.url);
+        const proxyUrl = eumetUrlToProxy(params.url);
         const fallbackController = new AbortController();
-        const fallbackTimeout = setTimeout(() => fallbackController.abort(), 12000);
+        const fallbackTimeout = setTimeout(() => fallbackController.abort(), 10000);
         abortController.signal.addEventListener('abort', () => fallbackController.abort());
         try {
-          const directRes = await fetch(directUrl, { signal: fallbackController.signal });
+          const proxyRes = await fetch(proxyUrl, { signal: fallbackController.signal });
           clearTimeout(fallbackTimeout);
-          if (directRes.ok) res = directRes;
+          if (proxyRes.ok) res = proxyRes;
         } catch {
           clearTimeout(fallbackTimeout);
         }

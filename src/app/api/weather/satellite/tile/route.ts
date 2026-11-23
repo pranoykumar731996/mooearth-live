@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(new Uint8Array(outBuf), {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400',
+        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
         'X-Cloud-Extraction': 'MooEarth-Atmospheric-Engine',
       },
     });
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(new Uint8Array(TRANSPARENT_1X1_PNG), {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=600',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400',
       },
     });
   }

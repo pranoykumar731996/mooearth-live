@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Cache-Control': refresh
           ? 'no-store, max-age=0, must-revalidate'
-          : 'public, s-maxage=60, stale-while-revalidate=120',
+          : 'public, max-age=120, s-maxage=300, stale-while-revalidate=900',
       }
     });
   } catch (error) {

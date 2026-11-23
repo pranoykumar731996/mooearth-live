@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     return Response.json(forecast, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60',
+        'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600',
       },
     });
   } catch (err: unknown) {

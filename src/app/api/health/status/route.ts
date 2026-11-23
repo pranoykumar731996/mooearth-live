@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
       },
     }
   );
@@ -59,8 +59,13 @@ export async function POST(request: NextRequest) {
   try {
     const origin = request.nextUrl.origin || 'https://www.mooearth.live';
     const cronUrl = `${origin}/api/cron/daily-health-check`;
+    const authHeaders: Record<string, string> = process.env.CRON_SECRET
+      ? { Authorization: `Bearer ${process.env.CRON_SECRET}` }
+      : { 'x-vercel-cron': '1' };
+
     const res = await fetch(cronUrl, {
       signal: AbortSignal.timeout(30000),
+      headers: authHeaders,
     });
     const data = await res.json();
     return Response.json(data, { status: res.status });

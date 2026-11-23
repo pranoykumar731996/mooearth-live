@@ -1,24 +1,22 @@
 // ============================================================
 // MooEarth Live — EUMETSAT Geostationary Tile Edge Proxy
 // ============================================================
-// Proxies EUMETSAT WMS tiles through our Vercel Edge CDN:
+// Proxies EUMETSAT WMS tiles through Vercel Edge Network:
 //   1. Converts slippy tile coords (z/x/y) → WMS BBOX in EPSG:3857
-//   2. Fetches from EUMETSAT GeoServer with extended 12s timeout + retry
-//   3. Caches on Vercel Edge (s-maxage=600) for instant global delivery
-//   4. Returns transparent 1x1 PNG on error (map never hangs)
-//
-// This eliminates the 3.5s browser-side timeout problem that caused
-// Africa and Europe to appear cloud-free.
+//   2. Fetches from EUMETSAT GeoServer
+//   3. Caches on Vercel Edge (s-maxage=86400) for instant global delivery with 0 CPU
+//   4. Runs on Edge runtime (lightweight V8 isolates, zero Node serverless CPU time)
+//   5. Returns transparent 1x1 PNG on error (map never hangs)
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 // Pre-encoded transparent 1x1 PNG (RFC 2083 minimum valid PNG)
-const TRANSPARENT_1X1_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-  'base64'
+const TRANSPARENT_1X1_PNG = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='),
+  (c) => c.charCodeAt(0)
 );
 
 // Allowed EUMETSAT WMS layers (whitelist to prevent abuse)
@@ -55,20 +53,22 @@ export async function GET(request: NextRequest) {
 
   // Validate parameters
   if (isNaN(z) || isNaN(x) || isNaN(y) || z < 0 || z > 8) {
-    return new NextResponse(new Uint8Array(TRANSPARENT_1X1_PNG), {
+    return new NextResponse(TRANSPARENT_1X1_PNG, {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=60',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   }
 
   // Whitelist check
   if (!ALLOWED_LAYERS.has(layer)) {
-    return new NextResponse(new Uint8Array(TRANSPARENT_1X1_PNG), {
+    return new NextResponse(TRANSPARENT_1X1_PNG, {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=60',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   }
@@ -81,60 +81,43 @@ export async function GET(request: NextRequest) {
     `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
     `&LAYERS=${encodeURIComponent(layer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
 
-  // Robust fetch with retry for requested layer (never fall back to worldcloudmap to prevent internal seams)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const activeLayer = layer;
+  try {
+    const res = await fetch(wmsUrl, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'MooEarth-Live-WeatherEngine/2.0',
+      },
+    });
 
-      const wmsUrl =
-        `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
-        `&BBOX=${minX},${minY},${maxX},${maxY}` +
-        `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
-        `&LAYERS=${encodeURIComponent(activeLayer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
-
-      const res = await fetch(wmsUrl, {
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          'User-Agent': 'MooEarth-Live-WeatherEngine/2.0',
-        },
-      });
-
-      if (!res.ok) {
-        if (attempt === 0) continue; // retry once
-        break;
-      }
-
+    if (res.ok) {
       const contentType = res.headers.get('content-type') || '';
-      if (!contentType.includes('image')) {
-        if (attempt === 0) continue; // retry once
-        break;
+      if (contentType.includes('image')) {
+        const arrayBuf = await res.arrayBuffer();
+
+        // Serve the EUMETSAT tile with 24h edge CDN caching:
+        // s-maxage=86400 = 24h on Vercel CDN edge (0 serverless compute cost for cache hits)
+        // stale-while-revalidate=604800 = 7 days stale revalidation for instant response
+        return new NextResponse(arrayBuf, {
+          headers: {
+            'Content-Type': 'image/png',
+            'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+            'X-EUMETSAT-Layer': layer,
+            'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
       }
-
-      const arrayBuf = await res.arrayBuffer();
-
-      // Serve the EUMETSAT tile with edge CDN caching:
-      // s-maxage=900 = 15 minutes on Vercel CDN edge
-      // stale-while-revalidate=86400 = 24h stale revalidation for instant response
-      return new NextResponse(new Uint8Array(arrayBuf), {
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=300, s-maxage=900, stale-while-revalidate=86400',
-          'X-EUMETSAT-Layer': activeLayer,
-          'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    } catch (err) {
-      if (attempt === 0) continue; // retry with worldcloudmap on timeout/error
-      console.warn(`[EUMETSAT Tile Proxy] Failed after retries: z=${z} x=${x} y=${y} layer=${layer}`, err);
     }
+  } catch (err) {
+    console.warn(`[EUMETSAT Tile Proxy] Notice: z=${z} x=${x} y=${y} layer=${layer}`);
   }
 
-  // All attempts failed — return transparent fallback (map never hangs)
-  return new NextResponse(new Uint8Array(TRANSPARENT_1X1_PNG), {
+  // All attempts failed — return transparent fallback with 1h CDN cache so failed tiles do not hammer compute
+  return new NextResponse(TRANSPARENT_1X1_PNG, {
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=120, s-maxage=120',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Access-Control-Allow-Origin': '*',
     },
   });
 }

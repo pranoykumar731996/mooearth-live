@@ -53,7 +53,14 @@ export async function GET(request: NextRequest) {
       telemetry
     );
 
-    return NextResponse.json({ article, debug: article.debug || {} });
+    return NextResponse.json(
+      { article, debug: article.debug || {} },
+      {
+        headers: {
+          'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Error in /api/article route:', error);
     return NextResponse.json({ error: error?.message || 'Internal Server Error' }, { status: 500 });

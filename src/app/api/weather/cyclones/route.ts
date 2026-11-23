@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1800',
+          'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600',
           'X-Weather-Source': 'IMD-NOAA-NHC-JTWC',
         },
       }

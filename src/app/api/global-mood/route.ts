@@ -23,7 +23,7 @@ export async function GET() {
 
     return NextResponse.json({ globalMood }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180',
+        'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=1800',
       }
     });
   } catch (error) {

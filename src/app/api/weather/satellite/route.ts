@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService';
 import type { SatelliteSpectralMode } from '@/services/weather/types';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(metadata, {
       headers: {
-        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1800',
+        'Cache-Control': 'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600',
         'X-Satellite-Provider': 'NASA-GIBS',
       },
     });

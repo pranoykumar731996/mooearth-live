@@ -52,6 +52,10 @@ export async function GET() {
       },
       cache: cacheMetrics,
       version: '1.0.0',
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=1800',
+      },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

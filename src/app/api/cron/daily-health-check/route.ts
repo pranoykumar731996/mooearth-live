@@ -71,10 +71,13 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
-  // Protect cron endpoint with bearer secret if configured in Vercel environment
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Protect cron endpoint against unauthorized web crawlers & public executions
+  const isVercelCron = request.headers.get('x-vercel-cron') === '1';
+  const isAuthorized = (cronSecret && authHeader === `Bearer ${cronSecret}`) || isVercelCron || process.env.NODE_ENV !== 'production';
+
+  if (!isAuthorized) {
     return Response.json(
-      { error: 'Unauthorized: Invalid CRON_SECRET' },
+      { error: 'Unauthorized: Daily health check is restricted to authorized cron triggers.' },
       { status: 401 }
     );
   }

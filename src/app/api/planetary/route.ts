@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       ],
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+        'Cache-Control': 'public, max-age=180, s-maxage=600, stale-while-revalidate=1800',
       },
     });
   } catch (error: any) {

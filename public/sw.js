@@ -139,7 +139,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 3. Live Weather Telemetry -> Network only, never cache stale observations in SW
-  if (url.pathname.startsWith('/api/weather/')) {
+  // Note: Satellite imagery tiles are static imagery and exempt so they can be cached
+  if (url.pathname.startsWith('/api/weather/satellite/')) {
+    // Exempt satellite tile endpoints: fall through to caching below
+  } else if (url.pathname.startsWith('/api/weather/')) {
     event.respondWith(fetch(event.request));
     return;
   }
@@ -216,4 +219,4 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Build Timestamp: 2026-11-21T21:56:25.833Z
+// Build Timestamp: 2026-11-23T09:45:35.053Z

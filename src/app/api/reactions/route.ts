@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const reactionData = await fetchCountryReactions(country, category);
     return NextResponse.json({ reaction: reactionData }, {
       headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'Cache-Control': 'public, max-age=180, s-maxage=300, stale-while-revalidate=900',
       }
     });
   } catch (error) {
