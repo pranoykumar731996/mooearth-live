@@ -810,15 +810,16 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     }
     if (!hasCoords) return;
 
-    const now = new Date();
-    const timeMs = now.getTime();
+    const tMatch = url.match(/[?&]t=(\d+)/);
+    const timeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
+    const dateObj = new Date(timeMs);
     const dayDiff = (timeMs - 946728000000) / 86400000;
     const L = (280.460 + 0.9856474 * dayDiff) % 360;
     const g = ((357.528 + 0.9856003 * dayDiff) % 360) * Math.PI / 180;
     const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
     const eps = (23.439 - 0.0000004 * dayDiff) * Math.PI / 180;
     const solLat = Math.asin(Math.sin(eps) * Math.sin(lambda)) * 180 / Math.PI;
-    const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+    const utcHours = dateObj.getUTCHours() + dateObj.getUTCMinutes() / 60 + dateObj.getUTCSeconds() / 3600;
     const solLng = ((12 - utcHours) * 15 + 540) % 360 - 180;
     const rad = Math.PI / 180;
 
@@ -858,9 +859,12 @@ if (typeof self !== 'undefined' && self.addProtocol) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-        // Dark oceans and unpopulated areas: transparent
+        // Dark oceans and unpopulated areas: smooth nocturnal darkening without vector knife cuts
         if (lum < 14) {
-          d[i + 3] = 0;
+          d[i] = 1;
+          d[i + 1] = 3;
+          d[i + 2] = 8;
+          d[i + 3] = Math.round(180 * nightWeight);
           continue;
         }
 

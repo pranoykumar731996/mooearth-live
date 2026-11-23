@@ -752,15 +752,16 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       }
       if (!hasCoords) return;
 
-      const now = new Date();
-      const timeMs = now.getTime();
+      const tMatch = url.match(/[?&]t=(\d+)/);
+      const timeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
+      const dateObj = new Date(timeMs);
       const dayDiff = (timeMs - 946728000000) / 86400000;
       const L = (280.460 + 0.9856474 * dayDiff) % 360;
       const g = ((357.528 + 0.9856003 * dayDiff) % 360) * Math.PI / 180;
       const lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * Math.PI / 180;
       const eps = (23.439 - 0.0000004 * dayDiff) * Math.PI / 180;
       const solLat = Math.asin(Math.sin(eps) * Math.sin(lambda)) * 180 / Math.PI;
-      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+      const utcHours = dateObj.getUTCHours() + dateObj.getUTCMinutes() / 60 + dateObj.getUTCSeconds() / 3600;
       const solLng = ((12 - utcHours) * 15 + 540) % 360 - 180;
       const rad = Math.PI / 180;
 
@@ -796,8 +797,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
           const r = d[i], g = d[i + 1], b = d[i + 2];
           const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          // Dark oceans and unpopulated areas: smooth nocturnal darkening without vector knife cuts
           if (lum < 14) {
-            d[i + 3] = 0;
+            d[i] = 1;
+            d[i + 1] = 3;
+            d[i + 2] = 8;
+            d[i + 3] = Math.round(180 * nightWeight);
             continue;
           }
 
@@ -1108,7 +1113,7 @@ export default function CityMapViewer({
   radarTileUrl,
   satelliteTileUrl,
   satelliteObservationUtc,
-  spectralMode = 'visible',
+  spectralMode = 'blue',
   onSelectSpectralMode,
   particlesEnabled = true,
   showPressureIsobars = false,
@@ -3205,7 +3210,7 @@ export default function CityMapViewer({
               // 2. East Asia, Bay of Bengal, Australia, Pacific (Himawari-9 140.7°E)
               {
                 id: 'himawari',
-                layerName: isVisibleMode && himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared',
+                layerName: isVisibleMode ? (himawariDay ? 'Himawari_AHI_Band3_Red_Visible_1km' : 'Himawari_AHI_Band13_Clean_Infrared') : 'Himawari_AHI_Band13_Clean_Infrared',
                 tileMatrixSet: isVisibleMode && himawariDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 isSubHourly: true,
@@ -3214,20 +3219,20 @@ export default function CityMapViewer({
               // 3. Americas & Atlantic (GOES-East 75.2°W)
               {
                 id: 'goes-east',
-                layerName: isVisibleMode && !goesEastDay ? 'GOES-East_ABI_Band13_Clean_Infrared' : 'GOES-East_ABI_GeoColor',
-                tileMatrixSet: isVisibleMode && !goesEastDay ? 'GoogleMapsCompatible_Level6' : 'GoogleMapsCompatible_Level7',
+                layerName: isVisibleMode ? (goesEastDay ? 'GOES-East_ABI_GeoColor' : 'GOES-East_ABI_Band13_Clean_Infrared') : 'GOES-East_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: isVisibleMode && goesEastDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 isSubHourly: true,
-                maxzoom: isVisibleMode && !goesEastDay ? 6 : 7,
+                maxzoom: isVisibleMode && goesEastDay ? 7 : 6,
               },
               // 4. Pacific & Americas West (GOES-West 137.2°W)
               {
                 id: 'goes-west',
-                layerName: isVisibleMode && !goesWestDay ? 'GOES-West_ABI_Band13_Clean_Infrared' : 'GOES-West_ABI_GeoColor',
-                tileMatrixSet: isVisibleMode && !goesWestDay ? 'GoogleMapsCompatible_Level6' : 'GoogleMapsCompatible_Level7',
+                layerName: isVisibleMode ? (goesWestDay ? 'GOES-West_ABI_GeoColor' : 'GOES-West_ABI_Band13_Clean_Infrared') : 'GOES-West_ABI_Band13_Clean_Infrared',
+                tileMatrixSet: isVisibleMode && goesWestDay ? 'GoogleMapsCompatible_Level7' : 'GoogleMapsCompatible_Level6',
                 format: 'image/png',
                 isSubHourly: true,
-                maxzoom: isVisibleMode && !goesWestDay ? 6 : 7,
+                maxzoom: isVisibleMode && goesWestDay ? 7 : 6,
               },
             ]
           : [
@@ -3300,12 +3305,11 @@ export default function CityMapViewer({
           });
 
           // 4b. Astronomical Solar Terminator (Night Shadow & Golden Twilight Horizon)
-          // In Windy Relief style, suppress night shadow for flat chart view.
-          // In Atmospheric Satellite & other styles, enable photorealistic Day/Night terminator and Black Marble city lights.
-          const isWindyRelief = activeStyleKey === 'windy-satellite';
-          const terminatorNightOpacity = isWindyRelief ? 0.0 : 0.82;
-          const terminatorTwilightOpacity = isWindyRelief ? 0.0 : 0.45;
-          const blackMarbleOpacity = isWindyRelief ? 0.0 : 0.92;
+          // Hard vector polygon fills create unnatural razor-sharp diagonal knife cuts across continents and oceans.
+          // Photorealistic night darkening and warm city lights are rendered smoothly at the pixel level by Black Marble with cosine twilight fade.
+          const terminatorNightOpacity = 0.0;
+          const terminatorTwilightOpacity = 0.0;
+          const blackMarbleOpacity = activeStyleKey === 'windy-satellite' ? 0.0 : 0.92;
 
           // Ground-level terminator position: Insert beneath clouds so atmospheric clouds float above night darkness
           const firstCloudLayerId =
@@ -3364,7 +3368,7 @@ export default function CityMapViewer({
           }
 
           // 5. NASA Black Marble (VIIRS Day/Night Band Nocturnal City Lights)
-          const blackMarbleUrl = 'black-marble-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png';
+          const blackMarbleUrl = `black-marble-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png?t=${geoObs.timestampMs}`;
           const blackMarbleSrc = map.getSource('nasa-black-marble-source') as any;
           if (!blackMarbleSrc) {
             map.addSource('nasa-black-marble-source', {
@@ -3374,6 +3378,30 @@ export default function CityMapViewer({
               maxzoom: 8,
               attribution: 'NASA EOSDIS / Earth Science Open Data (VIIRS Black Marble)',
             });
+          } else if (blackMarbleSrc.tiles?.[0] !== blackMarbleUrl) {
+            if (map.getLayer('nasa-black-marble-layer')) map.removeLayer('nasa-black-marble-layer');
+            map.removeSource('nasa-black-marble-source');
+            map.addSource('nasa-black-marble-source', {
+              type: 'raster',
+              tiles: [blackMarbleUrl],
+              tileSize: 256,
+              maxzoom: 8,
+              attribution: 'NASA EOSDIS / Earth Science Open Data (VIIRS Black Marble)',
+            });
+            map.addLayer(
+              {
+                id: 'nasa-black-marble-layer',
+                type: 'raster',
+                source: 'nasa-black-marble-source',
+                maxzoom: 12,
+                paint: {
+                  'raster-opacity': blackMarbleOpacity,
+                  'raster-resampling': 'linear',
+                  'raster-fade-duration': 0,
+                },
+              },
+              firstCloudLayerId
+            );
           }
           if (map.getLayer('nasa-black-marble-layer')) {
             map.setPaintProperty('nasa-black-marble-layer', 'raster-opacity', blackMarbleOpacity);
