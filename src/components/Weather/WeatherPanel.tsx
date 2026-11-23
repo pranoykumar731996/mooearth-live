@@ -37,6 +37,7 @@ interface WeatherPanelProps {
   errors: Record<string, string | null>;
   isMinimized: boolean;
   onToggleMinimize: () => void;
+  onClose?: () => void;
   onExploreCity?: () => void;
 }
 
@@ -52,6 +53,7 @@ export default function WeatherPanel({
   errors,
   isMinimized,
   onToggleMinimize,
+  onClose,
   onExploreCity,
 }: WeatherPanelProps) {
   const [unit, setUnit] = useState<'C' | 'F'>('C');
@@ -133,6 +135,18 @@ export default function WeatherPanel({
               ▼
             </span>
           </button>
+          {/* Close panel button */}
+          {onClose && (
+            <button
+              type="button"
+              data-testid="close-weather-panel-btn"
+              onClick={onClose}
+              className="w-6 h-6 rounded-md bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 flex items-center justify-center text-white/50 hover:border hover:border-rose-500/30 transition-colors cursor-pointer text-xs"
+              title="Close weather panel (reveal full map)"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 

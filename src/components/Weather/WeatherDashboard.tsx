@@ -1006,6 +1006,7 @@ export default function WeatherDashboard() {
   }, [weather.selectedLocation]);
 
   const hasData = weather.selectedLocation !== null;
+  const isDesktopPanelOpen = hasData && !isPanelMinimized;
   const currentForecast = weather.data.forecast;
 
   // Synchronize displayed forecast and telemetry with the forecast timeline scrubber
@@ -1810,7 +1811,7 @@ export default function WeatherDashboard() {
             onToggleHazards={() => setIsHazardBarExpanded((prev) => !prev)}
             isHazardsOpen={isHazardBarExpanded}
             hazardsCount={allDisasters.length}
-            className={hasData ? 'lg:right-[396px]' : ''}
+            className={isDesktopPanelOpen ? 'lg:right-[396px]' : ''}
             onGeolocate={(c) => {
               weather.fetchWeatherForLocation({
                 name: 'My Location',
@@ -1827,7 +1828,7 @@ export default function WeatherDashboard() {
             activeLayer={weather.activeLayer}
             spectralMode={spectralMode}
             units={weather.units}
-            className={hasData ? 'lg:right-[396px]' : ''}
+            className={isDesktopPanelOpen ? 'lg:right-[396px]' : ''}
           />
 
           {/* Cinematic Bottom Time Scrubber & Player Bar */}
@@ -1853,7 +1854,7 @@ export default function WeatherDashboard() {
             onSelectRadarFrameIndex={setRadarFrameIndex}
             radarAttribution={radarMetadata?.attribution}
             satelliteObservationUtc={satelliteMeta.observationUtc}
-            className={hasData ? 'lg:left-[calc(50%-190px)]' : ''}
+            className={isDesktopPanelOpen ? 'lg:left-[calc(50%-190px)]' : ''}
           />
 
           {/* Universal Mobile "Open Weather Sheet" floating CTA */}
@@ -1914,6 +1915,7 @@ export default function WeatherDashboard() {
               errors={weather.errors}
               isMinimized={isPanelMinimized}
               onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+              onClose={() => setIsPanelMinimized(true)}
               onExploreCity={viewMode === 'city-map' ? undefined : handleExploreCity}
             />
           </div>
@@ -1960,39 +1962,9 @@ export default function WeatherDashboard() {
                   errors={weather.errors}
                   isMinimized={isPanelMinimized}
                   onToggleMinimize={() => setIsPanelMinimized(!isPanelMinimized)}
+                  onClose={() => setIsPanelOpen(false)}
                   onExploreCity={viewMode === 'city-map' ? undefined : handleExploreCity}
                 />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State Prompt (Desktop) */}
-        {!hasData && (
-          <div className="hidden lg:flex w-[380px] shrink-0 border-l border-white/5 bg-[#050510]/95 items-center justify-center p-8 text-center">
-            <div>
-              <div className="text-5xl mb-4 animate-bounce">🌐</div>
-              <h3 className="text-base font-bold text-white mb-2">
-                Explore Earth Weather
-              </h3>
-              <p className="text-xs text-white/50 leading-relaxed mb-4">
-                Click any country or coordinate on the globe, or search for a city above to inspect live meteorological telemetry.
-              </p>
-              <div className="flex flex-wrap justify-center gap-1.5 text-[11px]">
-                {['Tokyo', 'London', 'New York', 'Paris', 'Sydney', 'Mumbai'].map((cityName) => (
-                  <button
-                    key={cityName}
-                    type="button"
-                    onClick={() => {
-                      weather.searchLocations(cityName).then((resp) => {
-                        if (resp?.results && resp.results.length > 0) handleSelectLocation(resp.results[0]);
-                      });
-                    }}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-cyan-500/20 text-white/70 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 transition-colors"
-                  >
-                    {cityName}
-                  </button>
-                ))}
               </div>
             </div>
           </div>
