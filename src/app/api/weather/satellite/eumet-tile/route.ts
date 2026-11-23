@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
+export const revalidate = 86400;
 
 // Pre-encoded transparent 1x1 PNG (RFC 2083 minimum valid PNG)
 const TRANSPARENT_1X1_PNG = Uint8Array.from(

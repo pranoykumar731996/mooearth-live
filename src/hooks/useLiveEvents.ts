@@ -113,7 +113,7 @@ export function useLiveEvents(isFocusMode: boolean = false, activeCategory?: Eve
         // Reset the force-refresh flag every polling cycle so we can try again if still stale
         hasForceRefreshedRef.current = false;
         fetchEvents();
-      }, 60000);
+      }, 180000); // 3 minutes interval (reduces Vercel Fluid Active CPU compute)
 
       const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {

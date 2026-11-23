@@ -620,7 +620,7 @@ export default function WeatherDashboard() {
     const intervalTimer = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchLatestEvents();
-    }, 60000);
+    }, 180000); // 3 minutes interval (reduces Vercel Fluid Active CPU compute by 66%)
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {

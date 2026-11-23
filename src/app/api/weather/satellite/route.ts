@@ -11,7 +11,7 @@ import { getSatelliteMetadata } from '@/services/weather/satelliteImageryService
 import type { SatelliteSpectralMode } from '@/services/weather/types';
 
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
   try {

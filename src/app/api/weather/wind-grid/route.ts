@@ -18,7 +18,7 @@ import { fetchGlobalWeatherGrid } from '@/services/weather/globalGridService';
 import { OFFICIAL_CYCLONE_BASELINES } from '@/services/weather/cycloneTrackingService';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 interface CachedWindGridPayload {
   u: number[];

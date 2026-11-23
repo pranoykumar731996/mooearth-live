@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { getActiveRadarMetadata, RadarMetadataResponse } from '@/services/weather/radarAdapter';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const revalidate = 120;
 
 interface CachedRadarPayload {
   data: RadarMetadataResponse;

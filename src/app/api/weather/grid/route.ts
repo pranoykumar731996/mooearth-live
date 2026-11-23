@@ -10,7 +10,7 @@ import { NextRequest } from 'next/server';
 import { fetchGlobalWeatherGrid } from '@/services/weather';
 import type { UnitPreferences } from '@/services/weather';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 600;
 
 export async function GET(request: NextRequest) {
   try {

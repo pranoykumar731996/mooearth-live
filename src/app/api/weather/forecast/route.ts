@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { fetchForecast } from '@/services/weather';
 import type { UnitPreferences } from '@/services/weather';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
   try {

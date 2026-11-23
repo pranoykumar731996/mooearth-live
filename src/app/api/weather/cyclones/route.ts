@@ -12,7 +12,7 @@ import { getActiveTropicalCyclones } from '@/services/weather/cycloneTrackingSer
 import { fetchLivePlanetaryEvents, planetaryEventToWorldEvent } from '@/services/planetaryEngine';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export async function GET(request: NextRequest) {
   try {
