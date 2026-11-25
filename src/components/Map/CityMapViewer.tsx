@@ -15,6 +15,19 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { getLocationTime } from '@/services/weather/timeService';
+import {
+  isNoaaStarPilotEnabled,
+  shouldUseNoaaStarPilotForSector,
+  buildNoaaStarTileUrl,
+  parseNoaaStarFallbackHttpsUrl,
+  formatNoaaFallbackReason,
+  createEmptyTransparentPngBuffer,
+  isTileOutsideSectorSupport,
+  isBlackMarbleTileSolidDaylight,
+  publishNoaaStarTelemetry,
+  subscribeNoaaStarTelemetry,
+  type NoaaStarPilotTelemetry,
+} from '@/services/weather/noaaStarPilot';
 import { useLocationTime } from '@/hooks/useLocationTime';
 import {
   Map,
@@ -598,10 +611,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       }
     }
 
-    addProtocol('gibs-alpha', async (params, abortController) => {
-
-      let realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
-      let res = await fetch(realUrl, { signal: abortController.signal });
+    async function fetchAndProcessMainThreadGibsTile(initialHttpsUrl: string, signal: AbortSignal) {
+      let realUrl = initialHttpsUrl;
+      let res = await fetch(realUrl, { signal });
       if (!res.ok && res.status === 404) {
         const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
         if (isoMatch) {
@@ -619,27 +631,32 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             const fbIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`;
             const fbUrl = realUrl.replace(curIso, fbIso);
             try {
-              const fbRes = await fetch(fbUrl, { signal: abortController.signal });
+              if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+              const fbRes = await fetch(fbUrl, { signal });
               if (fbRes.ok) {
                 res = fbRes;
                 realUrl = fbUrl;
                 break;
               }
-            } catch {}
+            } catch (err) {
+              if (signal.aborted) throw err;
+            }
           }
 
           // Step 2: If all sub-hourly ISO timestamps failed, fall back to date-only
-          // NASA GIBS always serves a daily composite for geostationary layers
           if (!res.ok) {
-            const dateOnly = curIso.slice(0, 10); // "2026-11-16"
+            if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            const dateOnly = curIso.slice(0, 10);
             const dateOnlyUrl = realUrl.replace(isoMatch[0], dateOnly);
             try {
-              const dateRes = await fetch(dateOnlyUrl, { signal: abortController.signal });
+              const dateRes = await fetch(dateOnlyUrl, { signal });
               if (dateRes.ok) {
                 res = dateRes;
                 realUrl = dateOnlyUrl;
               }
-            } catch {}
+            } catch (err) {
+              if (signal.aborted) throw err;
+            }
           }
         }
       }
@@ -662,6 +679,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
         ctx.putImageData(imgData, 0, 0);
@@ -670,6 +688,122 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       } catch {
         const buf = await blob.arrayBuffer();
         return { data: buf };
+      }
+    }
+
+    addProtocol('gibs-alpha', async (params, abortController) => {
+      if (isTileOutsideSectorSupport(params.url)) {
+        return { data: createEmptyTransparentPngBuffer() };
+      }
+      const realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
+      return fetchAndProcessMainThreadGibsTile(realUrl, abortController.signal);
+    });
+
+    // Dedicated Web Worker RPC for noaa-star:// (MapLibre RasterTileSource runs addProtocol on main thread,
+    // so tile fetch/decode/strip-extraction/LUT reprojection must be explicitly offloaded off the UI thread).
+    let noaaWorkerInstance: Worker | null = null;
+    let noaaRpcSeq = 1;
+    const noaaRpcPending: Record<
+      number,
+      {
+        resolve: (val: { data: any }) => void;
+        reject: (err: unknown) => void;
+        cleanup: () => void;
+      }
+    > = {};
+
+    function getNoaaDedicatedWorker(): Worker | null {
+      if (typeof Worker === 'undefined') return null;
+      if (noaaWorkerInstance) return noaaWorkerInstance;
+      try {
+        const w = new Worker('/workers/gibs-protocol-worker.js');
+        w.addEventListener('message', (event: MessageEvent) => {
+          const msg = event.data;
+          if (!msg || msg.__noaaStarRpc !== true) return;
+          if (msg.type === 'telemetry' && msg.telemetry) {
+            publishNoaaStarTelemetry(msg.telemetry);
+            return;
+          }
+          const entry = noaaRpcPending[msg.id];
+          if (!entry) return;
+          delete noaaRpcPending[msg.id];
+          entry.cleanup();
+          if (msg.type === 'result') {
+            entry.resolve({ data: msg.data });
+          } else {
+            if (msg.name === 'AbortError') {
+              entry.reject(new DOMException(msg.message || 'Aborted', 'AbortError'));
+            } else {
+              entry.reject(new Error(msg.message || 'NOAA worker tile error'));
+            }
+          }
+        });
+        w.addEventListener('error', () => {
+          noaaWorkerInstance = null;
+          for (const idStr of Object.keys(noaaRpcPending)) {
+            const idNum = Number(idStr);
+            const entry = noaaRpcPending[idNum];
+            delete noaaRpcPending[idNum];
+            if (entry) {
+              entry.cleanup();
+              entry.reject(new Error('NOAA dedicated worker error'));
+            }
+          }
+        });
+        noaaWorkerInstance = w;
+        return w;
+      } catch {
+        return null;
+      }
+    }
+
+    addProtocol('noaa-star', async (params, abortController) => {
+      if (abortController.signal.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+      if (isTileOutsideSectorSupport(params.url)) {
+        return { data: createEmptyTransparentPngBuffer() };
+      }
+      const worker = getNoaaDedicatedWorker();
+      if (worker) {
+        try {
+          return await new Promise<{ data: any }>((resolve, reject) => {
+            const id = noaaRpcSeq++;
+            const onAbort = () => {
+              const entry = noaaRpcPending[id];
+              if (entry) {
+                delete noaaRpcPending[id];
+                entry.cleanup();
+              }
+              try {
+                worker.postMessage({ __noaaStarRpc: true, type: 'abort', id });
+              } catch {}
+              reject(new DOMException('Aborted', 'AbortError'));
+            };
+            const cleanup = () => {
+              abortController.signal.removeEventListener('abort', onAbort);
+            };
+            noaaRpcPending[id] = { resolve, reject, cleanup };
+            abortController.signal.addEventListener('abort', onAbort, { once: true });
+            worker.postMessage({ __noaaStarRpc: true, type: 'tile', id, url: params.url });
+          });
+        } catch (err) {
+          if (abortController.signal.aborted || (err instanceof Error && err.name === 'AbortError')) {
+            throw err;
+          }
+          // Fall through only if worker execution itself errored unexpectedly
+        }
+      }
+
+      const fallbackUrl = parseNoaaStarFallbackHttpsUrl(params.url);
+      if (!fallbackUrl) throw new Error('Invalid noaa-star fallback URL');
+      const freshController = new AbortController();
+      const onMapAbort = () => freshController.abort();
+      abortController.signal.addEventListener('abort', onMapAbort, { once: true });
+      try {
+        return await fetchAndProcessMainThreadGibsTile(fallbackUrl, freshController.signal);
+      } finally {
+        abortController.signal.removeEventListener('abort', onMapAbort);
       }
     });
 
@@ -704,6 +838,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
     }
 
     addProtocol('eumet-alpha', async (params, abortController) => {
+      if (isTileOutsideSectorSupport(params.url)) {
+        return { data: createEmptyTransparentPngBuffer() };
+      }
       try {
         let res: Response | null = null;
 
@@ -843,6 +980,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
     }
 
     addProtocol('black-marble-alpha', async (params, abortController) => {
+      if (isBlackMarbleTileSolidDaylight(params.url)) {
+        return { data: createEmptyTransparentPngBuffer() };
+      }
       const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
       const res = await fetch(realUrl, { signal: abortController.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -1241,6 +1381,12 @@ export default function CityMapViewer({
     const m = diffMin % 60;
     return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
   }, [satelliteObservation.timestampMs]);
+
+  const [noaaStarTelemetry, setNoaaStarTelemetry] = useState<NoaaStarPilotTelemetry | null>(null);
+  useEffect(() => {
+    if (!isNoaaStarPilotEnabled()) return;
+    return subscribeNoaaStarTelemetry((msg) => setNoaaStarTelemetry(msg));
+  }, []);
 
   useEffect(() => {
     setLightningFeed(getNowcastLightningFeed(disasters));
@@ -3452,13 +3598,33 @@ export default function CityMapViewer({
             const ext = sec.format === 'image/jpeg' ? (sec.layerName.includes('VIIRS') ? 'jpeg' : 'jpg') : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
+            const useNoaaPilot =
+              !isEumet &&
+              shouldUseNoaaStarPilotForSector({
+                sectorId: sec.id,
+                isVisibleMode,
+                goesEastDay,
+                isHdMode,
+                timelineHoursAhead,
+              });
             const tileUrl = sec.id === 'hd-swath'
               ? `https://wmts.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`
+              : useNoaaPilot
+              ? buildNoaaStarTileUrl({
+                  layerName: sec.layerName,
+                  tileTime,
+                  tileMatrixSet: sec.tileMatrixSet,
+                  ext,
+                  spectralParam,
+                  bucket: Math.floor(Date.now() / 300000),
+                })
               : isEumet
               ? `eumet-alpha://view.eumetsat.int/geoserver/wms/tile/${sec.layerName}/{z}/{x}/{y}.png?${spectralParam}`
               : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
-            const secAttribution = sec.id === 'hd-swath'
+            const secAttribution = useNoaaPilot
+              ? 'NOAA STAR GOES-19 ABI GeoColor (1808px Pilot) / NASA GIBS Fallback'
+              : sec.id === 'hd-swath'
               ? 'NASA EOSDIS / NOAA-20 VIIRS TrueColor (250m)'
               : sec.layerName.includes('iodc')
               ? 'EUMETSAT Meteosat-9 IODC (45.5°E)'
@@ -4093,7 +4259,41 @@ export default function CityMapViewer({
 
                 {/* Bottom Subtitle */}
                 <div className="text-[9px] font-mono text-white/40 truncate">
-                  {satelliteObservationUtc || satelliteObservation.utcStr || (typeof window !== 'undefined' && (new URLSearchParams(window.location.search).has('iodc') || process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true') ? 'EUMETSAT IODC (45.5°E) / NASA EOSDIS / NOAA GOES • 10-15m Scans' : 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain')}
+                  {isNoaaStarPilotEnabled() &&
+                  spectralMode === 'visible' &&
+                  satelliteResolution === 'live' &&
+                  timelineHoursAhead === 0 &&
+                  noaaStarTelemetry ? (
+                    noaaStarTelemetry.mode === 'noaa-star' ? (
+                      <span
+                        data-testid="noaa-star-hud-status"
+                        className={(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 15 ? 'text-amber-300' : 'text-emerald-300/80'}
+                      >
+                        NOAA STAR GOES-19 (1808px) • CDN age {noaaStarTelemetry.cdnAgeMinutes ?? '?'}m
+                        {(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 15 ? ' (Stale)' : ''}
+                      </span>
+                    ) : noaaStarTelemetry.mode === 'gibs-fallback-pending' ? (
+                      <span data-testid="noaa-star-hud-status" className="text-amber-200/90">
+                        Switching to NASA GIBS GeoColor… • Trigger: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                      </span>
+                    ) : noaaStarTelemetry.mode === 'gibs-fallback-failed' ? (
+                      <span data-testid="noaa-star-hud-status" className="text-rose-300">
+                        Fallback unavailable: NASA GIBS GeoColor failed • Trigger: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                      </span>
+                    ) : (
+                      <span data-testid="noaa-star-hud-status" className="text-amber-300">
+                        Active: NASA GIBS GeoColor • Failover reason: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                      </span>
+                    )
+                  ) : (
+                    satelliteObservationUtc ||
+                    satelliteObservation.utcStr ||
+                    (typeof window !== 'undefined' &&
+                    (new URLSearchParams(window.location.search).has('iodc') ||
+                      process.env.NEXT_PUBLIC_ENABLE_EUMETSAT_IODC === 'true')
+                      ? 'EUMETSAT IODC (45.5°E) / NASA EOSDIS / NOAA GOES • 10-15m Scans'
+                      : 'NASA EOSDIS / NOAA GOES / EUMETSAT • 10-15m Scans • Public Domain')
+                  )}
                 </div>
               </div>
             </div>

@@ -15,19 +15,996 @@
 // 6. Calibrated Dvorak/BD Curve (in Infra Mode):
 //    Vivid temperature-coded convective storm cores (-30°C to -80°C).
 
-if (typeof self !== 'undefined' && self.addProtocol) {
-  // Slippy tile coordinate conversion helpers (EPSG:3857 Web Mercator)
-  function tileToLng(x, z) {
-    return (x / Math.pow(2, z)) * 360 - 180;
+// MapLibre slippy tile conversions (EPSG:3857 Web Mercator)
+function tileToLng(x, z) {
+  return (x / Math.pow(2, z)) * 360 - 180;
+}
+
+function tileToLat(y, z) {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
+  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+}
+
+function tilePixelToLatLon(z, tileX, tileY, px, py, tileSize = 256) {
+  const n = Math.pow(2, z);
+  const lonDeg = ((tileX + (px + 0.5) / tileSize) / n) * 360 - 180;
+  const yFrac = tileY + (py + 0.5) / tileSize;
+  const latDeg = (Math.atan(Math.sinh(Math.PI * (1 - (2 * yFrac) / n))) * 180) / Math.PI;
+  return { latDeg, lonDeg };
+}
+
+const EMPTY_TRANSPARENT_PNG_BYTES = new Uint8Array([
+  137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0,
+  0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10, 45,
+  180, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+]);
+
+function createEmptyTransparentPngBuffer() {
+  return EMPTY_TRANSPARENT_PNG_BYTES.slice().buffer;
+}
+
+function parseTileCoordsFromUrl(url) {
+  if (!url) return null;
+  const noaaMatch = url.match(/^noaa-star:\/\/tile\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+  if (noaaMatch) {
+    return {
+      tileZ: parseInt(noaaMatch[1], 10),
+      tileX: parseInt(noaaMatch[2], 10),
+      tileY: parseInt(noaaMatch[3], 10),
+    };
+  }
+  const eumetMatch = url.match(/\/tile\/([^/?]+)\/(\d+)\/(\d+)\/(\d+)\.png/i);
+  if (eumetMatch) {
+    return {
+      tileZ: parseInt(eumetMatch[2], 10),
+      tileX: parseInt(eumetMatch[3], 10),
+      tileY: parseInt(eumetMatch[4], 10),
+    };
+  }
+  const isGibs =
+    url.includes('gibs.earthdata.nasa.gov') ||
+    url.includes('GoogleMapsCompatible') ||
+    url.includes('gibs-alpha');
+  const wmtsMatch = url.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
+  if (wmtsMatch) {
+    return {
+      tileZ: parseInt(wmtsMatch[1], 10),
+      tileX: parseInt(isGibs ? wmtsMatch[3] : wmtsMatch[2], 10),
+      tileY: parseInt(isGibs ? wmtsMatch[2] : wmtsMatch[3], 10),
+    };
+  }
+  return null;
+}
+
+function isTileOutsideSectorSupport(url, coords = parseTileCoordsFromUrl(url)) {
+  if (!url || !coords || !Number.isFinite(coords.tileZ) || coords.tileZ < 2) return false;
+  const { tileZ, tileX, tileY } = coords;
+  const northLat = tileToLat(tileY, tileZ);
+  const southLat = tileToLat(tileY + 1, tileZ);
+  const westLng = tileToLng(tileX, tileZ);
+  const eastLng = tileToLng(tileX + 1, tileZ);
+
+  if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
+    return northLat <= 58.0 && southLat >= -58.0;
   }
 
-  function tileToLat(y, z) {
-    const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z);
-    return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  const isHimawari = url.includes('Himawari') || url.includes('himawari');
+  const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
+  const isMeteosatPrime =
+    (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
+  const isGoesEast = url.includes('GOES-East') || url.includes('goes-east') || url.startsWith('noaa-star://');
+  const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
+
+  if (!isHimawari && !isIodc && !isMeteosatPrime && !isGoesEast && !isGoesWest) return false;
+  if (southLat >= 65.0 || northLat <= -65.0) return true;
+
+  let arcCenter = 0;
+  let arcHalfSpan = 180;
+  if (isIodc) {
+    arcCenter = 60.0;
+    arcHalfSpan = 35.0;
+  } else if (isHimawari) {
+    arcCenter = 135.0;
+    arcHalfSpan = 60.0;
+  } else if (isGoesWest) {
+    arcCenter = 215.0;
+    arcHalfSpan = 50.0;
+  } else if (isGoesEast) {
+    arcCenter = 285.0;
+    arcHalfSpan = 60.0;
+  } else if (isMeteosatPrime) {
+    arcCenter = 2.5;
+    arcHalfSpan = 42.5;
   }
 
-  // Circular partition of unity across all 360 degrees (Himawari, GOES-West, GOES-East, Meteosat)
-  function getSectorSpatialWeight(url, lng, lat) {
+  const tileCenterLng = (westLng + eastLng) * 0.5;
+  const tileHalfW = (eastLng - westLng) * 0.5;
+  const delta = Math.abs((((tileCenterLng - arcCenter) % 360) + 540) % 360 - 180);
+  return delta > tileHalfW + arcHalfSpan + 0.5;
+}
+
+function isBlackMarbleTileSolidDaylight(url, coords = parseTileCoordsFromUrl(url)) {
+  if (!url || !coords || !Number.isFinite(coords.tileZ) || coords.tileZ < 3) return false;
+  const tMatch = url.match(/[?&]t=(\d+)/);
+  const timeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
+  const dateObj = new Date(timeMs);
+  const dayDiff = (timeMs - 946728000000) / 86400000;
+  const L = (280.46 + 0.9856474 * dayDiff) % 360;
+  const g = ((357.528 + 0.9856003 * dayDiff) % 360) * (Math.PI / 180);
+  const lambda = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * (Math.PI / 180);
+  const eps = (23.439 - 0.0000004 * dayDiff) * (Math.PI / 180);
+  const solLatRad = Math.asin(Math.sin(eps) * Math.sin(lambda));
+  const utcHours =
+    dateObj.getUTCHours() + dateObj.getUTCMinutes() / 60 + dateObj.getUTCSeconds() / 3600;
+  const solLngRad = ((((12 - utcHours) * 15 + 540) % 360) - 180) * (Math.PI / 180);
+  const rad = Math.PI / 180;
+
+  const { tileZ, tileX, tileY } = coords;
+  const lats = [tileToLat(tileY, tileZ), tileToLat(tileY + 1, tileZ)];
+  const lngs = [tileToLng(tileX, tileZ), tileToLng(tileX + 1, tileZ)];
+  const sinSol = Math.sin(solLatRad);
+  const cosSol = Math.cos(solLatRad);
+
+  let maxPsi = 0;
+  for (const latDeg of lats) {
+    const latRad = latDeg * rad;
+    const sinLat = Math.sin(latRad);
+    const cosLat = Math.cos(latRad);
+    for (const lngDeg of lngs) {
+      const cosZ = Math.max(-1, Math.min(1, sinLat * sinSol + cosLat * cosSol * Math.cos(lngDeg * rad - solLngRad)));
+      const psi = Math.acos(cosZ);
+      if (psi > maxPsi) maxPsi = psi;
+    }
+  }
+  return Math.cos(Math.min(Math.PI, maxPsi + 4 * rad)) >= 0.06;
+}
+
+// Authoritative NOAA ABI PUG-L2+ Vol 5 Fixed Grid constants & GRS80 datum (GOES-East -75.0 deg)
+const NOAA_STAR_CONSTANTS = {
+  R_EQ_M: 6378137.0,
+  R_POL_M: 6356752.31414,
+  H_PERSPECTIVE_M: 35786023.0,
+  SAT_DIST_M: 42164160.0,
+  E2: 1 - (6356752.31414 * 6356752.31414) / (6378137.0 * 6378137.0),
+  LONGITUDE_OF_PROJECTION_ORIGIN_DEG: -75.0,
+  NATIVE_FIRST_PIXEL_CENTER_X_RAD: -0.151844,
+  NATIVE_FIRST_PIXEL_CENTER_Y_RAD: 0.151844,
+  NATIVE_STEP_RAD: 56e-6,
+  NATIVE_OUTER_BOUND_RAD: 0.151872,
+};
+
+// Symmetric 3x3 block-average baseline for 1808x1808; empirical STAR JPEG offset is passed separately
+// and applied strictly when decoded dimensions equal 1808x1808.
+const STAR_1808_SYMMETRIC_BLOCK3 = {
+  id: 'STAR_1808_SYMMETRIC_BLOCK3',
+  imageSize: 1808,
+  firstPixelCenterXRad: NOAA_STAR_CONSTANTS.NATIVE_FIRST_PIXEL_CENTER_X_RAD + NOAA_STAR_CONSTANTS.NATIVE_STEP_RAD, // -0.151788
+  firstPixelCenterYRad: NOAA_STAR_CONSTANTS.NATIVE_FIRST_PIXEL_CENTER_Y_RAD - NOAA_STAR_CONSTANTS.NATIVE_STEP_RAD, // +0.151788
+  stepRad: 3 * NOAA_STAR_CONSTANTS.NATIVE_STEP_RAD,                                                                // 168e-6
+};
+
+const NOAA_STAR_DEFAULTS = {
+  SOURCE_URL: 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg',
+  TELEMETRY_CHANNEL: 'noaa-star-pilot-telemetry',
+  EXPECTED_WIDTH: 1808,
+  EXPECTED_HEIGHT: 1808,
+  MAX_NOAA_RESPONSE_BYTES: 8 * 1024 * 1024,
+  // Tracked worker-buffer budget ONLY (excludes MapLibre-retained tile bitmaps & browser/GPU overhead)
+  MAX_TRACKED_BUFFER_BYTES: 40 * 1024 * 1024,
+  MAX_CONCURRENT_TILE_JOBS: 8,
+  EST_TILE_JOB_BYTES: 560 * 1024,
+  STRIP_HEIGHT: 256,
+  NOAA_FETCH_TIMEOUT_MS: 10000,
+  GIBS_FETCH_TIMEOUT_MS: 10000,
+  SOURCE_CACHE_TTL_MS: 5 * 60 * 1000,
+  COOLDOWN_MS: 120 * 1000,
+  DEFAULT_OFFSET_X: 0.333,
+  DEFAULT_OFFSET_Y: 0.333,
+};
+
+function geodeticToAbiScan(latDeg, lonDeg, lambda0Deg = NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG) {
+  const rad = Math.PI / 180;
+  const lat = latDeg * rad;
+  const lon = lonDeg * rad;
+  const lon0 = lambda0Deg * rad;
+
+  const rEq = NOAA_STAR_CONSTANTS.R_EQ_M;
+  const rPol = NOAA_STAR_CONSTANTS.R_POL_M;
+  const D = NOAA_STAR_CONSTANTS.SAT_DIST_M;
+  const e2 = NOAA_STAR_CONSTANTS.E2;
+
+  const phiC = Math.atan((1 - e2) * Math.tan(lat));
+  const cosPhiC = Math.cos(phiC);
+  const sinPhiC = Math.sin(phiC);
+  const rC = rPol / Math.sqrt(1 - e2 * cosPhiC * cosPhiC);
+
+  const dLon = lon - lon0;
+  const xp = rC * cosPhiC * Math.cos(dLon);
+  const sx = D - xp;
+  const sy = -rC * cosPhiC * Math.sin(dLon);
+  const sz = rC * sinPhiC;
+
+  if (D * xp < rEq * rEq) return null;
+
+  const sNorm = Math.sqrt(sx * sx + sy * sy + sz * sz);
+  return {
+    scanX: Math.asin(-sy / sNorm),
+    scanY: Math.atan2(sz, sx),
+  };
+}
+
+function scanToPixel(scanX, scanY, { gridSpec = STAR_1808_SYMMETRIC_BLOCK3, calibrationOffsetPx = { x: 0, y: 0 } } = {}) {
+  return {
+    col: (scanX - gridSpec.firstPixelCenterXRad) / gridSpec.stepRad + (calibrationOffsetPx.x || 0),
+    row: (gridSpec.firstPixelCenterYRad - scanY) / gridSpec.stepRad + (calibrationOffsetPx.y || 0),
+  };
+}
+
+function pixelToScan(col, row, { gridSpec = STAR_1808_SYMMETRIC_BLOCK3, calibrationOffsetPx = { x: 0, y: 0 } } = {}) {
+  const c = col - (calibrationOffsetPx.x || 0);
+  const r = row - (calibrationOffsetPx.y || 0);
+  return {
+    scanX: gridSpec.firstPixelCenterXRad + c * gridSpec.stepRad,
+    scanY: gridSpec.firstPixelCenterYRad - r * gridSpec.stepRad,
+  };
+}
+
+function detectFooterStartRowRgb(rgbData, width, height) {
+  const scanDepth = Math.round(height * 0.05);
+  const stepX = Math.max(8, Math.round(width / 226));
+  for (let y = height - scanDepth; y < height; y++) {
+    let brightCount = 0;
+    let sampled = 0;
+    const rowOff = y * width * 3;
+    for (let x = 0; x < width; x += stepX) {
+      const i = rowOff + x * 3;
+      if (rgbData[i] > 235 && rgbData[i + 1] > 235 && rgbData[i + 2] > 235) brightCount++;
+      sampled++;
+    }
+    if (sampled > 0 && brightCount / sampled >= 0.65) return y;
+  }
+  return height;
+}
+
+function sampleNoaaRgbBilinear(rgb, width, height, col, row, footerStartRow) {
+  if (col < 0 || col >= width - 1 || row < 0 || row >= Math.min(height - 1, footerStartRow - 2)) return null;
+  const centerIdx = (width - 1) / 2;
+  const maxRad = width * (905 / 1808);
+  const dxC = col - centerIdx;
+  const dyC = row - centerIdx;
+  if (dxC * dxC + dyC * dyC > maxRad * maxRad) return null;
+
+  const x0 = Math.floor(col);
+  const y0 = Math.floor(row);
+  const fx = col - x0;
+  const fy = row - y0;
+  const row0 = y0 * width;
+  const row1 = (y0 + 1) * width;
+  const i00 = (row0 + x0) * 3;
+  const i10 = (row0 + x0 + 1) * 3;
+  const i01 = (row1 + x0) * 3;
+  const i11 = (row1 + x0 + 1) * 3;
+  const w00 = (1 - fx) * (1 - fy);
+  const w10 = fx * (1 - fy);
+  const w01 = (1 - fx) * fy;
+  const w11 = fx * fy;
+  return [
+    Math.round(rgb[i00] * w00 + rgb[i10] * w10 + rgb[i01] * w01 + rgb[i11] * w11),
+    Math.round(rgb[i00 + 1] * w00 + rgb[i10 + 1] * w10 + rgb[i01 + 1] * w01 + rgb[i11 + 1] * w11),
+    Math.round(rgb[i00 + 2] * w00 + rgb[i10 + 2] * w10 + rgb[i01 + 2] * w01 + rgb[i11 + 2] * w11),
+  ];
+}
+
+function reprojectNoaaStarRgbLut32({
+  rgb,
+  width,
+  height,
+  footerStartRow,
+  tileZ,
+  tileX,
+  tileY,
+  calOffsetPx = { x: NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_X, y: NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_Y },
+  tileSize = 256,
+  gridN = 32,
+  outRgba = new Uint8ClampedArray(tileSize * tileSize * 4),
+}) {
+  if (width !== NOAA_STAR_DEFAULTS.EXPECTED_WIDTH || height !== NOAA_STAR_DEFAULTS.EXPECTED_HEIGHT) {
+    throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
+  }
+  const verts = gridN + 1;
+  const colLut = new Float64Array(verts * verts);
+  const rowLut = new Float64Array(verts * verts);
+  const validLut = new Uint8Array(verts * verts);
+  const cellPx = tileSize / gridN;
+  const gridSpec = STAR_1808_SYMMETRIC_BLOCK3;
+
+  for (let gy = 0; gy < verts; gy++) {
+    for (let gx = 0; gx < verts; gx++) {
+      const idx = gy * verts + gx;
+      const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, gx * cellPx, gy * cellPx, tileSize);
+      const scan = geodeticToAbiScan(latDeg, lonDeg, NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG);
+      if (!scan) continue;
+      const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: calOffsetPx });
+      colLut[idx] = pt.col;
+      rowLut[idx] = pt.row;
+      validLut[idx] = 1;
+    }
+  }
+
+  for (let py = 0; py < tileSize; py++) {
+    const gy = Math.min(gridN - 1, Math.floor(py / cellPx));
+    const fy = (py - gy * cellPx) / cellPx;
+    for (let px = 0; px < tileSize; px++) {
+      const gx = Math.min(gridN - 1, Math.floor(px / cellPx));
+      const fx = (px - gx * cellPx) / cellPx;
+      const i00 = gy * verts + gx;
+      const i10 = i00 + 1;
+      const i01 = i00 + verts;
+      const i11 = i01 + 1;
+
+      let col;
+      let row;
+      if (validLut[i00] && validLut[i10] && validLut[i01] && validLut[i11]) {
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+        col = colLut[i00] * w00 + colLut[i10] * w10 + colLut[i01] * w01 + colLut[i11] * w11;
+        row = rowLut[i00] * w00 + rowLut[i10] * w10 + rowLut[i01] * w01 + rowLut[i11] * w11;
+      } else {
+        const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, px, py, tileSize);
+        const scan = geodeticToAbiScan(latDeg, lonDeg, NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG);
+        if (!scan) continue;
+        const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: calOffsetPx });
+        col = pt.col;
+        row = pt.row;
+      }
+
+      const sampled = sampleNoaaRgbBilinear(rgb, width, height, col, row, footerStartRow);
+      if (!sampled) continue;
+      const o = (py * tileSize + px) * 4;
+      outRgba[o] = sampled[0];
+      outRgba[o + 1] = sampled[1];
+      outRgba[o + 2] = sampled[2];
+      outRgba[o + 3] = 255;
+    }
+  }
+  return outRgba;
+}
+
+async function fetchDirectHttpsGibsTile(initialHttpsUrl, signal, fetchFn = fetch) {
+  if (signal && signal.aborted) throw makeAbortError();
+  let realUrl = initialHttpsUrl;
+  let res = await fetchFn(realUrl, { signal });
+  if (!res.ok && res.status === 404) {
+    const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
+    if (isoMatch) {
+      const curIso = isoMatch[1];
+      const curTime = new Date(curIso).getTime();
+      for (let step = 1; step <= 3 && !res.ok; step++) {
+        if (signal && signal.aborted) throw makeAbortError();
+        const prev = new Date(curTime - step * 10 * 60000);
+        const yyyy = prev.getUTCFullYear();
+        const mm = String(prev.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(prev.getUTCDate()).padStart(2, '0');
+        const hh = String(prev.getUTCHours()).padStart(2, '0');
+        const min = String(prev.getUTCMinutes()).padStart(2, '0');
+        const fbUrl = realUrl.replace(curIso, `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`);
+        try {
+          const fbRes = await fetchFn(fbUrl, { signal });
+          if (fbRes.ok) {
+            res = fbRes;
+            realUrl = fbUrl;
+            break;
+          }
+        } catch (err) {
+          if (signal && signal.aborted) throw err;
+        }
+      }
+      if (!res.ok) {
+        if (signal && signal.aborted) throw makeAbortError();
+        const dateOnlyUrl = realUrl.replace(isoMatch[0], curIso.slice(0, 10));
+        try {
+          const dateRes = await fetchFn(dateOnlyUrl, { signal });
+          if (dateRes.ok) {
+            res = dateRes;
+            realUrl = dateOnlyUrl;
+          }
+        } catch (err) {
+          if (signal && signal.aborted) throw err;
+        }
+      }
+    }
+  }
+  if (signal && signal.aborted) throw makeAbortError();
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return { res, resolvedUrl: realUrl };
+}
+
+async function readResponseBytesBounded(res, maxBytes, onProgressBytes) {
+  const clHeader = res.headers && typeof res.headers.get === 'function' ? res.headers.get('content-length') : null;
+  if (clHeader !== null && clHeader !== '') {
+    const declared = Number(clHeader);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      try { await res.body?.cancel?.('NOAA_CONTENT_LENGTH_EXCEEDED'); } catch {}
+      throw new Error('NOAA_RESPONSE_TOO_LARGE');
+    }
+  }
+
+  if (res.body && typeof res.body.getReader === 'function') {
+    const reader = res.body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!value) continue;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          try { await reader.cancel('NOAA_STREAM_LIMIT_EXCEEDED'); } catch {}
+          throw new Error('NOAA_RESPONSE_TOO_LARGE');
+        }
+        chunks.push(value);
+        if (onProgressBytes) onProgressBytes(total);
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+    const combined = new Uint8Array(total);
+    let offset = 0;
+    for (const c of chunks) {
+      combined.set(c, offset);
+      offset += c.byteLength;
+    }
+    return combined;
+  }
+
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > maxBytes) throw new Error('NOAA_RESPONSE_TOO_LARGE');
+  if (onProgressBytes) onProgressBytes(buf.byteLength);
+  return new Uint8Array(buf);
+}
+
+function parseNoaaStarTileRequest(rawUrl) {
+  const m = rawUrl.match(/^noaa-star:\/\/tile\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)(?:\?(.*))?$/i);
+  if (!m) throw new Error('INVALID_NOAA_STAR_TILE_URL');
+  const tileZ = parseInt(m[1], 10);
+  const tileX = parseInt(m[2], 10);
+  const tileY = parseInt(m[3], 10);
+  const qs = new URLSearchParams(m[5] || '');
+  const layer = qs.get('fallbackLayer') || 'GOES-East_ABI_GeoColor';
+  const time = qs.get('fallbackTime') || new Date(Date.now() - 10 * 60000).toISOString().slice(0, 10);
+  const tms = qs.get('fallbackTms') || 'GoogleMapsCompatible_Level7';
+  const ext = qs.get('fallbackExt') || 'png';
+  const spectral = qs.get('spectral') || 'vis';
+  const parseOff = (key, def) => {
+    const raw = qs.get(key);
+    if (raw === null || raw === '') return def;
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.max(-2, Math.min(2, n)) : def;
+  };
+  return {
+    tileZ,
+    tileX,
+    tileY,
+    calOffsetPx: {
+      x: parseOff('calX', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_X),
+      y: parseOff('calY', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_Y),
+    },
+    httpsGibsUrl: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time}/${tms}/${tileZ}/${tileY}/${tileX}.${ext}?spectral=${encodeURIComponent(spectral)}`,
+  };
+}
+
+function makeAbortError(msg = 'Aborted') {
+  try {
+    return new DOMException(msg, 'AbortError');
+  } catch {
+    const err = new Error(msg);
+    err.name = 'AbortError';
+    return err;
+  }
+}
+
+function createNoaaStarProtocolHandler({
+  fetchFn = typeof fetch !== 'undefined' ? fetch : null,
+  createImageBitmapFn = typeof createImageBitmap !== 'undefined' ? createImageBitmap : null,
+  OffscreenCanvasCtor = typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : null,
+  BlobCtor = typeof Blob !== 'undefined' ? Blob : null,
+  processTilePixelsFn = null,
+  extractRgbStripFn = null,
+  encodeTileResultFn = null,
+  nowFn = () => Date.now(),
+  perfNowFn = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+  getHeapUsedBytesFn = () => (typeof performance !== 'undefined' && performance.memory ? performance.memory.usedJSHeapSize : null),
+  telemetryPostFn = null,
+  sourceUrl = NOAA_STAR_DEFAULTS.SOURCE_URL,
+  configOverrides = {},
+} = {}) {
+  const cfg = { ...NOAA_STAR_DEFAULTS, ...configOverrides };
+  const state = {
+    rgb: null,
+    width: 0,
+    height: 0,
+    footerStartRow: 0,
+    fetchedAtMs: 0,
+    lastModifiedUtc: null,
+    lastModifiedMs: null,
+    inFlightPromise: null,
+    cooldownUntilMs: 0,
+    activeNoaaReaders: 0,
+    drainResolvers: [],
+    activeTileJobs: 0,
+    jobWaiters: [],
+    activeStreamBytes: 0,
+    activeDecodeBytes: 0,
+    activeStripBytes: 0,
+    recentTotalMs: [],
+    lastTelemetryAtMs: 0,
+    telemetryFlushTimer: null,
+    gibsHintTime: null,
+    gibsHintLayer: null,
+    gibsHintAtMs: 0,
+    fallbackActive: false,
+    fallbackPendingSent: false,
+  };
+
+  const getTrackedBytes = () =>
+    (state.rgb ? state.rgb.byteLength : 0) +
+    state.activeStreamBytes +
+    state.activeDecodeBytes +
+    state.activeStripBytes +
+    state.activeTileJobs * cfg.EST_TILE_JOB_BYTES;
+
+  const waitForReadersDrain = () => {
+    if (state.activeNoaaReaders === 0) return Promise.resolve();
+    return new Promise((resolve) => state.drainResolvers.push(resolve));
+  };
+
+  const releaseNoaaReader = () => {
+    if (state.activeNoaaReaders > 0) state.activeNoaaReaders--;
+    if (state.activeNoaaReaders === 0 && state.drainResolvers.length > 0) {
+      const list = state.drainResolvers.splice(0, state.drainResolvers.length);
+      for (const r of list) r();
+    }
+  };
+
+  const acquireTileSlot = () => {
+    if (state.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS) {
+      state.activeTileJobs++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => state.jobWaiters.push(resolve)).then(() => {
+      state.activeTileJobs++;
+    });
+  };
+
+  const releaseTileSlot = () => {
+    if (state.activeTileJobs > 0) state.activeTileJobs--;
+    if (state.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS && state.jobWaiters.length > 0) {
+      const next = state.jobWaiters.shift();
+      next();
+    }
+  };
+
+  const buildTelemetryPayload = (mode, reason, calOffsetPx, tNow) => {
+    const sorted = [...state.recentTotalMs].sort((a, b) => a - b);
+    const p50 = sorted.length > 0 ? Number(sorted[Math.floor(sorted.length * 0.5)].toFixed(2)) : null;
+    const p95 = sorted.length > 0 ? Number(sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)].toFixed(2)) : null;
+    const cdnAgeMin = state.lastModifiedMs !== null ? Math.max(0, Math.round((tNow - state.lastModifiedMs) / 60000)) : null;
+    return {
+      mode,
+      reason: reason || null,
+      lastModifiedUtc: state.lastModifiedUtc,
+      lastModifiedMs: state.lastModifiedMs,
+      cdnAgeMinutes: cdnAgeMin,
+      calOffsetX: calOffsetPx.x,
+      calOffsetY: calOffsetPx.y,
+      p50Ms: p50,
+      p95Ms: p95,
+      sampleCount: sorted.length,
+      trackedBufferMb: Number((getTrackedBytes() / (1024 * 1024)).toFixed(2)),
+      updatedAtMs: tNow,
+    };
+  };
+
+  const emitTelemetry = (mode, reason, calOffsetPx, force = false) => {
+    if (!telemetryPostFn) return;
+    const tNow = nowFn();
+    if (state.telemetryFlushTimer && typeof clearTimeout !== 'undefined') {
+      clearTimeout(state.telemetryFlushTimer);
+      state.telemetryFlushTimer = null;
+    }
+    if (!force && state.lastTelemetryAtMs > 0 && tNow - state.lastTelemetryAtMs < 1000) {
+      if (typeof setTimeout !== 'undefined') {
+        state.telemetryFlushTimer = setTimeout(() => {
+          state.telemetryFlushTimer = null;
+          const flushNow = nowFn();
+          state.lastTelemetryAtMs = flushNow;
+          telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, flushNow));
+        }, 300);
+        if (typeof state.telemetryFlushTimer.unref === 'function') state.telemetryFlushTimer.unref();
+      }
+      return;
+    }
+    state.lastTelemetryAtMs = tNow;
+    telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, tNow));
+  };
+
+  const tripCooldown = (reason, calOffsetPx) => {
+    state.rgb = null;
+    state.width = 0;
+    state.height = 0;
+    state.footerStartRow = 0;
+    state.fetchedAtMs = 0;
+    state.cooldownUntilMs = nowFn() + cfg.COOLDOWN_MS;
+    if (!state.fallbackActive) {
+      state.fallbackPendingSent = true;
+      emitTelemetry('gibs-fallback-pending', reason, calOffsetPx, true);
+    }
+  };
+
+  async function extractRgbViaStripCanvas(bitmap) {
+    if (extractRgbStripFn) return extractRgbStripFn(bitmap, cfg);
+    const w = bitmap.width;
+    const h = bitmap.height;
+    const stripH = Math.min(cfg.STRIP_HEIGHT, h);
+    const stripCanvas = new OffscreenCanvasCtor(w, stripH);
+    state.activeStripBytes = w * stripH * 4 * 2;
+    const rgb = new Uint8Array(w * h * 3);
+    try {
+      const ctx = stripCanvas.getContext('2d');
+      if (!ctx) throw new Error('OFFSCREEN_CONTEXT_UNAVAILABLE');
+      for (let y = 0; y < h; y += stripH) {
+        const curH = Math.min(stripH, h - y);
+        ctx.clearRect(0, 0, w, curH);
+        ctx.drawImage(bitmap, 0, y, w, curH, 0, 0, w, curH);
+        const stripData = ctx.getImageData(0, 0, w, curH).data;
+        const dstBase = y * w * 3;
+        const pxCount = w * curH;
+        for (let p = 0; p < pxCount; p++) {
+          const s = p << 2;
+          const d = dstBase + p * 3;
+          rgb[d] = stripData[s];
+          rgb[d + 1] = stripData[s + 1];
+          rgb[d + 2] = stripData[s + 2];
+        }
+      }
+      return rgb;
+    } finally {
+      stripCanvas.width = 0;
+      stripCanvas.height = 0;
+      state.activeStripBytes = 0;
+    }
+  }
+
+  async function ensureFreshSource(calOffsetPx) {
+    const tNow = nowFn();
+    if (tNow < state.cooldownUntilMs) {
+      throw new Error('NOAA_COOLDOWN_ACTIVE');
+    }
+    if (state.rgb && tNow - state.fetchedAtMs < cfg.SOURCE_CACHE_TTL_MS) {
+      return state;
+    }
+    if (state.inFlightPromise) {
+      return state.inFlightPromise;
+    }
+
+    state.fallbackActive = false;
+    state.fallbackPendingSent = false;
+
+    state.inFlightPromise = (async () => {
+      const noaaController = new AbortController();
+      const timeoutId = setTimeout(() => noaaController.abort('noaa-timeout'), cfg.NOAA_FETCH_TIMEOUT_MS);
+      let bitmap = null;
+      let bytes = null;
+      try {
+        const res = await fetchFn(sourceUrl, { signal: noaaController.signal });
+        if (!res.ok) throw new Error('NOAA_HTTP_' + res.status);
+
+        const lmHeader = res.headers && typeof res.headers.get === 'function' ? res.headers.get('last-modified') : null;
+        const parsedLmMs = lmHeader ? Date.parse(lmHeader) : NaN;
+
+        bytes = await readResponseBytesBounded(res, cfg.MAX_NOAA_RESPONSE_BYTES, (n) => {
+          state.activeStreamBytes = n;
+        });
+        // Network fetch & stream finished; disarm network timeout before CPU decode/strip extraction
+        clearTimeout(timeoutId);
+        state.activeStreamBytes = bytes.byteLength;
+
+        const expectedDecodeBytes = cfg.EXPECTED_WIDTH * cfg.EXPECTED_HEIGHT * 4;
+        const expectedStripBytes = cfg.EXPECTED_WIDTH * cfg.STRIP_HEIGHT * 4 * 2;
+        const expectedRgbBytes = cfg.EXPECTED_WIDTH * cfg.EXPECTED_HEIGHT * 3;
+        await waitForReadersDrain();
+        // Evict previous generation synchronously only after active readers drain so no dual-generation RGB exists
+        state.rgb = null;
+        state.width = 0;
+        state.height = 0;
+
+        const projectedPeak = getTrackedBytes() + expectedDecodeBytes + expectedStripBytes + expectedRgbBytes;
+        const heapUsed = getHeapUsedBytesFn();
+        if (projectedPeak > cfg.MAX_TRACKED_BUFFER_BYTES || (heapUsed !== null && heapUsed > cfg.MAX_TRACKED_BUFFER_BYTES * 4)) {
+          throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+        }
+
+        let decodeTarget = BlobCtor ? new BlobCtor([bytes], { type: 'image/jpeg' }) : bytes;
+        bytes = null;
+        state.activeStreamBytes = 0;
+
+        state.activeDecodeBytes = expectedDecodeBytes;
+        bitmap = await createImageBitmapFn(decodeTarget);
+        decodeTarget = null;
+        if (bitmap.width !== cfg.EXPECTED_WIDTH || bitmap.height !== cfg.EXPECTED_HEIGHT) {
+          throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
+        }
+
+        const rgb = await extractRgbViaStripCanvas(bitmap);
+        bitmap.close();
+        bitmap = null;
+        state.activeDecodeBytes = 0;
+
+        if (getTrackedBytes() + rgb.byteLength > cfg.MAX_TRACKED_BUFFER_BYTES) {
+          throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+        }
+
+        state.rgb = rgb;
+        state.width = cfg.EXPECTED_WIDTH;
+        state.height = cfg.EXPECTED_HEIGHT;
+        state.footerStartRow = detectFooterStartRowRgb(rgb, cfg.EXPECTED_WIDTH, cfg.EXPECTED_HEIGHT);
+        state.fetchedAtMs = nowFn();
+        state.lastModifiedUtc = Number.isFinite(parsedLmMs) ? new Date(parsedLmMs).toISOString() : null;
+        state.lastModifiedMs = Number.isFinite(parsedLmMs) ? parsedLmMs : null;
+        return state;
+      } catch (err) {
+        if (bitmap && typeof bitmap.close === 'function') {
+          try { bitmap.close(); } catch {}
+        }
+        bytes = null;
+        state.activeStreamBytes = 0;
+        state.activeDecodeBytes = 0;
+        state.activeStripBytes = 0;
+        const isNoaaTimeout =
+          noaaController.signal.aborted ||
+          err === 'noaa-timeout' ||
+          (err && err.name === 'AbortError');
+        const rawMsg = err && err.message ? err.message : '';
+        const isNetworkErr =
+          !isNoaaTimeout &&
+          (!rawMsg ||
+            rawMsg === 'Failed to fetch' ||
+            rawMsg === 'Load failed' ||
+            rawMsg.includes('NetworkError') ||
+            rawMsg.includes('ERR_'));
+        const msg = isNoaaTimeout
+          ? 'NOAA_TIMEOUT'
+          : isNetworkErr
+          ? 'NOAA_NETWORK_ERROR'
+          : rawMsg || 'NOAA_FETCH_ERROR';
+        tripCooldown(msg, calOffsetPx);
+        throw new Error(msg);
+      } finally {
+        clearTimeout(timeoutId);
+        state.inFlightPromise = null;
+      }
+    })();
+
+    return state.inFlightPromise;
+  }
+
+  async function renderGibsFallbackTile(req, mapAbortSignal, reason) {
+    if (mapAbortSignal && mapAbortSignal.aborted) {
+      throw makeAbortError();
+    }
+    if (!state.fallbackActive && !state.fallbackPendingSent) {
+      state.fallbackPendingSent = true;
+      emitTelemetry('gibs-fallback-pending', reason, req.calOffsetPx, true);
+    }
+    const markFallbackActive = () => {
+      state.fallbackActive = true;
+      state.fallbackPendingSent = false;
+      emitTelemetry('gibs-fallback', reason, req.calOffsetPx, true);
+    };
+    const gibsController = new AbortController();
+    const timeoutId = setTimeout(() => gibsController.abort('gibs-timeout'), cfg.GIBS_FETCH_TIMEOUT_MS);
+    const onMapAbort = () => gibsController.abort('map-abort');
+    if (mapAbortSignal) mapAbortSignal.addEventListener('abort', onMapAbort, { once: true });
+
+    try {
+      const hintFresh = state.gibsHintTime && nowFn() - state.gibsHintAtMs < 60000;
+      const hintedUrl =
+        hintFresh && state.gibsHintLayer && req.httpsGibsUrl.includes(`/${state.gibsHintLayer}/default/`)
+          ? req.httpsGibsUrl.replace(/(\/default\/)([^/]+)(\/)/, `$1${state.gibsHintTime}$3`)
+          : req.httpsGibsUrl;
+      let resObj;
+      try {
+        resObj = await fetchDirectHttpsGibsTile(hintedUrl, gibsController.signal, fetchFn);
+      } catch (hintErr) {
+        if (hintedUrl !== req.httpsGibsUrl && !(gibsController.signal && gibsController.signal.aborted)) {
+          state.gibsHintTime = null;
+          resObj = await fetchDirectHttpsGibsTile(req.httpsGibsUrl, gibsController.signal, fetchFn);
+        } else {
+          throw hintErr;
+        }
+      }
+      const { res, resolvedUrl } = resObj;
+      const resolvedMatch = resolvedUrl.match(/\/best\/([^/]+)\/default\/([^/]+)\//);
+      if (resolvedMatch) {
+        state.gibsHintLayer = resolvedMatch[1];
+        state.gibsHintTime = resolvedMatch[2];
+        state.gibsHintAtMs = nowFn();
+      }
+      const blob = await res.blob();
+      if (encodeTileResultFn) {
+        const encoded = await encodeTileResultFn({ kind: 'gibs-fallback', blob, resolvedUrl, req });
+        markFallbackActive();
+        return encoded;
+      }
+      if (OffscreenCanvasCtor && createImageBitmapFn) {
+        let bmp = null;
+        let canvas = null;
+        try {
+          bmp = await createImageBitmapFn(blob);
+          canvas = new OffscreenCanvasCtor(bmp.width, bmp.height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            markFallbackActive();
+            return { data: bmp };
+          }
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(bmp, 0, 0);
+          bmp.close();
+          bmp = null;
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if (processTilePixelsFn) {
+            processTilePixelsFn(imgData.data, canvas.width, canvas.height, resolvedUrl);
+          }
+          ctx.putImageData(imgData, 0, 0);
+          const cleanBitmap = await createImageBitmapFn(canvas);
+          markFallbackActive();
+          return { data: cleanBitmap };
+        } finally {
+          if (bmp && typeof bmp.close === 'function') {
+            try { bmp.close(); } catch {}
+          }
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+        }
+      }
+      const buf = await blob.arrayBuffer();
+      markFallbackActive();
+      return { data: buf };
+    } catch (fallbackErr) {
+      if (!(mapAbortSignal && mapAbortSignal.aborted) && !state.fallbackActive) {
+        emitTelemetry('gibs-fallback-failed', reason, req.calOffsetPx, true);
+      }
+      throw fallbackErr;
+    } finally {
+      clearTimeout(timeoutId);
+      if (mapAbortSignal) mapAbortSignal.removeEventListener('abort', onMapAbort);
+    }
+  }
+
+  async function handleTileRequest(params, abortController) {
+    const mapSignal = abortController ? abortController.signal : null;
+    if (mapSignal && mapSignal.aborted) throw makeAbortError();
+
+    const req = parseNoaaStarTileRequest(params.url);
+    if (isTileOutsideSectorSupport(params.url, req)) {
+      return { data: createEmptyTransparentPngBuffer() };
+    }
+    const tStart = perfNowFn();
+
+    if (nowFn() < state.cooldownUntilMs) {
+      return renderGibsFallbackTile(req, mapSignal, 'NOAA_COOLDOWN_ACTIVE');
+    }
+
+    let sourceReady = null;
+    try {
+      const waitSource = ensureFreshSource(req.calOffsetPx);
+      if (mapSignal) {
+        sourceReady = await Promise.race([
+          waitSource,
+          new Promise((_, reject) => {
+            if (mapSignal.aborted) reject(makeAbortError());
+            else mapSignal.addEventListener('abort', () => reject(makeAbortError()), { once: true });
+          }),
+        ]);
+      } else {
+        sourceReady = await waitSource;
+      }
+    } catch (err) {
+      if (mapSignal && mapSignal.aborted) throw err;
+      return renderGibsFallbackTile(req, mapSignal, err && err.message ? err.message : 'NOAA_UNAVAILABLE');
+    }
+
+    if (!sourceReady || !sourceReady.rgb) {
+      return renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_UNAVAILABLE');
+    }
+    if (getTrackedBytes() + cfg.EST_TILE_JOB_BYTES > cfg.MAX_TRACKED_BUFFER_BYTES) {
+      tripCooldown('NOAA_TRACKED_BUDGET_EXCEEDED', req.calOffsetPx);
+      return renderGibsFallbackTile(req, mapSignal, 'NOAA_TRACKED_BUDGET_EXCEEDED');
+    }
+
+    await acquireTileSlot();
+    try {
+      if (mapSignal && mapSignal.aborted) throw makeAbortError();
+      if (!state.rgb) {
+        return await renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_EVICTED');
+      }
+
+      const outRgba = new Uint8ClampedArray(256 * 256 * 4);
+      state.activeNoaaReaders++;
+      try {
+        reprojectNoaaStarRgbLut32({
+          rgb: state.rgb,
+          width: state.width,
+          height: state.height,
+          footerStartRow: state.footerStartRow,
+          tileZ: req.tileZ,
+          tileX: req.tileX,
+          tileY: req.tileY,
+          calOffsetPx: req.calOffsetPx,
+          outRgba,
+        });
+      } finally {
+        releaseNoaaReader();
+      }
+
+      if (processTilePixelsFn) {
+        processTilePixelsFn(outRgba, 256, 256, req.httpsGibsUrl);
+      }
+
+      const totalMs = perfNowFn() - tStart;
+      state.recentTotalMs.push(totalMs);
+      if (state.recentTotalMs.length > 64) state.recentTotalMs.shift();
+      state.fallbackActive = false;
+      state.fallbackPendingSent = false;
+      emitTelemetry('noaa-star', null, req.calOffsetPx, false);
+
+      if (encodeTileResultFn) {
+        return await encodeTileResultFn({ kind: 'noaa-star', rgba: outRgba, width: 256, height: 256, req });
+      }
+      if (OffscreenCanvasCtor && createImageBitmapFn) {
+        const tileCanvas = new OffscreenCanvasCtor(256, 256);
+        try {
+          const ctx = tileCanvas.getContext('2d');
+          if (!ctx) return { data: outRgba.buffer };
+          const imageData = ctx.createImageData(256, 256);
+          imageData.data.set(outRgba);
+          ctx.putImageData(imageData, 0, 0);
+          const cleanBitmap = await createImageBitmapFn(tileCanvas);
+          return { data: cleanBitmap };
+        } finally {
+          tileCanvas.width = 0;
+          tileCanvas.height = 0;
+        }
+      }
+      return { data: outRgba.buffer };
+    } finally {
+      releaseTileSlot();
+    }
+  }
+
+  return {
+    handleTileRequest,
+    ensureFreshSource,
+    getState: () => ({
+      width: state.width,
+      height: state.height,
+      hasRgb: Boolean(state.rgb),
+      activeNoaaReaders: state.activeNoaaReaders,
+      activeTileJobs: state.activeTileJobs,
+      cooldownUntilMs: state.cooldownUntilMs,
+      trackedBufferBytes: getTrackedBytes(),
+    }),
+  };
+}
+
+// Circular partition of unity across all 360 degrees (Himawari, GOES-West, GOES-East, Meteosat)
+function getSectorSpatialWeight(url, lng, lat) {
     const absLat = Math.abs(lat);
 
     // Polar Underlay: strictly 0.0 below 58°, smooth ramp 58°-65°, 1.0 above 65° up to 85°
@@ -667,73 +1644,101 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     }
   }
 
-  // Protocol 1: NASA GIBS Geostationary Satellites (GOES & Himawari)
-  self.addProtocol('gibs-alpha', async (params, abortController) => {
-    let realUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
-    let res = await fetch(realUrl, { signal: abortController.signal });
-    if (!res.ok && res.status === 404) {
-      // Auto-fallback: try up to 3 prior 10-minute frames if latest scan is still uploading
-      const isoMatch = realUrl.match(/(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)/);
-      if (isoMatch) {
-        const curIso = isoMatch[1];
-        const curTime = new Date(curIso).getTime();
-        for (let step = 1; step <= 3 && !res.ok; step++) {
-          const prev = new Date(curTime - step * 10 * 60000);
-          const yyyy = prev.getUTCFullYear();
-          const mm = String(prev.getUTCMonth() + 1).padStart(2, '0');
-          const dd = String(prev.getUTCDate()).padStart(2, '0');
-          const hh = String(prev.getUTCHours()).padStart(2, '0');
-          const min = String(prev.getUTCMinutes()).padStart(2, '0');
-          const fbIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`;
-          const fbUrl = realUrl.replace(curIso, fbIso);
-          try {
-            const fbRes = await fetch(fbUrl, { signal: abortController.signal });
-            if (fbRes.ok) {
-              res = fbRes;
-              realUrl = fbUrl;
-              break;
-            }
-          } catch {}
-        }
-
-        // Step 2: Date-only fallback if sub-hourly frames are not yet generated
-        if (!res.ok) {
-          const dateOnly = curIso.slice(0, 10);
-          const dateOnlyUrl = realUrl.replace(isoMatch[0], dateOnly);
-          try {
-            const dateRes = await fetch(dateOnlyUrl, { signal: abortController.signal });
-            if (dateRes.ok) {
-              res = dateRes;
-              realUrl = dateOnlyUrl;
-            }
-          } catch {}
-        }
+if (typeof self !== 'undefined') {
+  const noaaTelemetryChannel =
+    typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(NOAA_STAR_DEFAULTS.TELEMETRY_CHANNEL) : null;
+  const isDedicatedWorkerScope =
+    typeof self.document === 'undefined' && typeof self.postMessage === 'function' && !self.addProtocol;
+  const noaaStarHandler = createNoaaStarProtocolHandler({
+    processTilePixelsFn: processTilePixels,
+    telemetryPostFn: (msg) => {
+      if (isDedicatedWorkerScope) {
+        self.postMessage({ __noaaStarRpc: true, type: 'telemetry', telemetry: msg });
       }
-    }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
-
-    if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
-      try {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(bitmap, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processTilePixels(imgData.data, canvas.width, canvas.height, realUrl);
-        ctx.putImageData(imgData, 0, 0);
-        const cleanBitmap = await createImageBitmap(canvas);
-        return { data: cleanBitmap };
-      } catch {
-        return { data: await blob.arrayBuffer() };
+      if (noaaTelemetryChannel) {
+        noaaTelemetryChannel.postMessage(msg);
       }
-    }
-    return { data: await blob.arrayBuffer() };
+    },
   });
+
+  // Dedicated Worker RPC bridge: MapLibre RasterTileSource runs addProtocol on main thread,
+  // so main-thread noaa-star forwards tile work into this Web Worker with zero-copy ImageBitmap transfer.
+  if (isDedicatedWorkerScope) {
+    const pendingTileControllers = new Map();
+    self.addEventListener('message', async (event) => {
+      const msg = event.data;
+      if (!msg || msg.__noaaStarRpc !== true) return;
+      if (msg.type === 'abort') {
+        const ctrl = pendingTileControllers.get(msg.id);
+        if (ctrl) {
+          pendingTileControllers.delete(msg.id);
+          ctrl.abort(makeAbortError('map-abort'));
+        }
+        return;
+      }
+      if (msg.type !== 'tile') return;
+
+      const tileCtrl = new AbortController();
+      pendingTileControllers.set(msg.id, tileCtrl);
+      try {
+        const result = await noaaStarHandler.handleTileRequest({ url: msg.url }, tileCtrl);
+        pendingTileControllers.delete(msg.id);
+        const payloadData = result && result.data ? result.data : null;
+        const transfer =
+          payloadData &&
+          ((typeof ImageBitmap !== 'undefined' && payloadData instanceof ImageBitmap) ||
+            payloadData instanceof ArrayBuffer)
+            ? [payloadData]
+            : [];
+        self.postMessage({ __noaaStarRpc: true, type: 'result', id: msg.id, data: payloadData }, transfer);
+      } catch (err) {
+        pendingTileControllers.delete(msg.id);
+        self.postMessage({
+          __noaaStarRpc: true,
+          type: 'error',
+          id: msg.id,
+          name: (err && err.name) || 'Error',
+          message: (err && err.message) || 'Worker tile error',
+        });
+      }
+    });
+  }
+
+  if (self.addProtocol) {
+    // Protocol 1: NASA GIBS Geostationary Satellites (GOES & Himawari)
+    self.addProtocol('gibs-alpha', async (params, abortController) => {
+      if (isTileOutsideSectorSupport(params.url)) {
+        return { data: createEmptyTransparentPngBuffer() };
+      }
+      const initialUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
+      const { res, resolvedUrl } = await fetchDirectHttpsGibsTile(initialUrl, abortController.signal, fetch);
+      const blob = await res.blob();
+
+      if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+        try {
+          const bitmap = await createImageBitmap(blob);
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return { data: bitmap };
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          processTilePixels(imgData.data, canvas.width, canvas.height, resolvedUrl);
+          ctx.putImageData(imgData, 0, 0);
+          const cleanBitmap = await createImageBitmap(canvas);
+          return { data: cleanBitmap };
+        } catch {
+          return { data: await blob.arrayBuffer() };
+        }
+      }
+      return { data: await blob.arrayBuffer() };
+    });
+
+    // Protocol 1b: Feature-Flagged NOAA STAR GOES-19 1808x1808 GeoColor Reprojector -> GIBS GeoColor Failover
+    self.addProtocol('noaa-star', (params, abortController) => noaaStarHandler.handleTileRequest(params, abortController));
 
   // Edge proxy helper for EUMETSAT tiles
   function eumetUrlToProxy(url) {
@@ -767,6 +1772,9 @@ if (typeof self !== 'undefined' && self.addProtocol) {
 
   // Protocol 2: EUMETSAT Meteosat High Rate SEVIRI (Europe, Africa & Indian Ocean)
   self.addProtocol('eumet-alpha', async (params, abortController) => {
+    if (isTileOutsideSectorSupport(params.url)) {
+      return { data: createEmptyTransparentPngBuffer() };
+    }
     try {
       let res = null;
 
@@ -908,6 +1916,9 @@ if (typeof self !== 'undefined' && self.addProtocol) {
   }
 
   self.addProtocol('black-marble-alpha', async (params, abortController) => {
+    if (isBlackMarbleTileSolidDaylight(params.url)) {
+      return { data: createEmptyTransparentPngBuffer() };
+    }
     const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
     const res = await fetch(realUrl, { signal: abortController.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -934,4 +1945,29 @@ if (typeof self !== 'undefined' && self.addProtocol) {
     }
     return { data: await blob.arrayBuffer() };
   });
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    NOAA_STAR_CONSTANTS,
+    STAR_1808_SYMMETRIC_BLOCK3,
+    NOAA_STAR_DEFAULTS,
+    tileToLng,
+    tileToLat,
+    tilePixelToLatLon,
+    geodeticToAbiScan,
+    scanToPixel,
+    pixelToScan,
+    detectFooterStartRowRgb,
+    sampleNoaaRgbBilinear,
+    reprojectNoaaStarRgbLut32,
+    fetchDirectHttpsGibsTile,
+    readResponseBytesBounded,
+    parseNoaaStarTileRequest,
+    parseTileCoordsFromUrl,
+    isTileOutsideSectorSupport,
+    isBlackMarbleTileSolidDaylight,
+    createNoaaStarProtocolHandler,
+  };
 }
