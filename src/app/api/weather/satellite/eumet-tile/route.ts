@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         return new NextResponse(arrayBuf, {
           headers: {
             'Content-Type': 'image/png',
-            'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+            'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
             'X-EUMETSAT-Layer': layer,
             'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
             'Access-Control-Allow-Origin': '*',

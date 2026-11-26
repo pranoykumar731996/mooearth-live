@@ -19,6 +19,7 @@ import {
   isNoaaStarPilotEnabled,
   shouldUseNoaaStarPilotForSector,
   buildNoaaStarTileUrl,
+  extractSectorFromUrl,
   parseNoaaStarFallbackHttpsUrl,
   formatNoaaFallbackReason,
   createEmptyTransparentPngBuffer,
@@ -38,12 +39,14 @@ import {
   setWorkerUrl,
   addProtocol,
   importScriptInWorkers,
+  setMaxParallelImageRequests,
 } from 'maplibre-gl';
 
 // Configure standalone Web Worker asset in browser context before any worker operations
 if (typeof window !== 'undefined') {
   try {
     setWorkerUrl('/maplibre-gl-worker.mjs');
+    setMaxParallelImageRequests(64);
   } catch {
     // ignore if already set
   }
@@ -86,11 +89,12 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       let lngWeight = 0.0;
       let satLng = 0.0;
 
-      const isHimawari = url.includes('Himawari') || url.includes('himawari');
-      const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
-      const isMeteosatPrime = (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
-      const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
-      const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
+      const secId = extractSectorFromUrl(url);
+      const isHimawari = secId === 'himawari';
+      const isIodc = secId === 'eumet-iodc';
+      const isMeteosatPrime = secId === 'europe-africa';
+      const isGoesEast = secId === 'goes-east';
+      const isGoesWest = secId === 'goes-west';
 
       // 5-Sentinel Exact Mathematical Partition of Unity (sum == 1.000 everywhere):
       if (isIodc) {
@@ -174,10 +178,32 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       return Math.max(0.0, Math.min(1.0, lngWeight * latWeight * limbWeight));
     }
 
+    function smoothMainCloudCurve(norm: number, mid = 0.26, slope = 5.5): number {
+      if (norm <= 0.0) return 0.0;
+      if (norm >= 1.0) return 1.0;
+      const s0 = 1.0 / (1.0 + Math.exp(slope * mid));
+      const s1 = 1.0 / (1.0 + Math.exp(-slope * (1.0 - mid)));
+      const s = 1.0 / (1.0 + Math.exp(-slope * (norm - mid)));
+      const scaled = (s - s0) / (s1 - s0);
+      const feather = norm < 0.14 ? norm / 0.14 : 1.0;
+      return Math.max(0.0, Math.min(1.0, scaled * feather));
+    }
+
+    function computeMainGeoColorDayCloud(r: number, g: number, b: number): number {
+      const minC = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      const maxC = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      const sat = maxC - minC;
+      const warmExcess = r > b ? r - b : 0;
+      const dayWhiteness = minC - 0.80 * sat - 0.60 * warmExcess;
+      if (dayWhiteness <= 70.0) return 0.0;
+      const dNorm = Math.min(1.0, (dayWhiteness - 70.0) / 138.0);
+      return smoothMainCloudCurve(dNorm, 0.24, 5.5);
+    }
+
     // Physical Elevation & Latitude Lapse-Rate Thermal Ground Discriminator
     // Rejects nocturnal freezing ground in high elevation (Tibet > 3500m) and cold winter interiors
     function getLocalThermalThreshold(lng: number, lat: number, isEumet: boolean): number {
-      let thresh = isEumet ? 70 : 72;
+      let thresh = isEumet ? 96 : 98;
       const absLat = Math.abs(lat);
 
       // 1. Tibetan Plateau & High Himalayas (26°N-39°N, 74°E-104°E, elevation 3,800m-5,500m):
@@ -384,46 +410,37 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             let sigmoid = 0;
 
             if (isInfraLayer) {
-              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
+              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 96 : 98);
               if (baseRadiance <= irThresh) {
                 d[i + 3] = 0;
                 continue;
               }
-              // Sigmoid Volumetric Density Transfer Function (Zoom Earth & Windy Parity):
-              // Translucent high-altitude cirrus filaments, voluminous cumulus decks, and solid thunderstorm cores
               const norm = Math.min(1.0, Math.max(0.0, (baseRadiance - irThresh) / (215.0 - irThresh)));
-              sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              sigmoid = smoothMainCloudCurve(norm, 0.24, 5.5);
               cloudAlpha = Math.round(250.0 * sigmoid * spatWeight);
             } else {
               // Visible optical channels (Himawari Band 3, GOES GeoColor, Meteosat vis006):
               if (isGeoColor) {
-                const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
-                const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-                if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
-                const norm = Math.min(1.0, (l - 62) / (205 - 62));
-                sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+                sigmoid = computeMainGeoColorDayCloud(r, g, b);
+                if (sigmoid <= 0.0) { d[i + 3] = 0; continue; }
                 cloudAlpha = Math.round(248 * sigmoid * spatWeight);
               } else if (isHimawariVis) {
-                // Himawari-9 Band 3 (0.64µm Visible Red Reflectance):
-                // Reject ocean (< 55) and desert/land albedo (< 85)
-                if (r <= 85) { d[i + 3] = 0; continue; }
-                const norm = Math.min(1.0, (r - 85) / (205 - 85));
-                sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+                if (r <= 78) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (r - 78) / (200 - 78));
+                sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
                 cloudAlpha = Math.round(250 * sigmoid * spatWeight);
               } else if (isEumet) {
-                // EUMETSAT Meteosat-9/11 vis006 (0.6µm Visible Optical Reflectance):
-                // Reject ocean (< 60) and desert sand (< 92)
-                if (l <= 92) { d[i + 3] = 0; continue; }
-                const norm = Math.min(1.0, (l - 92) / (210 - 92));
-                sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+                if (l <= 82) { d[i + 3] = 0; continue; }
+                const norm = Math.min(1.0, (l - 82) / (205 - 82));
+                sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
                 cloudAlpha = Math.round(250 * sigmoid * spatWeight);
               } else {
-                if (baseRadiance <= 72) {
+                if (baseRadiance <= 64) {
                   d[i + 3] = 0;
                   continue;
                 }
-                const norm = Math.min(1.0, (baseRadiance - 72) / (205 - 72));
-                sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+                const norm = Math.min(1.0, (baseRadiance - 64) / (200 - 64));
+                sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
                 cloudAlpha = Math.round(248 * sigmoid * spatWeight);
               }
             }
@@ -434,26 +451,23 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             }
 
             if (isInfraLayer) {
-              // PRESERVE GENUINE SATELLITE RADIANCE + RAYLEIGH ATMOSPHERIC SCATTER (Zoom Earth & Windy Parity)
-              // Dense cloud tops reflect pure luminous sunlight; thin feathered fringes catch atmospheric azure scatter
-              const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
+              const cloudTone = Math.min(255, Math.round(218 + 37 * sigmoid));
               const thinness = Math.max(0.0, 1.0 - sigmoid);
-              const rayleighB = Math.round(6.0 * thinness);
+              const rayleighB = Math.round(7.0 * thinness);
               const rayleighG = Math.round(2.0 * thinness);
 
-              d[i] = naturalLum;
-              d[i + 1] = Math.min(255, naturalLum + rayleighG);
-              d[i + 2] = Math.min(255, naturalLum + rayleighB + 2);
+              d[i] = cloudTone;
+              d[i + 1] = Math.min(255, cloudTone + rayleighG);
+              d[i + 2] = Math.min(255, cloudTone + rayleighB);
               d[i + 3] = cloudAlpha;
             } else if (isGeoColor) {
-              // Multi-channel GeoColor: preserve natural RGB
-              d[i] = r;
-              d[i + 1] = g;
-              d[i + 2] = b;
+              const cloudTone = Math.min(255, Math.round(224 + 31 * sigmoid));
+              const thin = Math.max(0.0, 1.0 - sigmoid);
+              d[i] = Math.min(255, Math.round(cloudTone - 3 * thin));
+              d[i + 1] = Math.min(255, Math.round(cloudTone));
+              d[i + 2] = Math.min(255, Math.round(cloudTone + 6 * thin));
               d[i + 3] = cloudAlpha;
             } else {
-              // Single-band visible channel (Himawari Band 3, Meteosat vis006):
-              // Pure luminous cloud white + Rayleigh horizon scatter (Zoom Earth & Windy Parity)
               const thinness = Math.max(0.0, 1.0 - sigmoid);
               const rayleighB = Math.round(6.0 * thinness);
               const rayleighG = Math.round(2.0 * thinness);
@@ -470,9 +484,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // VISIBLE / OPTICAL REFLECTANCE MODE (Natural Day / Fallback Night)
             // ==========================================
             if (isEumet && !isInfraLayer) {
-              if (l <= 92) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 92) / (210 - 92));
-              const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              if (l <= 82) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 82) / (205 - 82));
+              const sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
               const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               const thinness = Math.max(0.0, 1.0 - sigmoid);
@@ -484,9 +498,9 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i + 2] = Math.min(255, cloudTone + rayleighB);
               d[i + 3] = cloudAlpha;
             } else if (isHimawariVis) {
-              if (r <= 85) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (r - 85) / (205 - 85));
-              const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              if (r <= 78) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (r - 78) / (200 - 78));
+              const sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
               const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               const thinness = Math.max(0.0, 1.0 - sigmoid);
@@ -498,34 +512,35 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
               d[i + 2] = Math.min(255, cloudTone + rayleighB);
               d[i + 3] = cloudAlpha;
             } else if (isGeoColor) {
-              const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
-              const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-              if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 62) / (205 - 62));
-              const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              const sigmoid = computeMainGeoColorDayCloud(r, g, b);
               const cloudAlpha = Math.round(248 * sigmoid * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-              d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
+              const cloudTone = Math.min(255, Math.round(224 + 31 * sigmoid));
+              const thin = Math.max(0.0, 1.0 - sigmoid);
+              d[i] = Math.min(255, Math.round(cloudTone - 3 * thin));
+              d[i + 1] = Math.min(255, Math.round(cloudTone));
+              d[i + 2] = Math.min(255, Math.round(cloudTone + 6 * thin));
+              d[i + 3] = cloudAlpha;
             } else if (isInfraLayer) {
               // Clean Infrared Band 13 (Truth in Remote Sensing - Zoom Earth & Windy Parity)
-              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
+              const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 96 : 98);
               if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
               const norm = Math.min(1.0, (baseRadiance - irThresh) / (215 - irThresh));
-              const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              const sigmoid = smoothMainCloudCurve(norm, 0.24, 5.5);
               const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-              const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
+              const cloudTone = Math.min(255, Math.round(218 + 37 * sigmoid));
               const thinness = Math.max(0.0, 1.0 - sigmoid);
-              const rayleighB = Math.round(5.0 * thinness);
+              const rayleighB = Math.round(7.0 * thinness);
               const rayleighG = Math.round(2.0 * thinness);
-              d[i] = naturalLum;
-              d[i + 1] = Math.min(255, naturalLum + rayleighG);
-              d[i + 2] = Math.min(255, naturalLum + rayleighB + 2);
+              d[i] = cloudTone;
+              d[i + 1] = Math.min(255, cloudTone + rayleighG);
+              d[i + 2] = Math.min(255, cloudTone + rayleighB);
               d[i + 3] = cloudAlpha;
             } else {
-              if (l <= 72) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 72) / (205 - 72));
-              const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+              if (l <= 64) { d[i + 3] = 0; continue; }
+              const norm = Math.min(1.0, (l - 64) / (200 - 64));
+              const sigmoid = smoothMainCloudCurve(norm, 0.26, 5.5);
               const cloudAlpha = Math.round(248 * sigmoid * spatWeight);
               if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
               const cloudTone = Math.min(255, Math.round(225 + 30 * sigmoid));
@@ -535,11 +550,11 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
             // ==========================================
             // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
             // ==========================================
-            const thresh = 118;
-            const maxRange = 230;
+            const thresh = isEumet ? 98 : 102;
+            const maxRange = isEumet ? 190 : 225;
             if (l <= thresh) { d[i + 3] = 0; continue; }
             const norm = Math.min(1.0, (l - thresh) / (maxRange - thresh));
-            const finalAlpha = Math.round(245 * Math.pow(norm, 0.70) * spatWeight);
+            const finalAlpha = Math.round(245 * Math.pow(norm, 0.78) * spatWeight);
             if (finalAlpha <= 2) { d[i + 3] = 0; continue; }
             if (norm < 0.25) {
               const tone = Math.min(255, Math.max(195, Math.round(210 + 35 * norm)));
@@ -3598,19 +3613,21 @@ export default function CityMapViewer({
             const ext = sec.format === 'image/jpeg' ? (sec.layerName.includes('VIIRS') ? 'jpeg' : 'jpg') : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
-            const useNoaaPilot =
-              !isEumet &&
-              shouldUseNoaaStarPilotForSector({
-                sectorId: sec.id,
-                isVisibleMode,
-                goesEastDay,
-                isHdMode,
-                timelineHoursAhead,
-              });
+            const useNoaaPilot = shouldUseNoaaStarPilotForSector({
+              sectorId: sec.id,
+              spectralMode: isVisibleMode ? 'visible' : spectralMode === 'infra' ? 'infra' : 'blue',
+              isVisibleMode,
+              goesEastDay,
+              isHdMode,
+              timelineHoursAhead,
+            });
             const tileUrl = sec.id === 'hd-swath'
               ? `https://wmts.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}`
               : useNoaaPilot
               ? buildNoaaStarTileUrl({
+                  sectorId: sec.id,
+                  fallbackProto: isEumet ? 'eumet' : 'gibs',
+                  enableNightIr: isVisibleMode,
                   layerName: sec.layerName,
                   tileTime,
                   tileMatrixSet: sec.tileMatrixSet,
@@ -3623,7 +3640,7 @@ export default function CityMapViewer({
               : `gibs-alpha://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${sec.layerName}/default/${tileTime}/${sec.tileMatrixSet}/{z}/{y}/{x}.${ext}?${spectralParam}`;
 
             const secAttribution = useNoaaPilot
-              ? 'NOAA STAR GOES-19 ABI GeoColor (1808px Pilot) / NASA GIBS Fallback'
+              ? 'NOAA STAR GOES-19/18 + CIRA Himawari-9 & Meteosat-9/0deg Live / Fallback'
               : sec.id === 'hd-swath'
               ? 'NASA EOSDIS / NOAA-20 VIIRS TrueColor (250m)'
               : sec.layerName.includes('iodc')
@@ -3636,19 +3653,28 @@ export default function CityMapViewer({
 
             const activeOpacityExpr = sec.id === 'hd-swath' ? hdOpacityExpression : geostationaryOpacityExpression;
             const activeContrast = sec.id === 'hd-swath' ? 0.04 : rasterContrast;
+            const secBounds =
+              sec.bounds ??
+              ({
+                'europe-africa': [-40, -65, 45, 65],
+                'eumet-iodc': [25, -65, 95, 65],
+                'goes-east': [-135, -65, -15, 65],
+              } as Record<string, [number, number, number, number]>)[sec.id];
+            const sourceSpec = {
+              type: 'raster' as const,
+              tiles: [tileUrl],
+              tileSize: 256,
+              maxzoom: sec.maxzoom,
+              ...(secBounds ? { bounds: secBounds } : {}),
+              attribution: secAttribution,
+            };
 
             const existingSource = map.getSource(sId) as any;
             if (existingSource) {
               if (existingSource.tiles?.[0] !== tileUrl) {
                 if (map.getLayer(lId)) map.removeLayer(lId);
                 map.removeSource(sId);
-                map.addSource(sId, {
-                  type: 'raster',
-                  tiles: [tileUrl],
-                  tileSize: 256,
-                  maxzoom: sec.maxzoom,
-                  attribution: secAttribution,
-                });
+                map.addSource(sId, sourceSpec);
                 map.addLayer(
                   {
                     id: lId,
@@ -3659,7 +3685,7 @@ export default function CityMapViewer({
                       'raster-opacity': activeOpacityExpr,
                       'raster-contrast': activeContrast,
                       'raster-resampling': 'linear',
-                      'raster-fade-duration': 350,
+                      'raster-fade-duration': 120,
                     },
                   },
                   beforeLayerId
@@ -3670,13 +3696,7 @@ export default function CityMapViewer({
                 map.setPaintProperty(lId, 'raster-resampling', 'linear');
               }
             } else {
-              map.addSource(sId, {
-                type: 'raster',
-                tiles: [tileUrl],
-                tileSize: 256,
-                maxzoom: sec.maxzoom,
-                attribution: secAttribution,
-              });
+              map.addSource(sId, sourceSpec);
               map.addLayer(
                 {
                   id: lId,
@@ -3687,7 +3707,7 @@ export default function CityMapViewer({
                     'raster-opacity': activeOpacityExpr,
                     'raster-contrast': activeContrast,
                     'raster-resampling': 'linear',
-                    'raster-fade-duration': 350,
+                    'raster-fade-duration': 120,
                   },
                 },
                 beforeLayerId
@@ -4260,31 +4280,53 @@ export default function CityMapViewer({
                 {/* Bottom Subtitle */}
                 <div className="text-[9px] font-mono text-white/40 truncate">
                   {isNoaaStarPilotEnabled() &&
-                  spectralMode === 'visible' &&
                   satelliteResolution === 'live' &&
                   timelineHoursAhead === 0 &&
                   noaaStarTelemetry ? (
-                    noaaStarTelemetry.mode === 'noaa-star' ? (
-                      <span
-                        data-testid="noaa-star-hud-status"
-                        className={(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 15 ? 'text-amber-300' : 'text-emerald-300/80'}
-                      >
-                        NOAA STAR GOES-19 (1808px) • CDN age {noaaStarTelemetry.cdnAgeMinutes ?? '?'}m
-                        {(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 15 ? ' (Stale)' : ''}
-                      </span>
-                    ) : noaaStarTelemetry.mode === 'gibs-fallback-pending' ? (
-                      <span data-testid="noaa-star-hud-status" className="text-amber-200/90">
-                        Switching to NASA GIBS GeoColor… • Trigger: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
-                      </span>
-                    ) : noaaStarTelemetry.mode === 'gibs-fallback-failed' ? (
-                      <span data-testid="noaa-star-hud-status" className="text-rose-300">
-                        Fallback unavailable: NASA GIBS GeoColor failed • Trigger: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
-                      </span>
-                    ) : (
-                      <span data-testid="noaa-star-hud-status" className="text-amber-300">
-                        Active: NASA GIBS GeoColor • Failover reason: {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
-                      </span>
-                    )
+                    (() => {
+                      const activeName = noaaStarTelemetry.satLabel || 'GOES-19';
+                      const activeProd = noaaStarTelemetry.product || 'GeoColor';
+                      const multiCount = noaaStarTelemetry.activeSectors?.length ?? 1;
+                      const isEumetSector =
+                        noaaStarTelemetry.sector === 'europe-africa' ||
+                        noaaStarTelemetry.sector === 'eumet-iodc';
+                      const fallbackName = isEumetSector ? 'EUMETSAT Edge' : 'NASA GIBS';
+                      if (noaaStarTelemetry.mode === 'noaa-star') {
+                        return (
+                          <span
+                            data-testid="noaa-star-hud-status"
+                            className={(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 65 ? 'text-amber-300' : 'text-emerald-300/80'}
+                          >
+                            Live {activeName} ({activeProd})
+                            {multiCount > 1 ? ` • ${multiCount} Global Feeds` : ''} • CDN age{' '}
+                            {noaaStarTelemetry.cdnAgeMinutes ?? '?'}m
+                            {(noaaStarTelemetry.cdnAgeMinutes ?? 0) > 65 ? ' (Stale)' : ''}
+                          </span>
+                        );
+                      }
+                      if (noaaStarTelemetry.mode === 'gibs-fallback-pending') {
+                        return (
+                          <span data-testid="noaa-star-hud-status" className="text-amber-200/90">
+                            Switching to {fallbackName} {activeProd}… • Trigger:{' '}
+                            {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                          </span>
+                        );
+                      }
+                      if (noaaStarTelemetry.mode === 'gibs-fallback-failed') {
+                        return (
+                          <span data-testid="noaa-star-hud-status" className="text-rose-300">
+                            Fallback unavailable: {fallbackName} failed • Trigger:{' '}
+                            {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span data-testid="noaa-star-hud-status" className="text-amber-300">
+                          Active: {fallbackName} {activeProd} • Failover reason:{' '}
+                          {formatNoaaFallbackReason(noaaStarTelemetry.reason)}
+                        </span>
+                      );
+                    })()
                   ) : (
                     satelliteObservationUtc ||
                     satelliteObservation.utcStr ||

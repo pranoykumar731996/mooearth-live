@@ -43,6 +43,25 @@ function createEmptyTransparentPngBuffer() {
   return EMPTY_TRANSPARENT_PNG_BYTES.slice().buffer;
 }
 
+function extractSectorFromUrl(url) {
+  if (!url) return null;
+  const qsSector = url.match(/[?&]sector=([^&#]+)/i);
+  if (qsSector && qsSector[1]) {
+    try {
+      return decodeURIComponent(qsSector[1]).toLowerCase();
+    } catch {
+      return qsSector[1].toLowerCase();
+    }
+  }
+  if (/eumet-iodc|msg_iodc|meteosat-9/i.test(url)) return 'eumet-iodc';
+  if (/europe-africa|eumet-prime|msg_fes|meteosat-0deg|eumet-tile/i.test(url)) return 'europe-africa';
+  if (/himawari/i.test(url)) return 'himawari';
+  if (/goes-west|goes18|goes-18/i.test(url)) return 'goes-west';
+  if (/goes-east|goes19|goes16|goes-19|goes-16/i.test(url) || url.startsWith('noaa-star://')) return 'goes-east';
+  if (/worldcloudmap|mumi|global-polar/i.test(url)) return 'global-polar';
+  return null;
+}
+
 function parseTileCoordsFromUrl(url) {
   if (!url) return null;
   const noaaMatch = url.match(/^noaa-star:\/\/tile\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
@@ -84,35 +103,37 @@ function isTileOutsideSectorSupport(url, coords = parseTileCoordsFromUrl(url)) {
   const westLng = tileToLng(tileX, tileZ);
   const eastLng = tileToLng(tileX + 1, tileZ);
 
-  if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
+  const sector = extractSectorFromUrl(url);
+  if (sector === 'global-polar') {
     return northLat <= 58.0 && southLat >= -58.0;
   }
 
-  const isHimawari = url.includes('Himawari') || url.includes('himawari');
-  const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
-  const isMeteosatPrime =
-    (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
-  const isGoesEast = url.includes('GOES-East') || url.includes('goes-east') || url.startsWith('noaa-star://');
-  const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
-
-  if (!isHimawari && !isIodc && !isMeteosatPrime && !isGoesEast && !isGoesWest) return false;
+  if (
+    sector !== 'himawari' &&
+    sector !== 'eumet-iodc' &&
+    sector !== 'europe-africa' &&
+    sector !== 'goes-east' &&
+    sector !== 'goes-west'
+  ) {
+    return false;
+  }
   if (southLat >= 65.0 || northLat <= -65.0) return true;
 
   let arcCenter = 0;
   let arcHalfSpan = 180;
-  if (isIodc) {
+  if (sector === 'eumet-iodc') {
     arcCenter = 60.0;
     arcHalfSpan = 35.0;
-  } else if (isHimawari) {
+  } else if (sector === 'himawari') {
     arcCenter = 135.0;
     arcHalfSpan = 60.0;
-  } else if (isGoesWest) {
+  } else if (sector === 'goes-west') {
     arcCenter = 215.0;
     arcHalfSpan = 50.0;
-  } else if (isGoesEast) {
+  } else if (sector === 'goes-east') {
     arcCenter = 285.0;
     arcHalfSpan = 60.0;
-  } else if (isMeteosatPrime) {
+  } else if (sector === 'europe-africa') {
     arcCenter = 2.5;
     arcHalfSpan = 42.5;
   }
@@ -123,12 +144,10 @@ function isTileOutsideSectorSupport(url, coords = parseTileCoordsFromUrl(url)) {
   return delta > tileHalfW + arcHalfSpan + 0.5;
 }
 
-function isBlackMarbleTileSolidDaylight(url, coords = parseTileCoordsFromUrl(url)) {
-  if (!url || !coords || !Number.isFinite(coords.tileZ) || coords.tileZ < 3) return false;
-  const tMatch = url.match(/[?&]t=(\d+)/);
-  const timeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
-  const dateObj = new Date(timeMs);
-  const dayDiff = (timeMs - 946728000000) / 86400000;
+function computeSolarPositionRad(timeMs) {
+  const safeMs = Number.isFinite(timeMs) ? timeMs : Date.now();
+  const dateObj = new Date(safeMs);
+  const dayDiff = (safeMs - 946728000000) / 86400000;
   const L = (280.46 + 0.9856474 * dayDiff) % 360;
   const g = ((357.528 + 0.9856003 * dayDiff) % 360) * (Math.PI / 180);
   const lambda = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * (Math.PI / 180);
@@ -137,13 +156,24 @@ function isBlackMarbleTileSolidDaylight(url, coords = parseTileCoordsFromUrl(url
   const utcHours =
     dateObj.getUTCHours() + dateObj.getUTCMinutes() / 60 + dateObj.getUTCSeconds() / 3600;
   const solLngRad = ((((12 - utcHours) * 15 + 540) % 360) - 180) * (Math.PI / 180);
+  return {
+    solLatRad,
+    solLngRad,
+    sinSol: Math.sin(solLatRad),
+    cosSol: Math.cos(solLatRad),
+  };
+}
+
+function isBlackMarbleTileSolidDaylight(url, coords = parseTileCoordsFromUrl(url)) {
+  if (!url || !coords || !Number.isFinite(coords.tileZ) || coords.tileZ < 3) return false;
+  const tMatch = url.match(/[?&]t=(\d+)/);
+  const timeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
+  const { sinSol, cosSol, solLngRad } = computeSolarPositionRad(timeMs);
   const rad = Math.PI / 180;
 
   const { tileZ, tileX, tileY } = coords;
   const lats = [tileToLat(tileY, tileZ), tileToLat(tileY + 1, tileZ)];
   const lngs = [tileToLng(tileX, tileZ), tileToLng(tileX + 1, tileZ)];
-  const sinSol = Math.sin(solLatRad);
-  const cosSol = Math.cos(solLatRad);
 
   let maxPsi = 0;
   for (const latDeg of lats) {
@@ -185,12 +215,15 @@ const STAR_1808_SYMMETRIC_BLOCK3 = {
 
 const NOAA_STAR_DEFAULTS = {
   SOURCE_URL: 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg',
+  CIRA_PROXY_PATH: '/api/weather/satellite/cira',
   TELEMETRY_CHANNEL: 'noaa-star-pilot-telemetry',
   EXPECTED_WIDTH: 1808,
   EXPECTED_HEIGHT: 1808,
   MAX_NOAA_RESPONSE_BYTES: 8 * 1024 * 1024,
+  MAX_CIRA_TILE_BYTES: 3 * 1024 * 1024,
   // Tracked worker-buffer budget ONLY (excludes MapLibre-retained tile bitmaps & browser/GPU overhead)
-  MAX_TRACKED_BUFFER_BYTES: 40 * 1024 * 1024,
+  // Sized at 68 MB so daytime GeoColor + nighttime IR live sector buffers stay warm simultaneously with LRU eviction.
+  MAX_TRACKED_BUFFER_BYTES: 68 * 1024 * 1024,
   MAX_CONCURRENT_TILE_JOBS: 8,
   EST_TILE_JOB_BYTES: 560 * 1024,
   STRIP_HEIGHT: 256,
@@ -202,16 +235,248 @@ const NOAA_STAR_DEFAULTS = {
   DEFAULT_OFFSET_Y: 0.333,
 };
 
-function geodeticToAbiScan(latDeg, lonDeg, lambda0Deg = NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG) {
+const HIMAWARI_Z1_STEP_RAD = 4 * (65536 / 20466275) * (Math.PI / 180);
+const METEOSAT_Z1_STEP_RAD = 4 * (65536 / 781648343.404);
+
+const NOAA_GLOBAL_SECTORS = {
+  'goes-east:vis': {
+    key: 'goes-east:vis',
+    sector: 'goes-east',
+    spectral: 'vis',
+    satLabel: 'GOES-19',
+    product: 'GeoColor',
+    sourceKind: 'star-jpeg',
+    sourceUrl: 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg',
+    width: 1808,
+    height: 1808,
+    lon0Deg: -75.0,
+    sweep: 'x',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+    firstPixelCenterXRad: STAR_1808_SYMMETRIC_BLOCK3.firstPixelCenterXRad,
+    firstPixelCenterYRad: STAR_1808_SYMMETRIC_BLOCK3.firstPixelCenterYRad,
+    stepRad: STAR_1808_SYMMETRIC_BLOCK3.stepRad,
+    applyCalOffset: true,
+    detectFooter: true,
+  },
+  'goes-east:ir': {
+    key: 'goes-east:ir',
+    sector: 'goes-east',
+    spectral: 'ir',
+    satLabel: 'GOES-19 IR',
+    product: 'Band13',
+    sourceKind: 'cira-z1',
+    ciraSat: 'goes-19',
+    ciraProduct: 'band_13',
+    width: 1356,
+    height: 1356,
+    lon0Deg: -75.0,
+    sweep: 'x',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+    cx: 677.25,
+    cy: 677.25,
+    stepRad: 4 * 56e-6,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'goes-west:vis': {
+    key: 'goes-west:vis',
+    sector: 'goes-west',
+    spectral: 'vis',
+    satLabel: 'GOES-18',
+    product: 'GeoColor',
+    sourceKind: 'star-jpeg',
+    sourceUrl: 'https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/1808x1808.jpg',
+    width: 1808,
+    height: 1808,
+    lon0Deg: -137.0,
+    sweep: 'x',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+    firstPixelCenterXRad: STAR_1808_SYMMETRIC_BLOCK3.firstPixelCenterXRad,
+    firstPixelCenterYRad: STAR_1808_SYMMETRIC_BLOCK3.firstPixelCenterYRad,
+    stepRad: STAR_1808_SYMMETRIC_BLOCK3.stepRad,
+    applyCalOffset: true,
+    detectFooter: true,
+  },
+  'goes-west:ir': {
+    key: 'goes-west:ir',
+    sector: 'goes-west',
+    spectral: 'ir',
+    satLabel: 'GOES-18 IR',
+    product: 'Band13',
+    sourceKind: 'cira-z1',
+    ciraSat: 'goes-18',
+    ciraProduct: 'band_13',
+    width: 1356,
+    height: 1356,
+    lon0Deg: -137.0,
+    sweep: 'x',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+    cx: 677.25,
+    cy: 677.25,
+    stepRad: 4 * 56e-6,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'himawari:vis': {
+    key: 'himawari:vis',
+    sector: 'himawari',
+    spectral: 'vis',
+    satLabel: 'Himawari-9',
+    product: 'GeoColor',
+    sourceKind: 'cira-z1',
+    ciraSat: 'himawari',
+    ciraProduct: 'geocolor',
+    width: 1376,
+    height: 1376,
+    lon0Deg: 140.7,
+    sweep: 'y',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: 42164000.0,
+    cx: 687.5,
+    cy: 686.5,
+    stepRad: HIMAWARI_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'himawari:ir': {
+    key: 'himawari:ir',
+    sector: 'himawari',
+    spectral: 'ir',
+    satLabel: 'Himawari-9 IR',
+    product: 'Band13',
+    sourceKind: 'cira-z1',
+    ciraSat: 'himawari',
+    ciraProduct: 'band_13',
+    width: 1376,
+    height: 1376,
+    lon0Deg: 140.7,
+    sweep: 'y',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: 42164000.0,
+    cx: 687.5,
+    cy: 686.5,
+    stepRad: HIMAWARI_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'eumet-iodc:vis': {
+    key: 'eumet-iodc:vis',
+    sector: 'eumet-iodc',
+    spectral: 'vis',
+    satLabel: 'Meteosat-9',
+    product: 'GeoColor',
+    sourceKind: 'cira-z1',
+    ciraSat: 'meteosat-9',
+    ciraProduct: 'geocolor',
+    width: 928,
+    height: 928,
+    lon0Deg: 45.5,
+    sweep: 'y',
+    rEq: 6378169.0,
+    rPol: 6356583.8,
+    hDist: 42164000.0,
+    cx: 463.5,
+    cy: 463.5,
+    stepRad: METEOSAT_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'eumet-iodc:ir': {
+    key: 'eumet-iodc:ir',
+    sector: 'eumet-iodc',
+    spectral: 'ir',
+    satLabel: 'Meteosat-9 IR',
+    product: 'Band09',
+    sourceKind: 'cira-z1',
+    ciraSat: 'meteosat-9',
+    ciraProduct: 'band_09',
+    width: 928,
+    height: 928,
+    lon0Deg: 45.5,
+    sweep: 'y',
+    rEq: 6378169.0,
+    rPol: 6356583.8,
+    hDist: 42164000.0,
+    cx: 463.5,
+    cy: 463.5,
+    stepRad: METEOSAT_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'europe-africa:vis': {
+    key: 'europe-africa:vis',
+    sector: 'europe-africa',
+    spectral: 'vis',
+    satLabel: 'Meteosat-0deg',
+    product: 'GeoColor',
+    sourceKind: 'cira-z1',
+    ciraSat: 'meteosat-0deg',
+    ciraProduct: 'geocolor',
+    width: 928,
+    height: 928,
+    lon0Deg: 0.0,
+    sweep: 'y',
+    rEq: 6378169.0,
+    rPol: 6356583.8,
+    hDist: 42164000.0,
+    cx: 463.5,
+    cy: 463.5,
+    stepRad: METEOSAT_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+  'europe-africa:ir': {
+    key: 'europe-africa:ir',
+    sector: 'europe-africa',
+    spectral: 'ir',
+    satLabel: 'Meteosat-0deg IR',
+    product: 'Band09',
+    sourceKind: 'cira-z1',
+    ciraSat: 'meteosat-0deg',
+    ciraProduct: 'band_09',
+    width: 928,
+    height: 928,
+    lon0Deg: 0.0,
+    sweep: 'y',
+    rEq: 6378169.0,
+    rPol: 6356583.8,
+    hDist: 42164000.0,
+    cx: 463.5,
+    cy: 463.5,
+    stepRad: METEOSAT_Z1_STEP_RAD,
+    applyCalOffset: false,
+    detectFooter: false,
+  },
+};
+
+function getGlobalSectorSpec(sector = 'goes-east', spectral = 'vis') {
+  const modeKey = spectral === 'vis' ? 'vis' : 'ir';
+  const sec = NOAA_GLOBAL_SECTORS[`${sector}:${modeKey}`];
+  return sec || NOAA_GLOBAL_SECTORS[`goes-east:${modeKey}`] || NOAA_GLOBAL_SECTORS['goes-east:vis'];
+}
+
+function geodeticToGeoScan(latDeg, lonDeg, {
+  lon0Deg = NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG,
+  sweep = 'x',
+  rEq = NOAA_STAR_CONSTANTS.R_EQ_M,
+  rPol = NOAA_STAR_CONSTANTS.R_POL_M,
+  hDist = NOAA_STAR_CONSTANTS.SAT_DIST_M,
+} = {}) {
   const rad = Math.PI / 180;
   const lat = latDeg * rad;
   const lon = lonDeg * rad;
-  const lon0 = lambda0Deg * rad;
-
-  const rEq = NOAA_STAR_CONSTANTS.R_EQ_M;
-  const rPol = NOAA_STAR_CONSTANTS.R_POL_M;
-  const D = NOAA_STAR_CONSTANTS.SAT_DIST_M;
-  const e2 = NOAA_STAR_CONSTANTS.E2;
+  const lon0 = lon0Deg * rad;
+  const e2 = 1 - (rPol * rPol) / (rEq * rEq);
 
   const phiC = Math.atan((1 - e2) * Math.tan(lat));
   const cosPhiC = Math.cos(phiC);
@@ -220,20 +485,42 @@ function geodeticToAbiScan(latDeg, lonDeg, lambda0Deg = NOAA_STAR_CONSTANTS.LONG
 
   const dLon = lon - lon0;
   const xp = rC * cosPhiC * Math.cos(dLon);
-  const sx = D - xp;
+  const sx = hDist - xp;
   const sy = -rC * cosPhiC * Math.sin(dLon);
   const sz = rC * sinPhiC;
 
-  if (D * xp < rEq * rEq) return null;
+  if (hDist * (hDist - sx) < sy * sy + ((rEq * rEq) / (rPol * rPol)) * sz * sz) return null;
 
   const sNorm = Math.sqrt(sx * sx + sy * sy + sz * sz);
+  if (sweep === 'x') {
+    return {
+      scanX: Math.asin(-sy / sNorm),
+      scanY: Math.atan2(sz, sx),
+    };
+  }
   return {
-    scanX: Math.asin(-sy / sNorm),
-    scanY: Math.atan2(sz, sx),
+    scanX: Math.atan2(-sy, sx),
+    scanY: Math.asin(sz / sNorm),
   };
 }
 
+function geodeticToAbiScan(latDeg, lonDeg, lambda0Deg = NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG) {
+  return geodeticToGeoScan(latDeg, lonDeg, {
+    lon0Deg: lambda0Deg,
+    sweep: 'x',
+    rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+    rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+    hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+  });
+}
+
 function scanToPixel(scanX, scanY, { gridSpec = STAR_1808_SYMMETRIC_BLOCK3, calibrationOffsetPx = { x: 0, y: 0 } } = {}) {
+  if (typeof gridSpec.cx === 'number' && typeof gridSpec.cy === 'number') {
+    return {
+      col: gridSpec.cx + scanX / gridSpec.stepRad + (calibrationOffsetPx.x || 0),
+      row: gridSpec.cy - scanY / gridSpec.stepRad + (calibrationOffsetPx.y || 0),
+    };
+  }
   return {
     col: (scanX - gridSpec.firstPixelCenterXRad) / gridSpec.stepRad + (calibrationOffsetPx.x || 0),
     row: (gridSpec.firstPixelCenterYRad - scanY) / gridSpec.stepRad + (calibrationOffsetPx.y || 0),
@@ -243,6 +530,12 @@ function scanToPixel(scanX, scanY, { gridSpec = STAR_1808_SYMMETRIC_BLOCK3, cali
 function pixelToScan(col, row, { gridSpec = STAR_1808_SYMMETRIC_BLOCK3, calibrationOffsetPx = { x: 0, y: 0 } } = {}) {
   const c = col - (calibrationOffsetPx.x || 0);
   const r = row - (calibrationOffsetPx.y || 0);
+  if (typeof gridSpec.cx === 'number' && typeof gridSpec.cy === 'number') {
+    return {
+      scanX: (c - gridSpec.cx) * gridSpec.stepRad,
+      scanY: (gridSpec.cy - r) * gridSpec.stepRad,
+    };
+  }
   return {
     scanX: gridSpec.firstPixelCenterXRad + c * gridSpec.stepRad,
     scanY: gridSpec.firstPixelCenterYRad - r * gridSpec.stepRad,
@@ -267,7 +560,8 @@ function detectFooterStartRowRgb(rgbData, width, height) {
 }
 
 function sampleNoaaRgbBilinear(rgb, width, height, col, row, footerStartRow) {
-  if (col < 0 || col >= width - 1 || row < 0 || row >= Math.min(height - 1, footerStartRow - 2)) return null;
+  const maxValidRow = footerStartRow < height ? Math.min(height - 1, footerStartRow - 2) : height - 1;
+  if (col < 0 || col >= width - 1 || row < 0 || row >= maxValidRow) return null;
   const centerIdx = (width - 1) / 2;
   const maxRad = width * (905 / 1808);
   const dxC = col - centerIdx;
@@ -304,11 +598,14 @@ function reprojectNoaaStarRgbLut32({
   tileX,
   tileY,
   calOffsetPx = { x: NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_X, y: NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_Y },
+  sectorSpec = null,
   tileSize = 256,
   gridN = 32,
   outRgba = new Uint8ClampedArray(tileSize * tileSize * 4),
 }) {
-  if (width !== NOAA_STAR_DEFAULTS.EXPECTED_WIDTH || height !== NOAA_STAR_DEFAULTS.EXPECTED_HEIGHT) {
+  const expectedW = sectorSpec ? sectorSpec.width : NOAA_STAR_DEFAULTS.EXPECTED_WIDTH;
+  const expectedH = sectorSpec ? sectorSpec.height : NOAA_STAR_DEFAULTS.EXPECTED_HEIGHT;
+  if (width !== expectedW || height !== expectedH) {
     throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
   }
   const verts = gridN + 1;
@@ -316,15 +613,35 @@ function reprojectNoaaStarRgbLut32({
   const rowLut = new Float64Array(verts * verts);
   const validLut = new Uint8Array(verts * verts);
   const cellPx = tileSize / gridN;
-  const gridSpec = STAR_1808_SYMMETRIC_BLOCK3;
+  const gridSpec = sectorSpec || STAR_1808_SYMMETRIC_BLOCK3;
+  const effOffset = sectorSpec
+    ? sectorSpec.applyCalOffset
+      ? calOffsetPx
+      : { x: 0, y: 0 }
+    : calOffsetPx;
+  const scanParams = sectorSpec
+    ? {
+        lon0Deg: sectorSpec.lon0Deg,
+        sweep: sectorSpec.sweep,
+        rEq: sectorSpec.rEq,
+        rPol: sectorSpec.rPol,
+        hDist: sectorSpec.hDist,
+      }
+    : {
+        lon0Deg: NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG,
+        sweep: 'x',
+        rEq: NOAA_STAR_CONSTANTS.R_EQ_M,
+        rPol: NOAA_STAR_CONSTANTS.R_POL_M,
+        hDist: NOAA_STAR_CONSTANTS.SAT_DIST_M,
+      };
 
   for (let gy = 0; gy < verts; gy++) {
     for (let gx = 0; gx < verts; gx++) {
       const idx = gy * verts + gx;
       const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, gx * cellPx, gy * cellPx, tileSize);
-      const scan = geodeticToAbiScan(latDeg, lonDeg, NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG);
+      const scan = geodeticToGeoScan(latDeg, lonDeg, scanParams);
       if (!scan) continue;
-      const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: calOffsetPx });
+      const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: effOffset });
       colLut[idx] = pt.col;
       rowLut[idx] = pt.row;
       validLut[idx] = 1;
@@ -353,9 +670,9 @@ function reprojectNoaaStarRgbLut32({
         row = rowLut[i00] * w00 + rowLut[i10] * w10 + rowLut[i01] * w01 + rowLut[i11] * w11;
       } else {
         const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, px, py, tileSize);
-        const scan = geodeticToAbiScan(latDeg, lonDeg, NOAA_STAR_CONSTANTS.LONGITUDE_OF_PROJECTION_ORIGIN_DEG);
+        const scan = geodeticToGeoScan(latDeg, lonDeg, scanParams);
         if (!scan) continue;
-        const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: calOffsetPx });
+        const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec, calibrationOffsetPx: effOffset });
         col = pt.col;
         row = pt.row;
       }
@@ -473,26 +790,43 @@ function parseNoaaStarTileRequest(rawUrl) {
   const tileX = parseInt(m[2], 10);
   const tileY = parseInt(m[3], 10);
   const qs = new URLSearchParams(m[5] || '');
+  const rawSector = (qs.get('sector') || 'goes-east').toLowerCase();
+  const sector = NOAA_GLOBAL_SECTORS[`${rawSector}:vis`] ? rawSector : 'goes-east';
   const layer = qs.get('fallbackLayer') || 'GOES-East_ABI_GeoColor';
   const time = qs.get('fallbackTime') || new Date(Date.now() - 10 * 60000).toISOString().slice(0, 10);
   const tms = qs.get('fallbackTms') || 'GoogleMapsCompatible_Level7';
   const ext = qs.get('fallbackExt') || 'png';
   const spectral = qs.get('spectral') || 'vis';
+  const fallbackProto = (qs.get('fallbackProto') || 'gibs').toLowerCase();
   const parseOff = (key, def) => {
     const raw = qs.get(key);
     if (raw === null || raw === '') return def;
     const n = Number(raw);
     return Number.isFinite(n) ? Math.max(-2, Math.min(2, n)) : def;
   };
+  const originBase =
+    typeof self !== 'undefined' && self.location && /^https?:/i.test(self.location.origin)
+      ? self.location.origin
+      : '';
+  const httpsGibsUrl = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time}/${tms}/${tileZ}/${tileY}/${tileX}.${ext}?spectral=${encodeURIComponent(spectral)}&sector=${encodeURIComponent(sector)}`;
+  const fallbackUrl =
+    fallbackProto === 'eumet'
+      ? `${originBase}/api/weather/satellite/eumet-tile?z=${tileZ}&x=${tileX}&y=${tileY}&layer=${encodeURIComponent(layer)}&spectral=${encodeURIComponent(spectral)}&sector=${encodeURIComponent(sector)}`
+      : httpsGibsUrl;
   return {
     tileZ,
     tileX,
     tileY,
+    sector,
+    spectral,
+    fallbackProto,
+    nightIr: qs.get('nightIr') === '1',
     calOffsetPx: {
       x: parseOff('calX', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_X),
       y: parseOff('calY', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_Y),
     },
-    httpsGibsUrl: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time}/${tms}/${tileZ}/${tileY}/${tileX}.${ext}?spectral=${encodeURIComponent(spectral)}`,
+    httpsGibsUrl,
+    fallbackUrl,
   };
 }
 
@@ -522,82 +856,162 @@ function createNoaaStarProtocolHandler({
   configOverrides = {},
 } = {}) {
   const cfg = { ...NOAA_STAR_DEFAULTS, ...configOverrides };
-  const state = {
-    rgb: null,
-    width: 0,
-    height: 0,
-    footerStartRow: 0,
-    fetchedAtMs: 0,
-    lastModifiedUtc: null,
-    lastModifiedMs: null,
-    inFlightPromise: null,
-    cooldownUntilMs: 0,
-    activeNoaaReaders: 0,
-    drainResolvers: [],
+  const sectorCache = new Map();
+  const globalState = {
     activeTileJobs: 0,
     jobWaiters: [],
-    activeStreamBytes: 0,
+    streamBytesByKey: new Map(),
     activeDecodeBytes: 0,
     activeStripBytes: 0,
     recentTotalMs: [],
     lastTelemetryAtMs: 0,
     telemetryFlushTimer: null,
-    gibsHintTime: null,
-    gibsHintLayer: null,
-    gibsHintAtMs: 0,
-    fallbackActive: false,
-    fallbackPendingSent: false,
+    lastPrimaryKey: 'goes-east:vis',
+  };
+
+  const getSectorEntry = (spec) => {
+    let entry = sectorCache.get(spec.key);
+    if (!entry) {
+      entry = {
+        key: spec.key,
+        spec,
+        rgb: null,
+        width: 0,
+        height: 0,
+        footerStartRow: 0,
+        fetchedAtMs: 0,
+        lastUsedAtMs: 0,
+        lastModifiedUtc: null,
+        lastModifiedMs: null,
+        inFlightPromise: null,
+        cooldownUntilMs: 0,
+        activeReaders: 0,
+        drainResolvers: [],
+        gibsHintTime: null,
+        gibsHintLayer: null,
+        gibsHintAtMs: 0,
+        fallbackActive: false,
+        fallbackPendingSent: false,
+      };
+      sectorCache.set(spec.key, entry);
+    }
+    return entry;
+  };
+
+  const getTotalRgbBytes = () => {
+    let sum = 0;
+    for (const entry of sectorCache.values()) {
+      if (entry.rgb) sum += entry.rgb.byteLength;
+    }
+    return sum;
+  };
+
+  const getTotalActiveReaders = () => {
+    let sum = 0;
+    for (const entry of sectorCache.values()) {
+      sum += entry.activeReaders;
+    }
+    return sum;
+  };
+
+  const getActiveStreamBytes = () => {
+    let sum = 0;
+    for (const n of globalState.streamBytesByKey.values()) sum += n;
+    return sum;
   };
 
   const getTrackedBytes = () =>
-    (state.rgb ? state.rgb.byteLength : 0) +
-    state.activeStreamBytes +
-    state.activeDecodeBytes +
-    state.activeStripBytes +
-    state.activeTileJobs * cfg.EST_TILE_JOB_BYTES;
+    getTotalRgbBytes() +
+    getActiveStreamBytes() +
+    globalState.activeDecodeBytes +
+    globalState.activeStripBytes +
+    globalState.activeTileJobs * cfg.EST_TILE_JOB_BYTES;
 
-  const waitForReadersDrain = () => {
-    if (state.activeNoaaReaders === 0) return Promise.resolve();
-    return new Promise((resolve) => state.drainResolvers.push(resolve));
+  const waitForSectorReadersDrain = (entry) => {
+    if (entry.activeReaders === 0) return Promise.resolve();
+    return new Promise((resolve) => entry.drainResolvers.push(resolve));
   };
 
-  const releaseNoaaReader = () => {
-    if (state.activeNoaaReaders > 0) state.activeNoaaReaders--;
-    if (state.activeNoaaReaders === 0 && state.drainResolvers.length > 0) {
-      const list = state.drainResolvers.splice(0, state.drainResolvers.length);
+  const releaseSectorReader = (entry) => {
+    if (entry.activeReaders > 0) entry.activeReaders--;
+    if (entry.activeReaders === 0 && entry.drainResolvers.length > 0) {
+      const list = entry.drainResolvers.splice(0, entry.drainResolvers.length);
       for (const r of list) r();
     }
   };
 
+  const evictIdleSectorsToFit = (neededBytes, excludeKey) => {
+    if (getTrackedBytes() + neededBytes <= cfg.MAX_TRACKED_BUFFER_BYTES) return;
+    const candidates = [];
+    for (const entry of sectorCache.values()) {
+      if (entry.key !== excludeKey && entry.rgb && entry.activeReaders === 0 && !entry.inFlightPromise) {
+        candidates.push(entry);
+      }
+    }
+    candidates.sort((a, b) => a.lastUsedAtMs - b.lastUsedAtMs);
+    for (const victim of candidates) {
+      if (getTrackedBytes() + neededBytes <= cfg.MAX_TRACKED_BUFFER_BYTES) break;
+      victim.rgb = null;
+      victim.width = 0;
+      victim.height = 0;
+      victim.footerStartRow = 0;
+      victim.fetchedAtMs = 0;
+    }
+  };
+
   const acquireTileSlot = () => {
-    if (state.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS) {
-      state.activeTileJobs++;
+    if (globalState.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS) {
+      globalState.activeTileJobs++;
       return Promise.resolve();
     }
-    return new Promise((resolve) => state.jobWaiters.push(resolve)).then(() => {
-      state.activeTileJobs++;
+    return new Promise((resolve) => globalState.jobWaiters.push(resolve)).then(() => {
+      globalState.activeTileJobs++;
     });
   };
 
   const releaseTileSlot = () => {
-    if (state.activeTileJobs > 0) state.activeTileJobs--;
-    if (state.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS && state.jobWaiters.length > 0) {
-      const next = state.jobWaiters.shift();
+    if (globalState.activeTileJobs > 0) globalState.activeTileJobs--;
+    if (globalState.activeTileJobs < cfg.MAX_CONCURRENT_TILE_JOBS && globalState.jobWaiters.length > 0) {
+      const next = globalState.jobWaiters.shift();
       next();
     }
   };
 
-  const buildTelemetryPayload = (mode, reason, calOffsetPx, tNow) => {
-    const sorted = [...state.recentTotalMs].sort((a, b) => a - b);
+  const buildActiveSectorsSummary = (tNow) => {
+    const active = [];
+    for (const e of sectorCache.values()) {
+      if (e.rgb && e.fetchedAtMs > 0) {
+        const ageMin = e.lastModifiedMs !== null ? Math.max(0, Math.round((tNow - e.lastModifiedMs) / 60000)) : null;
+        active.push({
+          sector: e.spec.sector,
+          satLabel: e.spec.satLabel,
+          product: e.spec.product,
+          cdnAgeMinutes: ageMin,
+          fallbackActive: Boolean(e.fallbackActive),
+          lastUsedAtMs: e.lastUsedAtMs,
+        });
+      }
+    }
+    active.sort((a, b) => b.lastUsedAtMs - a.lastUsedAtMs);
+    return active.map(({ lastUsedAtMs: _ignore, ...rest }) => rest);
+  };
+
+  const buildTelemetryPayload = (mode, reason, calOffsetPx, tNow, entry) => {
+    const sorted = [...globalState.recentTotalMs].sort((a, b) => a - b);
     const p50 = sorted.length > 0 ? Number(sorted[Math.floor(sorted.length * 0.5)].toFixed(2)) : null;
     const p95 = sorted.length > 0 ? Number(sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)].toFixed(2)) : null;
-    const cdnAgeMin = state.lastModifiedMs !== null ? Math.max(0, Math.round((tNow - state.lastModifiedMs) / 60000)) : null;
+    const lmMs = entry && entry.lastModifiedMs !== null ? entry.lastModifiedMs : null;
+    const cdnAgeMin = lmMs !== null ? Math.max(0, Math.round((tNow - lmMs) / 60000)) : null;
     return {
       mode,
       reason: reason || null,
-      lastModifiedUtc: state.lastModifiedUtc,
-      lastModifiedMs: state.lastModifiedMs,
+      sector: entry ? entry.spec.sector : 'goes-east',
+      satLabel: entry ? entry.spec.satLabel : 'GOES-19',
+      product: entry ? entry.spec.product : 'GeoColor',
+      lastModifiedUtc: entry ? entry.lastModifiedUtc : null,
+      lastModifiedMs: lmMs,
       cdnAgeMinutes: cdnAgeMin,
+      activeSectors: buildActiveSectorsSummary(tNow),
       calOffsetX: calOffsetPx.x,
       calOffsetY: calOffsetPx.y,
       p50Ms: p50,
@@ -608,49 +1022,50 @@ function createNoaaStarProtocolHandler({
     };
   };
 
-  const emitTelemetry = (mode, reason, calOffsetPx, force = false) => {
+  const emitTelemetry = (mode, reason, calOffsetPx, force = false, entry = null) => {
     if (!telemetryPostFn) return;
+    const targetEntry = entry || sectorCache.get(globalState.lastPrimaryKey) || null;
     const tNow = nowFn();
-    if (state.telemetryFlushTimer && typeof clearTimeout !== 'undefined') {
-      clearTimeout(state.telemetryFlushTimer);
-      state.telemetryFlushTimer = null;
+    if (globalState.telemetryFlushTimer && typeof clearTimeout !== 'undefined') {
+      clearTimeout(globalState.telemetryFlushTimer);
+      globalState.telemetryFlushTimer = null;
     }
-    if (!force && state.lastTelemetryAtMs > 0 && tNow - state.lastTelemetryAtMs < 1000) {
+    if (!force && globalState.lastTelemetryAtMs > 0 && tNow - globalState.lastTelemetryAtMs < 1000) {
       if (typeof setTimeout !== 'undefined') {
-        state.telemetryFlushTimer = setTimeout(() => {
-          state.telemetryFlushTimer = null;
+        globalState.telemetryFlushTimer = setTimeout(() => {
+          globalState.telemetryFlushTimer = null;
           const flushNow = nowFn();
-          state.lastTelemetryAtMs = flushNow;
-          telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, flushNow));
+          globalState.lastTelemetryAtMs = flushNow;
+          telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, flushNow, targetEntry));
         }, 300);
-        if (typeof state.telemetryFlushTimer.unref === 'function') state.telemetryFlushTimer.unref();
+        if (typeof globalState.telemetryFlushTimer.unref === 'function') globalState.telemetryFlushTimer.unref();
       }
       return;
     }
-    state.lastTelemetryAtMs = tNow;
-    telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, tNow));
+    globalState.lastTelemetryAtMs = tNow;
+    telemetryPostFn(buildTelemetryPayload(mode, reason, calOffsetPx, tNow, targetEntry));
   };
 
-  const tripCooldown = (reason, calOffsetPx) => {
-    state.rgb = null;
-    state.width = 0;
-    state.height = 0;
-    state.footerStartRow = 0;
-    state.fetchedAtMs = 0;
-    state.cooldownUntilMs = nowFn() + cfg.COOLDOWN_MS;
-    if (!state.fallbackActive) {
-      state.fallbackPendingSent = true;
-      emitTelemetry('gibs-fallback-pending', reason, calOffsetPx, true);
+  const tripCooldown = (entry, reason, calOffsetPx) => {
+    entry.rgb = null;
+    entry.width = 0;
+    entry.height = 0;
+    entry.footerStartRow = 0;
+    entry.fetchedAtMs = 0;
+    entry.cooldownUntilMs = nowFn() + cfg.COOLDOWN_MS;
+    if (!entry.fallbackActive) {
+      entry.fallbackPendingSent = true;
+      emitTelemetry('gibs-fallback-pending', reason, calOffsetPx, true, entry);
     }
   };
 
-  async function extractRgbViaStripCanvas(bitmap) {
+  async function extractRgbViaStripCanvas(bitmap, expectedW, expectedH) {
     if (extractRgbStripFn) return extractRgbStripFn(bitmap, cfg);
-    const w = bitmap.width;
-    const h = bitmap.height;
+    const w = expectedW || bitmap.width;
+    const h = expectedH || bitmap.height;
     const stripH = Math.min(cfg.STRIP_HEIGHT, h);
     const stripCanvas = new OffscreenCanvasCtor(w, stripH);
-    state.activeStripBytes = w * stripH * 4 * 2;
+    globalState.activeStripBytes = w * stripH * 4 * 2;
     const rgb = new Uint8Array(w * h * 3);
     try {
       const ctx = stripCanvas.getContext('2d');
@@ -674,95 +1089,355 @@ function createNoaaStarProtocolHandler({
     } finally {
       stripCanvas.width = 0;
       stripCanvas.height = 0;
-      state.activeStripBytes = 0;
+      globalState.activeStripBytes = 0;
     }
   }
 
-  async function ensureFreshSource(calOffsetPx) {
+  async function extractCiraQuadrantsToRgb(quadBuffers, spec) {
+    const fullW = spec.width;
+    const fullH = spec.height;
+    const halfW = fullW >> 1;
+    const halfH = fullH >> 1;
+    const rgb = new Uint8Array(fullW * fullH * 3);
+    const stripH = Math.min(cfg.STRIP_HEIGHT, halfH);
+    const stripCanvas = OffscreenCanvasCtor && !extractRgbStripFn ? new OffscreenCanvasCtor(halfW, stripH) : null;
+    const stripCtx = stripCanvas ? stripCanvas.getContext('2d') : null;
+    if (!extractRgbStripFn && !stripCtx) {
+      throw new Error('OFFSCREEN_CONTEXT_UNAVAILABLE');
+    }
+    globalState.activeStripBytes = extractRgbStripFn ? 0 : halfW * stripH * 4 * 2;
+
+    try {
+      for (let q = 0; q < 4; q++) {
+        const qRowOffset = (q >> 1) * halfH;
+        const qColOffset = (q & 1) * halfW;
+        let qBytes = quadBuffers[q];
+        quadBuffers[q] = null;
+        let decodeTarget = BlobCtor ? new BlobCtor([qBytes], { type: 'image/png' }) : qBytes;
+        qBytes = null;
+        let bmp = null;
+        try {
+          globalState.activeDecodeBytes = halfW * halfH * 4;
+          bmp = await createImageBitmapFn(decodeTarget);
+          decodeTarget = null;
+          if (bmp.width !== halfW || bmp.height !== halfH) {
+            throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
+          }
+          if (extractRgbStripFn) {
+            const subRgb = await extractRgbStripFn(bmp, cfg);
+            for (let y = 0; y < halfH; y++) {
+              const srcOff = y * halfW * 3;
+              const dstOff = ((qRowOffset + y) * fullW + qColOffset) * 3;
+              rgb.set(subRgb.subarray(srcOff, srcOff + halfW * 3), dstOff);
+            }
+          } else {
+            for (let y = 0; y < halfH; y += stripH) {
+              const curH = Math.min(stripH, halfH - y);
+              stripCtx.clearRect(0, 0, halfW, curH);
+              stripCtx.drawImage(bmp, 0, y, halfW, curH, 0, 0, halfW, curH);
+              const stripData = stripCtx.getImageData(0, 0, halfW, curH).data;
+              for (let r = 0; r < curH; r++) {
+                const srcRow = r * halfW;
+                const dstBase = ((qRowOffset + y + r) * fullW + qColOffset) * 3;
+                for (let c = 0; c < halfW; c++) {
+                  const s = (srcRow + c) << 2;
+                  const d = dstBase + c * 3;
+                  rgb[d] = stripData[s];
+                  rgb[d + 1] = stripData[s + 1];
+                  rgb[d + 2] = stripData[s + 2];
+                }
+              }
+            }
+          }
+        } finally {
+          if (bmp && typeof bmp.close === 'function') {
+            try { bmp.close(); } catch {}
+          }
+          globalState.activeDecodeBytes = 0;
+        }
+      }
+      return rgb;
+    } finally {
+      if (stripCanvas) {
+        stripCanvas.width = 0;
+        stripCanvas.height = 0;
+      }
+      globalState.activeStripBytes = 0;
+    }
+  }
+
+  let activeCiraFetches = 0;
+  const ciraWaiters = [];
+  const MAX_CONCURRENT_CIRA_FETCHES = 3;
+
+  const acquireCiraSlot = () => {
+    if (activeCiraFetches < MAX_CONCURRENT_CIRA_FETCHES) {
+      activeCiraFetches++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => ciraWaiters.push(resolve)).then(() => {
+      activeCiraFetches++;
+    });
+  };
+
+  const releaseCiraSlot = () => {
+    if (activeCiraFetches > 0) activeCiraFetches--;
+    if (activeCiraFetches < MAX_CONCURRENT_CIRA_FETCHES && ciraWaiters.length > 0) {
+      const next = ciraWaiters.shift();
+      next();
+    }
+  };
+
+  let activeDecodes = 0;
+  const decodeWaiters = [];
+  const acquireDecodeSlot = () => {
+    if (activeDecodes < 1) {
+      activeDecodes++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => decodeWaiters.push(resolve)).then(() => {
+      activeDecodes++;
+    });
+  };
+
+  const releaseDecodeSlot = () => {
+    if (activeDecodes > 0) activeDecodes--;
+    if (activeDecodes < 1 && decodeWaiters.length > 0) {
+      const next = decodeWaiters.shift();
+      next();
+    }
+  };
+
+  async function ensureFreshSource(calOffsetPx, specOrKey = 'goes-east:vis') {
+    const spec =
+      typeof specOrKey === 'string'
+        ? NOAA_GLOBAL_SECTORS[specOrKey] || NOAA_GLOBAL_SECTORS['goes-east:vis']
+        : specOrKey;
+    const entry = getSectorEntry(spec);
     const tNow = nowFn();
-    if (tNow < state.cooldownUntilMs) {
+    if (tNow < entry.cooldownUntilMs) {
       throw new Error('NOAA_COOLDOWN_ACTIVE');
     }
-    if (state.rgb && tNow - state.fetchedAtMs < cfg.SOURCE_CACHE_TTL_MS) {
-      return state;
+    if (entry.rgb && tNow - entry.fetchedAtMs < cfg.SOURCE_CACHE_TTL_MS) {
+      entry.lastUsedAtMs = tNow;
+      return entry;
     }
-    if (state.inFlightPromise) {
-      return state.inFlightPromise;
+    if (entry.inFlightPromise) {
+      return entry.inFlightPromise;
     }
 
-    state.fallbackActive = false;
-    state.fallbackPendingSent = false;
+    entry.fallbackActive = false;
+    entry.fallbackPendingSent = false;
 
-    state.inFlightPromise = (async () => {
+    entry.inFlightPromise = (async () => {
       const noaaController = new AbortController();
-      const timeoutId = setTimeout(() => noaaController.abort('noaa-timeout'), cfg.NOAA_FETCH_TIMEOUT_MS);
+      let timeoutId =
+        spec.sourceKind === 'cira-z1'
+          ? null
+          : setTimeout(() => noaaController.abort('noaa-timeout'), cfg.NOAA_FETCH_TIMEOUT_MS);
       let bitmap = null;
       let bytes = null;
+      let quadBuffers = null;
       try {
-        const res = await fetchFn(sourceUrl, { signal: noaaController.signal });
+        if (spec.sourceKind === 'cira-z1') {
+          const originBase =
+            typeof self !== 'undefined' && self.location && /^https?:/i.test(self.location.origin)
+              ? self.location.origin
+              : '';
+          const ciraBase = cfg.CIRA_BASE_URL || `${originBase}${cfg.CIRA_PROXY_PATH}`;
+          let parsedLmMs = NaN;
+          await acquireCiraSlot();
+          timeoutId = setTimeout(
+            () => noaaController.abort('noaa-timeout'),
+            Math.max(cfg.NOAA_FETCH_TIMEOUT_MS, 20000)
+          );
+          try {
+            const metaUrl = `${ciraBase}?action=meta&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}`;
+            const metaRes = await fetchFn(metaUrl, { signal: noaaController.signal });
+            if (!metaRes.ok) throw new Error('CIRA_META_HTTP_' + metaRes.status);
+            const metaJson = await metaRes.json();
+            const candidateTsList = [];
+            if (Array.isArray(metaJson?.timestamps)) {
+              for (const t of metaJson.timestamps) {
+                if (typeof t === 'string' && /^\d{14}$/.test(t) && !candidateTsList.includes(t)) {
+                  candidateTsList.push(t);
+                }
+              }
+            }
+            const latestTs = metaJson && typeof metaJson.latestTs === 'string' ? metaJson.latestTs : '';
+            if (/^\d{14}$/.test(latestTs) && !candidateTsList.includes(latestTs)) {
+              candidateTsList.unshift(latestTs);
+            }
+            if (candidateTsList.length === 0) throw new Error('CIRA_META_INVALID_TS');
+
+            const isLoopbackCira = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(ciraBase);
+            const fetchQuadsForTs = async (tsVal) => {
+              const qStream = [0, 0, 0, 0];
+              const rcList = ['000_000', '000_001', '001_000', '001_001'];
+              const fetchOneQuad = async (rc, qIdx) => {
+                const tUrl = `${ciraBase}?action=tile&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}&ts=${tsVal}&rc=${rc}`;
+                const tRes = await fetchFn(tUrl, { signal: noaaController.signal });
+                if (!tRes.ok) throw new Error('CIRA_TILE_HTTP_' + tRes.status);
+                return await readResponseBytesBounded(tRes, cfg.MAX_CIRA_TILE_BYTES, (n) => {
+                  qStream[qIdx] = n;
+                  globalState.streamBytesByKey.set(spec.key, qStream[0] + qStream[1] + qStream[2] + qStream[3]);
+                });
+              };
+              if (!isLoopbackCira) {
+                return await Promise.all(rcList.map((rc, qIdx) => fetchOneQuad(rc, qIdx)));
+              }
+              const topRow = await Promise.all([fetchOneQuad(rcList[0], 0), fetchOneQuad(rcList[1], 1)]);
+              const botRow = await Promise.all([fetchOneQuad(rcList[2], 2), fetchOneQuad(rcList[3], 3)]);
+              return [topRow[0], topRow[1], botRow[0], botRow[1]];
+            };
+
+            let chosenTs = candidateTsList[0];
+            try {
+              quadBuffers = await fetchQuadsForTs(chosenTs);
+            } catch (firstTsErr) {
+              if (candidateTsList.length > 1 && !(noaaController.signal && noaaController.signal.aborted)) {
+                chosenTs = candidateTsList[1];
+                quadBuffers = await fetchQuadsForTs(chosenTs);
+              } else {
+                throw firstTsErr;
+              }
+            }
+            const chosenIso = `${chosenTs.slice(0, 4)}-${chosenTs.slice(4, 6)}-${chosenTs.slice(6, 8)}T${chosenTs.slice(8, 10)}:${chosenTs.slice(10, 12)}:${chosenTs.slice(12, 14)}Z`;
+            const obsIso = chosenTs === latestTs ? (metaJson.observedIso || chosenIso) : chosenIso;
+            parsedLmMs = obsIso ? Date.parse(obsIso) : NaN;
+          } finally {
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            releaseCiraSlot();
+          }
+          globalState.streamBytesByKey.set(
+            spec.key,
+            quadBuffers.reduce((acc, b) => acc + b.byteLength, 0)
+          );
+
+          await acquireDecodeSlot();
+          try {
+            const halfW = spec.width >> 1;
+            const halfH = spec.height >> 1;
+            const expectedDecodeBytes = halfW * halfH * 4;
+            const expectedStripBytes = halfW * Math.min(cfg.STRIP_HEIGHT, halfH) * 4 * 2;
+            const expectedRgbBytes = spec.width * spec.height * 3;
+            await waitForSectorReadersDrain(entry);
+            entry.rgb = null;
+            entry.width = 0;
+            entry.height = 0;
+
+            const neededPeak = expectedDecodeBytes + expectedStripBytes + expectedRgbBytes;
+            evictIdleSectorsToFit(neededPeak, entry.key);
+
+            const projectedPeak = getTrackedBytes() + neededPeak;
+            const heapUsed = getHeapUsedBytesFn();
+            if (projectedPeak > cfg.MAX_TRACKED_BUFFER_BYTES || (heapUsed !== null && heapUsed > cfg.MAX_TRACKED_BUFFER_BYTES * 4)) {
+              throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+            }
+
+            globalState.streamBytesByKey.delete(spec.key);
+            const rgb = await extractCiraQuadrantsToRgb(quadBuffers, spec);
+            quadBuffers = null;
+
+            if (getTrackedBytes() + rgb.byteLength > cfg.MAX_TRACKED_BUFFER_BYTES) {
+              throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+            }
+
+            const readyAtMs = nowFn();
+            entry.rgb = rgb;
+            entry.width = spec.width;
+            entry.height = spec.height;
+            entry.footerStartRow = spec.height;
+            entry.fetchedAtMs = readyAtMs;
+            entry.lastUsedAtMs = readyAtMs;
+            entry.lastModifiedUtc = Number.isFinite(parsedLmMs) ? new Date(parsedLmMs).toISOString() : null;
+            entry.lastModifiedMs = Number.isFinite(parsedLmMs) ? parsedLmMs : null;
+            return entry;
+          } finally {
+            releaseDecodeSlot();
+          }
+        }
+
+        const effectiveUrl =
+          spec.key === 'goes-east:vis' && sourceUrl !== NOAA_STAR_DEFAULTS.SOURCE_URL
+            ? sourceUrl
+            : spec.sourceUrl;
+        const res = await fetchFn(effectiveUrl, { signal: noaaController.signal });
         if (!res.ok) throw new Error('NOAA_HTTP_' + res.status);
 
         const lmHeader = res.headers && typeof res.headers.get === 'function' ? res.headers.get('last-modified') : null;
         const parsedLmMs = lmHeader ? Date.parse(lmHeader) : NaN;
 
         bytes = await readResponseBytesBounded(res, cfg.MAX_NOAA_RESPONSE_BYTES, (n) => {
-          state.activeStreamBytes = n;
+          globalState.streamBytesByKey.set(spec.key, n);
         });
-        // Network fetch & stream finished; disarm network timeout before CPU decode/strip extraction
         clearTimeout(timeoutId);
-        state.activeStreamBytes = bytes.byteLength;
+        globalState.streamBytesByKey.set(spec.key, bytes.byteLength);
 
-        const expectedDecodeBytes = cfg.EXPECTED_WIDTH * cfg.EXPECTED_HEIGHT * 4;
-        const expectedStripBytes = cfg.EXPECTED_WIDTH * cfg.STRIP_HEIGHT * 4 * 2;
-        const expectedRgbBytes = cfg.EXPECTED_WIDTH * cfg.EXPECTED_HEIGHT * 3;
-        await waitForReadersDrain();
-        // Evict previous generation synchronously only after active readers drain so no dual-generation RGB exists
-        state.rgb = null;
-        state.width = 0;
-        state.height = 0;
+        await acquireDecodeSlot();
+        try {
+          const expectedDecodeBytes = spec.width * spec.height * 4;
+          const expectedStripBytes = spec.width * cfg.STRIP_HEIGHT * 4 * 2;
+          const expectedRgbBytes = spec.width * spec.height * 3;
+          await waitForSectorReadersDrain(entry);
+          entry.rgb = null;
+          entry.width = 0;
+          entry.height = 0;
 
-        const projectedPeak = getTrackedBytes() + expectedDecodeBytes + expectedStripBytes + expectedRgbBytes;
-        const heapUsed = getHeapUsedBytesFn();
-        if (projectedPeak > cfg.MAX_TRACKED_BUFFER_BYTES || (heapUsed !== null && heapUsed > cfg.MAX_TRACKED_BUFFER_BYTES * 4)) {
-          throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+          const neededPeak = expectedDecodeBytes + expectedStripBytes + expectedRgbBytes;
+          evictIdleSectorsToFit(neededPeak, entry.key);
+
+          const projectedPeak = getTrackedBytes() + neededPeak;
+          const heapUsed = getHeapUsedBytesFn();
+          if (projectedPeak > cfg.MAX_TRACKED_BUFFER_BYTES || (heapUsed !== null && heapUsed > cfg.MAX_TRACKED_BUFFER_BYTES * 4)) {
+            throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+          }
+
+          let decodeTarget = BlobCtor ? new BlobCtor([bytes], { type: 'image/jpeg' }) : bytes;
+          bytes = null;
+          globalState.streamBytesByKey.delete(spec.key);
+
+          globalState.activeDecodeBytes = expectedDecodeBytes;
+          bitmap = await createImageBitmapFn(decodeTarget);
+          decodeTarget = null;
+          if (bitmap.width !== spec.width || bitmap.height !== spec.height) {
+            throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
+          }
+
+          const rgb = await extractRgbViaStripCanvas(bitmap, spec.width, spec.height);
+          bitmap.close();
+          bitmap = null;
+          globalState.activeDecodeBytes = 0;
+
+          if (getTrackedBytes() + rgb.byteLength > cfg.MAX_TRACKED_BUFFER_BYTES) {
+            throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
+          }
+
+          const readyAtMs = nowFn();
+          entry.rgb = rgb;
+          entry.width = spec.width;
+          entry.height = spec.height;
+          entry.footerStartRow = spec.detectFooter ? detectFooterStartRowRgb(rgb, spec.width, spec.height) : spec.height;
+          entry.fetchedAtMs = readyAtMs;
+          entry.lastUsedAtMs = readyAtMs;
+          entry.lastModifiedUtc = Number.isFinite(parsedLmMs) ? new Date(parsedLmMs).toISOString() : null;
+          entry.lastModifiedMs = Number.isFinite(parsedLmMs) ? parsedLmMs : null;
+          return entry;
+        } finally {
+          releaseDecodeSlot();
         }
-
-        let decodeTarget = BlobCtor ? new BlobCtor([bytes], { type: 'image/jpeg' }) : bytes;
-        bytes = null;
-        state.activeStreamBytes = 0;
-
-        state.activeDecodeBytes = expectedDecodeBytes;
-        bitmap = await createImageBitmapFn(decodeTarget);
-        decodeTarget = null;
-        if (bitmap.width !== cfg.EXPECTED_WIDTH || bitmap.height !== cfg.EXPECTED_HEIGHT) {
-          throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
-        }
-
-        const rgb = await extractRgbViaStripCanvas(bitmap);
-        bitmap.close();
-        bitmap = null;
-        state.activeDecodeBytes = 0;
-
-        if (getTrackedBytes() + rgb.byteLength > cfg.MAX_TRACKED_BUFFER_BYTES) {
-          throw new Error('NOAA_TRACKED_BUDGET_EXCEEDED');
-        }
-
-        state.rgb = rgb;
-        state.width = cfg.EXPECTED_WIDTH;
-        state.height = cfg.EXPECTED_HEIGHT;
-        state.footerStartRow = detectFooterStartRowRgb(rgb, cfg.EXPECTED_WIDTH, cfg.EXPECTED_HEIGHT);
-        state.fetchedAtMs = nowFn();
-        state.lastModifiedUtc = Number.isFinite(parsedLmMs) ? new Date(parsedLmMs).toISOString() : null;
-        state.lastModifiedMs = Number.isFinite(parsedLmMs) ? parsedLmMs : null;
-        return state;
       } catch (err) {
         if (bitmap && typeof bitmap.close === 'function') {
           try { bitmap.close(); } catch {}
         }
         bytes = null;
-        state.activeStreamBytes = 0;
-        state.activeDecodeBytes = 0;
-        state.activeStripBytes = 0;
+        quadBuffers = null;
+        globalState.streamBytesByKey.delete(spec.key);
+        globalState.activeDecodeBytes = 0;
+        globalState.activeStripBytes = 0;
         const isNoaaTimeout =
           noaaController.signal.aborted ||
           err === 'noaa-timeout' ||
@@ -780,29 +1455,29 @@ function createNoaaStarProtocolHandler({
           : isNetworkErr
           ? 'NOAA_NETWORK_ERROR'
           : rawMsg || 'NOAA_FETCH_ERROR';
-        tripCooldown(msg, calOffsetPx);
+        tripCooldown(entry, msg, calOffsetPx);
         throw new Error(msg);
       } finally {
         clearTimeout(timeoutId);
-        state.inFlightPromise = null;
+        entry.inFlightPromise = null;
       }
     })();
 
-    return state.inFlightPromise;
+    return entry.inFlightPromise;
   }
 
-  async function renderGibsFallbackTile(req, mapAbortSignal, reason) {
+  async function renderGibsFallbackTile(req, mapAbortSignal, reason, entry) {
     if (mapAbortSignal && mapAbortSignal.aborted) {
       throw makeAbortError();
     }
-    if (!state.fallbackActive && !state.fallbackPendingSent) {
-      state.fallbackPendingSent = true;
-      emitTelemetry('gibs-fallback-pending', reason, req.calOffsetPx, true);
+    if (!entry.fallbackActive && !entry.fallbackPendingSent) {
+      entry.fallbackPendingSent = true;
+      emitTelemetry('gibs-fallback-pending', reason, req.calOffsetPx, true, entry);
     }
     const markFallbackActive = () => {
-      state.fallbackActive = true;
-      state.fallbackPendingSent = false;
-      emitTelemetry('gibs-fallback', reason, req.calOffsetPx, true);
+      entry.fallbackActive = true;
+      entry.fallbackPendingSent = false;
+      emitTelemetry('gibs-fallback', reason, req.calOffsetPx, true, entry);
     };
     const gibsController = new AbortController();
     const timeoutId = setTimeout(() => gibsController.abort('gibs-timeout'), cfg.GIBS_FETCH_TIMEOUT_MS);
@@ -810,29 +1485,39 @@ function createNoaaStarProtocolHandler({
     if (mapAbortSignal) mapAbortSignal.addEventListener('abort', onMapAbort, { once: true });
 
     try {
-      const hintFresh = state.gibsHintTime && nowFn() - state.gibsHintAtMs < 60000;
-      const hintedUrl =
-        hintFresh && state.gibsHintLayer && req.httpsGibsUrl.includes(`/${state.gibsHintLayer}/default/`)
-          ? req.httpsGibsUrl.replace(/(\/default\/)([^/]+)(\/)/, `$1${state.gibsHintTime}$3`)
-          : req.httpsGibsUrl;
-      let resObj;
-      try {
-        resObj = await fetchDirectHttpsGibsTile(hintedUrl, gibsController.signal, fetchFn);
-      } catch (hintErr) {
-        if (hintedUrl !== req.httpsGibsUrl && !(gibsController.signal && gibsController.signal.aborted)) {
-          state.gibsHintTime = null;
-          resObj = await fetchDirectHttpsGibsTile(req.httpsGibsUrl, gibsController.signal, fetchFn);
-        } else {
-          throw hintErr;
+      let res;
+      let resolvedUrl;
+      if (req.fallbackProto === 'eumet') {
+        resolvedUrl = req.fallbackUrl;
+        res = await fetchFn(resolvedUrl, { signal: gibsController.signal });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+      } else {
+        const hintFresh = entry.gibsHintTime && nowFn() - entry.gibsHintAtMs < 60000;
+        const hintedUrl =
+          hintFresh && entry.gibsHintLayer && req.httpsGibsUrl.includes(`/${entry.gibsHintLayer}/default/`)
+            ? req.httpsGibsUrl.replace(/(\/default\/)([^/]+)(\/)/, `$1${entry.gibsHintTime}$3`)
+            : req.httpsGibsUrl;
+        let resObj;
+        try {
+          resObj = await fetchDirectHttpsGibsTile(hintedUrl, gibsController.signal, fetchFn);
+        } catch (hintErr) {
+          if (hintedUrl !== req.httpsGibsUrl && !(gibsController.signal && gibsController.signal.aborted)) {
+            entry.gibsHintTime = null;
+            resObj = await fetchDirectHttpsGibsTile(req.httpsGibsUrl, gibsController.signal, fetchFn);
+          } else {
+            throw hintErr;
+          }
+        }
+        res = resObj.res;
+        resolvedUrl = resObj.resolvedUrl;
+        const resolvedMatch = resolvedUrl.match(/\/best\/([^/]+)\/default\/([^/]+)\//);
+        if (resolvedMatch) {
+          entry.gibsHintLayer = resolvedMatch[1];
+          entry.gibsHintTime = resolvedMatch[2];
+          entry.gibsHintAtMs = nowFn();
         }
       }
-      const { res, resolvedUrl } = resObj;
-      const resolvedMatch = resolvedUrl.match(/\/best\/([^/]+)\/default\/([^/]+)\//);
-      if (resolvedMatch) {
-        state.gibsHintLayer = resolvedMatch[1];
-        state.gibsHintTime = resolvedMatch[2];
-        state.gibsHintAtMs = nowFn();
-      }
+
       const blob = await res.blob();
       if (encodeTileResultFn) {
         const encoded = await encodeTileResultFn({ kind: 'gibs-fallback', blob, resolvedUrl, req });
@@ -877,8 +1562,8 @@ function createNoaaStarProtocolHandler({
       markFallbackActive();
       return { data: buf };
     } catch (fallbackErr) {
-      if (!(mapAbortSignal && mapAbortSignal.aborted) && !state.fallbackActive) {
-        emitTelemetry('gibs-fallback-failed', reason, req.calOffsetPx, true);
+      if (!(mapAbortSignal && mapAbortSignal.aborted) && !entry.fallbackActive) {
+        emitTelemetry('gibs-fallback-failed', reason, req.calOffsetPx, true, entry);
       }
       throw fallbackErr;
     } finally {
@@ -895,74 +1580,178 @@ function createNoaaStarProtocolHandler({
     if (isTileOutsideSectorSupport(params.url, req)) {
       return { data: createEmptyTransparentPngBuffer() };
     }
-    const tStart = perfNowFn();
+    const specVis = getGlobalSectorSpec(req.sector, req.spectral);
+    const useNightIrBlend =
+      req.nightIr &&
+      req.spectral === 'vis' &&
+      sourceUrl === NOAA_STAR_DEFAULTS.SOURCE_URL;
 
-    if (nowFn() < state.cooldownUntilMs) {
-      return renderGibsFallbackTile(req, mapSignal, 'NOAA_COOLDOWN_ACTIVE');
+    let wantVis = true;
+    let wantIr = false;
+    let solarForTile = null;
+    if (useNightIrBlend) {
+      solarForTile = computeSolarPositionRad(nowFn());
+      const rad = Math.PI / 180;
+      let minCosZ = 1.0;
+      let maxCosZ = -1.0;
+      for (const py of [0, 256]) {
+        for (const px of [0, 256]) {
+          const { latDeg, lonDeg } = tilePixelToLatLon(req.tileZ, req.tileX, req.tileY, px, py, 256);
+          const cosZ =
+            Math.sin(latDeg * rad) * solarForTile.sinSol +
+            Math.cos(latDeg * rad) * solarForTile.cosSol * Math.cos(lonDeg * rad - solarForTile.solLngRad);
+          if (cosZ < minCosZ) minCosZ = cosZ;
+          if (cosZ > maxCosZ) maxCosZ = cosZ;
+        }
+      }
+      if (maxCosZ <= 0.0) {
+        wantVis = false;
+        wantIr = true;
+      } else if (minCosZ < 0.16) {
+        wantVis = true;
+        wantIr = true;
+      }
     }
 
-    let sourceReady = null;
+    const specIr = wantIr ? getGlobalSectorSpec(req.sector, 'blue') : null;
+    const primarySpec = wantVis ? specVis : specIr;
+    const entry = getSectorEntry(primarySpec);
+    globalState.lastPrimaryKey = primarySpec.key;
+    const tStart = perfNowFn();
+
+    if (nowFn() < entry.cooldownUntilMs) {
+      return renderGibsFallbackTile(req, mapSignal, 'NOAA_COOLDOWN_ACTIVE', entry);
+    }
+
+    const fetchWithAbort = async (targetSpec, targetEntry) => {
+      if (nowFn() < targetEntry.cooldownUntilMs) {
+        throw new Error('NOAA_COOLDOWN_ACTIVE');
+      }
+      const waitSource = ensureFreshSource(req.calOffsetPx, targetSpec);
+      const ready = mapSignal
+        ? await Promise.race([
+            waitSource,
+            new Promise((_, reject) => {
+              if (mapSignal.aborted) reject(makeAbortError());
+              else mapSignal.addEventListener('abort', () => reject(makeAbortError()), { once: true });
+            }),
+          ])
+        : await waitSource;
+      if (!ready || !ready.rgb) throw new Error('NOAA_BUFFER_UNAVAILABLE');
+      return ready;
+    };
+
+    let visReady = null;
+    let irReady = null;
+    const entryIr = specIr ? getSectorEntry(specIr) : null;
     try {
-      const waitSource = ensureFreshSource(req.calOffsetPx);
-      if (mapSignal) {
-        sourceReady = await Promise.race([
-          waitSource,
-          new Promise((_, reject) => {
-            if (mapSignal.aborted) reject(makeAbortError());
-            else mapSignal.addEventListener('abort', () => reject(makeAbortError()), { once: true });
-          }),
+      if (wantVis && wantIr && specIr && entryIr) {
+        const [vRes, irRes] = await Promise.allSettled([
+          fetchWithAbort(specVis, getSectorEntry(specVis)),
+          fetchWithAbort(specIr, entryIr),
         ]);
-      } else {
-        sourceReady = await waitSource;
+        if (mapSignal && mapSignal.aborted) throw makeAbortError();
+        if (vRes.status === 'fulfilled') visReady = vRes.value;
+        if (irRes.status === 'fulfilled') irReady = irRes.value;
+        if (!visReady && !irReady) {
+          const err = vRes.status === 'rejected' ? vRes.reason : new Error('NOAA_UNAVAILABLE');
+          throw err;
+        }
+      } else if (wantVis) {
+        visReady = await fetchWithAbort(specVis, entry);
+      } else if (specIr && entryIr) {
+        irReady = await fetchWithAbort(specIr, entryIr);
       }
     } catch (err) {
       if (mapSignal && mapSignal.aborted) throw err;
-      return renderGibsFallbackTile(req, mapSignal, err && err.message ? err.message : 'NOAA_UNAVAILABLE');
+      return renderGibsFallbackTile(req, mapSignal, err && err.message ? err.message : 'NOAA_UNAVAILABLE', entry);
     }
 
-    if (!sourceReady || !sourceReady.rgb) {
-      return renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_UNAVAILABLE');
-    }
     if (getTrackedBytes() + cfg.EST_TILE_JOB_BYTES > cfg.MAX_TRACKED_BUFFER_BYTES) {
-      tripCooldown('NOAA_TRACKED_BUDGET_EXCEEDED', req.calOffsetPx);
-      return renderGibsFallbackTile(req, mapSignal, 'NOAA_TRACKED_BUDGET_EXCEEDED');
+      evictIdleSectorsToFit(cfg.EST_TILE_JOB_BYTES, primarySpec.key);
+      if (getTrackedBytes() + cfg.EST_TILE_JOB_BYTES > cfg.MAX_TRACKED_BUFFER_BYTES) {
+        tripCooldown(entry, 'NOAA_TRACKED_BUDGET_EXCEEDED', req.calOffsetPx);
+        return renderGibsFallbackTile(req, mapSignal, 'NOAA_TRACKED_BUDGET_EXCEEDED', entry);
+      }
     }
 
     await acquireTileSlot();
     try {
       if (mapSignal && mapSignal.aborted) throw makeAbortError();
-      if (!state.rgb) {
-        return await renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_EVICTED');
+      const visEntry = wantVis ? getSectorEntry(specVis) : null;
+      const reprojectAndProcess = (targetSpec, targetEntry, processSpectral) => {
+        if (!targetEntry || !targetEntry.rgb) return null;
+        const buf = new Uint8ClampedArray(256 * 256 * 4);
+        targetEntry.activeReaders++;
+        targetEntry.lastUsedAtMs = nowFn();
+        try {
+          reprojectNoaaStarRgbLut32({
+            rgb: targetEntry.rgb,
+            width: targetEntry.width,
+            height: targetEntry.height,
+            footerStartRow: targetEntry.footerStartRow,
+            tileZ: req.tileZ,
+            tileX: req.tileX,
+            tileY: req.tileY,
+            calOffsetPx: req.calOffsetPx,
+            sectorSpec: targetSpec,
+            outRgba: buf,
+          });
+        } finally {
+          releaseSectorReader(targetEntry);
+        }
+        const obsMs = targetEntry.lastModifiedMs !== null ? targetEntry.lastModifiedMs : nowFn();
+        const liveProcessUrl = `https://live.mooearth.internal/tile/${req.tileZ}/${req.tileX}/${req.tileY}.png?sector=${encodeURIComponent(targetSpec.sector)}&spectral=${encodeURIComponent(processSpectral)}&product=${encodeURIComponent(targetSpec.product)}&t=${obsMs}`;
+        if (processTilePixelsFn) {
+          processTilePixelsFn(buf, 256, 256, liveProcessUrl);
+        }
+        return buf;
+      };
+
+      const visBuf = visReady ? reprojectAndProcess(specVis, visEntry, req.spectral) : null;
+      const irBuf = irReady ? reprojectAndProcess(specIr, entryIr, 'blue') : null;
+      if (!visBuf && !irBuf) {
+        return await renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_EVICTED', entry);
       }
 
-      const outRgba = new Uint8ClampedArray(256 * 256 * 4);
-      state.activeNoaaReaders++;
-      try {
-        reprojectNoaaStarRgbLut32({
-          rgb: state.rgb,
-          width: state.width,
-          height: state.height,
-          footerStartRow: state.footerStartRow,
-          tileZ: req.tileZ,
-          tileX: req.tileX,
-          tileY: req.tileY,
-          calOffsetPx: req.calOffsetPx,
-          outRgba,
-        });
-      } finally {
-        releaseNoaaReader();
-      }
-
-      if (processTilePixelsFn) {
-        processTilePixelsFn(outRgba, 256, 256, req.httpsGibsUrl);
+      let outRgba;
+      let telemetryEntry = entry;
+      if (visBuf && irBuf && solarForTile) {
+        outRgba = new Uint8ClampedArray(256 * 256 * 4);
+        const rad = Math.PI / 180;
+        const colCosH = new Float32Array(256);
+        for (let c = 0; c < 256; c++) {
+          colCosH[c] = Math.cos(tileToLng(req.tileX + (c + 0.5) / 256, req.tileZ) * rad - solarForTile.solLngRad);
+        }
+        for (let y = 0; y < 256; y++) {
+          const latRad = tileToLat(req.tileY + (y + 0.5) / 256, req.tileZ) * rad;
+          const sLat = Math.sin(latRad);
+          const cLat = Math.cos(latRad);
+          for (let x = 0; x < 256; x++) {
+            const p = (y * 256 + x) * 4;
+            const cosZ = sLat * solarForTile.sinSol + cLat * solarForTile.cosSol * colCosH[x];
+            const dayW = cosZ <= 0.0 ? 0.0 : cosZ >= 0.16 ? 1.0 : cosZ / 0.16;
+            const aV = visBuf[p + 3] * dayW;
+            const aI = irBuf[p + 3] * (1.0 - dayW);
+            const aSum = aV + aI;
+            if (aSum <= 2) continue;
+            outRgba[p] = Math.min(255, Math.round((visBuf[p] * aV + irBuf[p] * aI) / aSum));
+            outRgba[p + 1] = Math.min(255, Math.round((visBuf[p + 1] * aV + irBuf[p + 1] * aI) / aSum));
+            outRgba[p + 2] = Math.min(255, Math.round((visBuf[p + 2] * aV + irBuf[p + 2] * aI) / aSum));
+            outRgba[p + 3] = Math.min(255, Math.round(aSum));
+          }
+        }
+      } else {
+        outRgba = visBuf || irBuf;
+        telemetryEntry = irBuf && !visBuf && entryIr ? entryIr : entry;
       }
 
       const totalMs = perfNowFn() - tStart;
-      state.recentTotalMs.push(totalMs);
-      if (state.recentTotalMs.length > 64) state.recentTotalMs.shift();
-      state.fallbackActive = false;
-      state.fallbackPendingSent = false;
-      emitTelemetry('noaa-star', null, req.calOffsetPx, false);
+      globalState.recentTotalMs.push(totalMs);
+      if (globalState.recentTotalMs.length > 64) globalState.recentTotalMs.shift();
+      telemetryEntry.fallbackActive = false;
+      telemetryEntry.fallbackPendingSent = false;
+      emitTelemetry('noaa-star', null, req.calOffsetPx, false, telemetryEntry);
 
       if (encodeTileResultFn) {
         return await encodeTileResultFn({ kind: 'noaa-star', rgba: outRgba, width: 256, height: 256, req });
@@ -991,24 +1780,42 @@ function createNoaaStarProtocolHandler({
   return {
     handleTileRequest,
     ensureFreshSource,
-    getState: () => ({
-      width: state.width,
-      height: state.height,
-      hasRgb: Boolean(state.rgb),
-      activeNoaaReaders: state.activeNoaaReaders,
-      activeTileJobs: state.activeTileJobs,
-      cooldownUntilMs: state.cooldownUntilMs,
-      trackedBufferBytes: getTrackedBytes(),
-    }),
+    getState: () => {
+      const primary =
+        sectorCache.get(globalState.lastPrimaryKey) ||
+        sectorCache.values().next().value ||
+        null;
+      const sectors = {};
+      for (const [k, e] of sectorCache.entries()) {
+        sectors[k] = {
+          width: e.width,
+          height: e.height,
+          hasRgb: Boolean(e.rgb),
+          activeReaders: e.activeReaders,
+          cooldownUntilMs: e.cooldownUntilMs,
+        };
+      }
+      return {
+        width: primary ? primary.width : 0,
+        height: primary ? primary.height : 0,
+        hasRgb: Boolean(primary && primary.rgb),
+        activeNoaaReaders: getTotalActiveReaders(),
+        activeTileJobs: globalState.activeTileJobs,
+        cooldownUntilMs: primary ? primary.cooldownUntilMs : 0,
+        trackedBufferBytes: getTrackedBytes(),
+        sectors,
+      };
+    },
   };
 }
 
 // Circular partition of unity across all 360 degrees (Himawari, GOES-West, GOES-East, Meteosat)
 function getSectorSpatialWeight(url, lng, lat) {
     const absLat = Math.abs(lat);
+    const sector = extractSectorFromUrl(url);
 
     // Polar Underlay: strictly 0.0 below 58°, smooth ramp 58°-65°, 1.0 above 65° up to 85°
-    if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
+    if (sector === 'global-polar') {
       if (absLat > 85.0) return 0.0;
       if (absLat >= 65.0) return 1.0;
       if (absLat <= 58.0) return 0.0;
@@ -1023,83 +1830,67 @@ function getSectorSpatialWeight(url, lng, lat) {
     let lngWeight = 0.0;
     let satLng = 0.0;
 
-    const isHimawari = url.includes('Himawari') || url.includes('himawari');
-    const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
-    const isMeteosatPrime = (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
-    const isGoesEast = url.includes('GOES-East') || url.includes('goes-east');
-    const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
+    const isHimawari = sector === 'himawari';
+    const isIodc = sector === 'eumet-iodc';
+    const isMeteosatPrime = sector === 'europe-africa';
+    const isGoesEast = sector === 'goes-east';
+    const isGoesWest = sector === 'goes-west';
 
     // 5-Sentinel Exact Mathematical Partition of Unity (sum == 1.000 everywhere):
     if (isIodc) {
       satLng = 45.5;
-      // Meteosat-9 IODC (45.5°E): Covers East Africa, Middle East, Arabian Sea, India, Bay of Bengal (25°E to 95°E)
       if (angle >= 25.0 && angle <= 45.0) {
-        // Smooth blend with Meteosat Prime (25°E to 45°E)
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
       } else if (angle > 45.0 && angle <= 75.0) {
-        lngWeight = 1.0; // 100% full coverage across Arabian Sea, Persian Gulf, Pakistan, NW India
+        lngWeight = 1.0;
       } else if (angle > 75.0 && angle <= 95.0) {
-        // Smooth blend with Himawari across Central/Eastern India and Bay of Bengal (75°E to 95°E)
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
       }
     } else if (isHimawari) {
       satLng = 140.7;
-      // Himawari-9 (140.7°E): Covers India, China, SE Asia, Japan, Australia, Western Pacific (75°E to 195°E)
       if (angle >= 75.0 && angle <= 95.0) {
-        // Smooth blend with Meteosat-IODC across Central/Eastern India and Bay of Bengal (75°E to 95°E)
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 75.0) / 20.0)));
       } else if (angle > 95.0 && angle <= 165.0) {
-        lngWeight = 1.0; // 100% full coverage across China, Japan, Korea, SE Asia, Australia
+        lngWeight = 1.0;
       } else if (angle > 165.0 && angle <= 195.0) {
-        // Smooth blend with GOES-West over Western Pacific / Dateline (165°E to 195°E)
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
       }
     } else if (isGoesWest) {
-      satLng = 222.8; // 137.2°W
-      // GOES-West (137.2°W / 222.8°E): Covers Central/Eastern Pacific & US West (165°E to 265°E)
+      satLng = 223.0; // -137.0° GOES-18
       if (angle >= 165.0 && angle <= 195.0) {
-        // Smooth blend with Himawari over Western Pacific / Dateline (165°E to 195°E)
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 165.0) / 30.0)));
       } else if (angle > 195.0 && angle <= 225.0) {
-        lngWeight = 1.0; // 100% full coverage across Hawaii, Central/East Pacific
+        lngWeight = 1.0;
       } else if (angle > 225.0 && angle <= 265.0) {
-        // Smooth blend with GOES-East over Western North America / US West Coast / Rockies (225° to 265°)
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
       }
     } else if (isGoesEast) {
-      satLng = 284.8; // 75.2°W
-      // GOES-East (75.2°W / 284.8°E): Covers Americas, Caribbean, Atlantic (225°E to 345°E)
+      satLng = 285.0; // -75.0° GOES-19
       if (angle >= 225.0 && angle <= 265.0) {
-        // Smooth blend with GOES-West over Rockies / Great Plains (225° to 265°)
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 225.0) / 40.0)));
       } else if (angle > 265.0 && angle <= 320.0) {
-        lngWeight = 1.0; // 100% full coverage across Eastern US, Caribbean, South America, Western Atlantic
+        lngWeight = 1.0;
       } else if (angle > 320.0 && angle <= 345.0) {
-        // Smooth blend with Meteosat Prime over Mid-Atlantic (320° to 345°)
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
       }
     } else if (isMeteosatPrime) {
       satLng = 0.0;
-      // Meteosat Prime (0°E): Covers Europe, West Africa, Atlantic (320° to 45°E)
       if (angle >= 320.0 && angle <= 345.0) {
-        // Smooth blend with GOES-East over Mid-Atlantic (320° to 345°)
         lngWeight = 0.5 * (1.0 - Math.cos(Math.PI * ((angle - 320.0) / 25.0)));
       } else if (angle > 345.0 || angle <= 25.0) {
-        lngWeight = 1.0; // 100% full coverage across UK, France, Germany, Spain, West Africa
+        lngWeight = 1.0;
       } else if (angle > 25.0 && angle <= 45.0) {
-        // Smooth blend with Meteosat-IODC over Eastern Europe / Red Sea / East Africa (25°E to 45°E)
         lngWeight = 0.5 * (1.0 + Math.cos(Math.PI * ((angle - 25.0) / 20.0)));
       }
+    } else {
+      lngWeight = 1.0;
     }
 
-    // Geostationary Earth Disk Horizon / Limb Feathering:
-    // Smoothly feathers out disk edge (74° to 81° angular distance from sub-satellite point)
     let limbWeight = 1.0;
     if (isHimawari || isIodc || isMeteosatPrime || isGoesEast || isGoesWest) {
       const dLng = Math.abs((((lng - satLng + 540) % 360) - 180)) * (Math.PI / 180);
       const dLat = (lat * Math.PI) / 180;
       const cosPsi = Math.cos(dLat) * Math.cos(dLng);
-      // cos(74°) ≈ 0.2756, cos(81°) ≈ 0.1564
       if (cosPsi <= 0.1564) {
         limbWeight = 0.0;
       } else if (cosPsi < 0.2756) {
@@ -1111,130 +1902,126 @@ function getSectorSpatialWeight(url, lng, lat) {
     return Math.max(0.0, Math.min(1.0, lngWeight * latWeight * limbWeight));
   }
 
+  // Zero-step-jump normalized cloud opacity curve (returns strictly 0 at norm<=0)
+  function smoothCloudCurve(norm, mid = 0.28, slope = 5.5) {
+    if (norm <= 0.0) return 0.0;
+    if (norm >= 1.0) return 1.0;
+    const s0 = 1.0 / (1.0 + Math.exp(slope * mid));
+    const s1 = 1.0 / (1.0 + Math.exp(-slope * (1.0 - mid)));
+    const s = 1.0 / (1.0 + Math.exp(-slope * (norm - mid)));
+    const scaled = (s - s0) / (s1 - s0);
+    const feather = norm < 0.14 ? norm / 0.14 : 1.0;
+    return Math.max(0.0, Math.min(1.0, scaled * feather));
+  }
+
+  // Continuous C0 cloud-whiteness extractor for daytime GeoColor (avoids step-edge rings over ocean/land)
+  function computeGeoColorDayCloud(r, g, b, minC, maxC) {
+    const sat = maxC - minC;
+    const warmExcess = r > b ? r - b : 0;
+    const dayWhiteness = minC - 0.80 * sat - 0.60 * warmExcess;
+    if (dayWhiteness <= 70.0) return 0.0;
+    const dNorm = Math.min(1.0, (dayWhiteness - 70.0) / 138.0);
+    return smoothCloudCurve(dNorm, 0.24, 5.5);
+  }
+
   // Physical Elevation & Latitude Lapse-Rate Thermal Ground Discriminator
-  // Rejects nocturnal freezing ground in high elevation (Tibet > 3500m) and cold winter interiors
-  function getLocalThermalThreshold(lng, lat, isEumet) {
-    let thresh = isEumet ? 70 : 72;
+  // Rejects nocturnal freezing ground (Central India ~92, Arabia ~88) & high elevation Tibet > 3500m
+  function getLocalThermalThreshold(lng, lat, isBand09OrEumet) {
+    let thresh = isBand09OrEumet ? 96 : 98;
     const absLat = Math.abs(lat);
 
-    // 1. Tibetan Plateau & High Himalayas (26°N-39°N, 74°E-104°E, elevation 3,800m-5,500m):
-    // Winter nocturnal ground temperature drops to -15°C to -35°C (radiance 140-165).
-    // Genuine convective & cirrus clouds over Tibet reach radiance > 172 (-50°C to -80°C).
     if (lat >= 26.0 && lat <= 39.0 && lng >= 74.0 && lng <= 104.0) {
       const edgeX = Math.min(lng - 74.0, 104.0 - lng) / 4.0;
       const edgeY = Math.min(lat - 26.0, 39.0 - lat) / 3.0;
       const coreFactor = Math.max(0.0, Math.min(1.0, Math.min(edgeX, edgeY)));
-      thresh += 102 * coreFactor; // Peaks at 174 in plateau center
-    }
-    // 2. Central Asian & Mongolian Cold Continental Steppe (39°N-55°N, 70°E-125°E):
-    else if (lat > 39.0 && lat <= 55.0 && lng >= 70.0 && lng <= 125.0) {
+      thresh += 102 * coreFactor;
+    } else if (lat > 39.0 && lat <= 55.0 && lng >= 70.0 && lng <= 125.0) {
       const edgeX = Math.min(lng - 70.0, 125.0 - lng) / 8.0;
       const edgeY = Math.min(lat - 39.0, 55.0 - lat) / 4.0;
       const coreFactor = Math.max(0.0, Math.min(1.0, Math.min(edgeX, edgeY)));
-      thresh += 88 * coreFactor; // Peaks at 160 over northern cold interior
-    }
-    // 3. High-latitude cold sub-polar continental land (> 55°N):
-    else if (absLat > 55.0 && absLat <= 65.0) {
+      thresh += 88 * coreFactor;
+    } else if (absLat > 55.0 && absLat <= 65.0) {
       const polarFactor = (absLat - 55.0) / 10.0;
       thresh += 50 * polarFactor;
     }
     return thresh;
   }
 
-  // Unified Tile Pixel Processor (shared across gibs-alpha & eumet-alpha)
+  // Unified Tile Pixel Processor (shared across noaa-star live 5-satellite feeds, gibs-alpha, & eumet-alpha)
   function processTilePixels(d, width, height, realUrl) {
     const len = d.length;
     const totalPixels = width * height;
 
-    // Parse slippy tile coordinates /{z}/{y}/{x}.ext from URL (or query params from proxy)
-    let tileZ = 3, tileY = 0, tileX = 0, hasCoords = false;
-    const isGibs = realUrl.includes('gibs.earthdata.nasa.gov') || realUrl.includes('GoogleMapsCompatible') || realUrl.includes('gibs-alpha');
-    const wmtsMatch = realUrl.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg|jpeg)/i);
-    const queryMatch = realUrl.match(/[?&]z=(\d+)[&]x=(\d+)[&]y=(\d+)/i) || realUrl.match(/[?&]z=(\d+)[&]y=(\d+)[&]x=(\d+)/i);
-    if (queryMatch) {
-      tileZ = parseInt(queryMatch[1], 10);
-      if (realUrl.includes('x=' + queryMatch[2])) {
-        tileX = parseInt(queryMatch[2], 10);
-        tileY = parseInt(queryMatch[3], 10);
-      } else {
-        tileY = parseInt(queryMatch[2], 10);
-        tileX = parseInt(queryMatch[3], 10);
-      }
-      hasCoords = true;
-    } else if (wmtsMatch) {
-      tileZ = parseInt(wmtsMatch[1], 10);
-      if (isGibs) {
-        // NASA GIBS WMTS uses TileMatrix/TileRow/TileCol -> {z}/{y}/{x}
-        tileY = parseInt(wmtsMatch[2], 10);
-        tileX = parseInt(wmtsMatch[3], 10);
-      } else {
-        // Standard Slippy Tile format -> {z}/{x}/{y}
-        tileX = parseInt(wmtsMatch[2], 10);
-        tileY = parseInt(wmtsMatch[3], 10);
-      }
-      hasCoords = true;
-    }
+    const coords = parseTileCoordsFromUrl(realUrl);
+    const hasCoords = Boolean(coords && Number.isFinite(coords.tileZ));
+    const tileZ = coords ? coords.tileZ : 3;
+    const tileX = coords ? coords.tileX : 0;
+    const tileY = coords ? coords.tileY : 0;
 
     const tileLngs = new Float32Array(width);
     const tileLats = new Float32Array(height);
+    const rowSinLat = new Float32Array(height);
+    const rowCosLat = new Float32Array(height);
+    const colCosHour = new Float32Array(width);
+
+    const tMatch = realUrl.match(/[?&]t=(\d+)/);
+    const obsTimeMs = tMatch ? parseInt(tMatch[1], 10) : Date.now();
+    const solar = computeSolarPositionRad(obsTimeMs);
+    const rad = Math.PI / 180;
+
     if (hasCoords) {
       for (let c = 0; c < width; c++) {
-        tileLngs[c] = tileToLng(tileX + (c + 0.5) / width, tileZ);
+        const lngDeg = tileToLng(tileX + (c + 0.5) / width, tileZ);
+        tileLngs[c] = lngDeg;
+        colCosHour[c] = Math.cos(lngDeg * rad - solar.solLngRad);
       }
       for (let r = 0; r < height; r++) {
-        tileLats[r] = tileToLat(tileY + (r + 0.5) / height, tileZ);
+        const latDeg = tileToLat(tileY + (r + 0.5) / height, tileZ);
+        tileLats[r] = latDeg;
+        rowSinLat[r] = Math.sin(latDeg * rad);
+        rowCosLat[r] = Math.cos(latDeg * rad);
       }
     }
 
+    const sector = extractSectorFromUrl(realUrl);
     const isVisMode = realUrl.includes('spectral=vis');
     const isInfraMode = realUrl.includes('spectral=infra');
     const isBlueMode = realUrl.includes('spectral=blue') || (!isVisMode && !isInfraMode);
-    const isInfraLayer = realUrl.includes('Band13') || realUrl.includes('Infrared') || realUrl.includes('IR') || realUrl.includes('ir108');
-    const isHimawariVis = realUrl.includes('Band3') || realUrl.includes('Himawari_AHI_Band3');
-    const isGeoColor = realUrl.includes('GeoColor');
-    const isEumet = realUrl.includes('msg_') || realUrl.includes('eumet');
+    const isGeoColor = /product=geocolor|GeoColor/i.test(realUrl);
+    const isBand09 = !isGeoColor && /Band09|band_09|ir108|msg_|eumet/i.test(realUrl);
+    const isInfraLayer = !isGeoColor && (/Band13|band_13|Infrared|\bIR\b/i.test(realUrl) || isBand09);
+    const isHimawariVis = !isGeoColor && !isInfraLayer && /Band3|Himawari_AHI_Band3/i.test(realUrl);
+    const isEumetVis = !isGeoColor && !isInfraLayer && (sector === 'eumet-iodc' || sector === 'europe-africa');
 
-    // Pass 1: Fast Per-Pixel Luminance & Convective Core Tagging (Windy Parity)
     const lum = new Float32Array(totalPixels);
     const convective = new Uint8Array(totalPixels);
-    const isHimawari = realUrl.includes('Himawari') || realUrl.includes('himawari');
-    const isGoes = realUrl.includes('GOES') || realUrl.includes('goes');
+    const isHimawari = sector === 'himawari';
+    const isGoes = sector === 'goes-east' || sector === 'goes-west';
 
     for (let p = 0, idx = 0; idx < len; idx += 4, p++) {
       const r = d[idx], g = d[idx + 1], b = d[idx + 2];
-      if (r < 28 && g < 28 && b < 28) {
+      if (r < 20 && g < 20 && b < 20) {
         lum[p] = 0;
       } else {
         lum[p] = 0.299 * r + 0.587 * g + 0.114 * b;
       }
 
-      if (isHimawari && isInfraLayer) {
-        // Himawari-9 Band 13 Clean IR:
-        // Convective storm tops & cyclone eyewalls (-40°C to -85°C) -> lum >= 180
-        // Active convective rainbands -> lum >= 162
-        if (lum[p] >= 180) {
-          convective[p] = 1; // 100% Genuine convective cloud top
-        } else if (lum[p] >= 162) {
-          convective[p] = 2; // Convective rainband candidate
-        }
-      } else if (isGoes && isInfraLayer) {
-        // GOES Band 13 Clean IR:
-        if (lum[p] >= 170) {
-          convective[p] = 1;
-        } else if (lum[p] >= 152) {
-          convective[p] = 2;
-        }
-      } else if (isEumet && isInfraLayer) {
-        // EUMETSAT 10.8µm IR (Rejects cold nocturnal soil in Gujarat/Pakistan/Rajasthan < 170):
-        if (lum[p] >= 182) {
-          convective[p] = 1;
-        } else if (lum[p] >= 170) {
-          convective[p] = 2;
+      if (isInfraLayer) {
+        if (isHimawari) {
+          if (lum[p] >= 180) convective[p] = 1;
+          else if (lum[p] >= 162) convective[p] = 2;
+        } else if (isGoes) {
+          if (lum[p] >= 170) convective[p] = 1;
+          else if (lum[p] >= 152) convective[p] = 2;
+        } else if (isBand09) {
+          if (b > 190 && r < 25 && g < 25) {
+            lum[p] = 0;
+          } else if (lum[p] >= 196) convective[p] = 1;
+          else if (lum[p] >= 182) convective[p] = 2;
         }
       }
     }
 
-    // Pass 2: Fast 3x3 Box Blur & BD Core Morphology (Eliminates Hollow Donut Voids)
     const blur = new Float32Array(totalPixels);
     for (let y = 0; y < height; y++) {
       const row = y * width;
@@ -1263,42 +2050,27 @@ function getSectorSpatialWeight(url, lng, lat) {
             }
           }
           if (hasConvNeighbor) {
-            convective[p] = 3; // Confirmed -72°C BD Convective Core
-          }
-        }
-
-        // Cyclone Eye Cavity Detection: calm warmer interior surrounded by convective wall ring
-        if (convective[p] === 0 && lum[p] >= 115 && lum[p] <= 165) {
-          let northConv = false, southConv = false, westConv = false, eastConv = false;
-          for (let step = 3; step <= 7; step++) {
-            const ny1 = Math.max(0, y - step) * width;
-            const ny2 = Math.min(height - 1, y + step) * width;
-            const nx1 = Math.max(0, x - step);
-            const nx2 = Math.min(width - 1, x + step);
-            if (convective[ny1 + x] === 1 || convective[ny1 + x] === 3) northConv = true;
-            if (convective[ny2 + x] === 1 || convective[ny2 + x] === 3) southConv = true;
-            if (convective[row + nx1] === 1 || convective[row + nx1] === 3) westConv = true;
-            if (convective[row + nx2] === 1 || convective[row + nx2] === 3) eastConv = true;
-          }
-          if (northConv && southConv && westConv && eastConv) {
-            convective[p] = 4; // Cyclone Eye Cavity
+            convective[p] = 3;
           }
         }
       }
     }
 
-    // Pass 3: Physically-Accurate Non-Destructive Cloud Transfer Function (Windy & Zoom Earth Parity)
-    // Zero artificial Sobel noise, zero unsharp distortion, and zero inter-tile boundary seams!
     for (let y = 0; y < height; y++) {
       const row = y * width;
+      const sinLat = hasCoords ? rowSinLat[y] : 0;
+      const cosLat = hasCoords ? rowCosLat[y] : 1;
       for (let x = 0; x < width; x++) {
         const p = row + x;
         const i = p * 4;
+        if (d[i + 3] === 0) continue;
+
         const r = d[i], g = d[i + 1], b = d[i + 2];
+        const maxC = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        const minC = r < g ? (r < b ? r : b) : (g < b ? g : b);
         const isConv = convective[p] === 1 || convective[p] === 3;
 
-        // Off-disk deep black space void
-        if (lum[p] < 28 && !isConv) {
+        if (maxC < 26 && !isConv) {
           d[i + 3] = 0;
           continue;
         }
@@ -1314,30 +2086,18 @@ function getSectorSpatialWeight(url, lng, lat) {
         const baseRadiance = 0.65 * l + 0.35 * bl;
 
         if (isConv) {
-          // ==========================================
-          // HIGH-DEFINITION CONVECTIVE STORM TOP & CYCLONE VORTEX (Windy & Zoom Earth Parity)
-          // ==========================================
           if (isInfraMode) {
-            // Authentic Dvorak BD Color Scale (Kelvin / Celsius)
-            if (r > 120 && b > 120 && g < 120) {
-              // Overshooting top (-92°C to -80°C) -> Luminous White / Lavender
+            if (baseRadiance >= 218) {
               d[i] = 255; d[i + 1] = 242; d[i + 2] = 255;
-            } else if (convective[p] === 3 || (r > 20 && g < 35 && b < 35)) {
-              // Coldest Eyewall Core (-80°C to -62°C) -> Intense Crimson
+            } else if (convective[p] === 3 || baseRadiance >= 200) {
               d[i] = 220; d[i + 1] = 38; d[i + 2] = 38;
-            } else if (r > 180 && g > 50) {
-              // Deep Convection (-62°C to -48°C) -> Vivid Amber / Yellow
+            } else if (baseRadiance >= 184) {
               d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
-            } else if (g > 100 && r < 200) {
-              // Moderate Convection (-48°C to -35°C) -> Emerald Green
-              d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
             } else {
-              // Upper Convective Cloud (-35°C to -20°C) -> Cyan / Azure
-              d[i] = 14; d[i + 1] = 165; d[i + 2] = 233;
+              d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
             }
             d[i + 3] = Math.min(252, Math.round(248 * spatWeight));
           } else {
-            // Blue / Atmospheric / Visible: Natural Convective Cloud Tops with Authentic Sensor Radiance
             const convIntensity = isHimawari
               ? Math.min(1.0, Math.max(0.0, (baseRadiance - 155) / 60))
               : isGoes
@@ -1346,7 +2106,6 @@ function getSectorSpatialWeight(url, lng, lat) {
 
             const convTone = Math.min(255, Math.max(190, Math.round(baseRadiance)));
             const convAlpha = Math.min(252, Math.round((235 + 18 * convIntensity) * spatWeight));
-
             d[i] = convTone;
             d[i + 1] = convTone;
             d[i + 2] = Math.min(255, convTone + 2);
@@ -1355,56 +2114,90 @@ function getSectorSpatialWeight(url, lng, lat) {
           continue;
         }
 
-        if (isBlueMode) {
-          // ==========================================
-          // BLUE / HD ATMOSPHERIC RADIOMETRIC CLOUD MODE (Zoom Earth & Windy Parity)
-          // ==========================================
+        if (isGeoColor && (isVisMode || isBlueMode)) {
+          const cosZ = hasCoords ? (sinLat * solar.sinSol + cosLat * solar.cosSol * colCosHour[x]) : 1.0;
+          let dayW = 1.0;
+          if (hasCoords) {
+            if (cosZ <= 0.0) dayW = 0.0;
+            else if (cosZ < 0.18) dayW = cosZ / 0.18;
+          }
+
+          let dSig = 0.0;
+          let dayAlpha = 0.0;
+          if (dayW > 0.01) {
+            dSig = computeGeoColorDayCloud(r, g, b, minC, maxC);
+            dayAlpha = 248.0 * dSig;
+          }
+
+          let nSig = 0.0;
+          let nightAlpha = 0.0;
+          if (dayW < 0.99) {
+            const isCityLight = r > b + 12 && r > 56 && g < r * 0.93 && maxC < 230;
+            const isNightLand =
+              (b - g >= 6 && r >= g - 2 && maxC < 108) ||
+              (r - g >= 6 && r >= b - 4 && maxC < 100);
+            if (maxC >= 46 && !isCityLight && !isNightLand) {
+              const isNightLowCloud = b > r + 5 && g >= r - 2 && b >= 58;
+              const nightSig = isNightLowCloud
+                ? Math.max(l, 0.45 * g + 0.55 * b)
+                : (minC >= 46 && Math.abs(r - b) < 28 ? l : 0);
+              if (nightSig > 48) {
+                const nNorm = Math.min(1.0, (nightSig - 48.0) / 138.0);
+                nSig = smoothCloudCurve(nNorm, 0.24, 5.5);
+                nightAlpha = 248.0 * nSig;
+              }
+            }
+          }
+
+          const wDay = dayW * dayAlpha;
+          const wNight = (1.0 - dayW) * nightAlpha;
+          const wSum = wDay + wNight;
+          const cloudAlpha = Math.round(wSum * spatWeight);
+          if (cloudAlpha <= 2) {
+            d[i + 3] = 0;
+            continue;
+          }
+          const effSig = wSum > 0.001 ? (wDay * dSig + wNight * nSig) / wSum : dSig;
+          const thin = Math.max(0.0, 1.0 - effSig);
+          const cloudTone = Math.min(255, Math.round(224 + 31 * effSig));
+          d[i] = Math.min(255, Math.round(cloudTone - 3 * thin));
+          d[i + 1] = Math.min(255, Math.round(cloudTone));
+          d[i + 2] = Math.min(255, Math.round(cloudTone + 6 * thin));
+          d[i + 3] = cloudAlpha;
+          continue;
+        }
+
+        if (isBlueMode || isVisMode) {
           let cloudAlpha = 0;
           let sigmoid = 0;
 
           if (isInfraLayer) {
-            const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
+            const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isBand09) : (isBand09 ? 96 : 98);
             if (baseRadiance <= irThresh) {
               d[i + 3] = 0;
               continue;
             }
-            // Sigmoid Volumetric Density Transfer Function (Zoom Earth & Windy Parity):
-            // Translucent high-altitude cirrus filaments, voluminous cumulus decks, and solid thunderstorm cores
             const norm = Math.min(1.0, Math.max(0.0, (baseRadiance - irThresh) / (215.0 - irThresh)));
-            sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
+            sigmoid = smoothCloudCurve(norm, 0.24, 5.5);
             cloudAlpha = Math.round(250.0 * sigmoid * spatWeight);
+          } else if (isHimawariVis) {
+            if (r <= 78) { d[i + 3] = 0; continue; }
+            const norm = Math.min(1.0, (r - 78) / (200 - 78));
+            sigmoid = smoothCloudCurve(norm, 0.26, 5.5);
+            cloudAlpha = Math.round(250 * sigmoid * spatWeight);
+          } else if (isEumetVis) {
+            if (l <= 82) { d[i + 3] = 0; continue; }
+            const norm = Math.min(1.0, (l - 82) / (205 - 82));
+            sigmoid = smoothCloudCurve(norm, 0.26, 5.5);
+            cloudAlpha = Math.round(250 * sigmoid * spatWeight);
           } else {
-            // Visible optical channels (Himawari Band 3, GOES GeoColor, Meteosat vis006):
-            if (isGeoColor) {
-              const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
-              const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-              if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 62) / (205 - 62));
-              sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-              cloudAlpha = Math.round(248 * sigmoid * spatWeight);
-            } else if (isHimawariVis) {
-              // Himawari-9 Band 3 (0.64µm Visible Red Reflectance):
-              // Reject ocean (< 55) and desert/land albedo (< 85)
-              if (r <= 85) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (r - 85) / (205 - 85));
-              sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-              cloudAlpha = Math.round(250 * sigmoid * spatWeight);
-            } else if (isEumet) {
-              // EUMETSAT Meteosat-9/11 vis006 (0.6µm Visible Optical Reflectance):
-              // Reject ocean (< 60) and desert sand (< 92)
-              if (l <= 92) { d[i + 3] = 0; continue; }
-              const norm = Math.min(1.0, (l - 92) / (210 - 92));
-              sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-              cloudAlpha = Math.round(250 * sigmoid * spatWeight);
-            } else {
-              if (baseRadiance <= 72) {
-                d[i + 3] = 0;
-                continue;
-              }
-              const norm = Math.min(1.0, (baseRadiance - 72) / (205 - 72));
-              sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-              cloudAlpha = Math.round(248 * sigmoid * spatWeight);
+            if (baseRadiance <= 64) {
+              d[i + 3] = 0;
+              continue;
             }
+            const norm = Math.min(1.0, (baseRadiance - 64) / (200 - 64));
+            sigmoid = smoothCloudCurve(norm, 0.26, 5.5);
+            cloudAlpha = Math.round(248 * sigmoid * spatWeight);
           }
 
           if (cloudAlpha <= 2) {
@@ -1413,138 +2206,51 @@ function getSectorSpatialWeight(url, lng, lat) {
           }
 
           if (isInfraLayer) {
-            // PRESERVE GENUINE SATELLITE RADIANCE + RAYLEIGH ATMOSPHERIC SCATTER (Zoom Earth & Windy Parity)
-            // Dense cloud tops reflect pure luminous sunlight; thin feathered fringes catch atmospheric azure scatter
-            const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
+            const cloudTone = Math.min(255, Math.round(218 + 37 * sigmoid));
             const thinness = Math.max(0.0, 1.0 - sigmoid);
-            const rayleighB = Math.round(6.0 * thinness);
+            const rayleighB = Math.round(7.0 * thinness);
             const rayleighG = Math.round(2.0 * thinness);
-
-            d[i] = naturalLum;
-            d[i + 1] = Math.min(255, naturalLum + rayleighG);
-            d[i + 2] = Math.min(255, naturalLum + rayleighB + 2);
-            d[i + 3] = cloudAlpha;
-          } else if (isGeoColor) {
-            // Multi-channel GeoColor: preserve natural RGB
-            d[i] = r;
-            d[i + 1] = g;
-            d[i + 2] = b;
+            d[i] = cloudTone;
+            d[i + 1] = Math.min(255, cloudTone + rayleighG);
+            d[i + 2] = Math.min(255, cloudTone + rayleighB);
             d[i + 3] = cloudAlpha;
           } else {
-            // Single-band visible channel (Himawari Band 3, Meteosat vis006):
-            // Pure luminous cloud white + Rayleigh horizon scatter (Zoom Earth & Windy Parity)
             const thinness = Math.max(0.0, 1.0 - sigmoid);
             const rayleighB = Math.round(6.0 * thinness);
             const rayleighG = Math.round(2.0 * thinness);
             const cloudTone = Math.min(255, Math.round(225 + 30 * sigmoid));
-
             d[i] = cloudTone;
             d[i + 1] = Math.min(255, cloudTone + rayleighG);
             d[i + 2] = Math.min(255, cloudTone + rayleighB);
             d[i + 3] = cloudAlpha;
-          }
-
-        } else if (isVisMode) {
-          // ==========================================
-          // VISIBLE / OPTICAL REFLECTANCE MODE (Natural Day / Fallback Night)
-          // ==========================================
-          if (isEumet && !isInfraLayer) {
-            if (l <= 92) { d[i + 3] = 0; continue; }
-            const norm = Math.min(1.0, (l - 92) / (210 - 92));
-            const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-            const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
-            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-            const thinness = Math.max(0.0, 1.0 - sigmoid);
-            const rayleighB = Math.round(5.0 * thinness);
-            const rayleighG = Math.round(2.0 * thinness);
-            const cloudTone = Math.min(255, Math.round(225 + 30 * sigmoid));
-            d[i] = cloudTone;
-            d[i + 1] = Math.min(255, cloudTone + rayleighG);
-            d[i + 2] = Math.min(255, cloudTone + rayleighB);
-            d[i + 3] = cloudAlpha;
-          } else if (isHimawariVis) {
-            if (r <= 85) { d[i + 3] = 0; continue; }
-            const norm = Math.min(1.0, (r - 85) / (205 - 85));
-            const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-            const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
-            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-            const thinness = Math.max(0.0, 1.0 - sigmoid);
-            const rayleighB = Math.round(5.0 * thinness);
-            const rayleighG = Math.round(2.0 * thinness);
-            const cloudTone = Math.min(255, Math.round(225 + 30 * sigmoid));
-            d[i] = cloudTone;
-            d[i + 1] = Math.min(255, cloudTone + rayleighG);
-            d[i + 2] = Math.min(255, cloudTone + rayleighB);
-            d[i + 3] = cloudAlpha;
-          } else if (isGeoColor) {
-            const isBlueOcean = (b > r + 8 && b >= g - 6) || (b > 115 && r < 140 && g < 155);
-            const isSand = (r > g && g > b && (r - b) >= 20 && (r - g) >= 6);
-            if (isBlueOcean || isSand || l <= 62) { d[i + 3] = 0; continue; }
-            const norm = Math.min(1.0, (l - 62) / (205 - 62));
-            const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-            const cloudAlpha = Math.round(248 * sigmoid * spatWeight);
-            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-            d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = cloudAlpha;
-          } else if (isInfraLayer) {
-            // Clean Infrared Band 13 (Truth in Remote Sensing - Zoom Earth & Windy Parity)
-            const irThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : (isEumet ? 70 : 72);
-            if (baseRadiance <= irThresh) { d[i + 3] = 0; continue; }
-            const norm = Math.min(1.0, (baseRadiance - irThresh) / (215 - irThresh));
-            const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-            const cloudAlpha = Math.round(250 * sigmoid * spatWeight);
-            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-            const naturalLum = Math.min(255, Math.round(baseRadiance * 1.02));
-            const thinness = Math.max(0.0, 1.0 - sigmoid);
-            const rayleighB = Math.round(5.0 * thinness);
-            const rayleighG = Math.round(2.0 * thinness);
-            d[i] = naturalLum;
-            d[i + 1] = Math.min(255, naturalLum + rayleighG);
-            d[i + 2] = Math.min(255, naturalLum + rayleighB + 2);
-            d[i + 3] = cloudAlpha;
-          } else {
-            if (l <= 72) { d[i + 3] = 0; continue; }
-            const norm = Math.min(1.0, (l - 72) / (205 - 72));
-            const sigmoid = 1.0 / (1.0 + Math.exp(-9.0 * (norm - 0.38)));
-            const cloudAlpha = Math.round(248 * sigmoid * spatWeight);
-            if (cloudAlpha <= 2) { d[i + 3] = 0; continue; }
-            const cloudTone = Math.min(255, Math.round(225 + 30 * sigmoid));
-            d[i] = cloudTone; d[i + 1] = cloudTone; d[i + 2] = cloudTone; d[i + 3] = cloudAlpha;
           }
         } else {
-          // ==========================================
-          // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale)
-          // ==========================================
-          const baseThresh = isEumet ? 72 : 118;
-          const localThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isEumet) : baseThresh;
+          // INFRARED THERMAL MODE (Dvorak/BD Hurricane Scale with clean warm land/sea suppression)
+          const baseThresh = isBand09 ? 98 : 102;
+          const localThresh = hasCoords ? getLocalThermalThreshold(tileLngs[x], tileLats[y], isBand09) : baseThresh;
           const thresh = Math.max(baseThresh, localThresh);
-          const maxRange = isEumet ? 180 : 230;
+          const maxRange = isBand09 ? 190 : 225;
           if (l <= thresh) {
             d[i + 3] = 0;
             continue;
           }
           const norm = Math.min(1.0, (l - thresh) / (maxRange - thresh));
-          const finalAlpha = Math.round(245 * Math.pow(norm, 0.70) * spatWeight);
+          const finalAlpha = Math.round(245 * Math.pow(norm, 0.78) * spatWeight);
           if (finalAlpha <= 2) {
             d[i + 3] = 0;
             continue;
           }
-          // Unified thermodynamic Kelvin temperature palette across EUMETSAT, Himawari, and GOES:
           if (norm < 0.25) {
-            // Cirrus & mid-troposphere clouds: soft luminous translucent moonlight-white
             const tone = Math.min(255, Math.max(195, Math.round(210 + 35 * norm)));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = Math.min(255, tone + 4);
           } else if (norm < 0.45) {
-            // Upper troposphere: dense white cloud top
             const tone = Math.min(255, Math.max(220, Math.round(230 + 20 * norm)));
             d[i] = tone; d[i + 1] = tone; d[i + 2] = tone;
           } else if (norm < 0.65) {
-            // Active convection (-40°C to -55°C): Emerald green storm mantle
             d[i] = 34; d[i + 1] = 197; d[i + 2] = 94;
           } else if (norm < 0.85) {
-            // Deep convective vortex (-55°C to -70°C): Vivid Amber / Yellow core
             d[i] = 245; d[i + 1] = 158; d[i + 2] = 11;
           } else {
-            // Coldest overshooting tops (< -70°C): Crimson / Luminous White storm core
             d[i] = 239; d[i + 1] = 68; d[i + 2] = 68;
           }
           d[i + 3] = finalAlpha;
@@ -1953,9 +2659,14 @@ if (typeof module !== 'undefined' && module.exports) {
     NOAA_STAR_CONSTANTS,
     STAR_1808_SYMMETRIC_BLOCK3,
     NOAA_STAR_DEFAULTS,
+    NOAA_GLOBAL_SECTORS,
+    getGlobalSectorSpec,
+    extractSectorFromUrl,
+    computeSolarPositionRad,
     tileToLng,
     tileToLat,
     tilePixelToLatLon,
+    geodeticToGeoScan,
     geodeticToAbiScan,
     scanToPixel,
     pixelToScan,
@@ -1968,6 +2679,8 @@ if (typeof module !== 'undefined' && module.exports) {
     parseTileCoordsFromUrl,
     isTileOutsideSectorSupport,
     isBlackMarbleTileSolidDaylight,
+    getSectorSpatialWeight,
+    processTilePixels,
     createNoaaStarProtocolHandler,
   };
 }

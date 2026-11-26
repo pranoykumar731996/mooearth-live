@@ -63,10 +63,10 @@ async function runTests() {
       timelineHoursAhead: 0,
       search: '',
     }),
-    'Activates only for goes-east daylight visible live nowcast'
+    'Activates for goes-east daylight visible live nowcast'
   );
   check(
-    !shouldUseNoaaStarPilotForSector({
+    shouldUseNoaaStarPilotForSector({
       sectorId: 'goes-east',
       isVisibleMode: true,
       goesEastDay: false,
@@ -74,7 +74,7 @@ async function runTests() {
       timelineHoursAhead: 0,
       search: '',
     }),
-    'Deactivates at night (!goesEastDay) preserving Band13 IR'
+    'Remains active 24/7 at night (GeoColor Night + Band13 IR fallback)'
   );
   check(
     !shouldUseNoaaStarPilotForSector({
@@ -99,15 +99,48 @@ async function runTests() {
     'Deactivates on historical timeline scrub (< 0)'
   );
   check(
+    ['goes-east', 'goes-west', 'himawari', 'eumet-iodc', 'europe-africa'].every((sid) =>
+      shouldUseNoaaStarPilotForSector({
+        sectorId: sid,
+        spectralMode: 'visible',
+        isVisibleMode: true,
+        goesEastDay: true,
+        isHdMode: false,
+        timelineHoursAhead: 0,
+        search: '',
+      })
+    ) &&
+      shouldUseNoaaStarPilotForSector({
+        sectorId: 'himawari',
+        spectralMode: 'blue',
+        isVisibleMode: false,
+        goesEastDay: false,
+        isHdMode: false,
+        timelineHoursAhead: 0,
+        search: '',
+      }) &&
+      shouldUseNoaaStarPilotForSector({
+        sectorId: 'europe-africa',
+        spectralMode: 'infra',
+        isVisibleMode: false,
+        goesEastDay: false,
+        isHdMode: false,
+        timelineHoursAhead: 0,
+        search: '',
+      }),
+    'Activates all 5 geostationary sectors across Visible, Blue, and Infra modes'
+  );
+  check(
     !shouldUseNoaaStarPilotForSector({
-      sectorId: 'himawari',
+      sectorId: 'global-polar',
+      spectralMode: 'visible',
       isVisibleMode: true,
       goesEastDay: true,
       isHdMode: false,
       timelineHoursAhead: 0,
       search: '',
     }),
-    'Does not hijack non-GOES-East sectors'
+    'Does not hijack non-geostationary global-polar sector'
   );
 
   // Configurable calibration offset scoping & template URL round-trip
@@ -130,7 +163,7 @@ async function runTests() {
   const resolvedFallback = parseNoaaStarFallbackHttpsUrl(tpl.replace('{z}', '5').replace('{x}', '8').replace('{y}', '13'));
   check(
     resolvedFallback ===
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_GeoColor/default/2026-11-25T18:00:00Z/GoogleMapsCompatible_Level7/5/13/8.png?spectral=vis',
+      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_GeoColor/default/2026-11-25T18:00:00Z/GoogleMapsCompatible_Level7/5/13/8.png?spectral=vis&sector=goes-east',
     'Main-thread/worker fallback URL preserves exact GOES-East_ABI_GeoColor WMTS path and spectral=vis'
   );
 
@@ -535,6 +568,245 @@ async function runTests() {
       workerMod.isBlackMarbleTileSolidDaylight(flBlackMarbleDay) &&
       !isBlackMarbleTileSolidDaylight(flBlackMarbleNight),
     'Black Marble culls solid-daylight Florida noon tiles while preserving nocturnal tiles'
+  );
+
+  // 9. Milestone 3 Global 5-Satellite Geometries, Day/Night Pixel Transfer, & LRU/Sector Isolation
+  const sectorSpecs = workerMod.NOAA_GLOBAL_SECTORS;
+  const himSpec = sectorSpecs['himawari:vis'];
+  const hNadirScan = workerMod.geodeticToGeoScan(0, himSpec.lon0Deg, himSpec);
+  const hNadirPx = workerMod.scanToPixel(hNadirScan.scanX, hNadirScan.scanY, { gridSpec: himSpec });
+  check(
+    Math.abs(hNadirPx.col - 687.5) < 1e-6 && Math.abs(hNadirPx.row - 686.5) < 1e-6,
+    'Himawari nadir maps accurately to verified calibrated center (687.5, 686.5)'
+  );
+
+  const m9Spec = sectorSpecs['eumet-iodc:vis'];
+  const m9Scan = workerMod.geodeticToGeoScan(0, m9Spec.lon0Deg, m9Spec);
+  const m9Px = workerMod.scanToPixel(m9Scan.scanX, m9Scan.scanY, { gridSpec: m9Spec });
+  check(
+    Math.abs(m9Px.col - 463.5) < 1e-6 && Math.abs(m9Px.row - 463.5) < 1e-6,
+    'Meteosat-9 nadir maps accurately to (463.5, 463.5)'
+  );
+
+  const goesIrSpec = sectorSpecs['goes-east:ir'];
+  const gIrScan = workerMod.geodeticToGeoScan(0, goesIrSpec.lon0Deg, goesIrSpec);
+  const gIrPx = workerMod.scanToPixel(gIrScan.scanX, gIrScan.scanY, { gridSpec: goesIrSpec });
+  check(
+    Math.abs(gIrPx.col - 677.25) < 1e-6 && Math.abs(gIrPx.row - 677.25) < 1e-6,
+    'GOES-19 Band 13 (1356x1356) nadir maps accurately to calibrated (677.25, 677.25)'
+  );
+
+  // Verify CIRA URL routing + EUMETSAT fallback routing + per-sector spatial culling
+  const himNoaaTpl = buildNoaaStarTileUrl({
+    sectorId: 'himawari',
+    layerName: 'Himawari_AHI_Band3_Red_Visible_1km',
+    tileTime: '2026-11-25T04:00:00Z',
+    tileMatrixSet: 'GoogleMapsCompatible_Level7',
+    ext: 'png',
+    spectralParam: 'spectral=vis',
+    bucket: 999,
+  });
+  const tokyoTile = himNoaaTpl.replace('{z}', '5').replace('{x}', '28').replace('{y}', '12');
+  const floridaOnHim = himNoaaTpl.replace('{z}', '5').replace('{x}', '8').replace('{y}', '13');
+  check(
+    !isTileOutsideSectorSupport(tokyoTile) &&
+      !workerMod.isTileOutsideSectorSupport(tokyoTile) &&
+      isTileOutsideSectorSupport(floridaOnHim) &&
+      workerMod.isTileOutsideSectorSupport(floridaOnHim),
+    'noaa-star:// URL respects sector=himawari bounds (keeps Tokyo, culls Florida)'
+  );
+
+  const eumetNoaaTpl = buildNoaaStarTileUrl({
+    sectorId: 'europe-africa',
+    layerName: 'msg_fes:vis006',
+    tileTime: '2026-11-25T12:00:00Z',
+    tileMatrixSet: 'EPSG:3857',
+    ext: 'png',
+    spectralParam: 'spectral=vis',
+    bucket: 999,
+  });
+  const parsedEumetFb = parseNoaaStarFallbackHttpsUrl(eumetNoaaTpl.replace('{z}', '4').replace('{x}', '8').replace('{y}', '6'));
+  check(
+    Boolean(parsedEumetFb && parsedEumetFb.startsWith('/api/weather/satellite/eumet-tile?z=4&x=8&y=6')),
+    'Meteosat noaa-star:// URL routes fallbackProto=eumet to Edge eumet-tile proxy'
+  );
+
+  // Day/Night GeoColor + Clean IR pixel extraction checks on 16x16 tiles (away from 1px border speckle removal)
+  function makeSolid16Tile(r: number, g: number, b: number) {
+    const arr = new Uint8ClampedArray(16 * 16 * 4);
+    for (let i = 0; i < arr.length; i += 4) {
+      arr[i] = r; arr[i + 1] = g; arr[i + 2] = b; arr[i + 3] = 255;
+    }
+    return arr;
+  }
+  const dayUrl = `https://live.mooearth.internal/tile/5/8/13.png?sector=goes-east&spectral=vis&product=GeoColor&t=${flNoonMs}`;
+  const nightUrl = `https://live.mooearth.internal/tile/5/8/13.png?sector=goes-east&spectral=vis&product=GeoColor&t=${flNightMs}`;
+  const irBlueUrl = `https://live.mooearth.internal/tile/5/8/13.png?sector=goes-east&spectral=blue&product=Band13&t=${flNightMs}`;
+
+  const centerAlpha = (buf: Uint8ClampedArray) => buf[(8 * 16 + 8) * 4 + 3];
+  const dayCloud = makeSolid16Tile(215, 215, 215);
+  const dayOcean = makeSolid16Tile(18, 52, 118);
+  const daySand = makeSolid16Tile(205, 175, 130);
+  workerMod.processTilePixels(dayCloud, 16, 16, dayUrl);
+  workerMod.processTilePixels(dayOcean, 16, 16, dayUrl);
+  workerMod.processTilePixels(daySand, 16, 16, dayUrl);
+  check(
+    centerAlpha(dayCloud) > 150 && centerAlpha(dayOcean) === 0 && centerAlpha(daySand) === 0,
+    'GeoColor daytime keeps clouds while stripping ocean & Sahara sand'
+  );
+
+  const nightLowStratus = makeSolid16Tile(65, 108, 148);
+  const nightCityLight = makeSolid16Tile(212, 152, 62);
+  const nightPurpleLand = makeSolid16Tile(76, 60, 96);
+  workerMod.processTilePixels(nightLowStratus, 16, 16, nightUrl);
+  workerMod.processTilePixels(nightCityLight, 16, 16, nightUrl);
+  workerMod.processTilePixels(nightPurpleLand, 16, 16, nightUrl);
+  check(
+    centerAlpha(nightLowStratus) > 40 && centerAlpha(nightCityLight) === 0 && centerAlpha(nightPurpleLand) === 0,
+    'GeoColor nighttime preserves cyan-blue low stratus while stripping golden city lights & dark purple clear land'
+  );
+
+  const irClearNightLand = makeSolid16Tile(90, 90, 90);
+  const irWarmCloud = makeSolid16Tile(124, 124, 124);
+  workerMod.processTilePixels(irClearNightLand, 16, 16, irBlueUrl);
+  workerMod.processTilePixels(irWarmCloud, 16, 16, irBlueUrl);
+  check(
+    centerAlpha(irClearNightLand) === 0 && centerAlpha(irWarmCloud) > 50,
+    'Clean IR suppresses clear night land (~90) while keeping low/mid cloud decks (~124)'
+  );
+
+  // Verify CIRA 2x2 fetch + LRU sector eviction + isolated sector cooldowns
+  let lruNowMs = 5_000_000;
+  const mockLruHandler = workerMod.createNoaaStarProtocolHandler({
+    fetchFn: async (u: string) => {
+      if (u.includes('sat=goes-18')) {
+        return { ok: false, status: 503, headers: { get: () => null }, body: null };
+      }
+      if (u.includes('action=meta')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ latestTs: '20261125210000', observedIso: '2026-11-25T21:00:00Z' }),
+        };
+      }
+      if (u.includes('gibs.earthdata.nasa.gov')) {
+        return {
+          ok: true,
+          status: 200,
+          url: u,
+          headers: { get: () => null },
+          blob: async () => ({ arrayBuffer: async () => new Uint8Array([9, 8, 7]).buffer }),
+        };
+      }
+      const bytes = new Uint8Array([1, 2, 3, 4]);
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'Wed, 25 Nov 2026 21:00:00 GMT' },
+        arrayBuffer: async () => bytes.buffer,
+      };
+    },
+    createImageBitmapFn: async () => ({ width: 464, height: 464, close() {} }),
+    extractRgbStripFn: async (bmp: { width: number; height: number }) =>
+      new Uint8Array(bmp.width * bmp.height * 3).fill(190),
+    nowFn: () => {
+      lruNowMs += 10;
+      return lruNowMs;
+    },
+    configOverrides: {
+      // 5 MiB fits one 928x928 peak (3.51 MiB) cleanly, forcing LRU eviction when a second sector loads (5.98 MiB combined)
+      MAX_TRACKED_BUFFER_BYTES: 5 * 1024 * 1024,
+      STRIP_HEIGHT: 64,
+    },
+  });
+
+  await mockLruHandler.handleTileRequest(
+    { url: 'noaa-star://tile/4/8/6.png?sector=europe-africa&spectral=infra' },
+    new AbortController()
+  );
+  await mockLruHandler.handleTileRequest(
+    { url: 'noaa-star://tile/4/10/7.png?sector=eumet-iodc&spectral=infra' },
+    new AbortController()
+  );
+  const stAfterTwo = mockLruHandler.getState();
+  check(
+    !stAfterTwo.sectors['europe-africa:ir'].hasRgb && stAfterTwo.sectors['eumet-iodc:ir'].hasRgb,
+    'LRU pool evicts older idle sector buffer cleanly to stay under tracked memory budget'
+  );
+
+  // Fault on goes-18 CIRA IR should trip cooldown ONLY on goes-west:ir without touching eumet-iodc:ir
+  const goesWestFb = await mockLruHandler.handleTileRequest(
+    { url: 'noaa-star://tile/4/2/6.png?sector=goes-west&spectral=infra&fallbackLayer=GOES-West_ABI_Band13_Clean_Infrared' },
+    new AbortController()
+  );
+  const stAfterFault = mockLruHandler.getState();
+  check(
+    goesWestFb.data instanceof ArrayBuffer &&
+      stAfterFault.sectors['goes-west:ir'].cooldownUntilMs > lruNowMs &&
+      stAfterFault.sectors['eumet-iodc:ir'].cooldownUntilMs === 0,
+    'Outage trips cooldown only on failing sector while healthy sectors continue serving live data'
+  );
+
+  // 10. Day-GeoColor + Night-IR 24/7 blender (nightIr=1 fetches CIRA Band09/13 cleanly at night)
+  const nightBlendUrls: string[] = [];
+  let nightClkMs = Date.UTC(2026, 10, 25, 22, 0, 0); // 03:30 AM IST over Sri Lanka/India (night!)
+  const nightHandler = workerMod.createNoaaStarProtocolHandler({
+    nowFn: () => nightClkMs,
+    fetchFn: async (u: string) => {
+      nightBlendUrls.push(u);
+      if (u.includes('action=meta')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ latestTs: '20261125215000', observedIso: '2026-11-25T21:50:00Z' }),
+        };
+      }
+      const bytes = new Uint8Array([1, 2, 3, 4]);
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'Wed, 25 Nov 2026 21:55:00 GMT' },
+        arrayBuffer: async () => bytes.buffer,
+      };
+    },
+    createImageBitmapFn: async (blobOrBytes: { type?: string }) => {
+      if (blobOrBytes && blobOrBytes.type === 'image/jpeg') {
+        return { width: 1808, height: 1808, close() {} };
+      }
+      return { width: 464, height: 464, close() {} };
+    },
+    extractRgbStripFn: async (bmp: { width: number; height: number }) =>
+      new Uint8Array(bmp.width * bmp.height * 3).fill(145),
+    processTilePixelsFn: (rgba: Uint8ClampedArray, w: number, h: number, u: string) =>
+      workerMod.processTilePixels(rgba, w, h, u),
+  });
+
+  // Sri Lanka tile z=4, x=11, y=7 (~67.5E..90E, 0..21.9N) -> 100% night at 22:00 UTC -> uses Band09 IR!
+  const sriLankaVisUrl = buildNoaaStarTileUrl({
+    sectorId: 'eumet-iodc',
+    enableNightIr: true,
+    layerName: 'msg_iodc:ir108',
+    tileTime: '2026-11-25T22:00:00Z',
+    tileMatrixSet: 'EPSG:3857',
+    ext: 'png',
+    spectralParam: 'spectral=vis',
+    bucket: 999,
+  });
+  check(sriLankaVisUrl.includes('nightIr=1'), 'Visible mode URL carries nightIr=1 for 24/7 Day-Optical + Night-IR compositing');
+  const nightRes = await nightHandler.handleTileRequest(
+    { url: sriLankaVisUrl.replace('{z}', '4').replace('{x}', '11').replace('{y}', '7') },
+    new AbortController()
+  );
+  const nightRgba = new Uint8ClampedArray(nightRes.data);
+  const midIdx = (128 * 256 + 128) * 4;
+  check(
+    nightBlendUrls.some((u) => u.includes('sat=meteosat-9&product=band_09')) &&
+      !nightBlendUrls.some((u) => u.includes('product=geocolor')) &&
+      nightRgba[midIdx] >= 210 &&
+      nightRgba[midIdx + 3] > 120,
+    'Nighttime visible tile with nightIr=1 routes cleanly to CIRA Band09 IR and outputs luminous white clouds'
   );
 
   // Restore env

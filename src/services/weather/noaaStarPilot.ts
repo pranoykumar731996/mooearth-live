@@ -8,9 +8,21 @@
 export const NOAA_STAR_TELEMETRY_CHANNEL = 'noaa-star-pilot-telemetry';
 export const NOAA_STAR_DEFAULT_1808_OFFSET = 0.333;
 
+export interface NoaaStarActiveSectorInfo {
+  sector: string;
+  satLabel: string;
+  product: string;
+  cdnAgeMinutes: number | null;
+  fallbackActive?: boolean;
+}
+
 export interface NoaaStarPilotTelemetry {
   mode: 'noaa-star' | 'gibs-fallback-pending' | 'gibs-fallback' | 'gibs-fallback-failed';
   reason: string | null;
+  sector?: string;
+  satLabel?: string;
+  product?: string;
+  activeSectors?: NoaaStarActiveSectorInfo[];
   lastModifiedUtc: string | null;
   lastModifiedMs: number | null;
   cdnAgeMinutes: number | null;
@@ -25,14 +37,18 @@ export interface NoaaStarPilotTelemetry {
 
 export interface NoaaStarSectorCheck {
   sectorId: string;
-  isVisibleMode: boolean;
-  goesEastDay: boolean;
+  isVisibleMode?: boolean;
+  spectralMode?: 'visible' | 'blue' | 'infra';
+  goesEastDay?: boolean;
   isHdMode: boolean;
   timelineHoursAhead: number;
   search?: string;
 }
 
 export interface NoaaStarTileUrlParams {
+  sectorId?: string;
+  fallbackProto?: 'gibs' | 'eumet';
+  enableNightIr?: boolean;
   layerName: string;
   tileTime: string;
   tileMatrixSet: string;
@@ -42,6 +58,14 @@ export interface NoaaStarTileUrlParams {
   calOffsetX?: number;
   calOffsetY?: number;
 }
+
+export const NOAA_GLOBAL_PILOT_SECTORS = new Set([
+  'goes-east',
+  'goes-west',
+  'himawari',
+  'eumet-iodc',
+  'europe-africa',
+]);
 
 function parseClampedOffset(rawValue: string | undefined, fallback: number): number {
   if (rawValue === undefined || rawValue === '') return fallback;
@@ -79,26 +103,34 @@ export function getNoaaStar1808CalibrationOffset(): { x: number; y: number } {
 export function shouldUseNoaaStarPilotForSector({
   sectorId,
   isVisibleMode,
+  spectralMode,
   goesEastDay,
   isHdMode,
   timelineHoursAhead,
   search,
 }: NoaaStarSectorCheck): boolean {
-  return (
-    isNoaaStarPilotEnabled(search) &&
-    sectorId === 'goes-east' &&
-    isVisibleMode &&
-    goesEastDay &&
-    !isHdMode &&
-    timelineHoursAhead === 0
-  );
+  if (!isNoaaStarPilotEnabled(search)) return false;
+  if (isHdMode || timelineHoursAhead !== 0) return false;
+  if (!NOAA_GLOBAL_PILOT_SECTORS.has(sectorId)) return false;
+  if (spectralMode) {
+    return spectralMode === 'visible' || spectralMode === 'blue' || spectralMode === 'infra';
+  }
+  if (isVisibleMode !== undefined) {
+    // Allow GeoColor / Clean IR across all 5 geostationary sectors 24/7
+    void goesEastDay;
+    return isVisibleMode || sectorId !== 'global-polar';
+  }
+  return true;
 }
 
 /**
  * Builds a noaa-star:// URL template retaining literal {z}/{x}/{y} placeholders for MapLibre
- * while carrying the mode-compatible GIBS GeoColor HTTPS parameters for direct failover.
+ * while carrying sector identity and mode-compatible GIBS/EUMETSAT failover parameters.
  */
 export function buildNoaaStarTileUrl({
+  sectorId = 'goes-east',
+  fallbackProto,
+  enableNightIr = false,
   layerName,
   tileTime,
   tileMatrixSet,
@@ -112,12 +144,18 @@ export function buildNoaaStarTileUrl({
   const cx = calOffsetX ?? defaults.x;
   const cy = calOffsetY ?? defaults.y;
   const spectral = spectralParam.startsWith('spectral=') ? spectralParam.slice('spectral='.length) : spectralParam;
+  const resolvedFallbackProto =
+    fallbackProto ||
+    (sectorId === 'europe-africa' || sectorId === 'eumet-iodc' ? 'eumet' : 'gibs');
   const query = [
+    `sector=${encodeURIComponent(sectorId)}`,
+    `fallbackProto=${encodeURIComponent(resolvedFallbackProto)}`,
     `fallbackLayer=${encodeURIComponent(layerName)}`,
     `fallbackTime=${encodeURIComponent(tileTime)}`,
     `fallbackTms=${encodeURIComponent(tileMatrixSet)}`,
     `fallbackExt=${encodeURIComponent(ext)}`,
     `spectral=${encodeURIComponent(spectral)}`,
+    ...(enableNightIr && spectral === 'vis' ? ['nightIr=1'] : []),
     `calX=${encodeURIComponent(String(cx))}`,
     `calY=${encodeURIComponent(String(cy))}`,
     `bucket=${encodeURIComponent(String(bucket))}`,
@@ -132,12 +170,17 @@ export function parseNoaaStarFallbackHttpsUrl(rawUrl: string): string | null {
   const tileX = parseInt(m[2], 10);
   const tileY = parseInt(m[3], 10);
   const qs = new URLSearchParams(m[5] || '');
+  const sector = (qs.get('sector') || 'goes-east').toLowerCase();
+  const fallbackProto = (qs.get('fallbackProto') || 'gibs').toLowerCase();
   const layer = qs.get('fallbackLayer') || 'GOES-East_ABI_GeoColor';
   const time = qs.get('fallbackTime') || new Date(Date.now() - 10 * 60000).toISOString().slice(0, 10);
   const tms = qs.get('fallbackTms') || 'GoogleMapsCompatible_Level7';
   const ext = qs.get('fallbackExt') || 'png';
   const spectral = qs.get('spectral') || 'vis';
-  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time}/${tms}/${tileZ}/${tileY}/${tileX}.${ext}?spectral=${encodeURIComponent(spectral)}`;
+  if (fallbackProto === 'eumet') {
+    return `/api/weather/satellite/eumet-tile?z=${tileZ}&x=${tileX}&y=${tileY}&layer=${encodeURIComponent(layer)}&spectral=${encodeURIComponent(spectral)}&sector=${encodeURIComponent(sector)}`;
+  }
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${layer}/default/${time}/${tms}/${tileZ}/${tileY}/${tileX}.${ext}?spectral=${encodeURIComponent(spectral)}&sector=${encodeURIComponent(sector)}`;
 }
 
 export function formatNoaaFallbackReason(reason?: string | null): string {
@@ -153,8 +196,10 @@ export function formatNoaaFallbackReason(reason?: string | null): string {
   }
   if (reason === 'NOAA_COOLDOWN_ACTIVE') return 'NOAA cooldown active';
   if (reason === 'NOAA_RESPONSE_TOO_LARGE') return 'NOAA payload > 8 MB';
-  if (reason === 'UNEXPECTED_NOAA_DIMENSIONS') return 'NOAA size != 1808×1808';
+  if (reason === 'UNEXPECTED_NOAA_DIMENSIONS') return 'Unexpected image dimensions';
   if (reason === 'NOAA_TRACKED_BUDGET_EXCEEDED') return 'NOAA buffer limit reached';
+  if (reason.startsWith('CIRA_META_HTTP_')) return `CIRA meta HTTP ${reason.slice('CIRA_META_HTTP_'.length)}`;
+  if (reason.startsWith('CIRA_TILE_HTTP_')) return `CIRA tile HTTP ${reason.slice('CIRA_TILE_HTTP_'.length)}`;
   if (reason.startsWith('NOAA_HTTP_')) return `NOAA HTTP ${reason.slice('NOAA_HTTP_'.length)}`;
   return reason;
 }
@@ -211,6 +256,25 @@ export function parseTileCoordsFromUrl(url: string): { tileZ: number; tileX: num
   return null;
 }
 
+export function extractSectorFromUrl(url: string): string | null {
+  if (!url) return null;
+  const qsSector = url.match(/[?&]sector=([^&#]+)/i);
+  if (qsSector && qsSector[1]) {
+    try {
+      return decodeURIComponent(qsSector[1]).toLowerCase();
+    } catch {
+      return qsSector[1].toLowerCase();
+    }
+  }
+  if (/eumet-iodc|msg_iodc|meteosat-9/i.test(url)) return 'eumet-iodc';
+  if (/europe-africa|eumet-prime|msg_fes|meteosat-0deg|eumet-tile/i.test(url)) return 'europe-africa';
+  if (/himawari/i.test(url)) return 'himawari';
+  if (/goes-west|goes18|goes-18/i.test(url)) return 'goes-west';
+  if (/goes-east|goes19|goes16|goes-19|goes-16/i.test(url) || url.startsWith('noaa-star://')) return 'goes-east';
+  if (/worldcloudmap|mumi|global-polar/i.test(url)) return 'global-polar';
+  return null;
+}
+
 /**
  * Returns true when a tile at z >= 2 lies strictly outside the sector's non-zero
  * spatial blend footprint so off-hemisphere fetches short-circuit without network I/O.
@@ -226,35 +290,37 @@ export function isTileOutsideSectorSupport(
   const westLng = slippyTileToLng(tileX, tileZ);
   const eastLng = slippyTileToLng(tileX + 1, tileZ);
 
-  if (url.includes('worldcloudmap') || url.includes('mumi') || url.includes('global-polar')) {
+  const sector = extractSectorFromUrl(url);
+  if (sector === 'global-polar') {
     return northLat <= 58.0 && southLat >= -58.0;
   }
 
-  const isHimawari = url.includes('Himawari') || url.includes('himawari');
-  const isIodc = (url.includes('msg_iodc') || url.includes('eumet-iodc')) && !isHimawari;
-  const isMeteosatPrime =
-    (url.includes('msg_fes') || url.includes('europe-africa') || url.includes('eumet-prime')) && !isIodc;
-  const isGoesEast = url.includes('GOES-East') || url.includes('goes-east') || url.startsWith('noaa-star://');
-  const isGoesWest = url.includes('GOES-West') || url.includes('goes-west');
-
-  if (!isHimawari && !isIodc && !isMeteosatPrime && !isGoesEast && !isGoesWest) return false;
+  if (
+    sector !== 'himawari' &&
+    sector !== 'eumet-iodc' &&
+    sector !== 'europe-africa' &&
+    sector !== 'goes-east' &&
+    sector !== 'goes-west'
+  ) {
+    return false;
+  }
   if (southLat >= 65.0 || northLat <= -65.0) return true;
 
   let arcCenter = 0;
   let arcHalfSpan = 180;
-  if (isIodc) {
+  if (sector === 'eumet-iodc') {
     arcCenter = 60.0;
     arcHalfSpan = 35.0;
-  } else if (isHimawari) {
+  } else if (sector === 'himawari') {
     arcCenter = 135.0;
     arcHalfSpan = 60.0;
-  } else if (isGoesWest) {
+  } else if (sector === 'goes-west') {
     arcCenter = 215.0;
     arcHalfSpan = 50.0;
-  } else if (isGoesEast) {
+  } else if (sector === 'goes-east') {
     arcCenter = 285.0;
     arcHalfSpan = 60.0;
-  } else if (isMeteosatPrime) {
+  } else if (sector === 'europe-africa') {
     arcCenter = 2.5;
     arcHalfSpan = 42.5;
   }
