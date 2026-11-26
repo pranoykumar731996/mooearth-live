@@ -683,26 +683,67 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
         return { data: buf };
       }
 
+      return processBlobViaMainCanvas(blob, processMainThreadTile, realUrl);
+    }
+
+    async function fetchWithTimeoutSignalMain(url: string, externalSignal: AbortSignal, timeoutMs: number): Promise<Response> {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      const onExternalAbort = () => controller.abort();
+      if (externalSignal.aborted) {
+        clearTimeout(timeoutId);
+        throw new DOMException('Aborted', 'AbortError');
+      }
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
       try {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = document.createElement('canvas');
+        return await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+        externalSignal.removeEventListener('abort', onExternalAbort);
+      }
+    }
+
+    async function processBlobViaMainCanvas(
+      blob: Blob,
+      processFn: (data: Uint8ClampedArray, w: number, h: number, url: string) => void,
+      url: string
+    ): Promise<{ data: any }> {
+      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
+        return { data: await blob.arrayBuffer() };
+      }
+      let bitmap: ImageBitmap | null = null;
+      let canvas: HTMLCanvasElement | null = null;
+      try {
+        bitmap = await createImageBitmap(blob);
+        canvas = document.createElement('canvas');
         canvas.width = bitmap.width;
         canvas.height = bitmap.height;
         const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
+        if (!ctx) {
+          const passthrough = bitmap;
+          bitmap = null;
+          return { data: passthrough };
+        }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(bitmap, 0, 0);
         bitmap.close();
+        bitmap = null;
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processMainThreadTile(imgData.data, canvas.width, canvas.height, realUrl);
+        processFn(imgData.data, canvas.width, canvas.height, url);
         ctx.putImageData(imgData, 0, 0);
         const cleanBitmap = await createImageBitmap(canvas);
         return { data: cleanBitmap };
       } catch {
-        const buf = await blob.arrayBuffer();
-        return { data: buf };
+        return { data: await blob.arrayBuffer() };
+      } finally {
+        if (bitmap && typeof bitmap.close === 'function') {
+          try { bitmap.close(); } catch {}
+        }
+        if (canvas) {
+          canvas.width = 0;
+          canvas.height = 0;
+        }
       }
     }
 
@@ -861,12 +902,7 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         // Primary: direct EUMETSAT WMS (Zero Vercel Serverless CPU cost, native CORS + 7-day browser cache)
         try {
-          const directUrl = eumetUrlToWmsDirect(params.url);
-          const timeoutController = new AbortController();
-          const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
-          abortController.signal.addEventListener('abort', () => timeoutController.abort());
-          const directRes = await fetch(directUrl, { signal: timeoutController.signal });
-          clearTimeout(timeoutId);
+          const directRes = await fetchWithTimeoutSignalMain(eumetUrlToWmsDirect(params.url), abortController.signal, 9000);
           if (directRes.ok) res = directRes;
         } catch {
           // Direct WMS failed/timed out, fall through to edge proxy fallback
@@ -874,46 +910,21 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
 
         // Fallback: edge proxy ONLY if direct WMS fails (e.g. strict firewall or network block)
         if (!res) {
-          const proxyUrl = eumetUrlToProxyOrWms(params.url);
-          const fallbackController = new AbortController();
-          const fallbackTimeout = setTimeout(() => fallbackController.abort(), 10000);
-          abortController.signal.addEventListener('abort', () => fallbackController.abort());
           try {
-            const proxyRes = await fetch(proxyUrl, { signal: fallbackController.signal });
-            clearTimeout(fallbackTimeout);
+            const proxyRes = await fetchWithTimeoutSignalMain(eumetUrlToProxyOrWms(params.url), abortController.signal, 10000);
             if (proxyRes.ok) res = proxyRes;
           } catch {
-            clearTimeout(fallbackTimeout);
+            // Proxy failed/timed out
           }
         }
 
         if (!res || !res.ok) throw new Error('All EUMETSAT tile sources failed');
         const blob = await res.blob();
-
-        if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
-          const buf = await blob.arrayBuffer();
-          return { data: buf };
-        }
-
-        const bitmap = await createImageBitmap(blob);
-        const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(bitmap, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processMainThreadTile(imgData.data, canvas.width, canvas.height, params.url);
-        ctx.putImageData(imgData, 0, 0);
-        const cleanBitmap = await createImageBitmap(canvas);
-        return { data: cleanBitmap };
-      } catch {
+        return processBlobViaMainCanvas(blob, processMainThreadTile, params.url);
+      } catch (err) {
+        if (abortController.signal.aborted) throw err;
         // Fallback transparent 1x1 png buffer so map tile engine never hangs
-        const emptyBuf = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,10,73,68,65,84,120,156,99,0,1,0,0,5,0,1,13,10,45,180,0,0,0,0,73,69,78,68,174,66,96,130]);
-        return { data: emptyBuf.buffer };
+        return { data: createEmptyTransparentPngBuffer() };
       }
     });
 
@@ -998,35 +1009,15 @@ if (typeof window !== 'undefined' && !(window as any).__gibsAlphaProtocolRegiste
       if (isBlackMarbleTileSolidDaylight(params.url)) {
         return { data: createEmptyTransparentPngBuffer() };
       }
-      const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
-      const res = await fetch(realUrl, { signal: abortController.signal });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const blob = await res.blob();
-
-      if (typeof createImageBitmap === 'undefined' || typeof document === 'undefined') {
-        const buf = await blob.arrayBuffer();
-        return { data: buf };
-      }
-
       try {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(bitmap, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processMainThreadBlackMarble(imgData.data, canvas.width, canvas.height, params.url);
-        ctx.putImageData(imgData, 0, 0);
-        const cleanBitmap = await createImageBitmap(canvas);
-        return { data: cleanBitmap };
-      } catch {
-        const buf = await blob.arrayBuffer();
-        return { data: buf };
+        const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
+        const res = await fetchWithTimeoutSignalMain(realUrl, abortController.signal, 9000);
+        if (!res.ok) return { data: createEmptyTransparentPngBuffer() };
+        const blob = await res.blob();
+        return processBlobViaMainCanvas(blob, processMainThreadBlackMarble, params.url);
+      } catch (err) {
+        if (abortController.signal.aborted) throw err;
+        return { data: createEmptyTransparentPngBuffer() };
       }
     });
   } catch (protoErr) {

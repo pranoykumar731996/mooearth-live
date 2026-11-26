@@ -2411,6 +2411,63 @@ if (typeof self !== 'undefined') {
   }
 
   if (self.addProtocol) {
+    async function fetchWithTimeoutSignal(url, externalSignal, timeoutMs) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      const onExternalAbort = () => controller.abort();
+      if (externalSignal) {
+        if (externalSignal.aborted) {
+          clearTimeout(timeoutId);
+          throw makeAbortError();
+        }
+        externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+      try {
+        return await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+        if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+      }
+    }
+
+    async function processBlobViaOffscreenCanvas(blob, processFn, url) {
+      if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
+        let bitmap = null;
+        let canvas = null;
+        try {
+          bitmap = await createImageBitmap(blob);
+          canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            const passthrough = bitmap;
+            bitmap = null;
+            return { data: passthrough };
+          }
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          bitmap = null;
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          processFn(imgData.data, canvas.width, canvas.height, url);
+          ctx.putImageData(imgData, 0, 0);
+          const cleanBitmap = await createImageBitmap(canvas);
+          return { data: cleanBitmap };
+        } catch {
+          return { data: await blob.arrayBuffer() };
+        } finally {
+          if (bitmap && typeof bitmap.close === 'function') {
+            try { bitmap.close(); } catch {}
+          }
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+        }
+      }
+      return { data: await blob.arrayBuffer() };
+    }
+
     // Protocol 1: NASA GIBS Geostationary Satellites (GOES & Himawari)
     self.addProtocol('gibs-alpha', async (params, abortController) => {
       if (isTileOutsideSectorSupport(params.url)) {
@@ -2419,28 +2476,7 @@ if (typeof self !== 'undefined') {
       const initialUrl = params.url.replace(/^gibs-alpha:\/\//, 'https://');
       const { res, resolvedUrl } = await fetchDirectHttpsGibsTile(initialUrl, abortController.signal, fetch);
       const blob = await res.blob();
-
-      if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
-        try {
-          const bitmap = await createImageBitmap(blob);
-          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return { data: bitmap };
-
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(bitmap, 0, 0);
-          bitmap.close();
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          processTilePixels(imgData.data, canvas.width, canvas.height, resolvedUrl);
-          ctx.putImageData(imgData, 0, 0);
-          const cleanBitmap = await createImageBitmap(canvas);
-          return { data: cleanBitmap };
-        } catch {
-          return { data: await blob.arrayBuffer() };
-        }
-      }
-      return { data: await blob.arrayBuffer() };
+      return processBlobViaOffscreenCanvas(blob, processTilePixels, resolvedUrl);
     });
 
     // Protocol 1b: Feature-Flagged NOAA STAR GOES-19 1808x1808 GeoColor Reprojector -> GIBS GeoColor Failover
@@ -2486,12 +2522,7 @@ if (typeof self !== 'undefined') {
 
       // Primary: direct EUMETSAT WMS (Zero Vercel Serverless CPU cost, native CORS + 7-day browser cache)
       try {
-        const directUrl = eumetUrlToWmsDirect(params.url);
-        const timeoutController = new AbortController();
-        const timeoutId = setTimeout(() => timeoutController.abort(), 9000);
-        abortController.signal.addEventListener('abort', () => timeoutController.abort());
-        const directRes = await fetch(directUrl, { signal: timeoutController.signal });
-        clearTimeout(timeoutId);
+        const directRes = await fetchWithTimeoutSignal(eumetUrlToWmsDirect(params.url), abortController.signal, 9000);
         if (directRes.ok) res = directRes;
       } catch {
         // Direct WMS failed/timed out, fall through to edge proxy fallback
@@ -2499,41 +2530,20 @@ if (typeof self !== 'undefined') {
 
       // Fallback: edge proxy ONLY if direct WMS fails (e.g. strict firewall or network block)
       if (!res) {
-        const proxyUrl = eumetUrlToProxy(params.url);
-        const fallbackController = new AbortController();
-        const fallbackTimeout = setTimeout(() => fallbackController.abort(), 10000);
-        abortController.signal.addEventListener('abort', () => fallbackController.abort());
         try {
-          const proxyRes = await fetch(proxyUrl, { signal: fallbackController.signal });
-          clearTimeout(fallbackTimeout);
+          const proxyRes = await fetchWithTimeoutSignal(eumetUrlToProxy(params.url), abortController.signal, 10000);
           if (proxyRes.ok) res = proxyRes;
         } catch {
-          clearTimeout(fallbackTimeout);
+          // Proxy failed/timed out
         }
       }
 
       if (!res || !res.ok) throw new Error('All EUMETSAT tile sources failed');
       const blob = await res.blob();
-
-      if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(bitmap, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processTilePixels(imgData.data, canvas.width, canvas.height, params.url);
-        ctx.putImageData(imgData, 0, 0);
-        const cleanBitmap = await createImageBitmap(canvas);
-        return { data: cleanBitmap };
-      }
-      return { data: await blob.arrayBuffer() };
-    } catch {
-      const emptyBuf = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,10,73,68,65,84,120,156,99,0,1,0,0,5,0,1,13,10,45,180,0,0,0,0,73,69,78,68,174,66,96,130]);
-      return { data: emptyBuf.buffer };
+      return processBlobViaOffscreenCanvas(blob, processTilePixels, params.url);
+    } catch (err) {
+      if (abortController.signal.aborted) throw err;
+      return { data: createEmptyTransparentPngBuffer() };
     }
   });
 
@@ -2625,31 +2635,16 @@ if (typeof self !== 'undefined') {
     if (isBlackMarbleTileSolidDaylight(params.url)) {
       return { data: createEmptyTransparentPngBuffer() };
     }
-    const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
-    const res = await fetch(realUrl, { signal: abortController.signal });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blob = await res.blob();
-
-    if (typeof OffscreenCanvas !== 'undefined' && typeof createImageBitmap !== 'undefined') {
-      try {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { data: bitmap };
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(bitmap, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        processBlackMarblePixels(imgData.data, canvas.width, canvas.height, params.url);
-        ctx.putImageData(imgData, 0, 0);
-        const cleanBitmap = await createImageBitmap(canvas);
-        return { data: cleanBitmap };
-      } catch {
-        return { data: await blob.arrayBuffer() };
-      }
+    try {
+      const realUrl = params.url.replace(/^black-marble-alpha:\/\//, 'https://');
+      const res = await fetchWithTimeoutSignal(realUrl, abortController.signal, 9000);
+      if (!res.ok) return { data: createEmptyTransparentPngBuffer() };
+      const blob = await res.blob();
+      return processBlobViaOffscreenCanvas(blob, processBlackMarblePixels, params.url);
+    } catch (err) {
+      if (abortController.signal.aborted) throw err;
+      return { data: createEmptyTransparentPngBuffer() };
     }
-    return { data: await blob.arrayBuffer() };
   });
   }
 }
