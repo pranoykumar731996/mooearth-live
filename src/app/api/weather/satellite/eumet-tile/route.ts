@@ -81,42 +81,47 @@ export async function GET(request: NextRequest) {
     `&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
     `&LAYERS=${encodeURIComponent(layer)}&FORMAT=image/png&TRANSPARENT=TRUE`;
 
-  try {
-    const res = await fetch(wmsUrl, {
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        'User-Agent': 'MooEarth-Live-WeatherEngine/2.0',
-      },
-    });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(wmsUrl, {
+        signal: AbortSignal.timeout(7000),
+        headers: {
+          'User-Agent': 'MooEarth-Live-WeatherEngine/2.0',
+        },
+      });
 
-    if (res.ok) {
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('image')) {
-        const arrayBuf = await res.arrayBuffer();
-
-        // Serve the EUMETSAT tile with 24h edge CDN caching:
-        // s-maxage=86400 = 24h on Vercel CDN edge (0 serverless compute cost for cache hits)
-        // stale-while-revalidate=604800 = 7 days stale revalidation for instant response
-        return new NextResponse(arrayBuf, {
-          headers: {
-            'Content-Type': 'image/png',
-            'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
-            'X-EUMETSAT-Layer': layer,
-            'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
-            'Access-Control-Allow-Origin': '*',
-          },
-        });
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('image')) {
+          const arrayBuf = await res.arrayBuffer();
+          if (arrayBuf.byteLength >= 64) {
+            return new NextResponse(arrayBuf, {
+              headers: {
+                'Content-Type': 'image/png',
+                'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
+                'X-EUMETSAT-Layer': layer,
+                'X-EUMETSAT-Tile': `${z}/${x}/${y}`,
+                'Access-Control-Allow-Origin': '*',
+              },
+            });
+          }
+        }
       }
+    } catch {
+      // Retry transient EUMETSAT upstream timeout once before serving short-lived fallback
     }
-  } catch (err) {
-    console.warn(`[EUMETSAT Tile Proxy] Notice: z=${z} x=${x} y=${y} layer=${layer}`);
+    if (attempt === 0) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
+  console.warn(`[EUMETSAT Tile Proxy] Transient fallback: z=${z} x=${x} y=${y} layer=${layer}`);
 
-  // All attempts failed — return transparent fallback with 1h CDN cache so failed tiles do not hammer compute
+  // Short-lived negative cache (15s) so transient EUMETSAT GeoServer stalls never poison Vercel Edge CDN for 1 hour
   return new NextResponse(TRANSPARENT_1X1_PNG, {
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Cache-Control': 'public, max-age=15, s-maxage=15',
+      'X-EUMET-Fallback': '1',
       'Access-Control-Allow-Origin': '*',
     },
   });

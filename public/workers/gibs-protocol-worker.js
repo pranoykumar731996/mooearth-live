@@ -818,6 +818,7 @@ function parseNoaaStarTileRequest(rawUrl) {
     tileX,
     tileY,
     sector,
+    fallbackLayer: layer,
     spectral,
     fallbackProto,
     nightIr: qs.get('nightIr') === '1',
@@ -1047,12 +1048,16 @@ function createNoaaStarProtocolHandler({
   };
 
   const tripCooldown = (entry, reason, calOffsetPx) => {
+    const cooldownMs =
+      entry.spec && entry.spec.sourceKind === 'cira-z1'
+        ? Math.min(cfg.COOLDOWN_MS, 25000)
+        : cfg.COOLDOWN_MS;
     entry.rgb = null;
     entry.width = 0;
     entry.height = 0;
     entry.footerStartRow = 0;
     entry.fetchedAtMs = 0;
-    entry.cooldownUntilMs = nowFn() + cfg.COOLDOWN_MS;
+    entry.cooldownUntilMs = nowFn() + cooldownMs;
     if (!entry.fallbackActive) {
       entry.fallbackPendingSent = true;
       emitTelemetry('gibs-fallback-pending', reason, calOffsetPx, true, entry);
@@ -1247,9 +1252,10 @@ function createNoaaStarProtocolHandler({
           const ciraBase = cfg.CIRA_BASE_URL || `${originBase}${cfg.CIRA_PROXY_PATH}`;
           let parsedLmMs = NaN;
           await acquireCiraSlot();
+          const ciraOuterMs = Math.max(cfg.NOAA_FETCH_TIMEOUT_MS, 26000);
           timeoutId = setTimeout(
             () => noaaController.abort('noaa-timeout'),
-            Math.max(cfg.NOAA_FETCH_TIMEOUT_MS, 20000)
+            ciraOuterMs
           );
           try {
             const metaUrl = `${ciraBase}?action=meta&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}`;
@@ -1271,24 +1277,34 @@ function createNoaaStarProtocolHandler({
             if (candidateTsList.length === 0) throw new Error('CIRA_META_INVALID_TS');
 
             const isLoopbackCira = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(ciraBase);
+            const perAttemptMs = Math.min(12000, cfg.NOAA_FETCH_TIMEOUT_MS);
             const fetchQuadsForTs = async (tsVal) => {
+              const attemptCtrl = new AbortController();
+              const attemptTimer = setTimeout(() => attemptCtrl.abort('cira-ts-timeout'), perAttemptMs);
+              const onOuterAbort = () => attemptCtrl.abort('noaa-timeout');
+              noaaController.signal.addEventListener('abort', onOuterAbort, { once: true });
               const qStream = [0, 0, 0, 0];
               const rcList = ['000_000', '000_001', '001_000', '001_001'];
               const fetchOneQuad = async (rc, qIdx) => {
                 const tUrl = `${ciraBase}?action=tile&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}&ts=${tsVal}&rc=${rc}`;
-                const tRes = await fetchFn(tUrl, { signal: noaaController.signal });
+                const tRes = await fetchFn(tUrl, { signal: attemptCtrl.signal });
                 if (!tRes.ok) throw new Error('CIRA_TILE_HTTP_' + tRes.status);
                 return await readResponseBytesBounded(tRes, cfg.MAX_CIRA_TILE_BYTES, (n) => {
                   qStream[qIdx] = n;
                   globalState.streamBytesByKey.set(spec.key, qStream[0] + qStream[1] + qStream[2] + qStream[3]);
                 });
               };
-              if (!isLoopbackCira) {
-                return await Promise.all(rcList.map((rc, qIdx) => fetchOneQuad(rc, qIdx)));
+              try {
+                if (!isLoopbackCira) {
+                  return await Promise.all(rcList.map((rc, qIdx) => fetchOneQuad(rc, qIdx)));
+                }
+                const topRow = await Promise.all([fetchOneQuad(rcList[0], 0), fetchOneQuad(rcList[1], 1)]);
+                const botRow = await Promise.all([fetchOneQuad(rcList[2], 2), fetchOneQuad(rcList[3], 3)]);
+                return [topRow[0], topRow[1], botRow[0], botRow[1]];
+              } finally {
+                clearTimeout(attemptTimer);
+                noaaController.signal.removeEventListener('abort', onOuterAbort);
               }
-              const topRow = await Promise.all([fetchOneQuad(rcList[0], 0), fetchOneQuad(rcList[1], 1)]);
-              const botRow = await Promise.all([fetchOneQuad(rcList[2], 2), fetchOneQuad(rcList[3], 3)]);
-              return [topRow[0], topRow[1], botRow[0], botRow[1]];
             };
 
             let chosenTs = candidateTsList[0];
@@ -1489,8 +1505,37 @@ function createNoaaStarProtocolHandler({
       let resolvedUrl;
       if (req.fallbackProto === 'eumet') {
         resolvedUrl = req.fallbackUrl;
-        res = await fetchFn(resolvedUrl, { signal: gibsController.signal });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const nTiles = Math.pow(2, req.tileZ);
+        const originShift = 20037508.342789244;
+        const tileRes = (originShift * 2) / nTiles;
+        const minX = req.tileX * tileRes - originShift;
+        const maxX = (req.tileX + 1) * tileRes - originShift;
+        const maxY = originShift - req.tileY * tileRes;
+        const minY = originShift - (req.tileY + 1) * tileRes;
+        const directWmsUrl =
+          `https://view.eumetsat.int/geoserver/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap` +
+          `&BBOX=${minX},${minY},${maxX},${maxY}&CRS=EPSG:3857&WIDTH=256&HEIGHT=256` +
+          `&LAYERS=${encodeURIComponent(req.fallbackLayer || 'msg_fes:vis006')}&FORMAT=image/png&TRANSPARENT=TRUE` +
+          `&spectral=${encodeURIComponent(req.spectral || 'vis')}&sector=${encodeURIComponent(req.sector || 'europe-africa')}`;
+
+        let proxyRes = null;
+        try {
+          const r = await fetchFn(req.fallbackUrl, { signal: gibsController.signal });
+          const isFallbackPng = r.headers && typeof r.headers.get === 'function' && r.headers.get('x-eumet-fallback') === '1';
+          if (r.ok && !isFallbackPng) proxyRes = r;
+        } catch {
+          // Proxy failed or stalled; fall through to direct EUMETSAT GeoServer WMS
+        }
+        if (proxyRes) {
+          res = proxyRes;
+        } else if (!(gibsController.signal && gibsController.signal.aborted)) {
+          resolvedUrl = directWmsUrl;
+          const directRes = await fetchFn(directWmsUrl, { signal: gibsController.signal });
+          if (!directRes.ok) throw new Error('HTTP ' + directRes.status);
+          res = directRes;
+        } else {
+          throw new Error('HTTP_EUMET_TIMEOUT');
+        }
       } else {
         const hintFresh = entry.gibsHintTime && nowFn() - entry.gibsHintAtMs < 60000;
         const hintedUrl =
