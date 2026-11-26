@@ -224,6 +224,10 @@ const NOAA_STAR_DEFAULTS = {
   // Tracked worker-buffer budget ONLY (excludes MapLibre-retained tile bitmaps & browser/GPU overhead)
   // Sized at 68 MB so daytime GeoColor + nighttime IR live sector buffers stay warm simultaneously with LRU eviction.
   MAX_TRACKED_BUFFER_BYTES: 68 * 1024 * 1024,
+  MAX_HIRES_TILE_CACHE_BYTES: 44 * 1024 * 1024,
+  MAX_HIRES_TILE_COUNT: 64,
+  MAX_HIRES_TILES_PER_SLIPPY: 9,
+  MAX_CIRA_HIRES_TIMEOUT_MS: 24000,
   MAX_CONCURRENT_TILE_JOBS: 8,
   EST_TILE_JOB_BYTES: 560 * 1024,
   STRIP_HEIGHT: 256,
@@ -247,6 +251,13 @@ const NOAA_GLOBAL_SECTORS = {
     product: 'GeoColor',
     sourceKind: 'star-jpeg',
     sourceUrl: 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg',
+    ciraSat: 'goes-19',
+    ciraProduct: 'geocolor',
+    ciraTilePx: 678,
+    ciraMaxZ: 4,
+    ciraZ1Cx: 677.25,
+    ciraZ1Cy: 677.25,
+    ciraZ1StepRad: 4 * 56e-6,
     width: 1808,
     height: 1808,
     lon0Deg: -75.0,
@@ -269,6 +280,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'goes-19',
     ciraProduct: 'band_13',
+    ciraTilePx: 678,
+    ciraMaxZ: 3,
     width: 1356,
     height: 1356,
     lon0Deg: -75.0,
@@ -290,6 +303,13 @@ const NOAA_GLOBAL_SECTORS = {
     product: 'GeoColor',
     sourceKind: 'star-jpeg',
     sourceUrl: 'https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/1808x1808.jpg',
+    ciraSat: 'goes-18',
+    ciraProduct: 'geocolor',
+    ciraTilePx: 678,
+    ciraMaxZ: 4,
+    ciraZ1Cx: 677.25,
+    ciraZ1Cy: 677.25,
+    ciraZ1StepRad: 4 * 56e-6,
     width: 1808,
     height: 1808,
     lon0Deg: -137.0,
@@ -312,6 +332,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'goes-18',
     ciraProduct: 'band_13',
+    ciraTilePx: 678,
+    ciraMaxZ: 3,
     width: 1356,
     height: 1356,
     lon0Deg: -137.0,
@@ -334,6 +356,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'himawari',
     ciraProduct: 'geocolor',
+    ciraTilePx: 688,
+    ciraMaxZ: 4,
     width: 1376,
     height: 1376,
     lon0Deg: 140.7,
@@ -356,6 +380,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'himawari',
     ciraProduct: 'band_13',
+    ciraTilePx: 688,
+    ciraMaxZ: 3,
     width: 1376,
     height: 1376,
     lon0Deg: 140.7,
@@ -378,6 +404,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'meteosat-9',
     ciraProduct: 'geocolor',
+    ciraTilePx: 464,
+    ciraMaxZ: 3,
     width: 928,
     height: 928,
     lon0Deg: 45.5,
@@ -400,6 +428,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'meteosat-9',
     ciraProduct: 'band_09',
+    ciraTilePx: 464,
+    ciraMaxZ: 3,
     width: 928,
     height: 928,
     lon0Deg: 45.5,
@@ -422,6 +452,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'meteosat-0deg',
     ciraProduct: 'geocolor',
+    ciraTilePx: 464,
+    ciraMaxZ: 3,
     width: 928,
     height: 928,
     lon0Deg: 0.0,
@@ -444,6 +476,8 @@ const NOAA_GLOBAL_SECTORS = {
     sourceKind: 'cira-z1',
     ciraSat: 'meteosat-0deg',
     ciraProduct: 'band_09',
+    ciraTilePx: 464,
+    ciraMaxZ: 3,
     width: 928,
     height: 928,
     lon0Deg: 0.0,
@@ -689,6 +723,184 @@ function reprojectNoaaStarRgbLut32({
   return outRgba;
 }
 
+function getAdaptiveCiraZoomLevel(sectorSpec, tileZ) {
+  const maxZ = sectorSpec && typeof sectorSpec.ciraMaxZ === 'number' ? sectorSpec.ciraMaxZ : 1;
+  if (!Number.isFinite(tileZ) || tileZ <= 3 || maxZ <= 1) return 1;
+  if (tileZ === 4) return Math.min(maxZ, 2);
+  if (tileZ === 5 || tileZ === 6) return Math.min(maxZ, 3);
+  return maxZ;
+}
+
+function getScaledCiraGridSpec(sectorSpec, ciraZ = 1) {
+  const safeZ = Math.max(1, Math.min(sectorSpec.ciraMaxZ || 1, ciraZ));
+  const scale = 1 << (safeZ - 1);
+  const tilePx = sectorSpec.ciraTilePx || (sectorSpec.width >> 1);
+  const baseFullW = tilePx * 2;
+  const fullSize = tilePx * (1 << safeZ);
+  const baseCx = typeof sectorSpec.ciraZ1Cx === 'number' ? sectorSpec.ciraZ1Cx : sectorSpec.cx;
+  const baseCy = typeof sectorSpec.ciraZ1Cy === 'number' ? sectorSpec.ciraZ1Cy : sectorSpec.cy;
+  const baseStep = typeof sectorSpec.ciraZ1StepRad === 'number' ? sectorSpec.ciraZ1StepRad : sectorSpec.stepRad;
+  return {
+    ciraZ: safeZ,
+    grid: 1 << safeZ,
+    tilePx,
+    fullSize,
+    cx: (baseCx + 0.5) * scale - 0.5,
+    cy: (baseCy + 0.5) * scale - 0.5,
+    stepRad: baseStep / scale,
+    lon0Deg: sectorSpec.lon0Deg,
+    sweep: sectorSpec.sweep,
+    rEq: sectorSpec.rEq,
+    rPol: sectorSpec.rPol,
+    hDist: sectorSpec.hDist,
+  };
+}
+
+function getIntersectingCiraTilesForSlippyTile(sectorSpec, ciraZ, tileZ, tileX, tileY, padPx = 1, tileSize = 256) {
+  const scaled = getScaledCiraGridSpec(sectorSpec, ciraZ);
+  const { grid, tilePx } = scaled;
+  const set = new Set();
+  let rMin = Infinity, rMax = -Infinity, cMin = Infinity, cMax = -Infinity;
+  const lastPx = tileSize - 1;
+  for (let py = 0; py <= lastPx; py = py === lastPx ? tileSize : Math.min(lastPx, py + 16)) {
+    const samplePy = Math.min(lastPx, py);
+    for (let px = 0; px <= lastPx; px = px === lastPx ? tileSize : Math.min(lastPx, px + 16)) {
+      const samplePx = Math.min(lastPx, px);
+      const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, samplePx, samplePy, tileSize);
+      const scan = geodeticToGeoScan(latDeg, lonDeg, scaled);
+      if (!scan) continue;
+      const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec: scaled });
+      for (const dp of [-padPx, padPx]) {
+        const c = Math.max(0, Math.min(grid - 1, Math.floor((pt.col + dp) / tilePx)));
+        const r = Math.max(0, Math.min(grid - 1, Math.floor((pt.row + dp) / tilePx)));
+        const rcKey = `${String(r).padStart(3, '0')}_${String(c).padStart(3, '0')}`;
+        set.add(rcKey);
+        if (r < rMin) rMin = r;
+        if (r > rMax) rMax = r;
+        if (c < cMin) cMin = c;
+        if (c > cMax) cMax = c;
+      }
+    }
+  }
+  return {
+    rcList: Array.from(set).sort(),
+    bounds: set.size ? { rMin, rMax, cMin, cMax } : null,
+    gridSpec: scaled,
+  };
+}
+
+function sampleCiraTileMapBilinear(tileMap, scaledSpec, col, row) {
+  const { fullSize, tilePx, grid } = scaledSpec;
+  if (col < 0 || col >= fullSize - 1 || row < 0 || row >= fullSize - 1) return null;
+  const centerIdx = (fullSize - 1) / 2;
+  const maxRad = fullSize * (905 / 1808);
+  const dxC = col - centerIdx;
+  const dyC = row - centerIdx;
+  if (dxC * dxC + dyC * dyC > maxRad * maxRad) return null;
+
+  const x0 = Math.floor(col);
+  const y0 = Math.floor(row);
+  const x1 = Math.min(fullSize - 1, x0 + 1);
+  const y1 = Math.min(fullSize - 1, y0 + 1);
+  const fx = col - x0;
+  const fy = row - y0;
+
+  const readPx = (xi, yi) => {
+    const tc = Math.max(0, Math.min(grid - 1, Math.floor(xi / tilePx)));
+    const tr = Math.max(0, Math.min(grid - 1, Math.floor(yi / tilePx)));
+    const key = `${String(tr).padStart(3, '0')}_${String(tc).padStart(3, '0')}`;
+    const rgb = tileMap.get(key);
+    if (!rgb) return null;
+    const lc = xi - tc * tilePx;
+    const lr = yi - tr * tilePx;
+    const idx = (lr * tilePx + lc) * 3;
+    return [rgb[idx], rgb[idx + 1], rgb[idx + 2]];
+  };
+
+  const p00 = readPx(x0, y0);
+  if (!p00) return null;
+  const p10 = readPx(x1, y0) || p00;
+  const p01 = readPx(x0, y1) || p00;
+  const p11 = readPx(x1, y1) || p10;
+  const w00 = (1 - fx) * (1 - fy);
+  const w10 = fx * (1 - fy);
+  const w01 = (1 - fx) * fy;
+  const w11 = fx * fy;
+  return [
+    Math.round(p00[0] * w00 + p10[0] * w10 + p01[0] * w01 + p11[0] * w11),
+    Math.round(p00[1] * w00 + p10[1] * w10 + p01[1] * w01 + p11[1] * w11),
+    Math.round(p00[2] * w00 + p10[2] * w10 + p01[2] * w01 + p11[2] * w11),
+  ];
+}
+
+function reprojectCiraTilesLut32({
+  tileMap,
+  scaledSpec,
+  tileZ,
+  tileX,
+  tileY,
+  tileSize = 256,
+  gridN = 32,
+  outRgba = new Uint8ClampedArray(tileSize * tileSize * 4),
+}) {
+  const verts = gridN + 1;
+  const colLut = new Float64Array(verts * verts);
+  const rowLut = new Float64Array(verts * verts);
+  const validLut = new Uint8Array(verts * verts);
+  const cellPx = tileSize / gridN;
+
+  for (let gy = 0; gy < verts; gy++) {
+    for (let gx = 0; gx < verts; gx++) {
+      const idx = gy * verts + gx;
+      const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, gx * cellPx, gy * cellPx, tileSize);
+      const scan = geodeticToGeoScan(latDeg, lonDeg, scaledSpec);
+      if (!scan) continue;
+      const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec: scaledSpec });
+      colLut[idx] = pt.col;
+      rowLut[idx] = pt.row;
+      validLut[idx] = 1;
+    }
+  }
+
+  for (let py = 0; py < tileSize; py++) {
+    const gy = Math.min(gridN - 1, Math.floor(py / cellPx));
+    const fy = (py - gy * cellPx) / cellPx;
+    for (let px = 0; px < tileSize; px++) {
+      const gx = Math.min(gridN - 1, Math.floor(px / cellPx));
+      const fx = (px - gx * cellPx) / cellPx;
+      const i00 = gy * verts + gx;
+      const i10 = i00 + 1;
+      const i01 = i00 + verts;
+      const i11 = i01 + 1;
+      let col;
+      let row;
+      if (validLut[i00] && validLut[i10] && validLut[i01] && validLut[i11]) {
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+        col = colLut[i00] * w00 + colLut[i10] * w10 + colLut[i01] * w01 + colLut[i11] * w11;
+        row = rowLut[i00] * w00 + rowLut[i10] * w10 + rowLut[i01] * w01 + rowLut[i11] * w11;
+      } else {
+        const { latDeg, lonDeg } = tilePixelToLatLon(tileZ, tileX, tileY, px, py, tileSize);
+        const scan = geodeticToGeoScan(latDeg, lonDeg, scaledSpec);
+        if (!scan) continue;
+        const pt = scanToPixel(scan.scanX, scan.scanY, { gridSpec: scaledSpec });
+        col = pt.col;
+        row = pt.row;
+      }
+      const sampled = sampleCiraTileMapBilinear(tileMap, scaledSpec, col, row);
+      if (!sampled) continue;
+      const o = (py * tileSize + px) * 4;
+      outRgba[o] = sampled[0];
+      outRgba[o + 1] = sampled[1];
+      outRgba[o + 2] = sampled[2];
+      outRgba[o + 3] = 255;
+    }
+  }
+  return outRgba;
+}
+
 async function fetchDirectHttpsGibsTile(initialHttpsUrl, signal, fetchFn = fetch) {
   if (signal && signal.aborted) throw makeAbortError();
   let realUrl = initialHttpsUrl;
@@ -822,6 +1034,8 @@ function parseNoaaStarTileRequest(rawUrl) {
     spectral,
     fallbackProto,
     nightIr: qs.get('nightIr') === '1',
+    hiRes: qs.get('hiRes') === '1',
+    softCloud: qs.get('softCloud') === '1',
     calOffsetPx: {
       x: parseOff('calX', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_X),
       y: parseOff('calY', NOAA_STAR_DEFAULTS.DEFAULT_OFFSET_Y),
@@ -858,6 +1072,10 @@ function createNoaaStarProtocolHandler({
 } = {}) {
   const cfg = { ...NOAA_STAR_DEFAULTS, ...configOverrides };
   const sectorCache = new Map();
+  const ciraMetaCache = new Map();
+  const ciraMetaInFlight = new Map();
+  const hiResTileCache = new Map();
+  const hiResTileInFlight = new Map();
   const globalState = {
     activeTileJobs: 0,
     jobWaiters: [],
@@ -868,6 +1086,9 @@ function createNoaaStarProtocolHandler({
     lastTelemetryAtMs: 0,
     telemetryFlushTimer: null,
     lastPrimaryKey: 'goes-east:vis',
+    hiResFetches: 0,
+    hiResCacheHits: 0,
+    hiResFallbacks: 0,
   };
 
   const getSectorEntry = (spec) => {
@@ -884,6 +1105,7 @@ function createNoaaStarProtocolHandler({
         lastUsedAtMs: 0,
         lastModifiedUtc: null,
         lastModifiedMs: null,
+        ciraTs: null,
         inFlightPromise: null,
         cooldownUntilMs: 0,
         activeReaders: 0,
@@ -1098,76 +1320,332 @@ function createNoaaStarProtocolHandler({
     }
   }
 
+  async function decodePngBufferViaStrip(pngBytes, expectedW, expectedH) {
+    const stripH = Math.min(cfg.STRIP_HEIGHT, expectedH);
+    const stripCanvas = OffscreenCanvasCtor && !extractRgbStripFn ? new OffscreenCanvasCtor(expectedW, stripH) : null;
+    const stripCtx = stripCanvas ? stripCanvas.getContext('2d') : null;
+    if (!extractRgbStripFn && !stripCtx) {
+      throw new Error('OFFSCREEN_CONTEXT_UNAVAILABLE');
+    }
+    let decodeTarget = BlobCtor ? new BlobCtor([pngBytes], { type: 'image/png' }) : pngBytes;
+    let bmp = null;
+    globalState.activeStripBytes += extractRgbStripFn ? 0 : expectedW * stripH * 4 * 2;
+    try {
+      globalState.activeDecodeBytes += expectedW * expectedH * 4;
+      bmp = await createImageBitmapFn(decodeTarget);
+      decodeTarget = null;
+      if (bmp.width !== expectedW || bmp.height !== expectedH) {
+        throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
+      }
+      if (extractRgbStripFn) {
+        return await extractRgbStripFn(bmp, cfg);
+      }
+      const rgb = new Uint8Array(expectedW * expectedH * 3);
+      for (let y = 0; y < expectedH; y += stripH) {
+        const curH = Math.min(stripH, expectedH - y);
+        stripCtx.clearRect(0, 0, expectedW, curH);
+        stripCtx.drawImage(bmp, 0, y, expectedW, curH, 0, 0, expectedW, curH);
+        const stripData = stripCtx.getImageData(0, 0, expectedW, curH).data;
+        for (let r = 0; r < curH; r++) {
+          const srcRow = r * expectedW;
+          const dstBase = (y + r) * expectedW * 3;
+          for (let c = 0; c < expectedW; c++) {
+            const s = (srcRow + c) << 2;
+            const d = dstBase + c * 3;
+            rgb[d] = stripData[s];
+            rgb[d + 1] = stripData[s + 1];
+            rgb[d + 2] = stripData[s + 2];
+          }
+        }
+      }
+      return rgb;
+    } finally {
+      if (bmp && typeof bmp.close === 'function') {
+        try { bmp.close(); } catch {}
+      }
+      if (stripCanvas) {
+        stripCanvas.width = 0;
+        stripCanvas.height = 0;
+      }
+      globalState.activeDecodeBytes = Math.max(0, globalState.activeDecodeBytes - expectedW * expectedH * 4);
+      globalState.activeStripBytes = Math.max(0, globalState.activeStripBytes - (extractRgbStripFn ? 0 : expectedW * stripH * 4 * 2));
+    }
+  }
+
   async function extractCiraQuadrantsToRgb(quadBuffers, spec) {
     const fullW = spec.width;
     const fullH = spec.height;
     const halfW = fullW >> 1;
     const halfH = fullH >> 1;
     const rgb = new Uint8Array(fullW * fullH * 3);
-    const stripH = Math.min(cfg.STRIP_HEIGHT, halfH);
-    const stripCanvas = OffscreenCanvasCtor && !extractRgbStripFn ? new OffscreenCanvasCtor(halfW, stripH) : null;
-    const stripCtx = stripCanvas ? stripCanvas.getContext('2d') : null;
-    if (!extractRgbStripFn && !stripCtx) {
-      throw new Error('OFFSCREEN_CONTEXT_UNAVAILABLE');
+    for (let q = 0; q < 4; q++) {
+      const qRowOffset = (q >> 1) * halfH;
+      const qColOffset = (q & 1) * halfW;
+      let qBytes = quadBuffers[q];
+      quadBuffers[q] = null;
+      const subRgb = await decodePngBufferViaStrip(qBytes, halfW, halfH);
+      qBytes = null;
+      for (let y = 0; y < halfH; y++) {
+        const srcOff = y * halfW * 3;
+        const dstOff = ((qRowOffset + y) * fullW + qColOffset) * 3;
+        rgb.set(subRgb.subarray(srcOff, srcOff + halfW * 3), dstOff);
+      }
     }
-    globalState.activeStripBytes = extractRgbStripFn ? 0 : halfW * stripH * 4 * 2;
+    return rgb;
+  }
 
-    try {
-      for (let q = 0; q < 4; q++) {
-        const qRowOffset = (q >> 1) * halfH;
-        const qColOffset = (q & 1) * halfW;
-        let qBytes = quadBuffers[q];
-        quadBuffers[q] = null;
-        let decodeTarget = BlobCtor ? new BlobCtor([qBytes], { type: 'image/png' }) : qBytes;
-        qBytes = null;
-        let bmp = null;
-        try {
-          globalState.activeDecodeBytes = halfW * halfH * 4;
-          bmp = await createImageBitmapFn(decodeTarget);
-          decodeTarget = null;
-          if (bmp.width !== halfW || bmp.height !== halfH) {
-            throw new Error('UNEXPECTED_NOAA_DIMENSIONS');
-          }
-          if (extractRgbStripFn) {
-            const subRgb = await extractRgbStripFn(bmp, cfg);
-            for (let y = 0; y < halfH; y++) {
-              const srcOff = y * halfW * 3;
-              const dstOff = ((qRowOffset + y) * fullW + qColOffset) * 3;
-              rgb.set(subRgb.subarray(srcOff, srcOff + halfW * 3), dstOff);
-            }
-          } else {
-            for (let y = 0; y < halfH; y += stripH) {
-              const curH = Math.min(stripH, halfH - y);
-              stripCtx.clearRect(0, 0, halfW, curH);
-              stripCtx.drawImage(bmp, 0, y, halfW, curH, 0, 0, halfW, curH);
-              const stripData = stripCtx.getImageData(0, 0, halfW, curH).data;
-              for (let r = 0; r < curH; r++) {
-                const srcRow = r * halfW;
-                const dstBase = ((qRowOffset + y + r) * fullW + qColOffset) * 3;
-                for (let c = 0; c < halfW; c++) {
-                  const s = (srcRow + c) << 2;
-                  const d = dstBase + c * 3;
-                  rgb[d] = stripData[s];
-                  rgb[d + 1] = stripData[s + 1];
-                  rgb[d + 2] = stripData[s + 2];
-                }
-              }
-            }
-          }
-        } finally {
-          if (bmp && typeof bmp.close === 'function') {
-            try { bmp.close(); } catch {}
-          }
-          globalState.activeDecodeBytes = 0;
+  const getHiResCacheBytes = () => {
+    let sum = 0;
+    for (const item of hiResTileCache.values()) sum += item.bytes;
+    return sum;
+  };
+
+  const evictHiResTilesToFit = (neededBytes = 0) => {
+    while (
+      hiResTileCache.size > 0 &&
+      (hiResTileCache.size >= cfg.MAX_HIRES_TILE_COUNT || getHiResCacheBytes() + neededBytes > cfg.MAX_HIRES_TILE_CACHE_BYTES)
+    ) {
+      let oldestKey = null;
+      let oldestAt = Infinity;
+      for (const [k, item] of hiResTileCache.entries()) {
+        if (item.lastUsedAtMs < oldestAt) {
+          oldestAt = item.lastUsedAtMs;
+          oldestKey = k;
         }
       }
-      return rgb;
-    } finally {
-      if (stripCanvas) {
-        stripCanvas.width = 0;
-        stripCanvas.height = 0;
+      if (!oldestKey) break;
+      hiResTileCache.delete(oldestKey);
+    }
+  };
+
+  const resolveCiraBaseUrl = () => {
+    const originBase =
+      typeof self !== 'undefined' && self.location && /^https?:/i.test(self.location.origin)
+        ? self.location.origin
+        : '';
+    return cfg.CIRA_BASE_URL || `${originBase}${cfg.CIRA_PROXY_PATH}`;
+  };
+
+  const getLatestCiraMetaForSpec = async (spec) => {
+    const metaKey = `${spec.ciraSat}:${spec.ciraProduct}`;
+    const existing = ciraMetaCache.get(metaKey);
+    if (existing && nowFn() - existing.fetchedAtMs < cfg.SOURCE_CACHE_TTL_MS) {
+      return existing;
+    }
+    const inflight = ciraMetaInFlight.get(metaKey);
+    if (inflight) return inflight;
+    const p = (async () => {
+      const ciraBase = resolveCiraBaseUrl();
+      await acquireHiResCiraSlot();
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort('cira-meta-timeout'), cfg.MAX_CIRA_HIRES_TIMEOUT_MS);
+      try {
+        const metaUrl = `${ciraBase}?action=meta&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}`;
+        const metaRes = await fetchFn(metaUrl, { signal: ctrl.signal });
+        if (!metaRes.ok) throw new Error('CIRA_META_HTTP_' + metaRes.status);
+        const metaJson = await metaRes.json();
+        const candidateTsList = [];
+        if (Array.isArray(metaJson?.timestamps)) {
+          for (const t of metaJson.timestamps) {
+            if (typeof t === 'string' && /^\d{14}$/.test(t) && !candidateTsList.includes(t)) {
+              candidateTsList.push(t);
+            }
+          }
+        }
+        const latestTs = metaJson && typeof metaJson.latestTs === 'string' ? metaJson.latestTs : '';
+        if (/^\d{14}$/.test(latestTs) && !candidateTsList.includes(latestTs)) {
+          candidateTsList.unshift(latestTs);
+        }
+        if (!candidateTsList.length) throw new Error('CIRA_META_INVALID_TS');
+        const chosenTs = candidateTsList[0];
+        const chosenIso = `${chosenTs.slice(0, 4)}-${chosenTs.slice(4, 6)}-${chosenTs.slice(6, 8)}T${chosenTs.slice(8, 10)}:${chosenTs.slice(10, 12)}:${chosenTs.slice(12, 14)}Z`;
+        const obsIso = chosenTs === latestTs ? (metaJson.observedIso || chosenIso) : chosenIso;
+        const parsedLmMs = obsIso ? Date.parse(obsIso) : NaN;
+        const entryMeta = {
+          ts: chosenTs,
+          tsList: candidateTsList,
+          observedIso: obsIso,
+          parsedLmMs,
+          fetchedAtMs: nowFn(),
+        };
+        ciraMetaCache.set(metaKey, entryMeta);
+        return entryMeta;
+      } finally {
+        clearTimeout(timer);
+        releaseHiResCiraSlot();
       }
-      globalState.activeStripBytes = 0;
+    })();
+    ciraMetaInFlight.set(metaKey, p);
+    try {
+      return await p;
+    } finally {
+      ciraMetaInFlight.delete(metaKey);
+    }
+  };
+
+  const fetchAndCacheHiResCiraTile = async (spec, ciraTs, ciraZ, rc, expectedTilePx, callerSignal = null) => {
+    if (callerSignal && callerSignal.aborted) throw makeAbortError();
+    const zPad = String(ciraZ).padStart(2, '0');
+    const cacheKey = `${spec.ciraSat}:${spec.ciraProduct}:${ciraTs}:${zPad}:${rc}`;
+    const cached = hiResTileCache.get(cacheKey);
+    if (cached) {
+      cached.lastUsedAtMs = nowFn();
+      globalState.hiResCacheHits++;
+      return cached;
+    }
+    let entryRec = hiResTileInFlight.get(cacheKey);
+    if (!entryRec) {
+      const tileCtrl = new AbortController();
+      entryRec = { refs: 0, ctrl: tileCtrl, settled: false, promise: null };
+      entryRec.promise = (async () => {
+        try {
+          const ciraBase = resolveCiraBaseUrl();
+          const tUrl = `${ciraBase}?action=tile&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}&ts=${encodeURIComponent(ciraTs)}&z=${encodeURIComponent(zPad)}&rc=${encodeURIComponent(rc)}`;
+          let rawBytes = null;
+          const perTryMs = Math.min(18000, cfg.MAX_CIRA_HIRES_TIMEOUT_MS);
+          for (let attempt = 0; attempt < 3; attempt++) {
+            if (tileCtrl.signal.aborted) throw makeAbortError();
+            await acquireHiResCiraSlot();
+            if (tileCtrl.signal.aborted) {
+              releaseHiResCiraSlot();
+              throw makeAbortError();
+            }
+            const attemptCtrl = new AbortController();
+            const timer = setTimeout(() => attemptCtrl.abort('cira-hires-timeout'), perTryMs);
+            const onTileAbort = () => attemptCtrl.abort('all-callers-aborted');
+            tileCtrl.signal.addEventListener('abort', onTileAbort, { once: true });
+            let retryableStatus = false;
+            try {
+              globalState.hiResFetches++;
+              const res = await fetchFn(tUrl, { signal: attemptCtrl.signal });
+              if (!res.ok) {
+                if (attempt < 2 && (res.status >= 500 || res.status === 429) && !tileCtrl.signal.aborted) {
+                  retryableStatus = true;
+                } else {
+                  const httpErr = new Error('CIRA_TILE_HTTP_' + res.status);
+                  httpErr.nonRetryable = true;
+                  throw httpErr;
+                }
+              } else {
+                rawBytes = await readResponseBytesBounded(res, cfg.MAX_CIRA_TILE_BYTES);
+              }
+            } catch (err) {
+              if (tileCtrl.signal.aborted) throw makeAbortError();
+              if (attempt < 2 && !(err && err.nonRetryable)) {
+                retryableStatus = true;
+              } else {
+                throw err;
+              }
+            } finally {
+              clearTimeout(timer);
+              tileCtrl.signal.removeEventListener('abort', onTileAbort);
+              releaseHiResCiraSlot();
+            }
+            if (!retryableStatus) break;
+            await new Promise((resDelay) => setTimeout(resDelay, 250 * (attempt + 1)));
+          }
+          if (tileCtrl.signal.aborted || !rawBytes) throw makeAbortError();
+          await acquireDecodeSlot();
+          try {
+            if (tileCtrl.signal.aborted) throw makeAbortError();
+            const rgb = await decodePngBufferViaStrip(rawBytes, expectedTilePx, expectedTilePx);
+            rawBytes = null;
+            evictHiResTilesToFit(rgb.byteLength);
+            const rec = {
+              rgb,
+              width: expectedTilePx,
+              height: expectedTilePx,
+              bytes: rgb.byteLength,
+              lastUsedAtMs: nowFn(),
+            };
+            hiResTileCache.set(cacheKey, rec);
+            return rec;
+          } finally {
+            releaseDecodeSlot();
+          }
+        } finally {
+          entryRec.settled = true;
+          hiResTileInFlight.delete(cacheKey);
+        }
+      })();
+      hiResTileInFlight.set(cacheKey, entryRec);
+    }
+
+    entryRec.refs++;
+    let released = false;
+    let onCallerAbort = null;
+    const releaseRef = (fromAbort) => {
+      if (released) return;
+      released = true;
+      if (callerSignal && onCallerAbort) callerSignal.removeEventListener('abort', onCallerAbort);
+      entryRec.refs = Math.max(0, entryRec.refs - 1);
+      if (fromAbort && entryRec.refs === 0 && !entryRec.settled) {
+        entryRec.ctrl.abort('all-callers-aborted');
+      }
+    };
+    try {
+      if (!callerSignal) {
+        return await entryRec.promise;
+      }
+      if (callerSignal.aborted) {
+        releaseRef(true);
+        throw makeAbortError();
+      }
+      return await new Promise((resolve, reject) => {
+        onCallerAbort = () => {
+          releaseRef(true);
+          reject(makeAbortError());
+        };
+        callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+        entryRec.promise.then(resolve, reject);
+      });
+    } finally {
+      releaseRef(false);
+    }
+  };
+
+  async function prepareHiResCiraForTile(targetSpec, targetEntry, req, mapSignal) {
+    if (!req.hiRes || req.tileZ < 4 || !targetSpec || !targetSpec.ciraSat) return null;
+    const ciraZ = getAdaptiveCiraZoomLevel(targetSpec, req.tileZ);
+    if (ciraZ <= 1) return null;
+    const { rcList, gridSpec } = getIntersectingCiraTilesForSlippyTile(targetSpec, ciraZ, req.tileZ, req.tileX, req.tileY, 1, 256);
+    if (!rcList.length || rcList.length > cfg.MAX_HIRES_TILES_PER_SLIPPY) {
+      globalState.hiResFallbacks++;
+      return null;
+    }
+    try {
+      let ciraTs = targetEntry && targetEntry.ciraTs ? targetEntry.ciraTs : null;
+      let parsedLmMs = targetEntry && targetEntry.lastModifiedMs !== null ? targetEntry.lastModifiedMs : null;
+      let observedIso = targetEntry && targetEntry.lastModifiedUtc ? targetEntry.lastModifiedUtc : null;
+      if (!ciraTs) {
+        const metaInfo = await getLatestCiraMetaForSpec(targetSpec);
+        ciraTs = metaInfo.ts;
+        if (metaInfo.observedIso) observedIso = metaInfo.observedIso;
+        if (Number.isFinite(metaInfo.parsedLmMs)) parsedLmMs = metaInfo.parsedLmMs;
+        if (targetEntry) {
+          targetEntry.ciraTs = ciraTs;
+          if (observedIso && !targetEntry.lastModifiedUtc) targetEntry.lastModifiedUtc = observedIso;
+          if (Number.isFinite(parsedLmMs) && targetEntry.lastModifiedMs === null) targetEntry.lastModifiedMs = parsedLmMs;
+        }
+      }
+      if (mapSignal && mapSignal.aborted) throw makeAbortError();
+      const loaded = await Promise.all(
+        rcList.map(async (rc) => {
+          const item = await fetchAndCacheHiResCiraTile(targetSpec, ciraTs, ciraZ, rc, gridSpec.tilePx, mapSignal);
+          return [rc, item.rgb];
+        })
+      );
+      if (mapSignal && mapSignal.aborted) throw makeAbortError();
+      return {
+        tileMap: new Map(loaded),
+        scaledSpec: gridSpec,
+        ciraTs,
+        parsedLmMs,
+      };
+    } catch (err) {
+      if (mapSignal && mapSignal.aborted) throw err;
+      globalState.hiResFallbacks++;
+      return null;
     }
   }
 
@@ -1180,16 +1658,36 @@ function createNoaaStarProtocolHandler({
       activeCiraFetches++;
       return Promise.resolve();
     }
-    return new Promise((resolve) => ciraWaiters.push(resolve)).then(() => {
-      activeCiraFetches++;
-    });
+    return new Promise((resolve) => ciraWaiters.push(resolve));
   };
 
   const releaseCiraSlot = () => {
-    if (activeCiraFetches > 0) activeCiraFetches--;
-    if (activeCiraFetches < MAX_CONCURRENT_CIRA_FETCHES && ciraWaiters.length > 0) {
+    if (ciraWaiters.length > 0 && activeCiraFetches <= MAX_CONCURRENT_CIRA_FETCHES) {
       const next = ciraWaiters.shift();
       next();
+    } else if (activeCiraFetches > 0) {
+      activeCiraFetches--;
+    }
+  };
+
+  let activeHiResCiraFetches = 0;
+  const hiResCiraWaiters = [];
+  const MAX_CONCURRENT_HIRES_CIRA_FETCHES = 3;
+
+  const acquireHiResCiraSlot = () => {
+    if (activeHiResCiraFetches < MAX_CONCURRENT_HIRES_CIRA_FETCHES) {
+      activeHiResCiraFetches++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => hiResCiraWaiters.push(resolve));
+  };
+
+  const releaseHiResCiraSlot = () => {
+    if (hiResCiraWaiters.length > 0 && activeHiResCiraFetches <= MAX_CONCURRENT_HIRES_CIRA_FETCHES) {
+      const next = hiResCiraWaiters.shift();
+      next();
+    } else if (activeHiResCiraFetches > 0) {
+      activeHiResCiraFetches--;
     }
   };
 
@@ -1251,17 +1749,25 @@ function createNoaaStarProtocolHandler({
               : '';
           const ciraBase = cfg.CIRA_BASE_URL || `${originBase}${cfg.CIRA_PROXY_PATH}`;
           let parsedLmMs = NaN;
+          let chosenTsVal = null;
           await acquireCiraSlot();
-          const ciraOuterMs = Math.max(cfg.NOAA_FETCH_TIMEOUT_MS, 26000);
+          const ciraOuterMs = Math.max(cfg.NOAA_FETCH_TIMEOUT_MS, 28000);
           timeoutId = setTimeout(
             () => noaaController.abort('noaa-timeout'),
             ciraOuterMs
           );
           try {
-            const metaUrl = `${ciraBase}?action=meta&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}`;
-            const metaRes = await fetchFn(metaUrl, { signal: noaaController.signal });
-            if (!metaRes.ok) throw new Error('CIRA_META_HTTP_' + metaRes.status);
-            const metaJson = await metaRes.json();
+            const metaKey = `${spec.ciraSat}:${spec.ciraProduct}`;
+            const cachedMeta = ciraMetaCache.get(metaKey);
+            let metaJson = null;
+            if (cachedMeta && nowFn() - cachedMeta.fetchedAtMs < cfg.SOURCE_CACHE_TTL_MS) {
+              metaJson = { latestTs: cachedMeta.ts, timestamps: cachedMeta.tsList };
+            } else {
+              const metaUrl = `${ciraBase}?action=meta&sat=${encodeURIComponent(spec.ciraSat)}&product=${encodeURIComponent(spec.ciraProduct)}`;
+              const metaRes = await fetchFn(metaUrl, { signal: noaaController.signal });
+              if (!metaRes.ok) throw new Error('CIRA_META_HTTP_' + metaRes.status);
+              metaJson = await metaRes.json();
+            }
             const candidateTsList = [];
             if (Array.isArray(metaJson?.timestamps)) {
               for (const t of metaJson.timestamps) {
@@ -1276,8 +1782,7 @@ function createNoaaStarProtocolHandler({
             }
             if (candidateTsList.length === 0) throw new Error('CIRA_META_INVALID_TS');
 
-            const isLoopbackCira = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(ciraBase);
-            const perAttemptMs = Math.min(12000, cfg.NOAA_FETCH_TIMEOUT_MS);
+            const perAttemptMs = Math.max(15000, Math.min(18000, cfg.NOAA_FETCH_TIMEOUT_MS));
             const fetchQuadsForTs = async (tsVal) => {
               const attemptCtrl = new AbortController();
               const attemptTimer = setTimeout(() => attemptCtrl.abort('cira-ts-timeout'), perAttemptMs);
@@ -1295,12 +1800,7 @@ function createNoaaStarProtocolHandler({
                 });
               };
               try {
-                if (!isLoopbackCira) {
-                  return await Promise.all(rcList.map((rc, qIdx) => fetchOneQuad(rc, qIdx)));
-                }
-                const topRow = await Promise.all([fetchOneQuad(rcList[0], 0), fetchOneQuad(rcList[1], 1)]);
-                const botRow = await Promise.all([fetchOneQuad(rcList[2], 2), fetchOneQuad(rcList[3], 3)]);
-                return [topRow[0], topRow[1], botRow[0], botRow[1]];
+                return await Promise.all(rcList.map((rc, qIdx) => fetchOneQuad(rc, qIdx)));
               } finally {
                 clearTimeout(attemptTimer);
                 noaaController.signal.removeEventListener('abort', onOuterAbort);
@@ -1318,6 +1818,7 @@ function createNoaaStarProtocolHandler({
                 throw firstTsErr;
               }
             }
+            chosenTsVal = chosenTs;
             const chosenIso = `${chosenTs.slice(0, 4)}-${chosenTs.slice(4, 6)}-${chosenTs.slice(6, 8)}T${chosenTs.slice(8, 10)}:${chosenTs.slice(10, 12)}:${chosenTs.slice(12, 14)}Z`;
             const obsIso = chosenTs === latestTs ? (metaJson.observedIso || chosenIso) : chosenIso;
             parsedLmMs = obsIso ? Date.parse(obsIso) : NaN;
@@ -1367,6 +1868,7 @@ function createNoaaStarProtocolHandler({
             entry.width = spec.width;
             entry.height = spec.height;
             entry.footerStartRow = spec.height;
+            entry.ciraTs = chosenTsVal;
             entry.fetchedAtMs = readyAtMs;
             entry.lastUsedAtMs = readyAtMs;
             entry.lastModifiedUtc = Number.isFinite(parsedLmMs) ? new Date(parsedLmMs).toISOString() : null;
@@ -1587,7 +2089,11 @@ function createNoaaStarProtocolHandler({
           bmp = null;
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           if (processTilePixelsFn) {
-            processTilePixelsFn(imgData.data, canvas.width, canvas.height, resolvedUrl);
+            const processFallbackUrl =
+              req.softCloud && !resolvedUrl.includes('softCloud=1')
+                ? `${resolvedUrl}${resolvedUrl.includes('?') ? '&' : '?'}softCloud=1`
+                : resolvedUrl;
+            processTilePixelsFn(imgData.data, canvas.width, canvas.height, processFallbackUrl);
           }
           ctx.putImageData(imgData, 0, 0);
           const cleanBitmap = await createImageBitmapFn(canvas);
@@ -1617,6 +2123,42 @@ function createNoaaStarProtocolHandler({
     }
   }
 
+  const hiResOverviewSpecCache = new Map();
+  const getEffectiveSectorSpec = (baseSpec, useHiRes) => {
+    if (!useHiRes || !baseSpec || baseSpec.sourceKind === 'cira-z1' || !baseSpec.ciraSat) {
+      return baseSpec;
+    }
+    const existing = hiResOverviewSpecCache.get(baseSpec.key);
+    if (existing) return existing;
+    const tilePx = baseSpec.ciraTilePx || 678;
+    const clone = {
+      key: `${baseSpec.key}:cira`,
+      sector: baseSpec.sector,
+      spectral: baseSpec.spectral,
+      satLabel: baseSpec.satLabel,
+      product: baseSpec.product,
+      sourceKind: 'cira-z1',
+      ciraSat: baseSpec.ciraSat,
+      ciraProduct: baseSpec.ciraProduct,
+      ciraTilePx: tilePx,
+      ciraMaxZ: baseSpec.ciraMaxZ || 4,
+      width: tilePx * 2,
+      height: tilePx * 2,
+      lon0Deg: baseSpec.lon0Deg,
+      sweep: baseSpec.sweep,
+      rEq: baseSpec.rEq,
+      rPol: baseSpec.rPol,
+      hDist: baseSpec.hDist,
+      cx: typeof baseSpec.ciraZ1Cx === 'number' ? baseSpec.ciraZ1Cx : 677.25,
+      cy: typeof baseSpec.ciraZ1Cy === 'number' ? baseSpec.ciraZ1Cy : 677.25,
+      stepRad: typeof baseSpec.ciraZ1StepRad === 'number' ? baseSpec.ciraZ1StepRad : 4 * 56e-6,
+      applyCalOffset: false,
+      detectFooter: false,
+    };
+    hiResOverviewSpecCache.set(baseSpec.key, clone);
+    return clone;
+  };
+
   async function handleTileRequest(params, abortController) {
     const mapSignal = abortController ? abortController.signal : null;
     if (mapSignal && mapSignal.aborted) throw makeAbortError();
@@ -1625,7 +2167,8 @@ function createNoaaStarProtocolHandler({
     if (isTileOutsideSectorSupport(params.url, req)) {
       return { data: createEmptyTransparentPngBuffer() };
     }
-    const specVis = getGlobalSectorSpec(req.sector, req.spectral);
+    const baseSpecVis = getGlobalSectorSpec(req.sector, req.spectral);
+    const specVis = getEffectiveSectorSpec(baseSpecVis, req.hiRes);
     const useNightIrBlend =
       req.nightIr &&
       req.spectral === 'vis' &&
@@ -1658,7 +2201,7 @@ function createNoaaStarProtocolHandler({
       }
     }
 
-    const specIr = wantIr ? getGlobalSectorSpec(req.sector, 'blue') : null;
+    const specIr = wantIr ? getEffectiveSectorSpec(getGlobalSectorSpec(req.sector, 'blue'), req.hiRes) : null;
     const primarySpec = wantVis ? specVis : specIr;
     const entry = getSectorEntry(primarySpec);
     globalState.lastPrimaryKey = primarySpec.key;
@@ -1688,11 +2231,34 @@ function createNoaaStarProtocolHandler({
 
     let visReady = null;
     let irReady = null;
+    let hiResVisBundle = null;
+    let hiResIrBundle = null;
+    const entryVis = wantVis ? getSectorEntry(specVis) : null;
     const entryIr = specIr ? getSectorEntry(specIr) : null;
+
+    if (req.hiRes && req.tileZ >= 4) {
+      const [hrVis, hrIr] = await Promise.all([
+        wantVis && entryVis && !(nowFn() < entryVis.cooldownUntilMs)
+          ? prepareHiResCiraForTile(specVis, entryVis, req, mapSignal)
+          : Promise.resolve(null),
+        wantIr && specIr && entryIr && !(nowFn() < entryIr.cooldownUntilMs)
+          ? prepareHiResCiraForTile(specIr, entryIr, req, mapSignal)
+          : Promise.resolve(null),
+      ]);
+      if (mapSignal && mapSignal.aborted) throw makeAbortError();
+      hiResVisBundle = hrVis;
+      hiResIrBundle = hrIr;
+    }
+
+    const needVisOverview = wantVis && !hiResVisBundle;
+    const needIrOverview = wantIr && specIr && entryIr && !hiResIrBundle;
+    if (wantVis && hiResVisBundle) visReady = entryVis;
+    if (wantIr && hiResIrBundle) irReady = entryIr;
+
     try {
-      if (wantVis && wantIr && specIr && entryIr) {
+      if (needVisOverview && needIrOverview) {
         const [vRes, irRes] = await Promise.allSettled([
-          fetchWithAbort(specVis, getSectorEntry(specVis)),
+          fetchWithAbort(specVis, entryVis),
           fetchWithAbort(specIr, entryIr),
         ]);
         if (mapSignal && mapSignal.aborted) throw makeAbortError();
@@ -1702,10 +2268,20 @@ function createNoaaStarProtocolHandler({
           const err = vRes.status === 'rejected' ? vRes.reason : new Error('NOAA_UNAVAILABLE');
           throw err;
         }
-      } else if (wantVis) {
-        visReady = await fetchWithAbort(specVis, entry);
-      } else if (specIr && entryIr) {
-        irReady = await fetchWithAbort(specIr, entryIr);
+      } else if (needVisOverview) {
+        try {
+          visReady = await fetchWithAbort(specVis, entryVis);
+        } catch (err) {
+          if (mapSignal && mapSignal.aborted) throw err;
+          if (!irReady) throw err;
+        }
+      } else if (needIrOverview) {
+        try {
+          irReady = await fetchWithAbort(specIr, entryIr);
+        } catch (err) {
+          if (mapSignal && mapSignal.aborted) throw err;
+          if (!visReady) throw err;
+        }
       }
     } catch (err) {
       if (mapSignal && mapSignal.aborted) throw err;
@@ -1724,37 +2300,55 @@ function createNoaaStarProtocolHandler({
     try {
       if (mapSignal && mapSignal.aborted) throw makeAbortError();
       const visEntry = wantVis ? getSectorEntry(specVis) : null;
-      const reprojectAndProcess = (targetSpec, targetEntry, processSpectral) => {
-        if (!targetEntry || !targetEntry.rgb) return null;
+      const reprojectAndProcess = (targetSpec, targetEntry, processSpectral, hiResBundle) => {
+        if (!hiResBundle && (!targetEntry || !targetEntry.rgb)) return null;
         const buf = new Uint8ClampedArray(256 * 256 * 4);
-        targetEntry.activeReaders++;
-        targetEntry.lastUsedAtMs = nowFn();
-        try {
-          reprojectNoaaStarRgbLut32({
-            rgb: targetEntry.rgb,
-            width: targetEntry.width,
-            height: targetEntry.height,
-            footerStartRow: targetEntry.footerStartRow,
+        if (hiResBundle) {
+          reprojectCiraTilesLut32({
+            tileMap: hiResBundle.tileMap,
+            scaledSpec: hiResBundle.scaledSpec,
             tileZ: req.tileZ,
             tileX: req.tileX,
             tileY: req.tileY,
-            calOffsetPx: req.calOffsetPx,
-            sectorSpec: targetSpec,
             outRgba: buf,
           });
-        } finally {
-          releaseSectorReader(targetEntry);
+        } else {
+          targetEntry.activeReaders++;
+          targetEntry.lastUsedAtMs = nowFn();
+          try {
+            reprojectNoaaStarRgbLut32({
+              rgb: targetEntry.rgb,
+              width: targetEntry.width,
+              height: targetEntry.height,
+              footerStartRow: targetEntry.footerStartRow,
+              tileZ: req.tileZ,
+              tileX: req.tileX,
+              tileY: req.tileY,
+              calOffsetPx: req.calOffsetPx,
+              sectorSpec: targetSpec,
+              outRgba: buf,
+            });
+          } finally {
+            releaseSectorReader(targetEntry);
+          }
         }
-        const obsMs = targetEntry.lastModifiedMs !== null ? targetEntry.lastModifiedMs : nowFn();
-        const liveProcessUrl = `https://live.mooearth.internal/tile/${req.tileZ}/${req.tileX}/${req.tileY}.png?sector=${encodeURIComponent(targetSpec.sector)}&spectral=${encodeURIComponent(processSpectral)}&product=${encodeURIComponent(targetSpec.product)}&t=${obsMs}`;
+        const obsMs =
+          hiResBundle && Number.isFinite(hiResBundle.parsedLmMs)
+            ? hiResBundle.parsedLmMs
+            : targetEntry && targetEntry.lastModifiedMs !== null
+            ? targetEntry.lastModifiedMs
+            : nowFn();
+        const softFlagParam = req.softCloud ? '&softCloud=1' : '';
+        const hiResFlagParam = hiResBundle ? '&hiRes=1' : '';
+        const liveProcessUrl = `https://live.mooearth.internal/tile/${req.tileZ}/${req.tileX}/${req.tileY}.png?sector=${encodeURIComponent(targetSpec.sector)}&spectral=${encodeURIComponent(processSpectral)}&product=${encodeURIComponent(targetSpec.product)}${softFlagParam}${hiResFlagParam}&t=${obsMs}`;
         if (processTilePixelsFn) {
           processTilePixelsFn(buf, 256, 256, liveProcessUrl);
         }
         return buf;
       };
 
-      const visBuf = visReady ? reprojectAndProcess(specVis, visEntry, req.spectral) : null;
-      const irBuf = irReady ? reprojectAndProcess(specIr, entryIr, 'blue') : null;
+      const visBuf = visReady ? reprojectAndProcess(specVis, visEntry, req.spectral, hiResVisBundle) : null;
+      const irBuf = irReady ? reprojectAndProcess(specIr, entryIr, 'blue', hiResIrBundle) : null;
       if (!visBuf && !irBuf) {
         return await renderGibsFallbackTile(req, mapSignal, 'NOAA_BUFFER_EVICTED', entry);
       }
@@ -1848,6 +2442,11 @@ function createNoaaStarProtocolHandler({
         activeTileJobs: globalState.activeTileJobs,
         cooldownUntilMs: primary ? primary.cooldownUntilMs : 0,
         trackedBufferBytes: getTrackedBytes(),
+        hiResFetches: globalState.hiResFetches,
+        hiResCacheHits: globalState.hiResCacheHits,
+        hiResFallbacks: globalState.hiResFallbacks,
+        hiResCacheTiles: hiResTileCache.size,
+        hiResCacheBytes: getHiResCacheBytes(),
         sectors,
       };
     },
@@ -1969,6 +2568,20 @@ function getSectorSpatialWeight(url, lng, lat) {
     return smoothCloudCurve(dNorm, 0.24, 5.5);
   }
 
+  // Flagged soft-ramp cloud extractor: protects warm desert plateaus/sand at high sun via solar-weighted warmExcess
+  // and turquoise coastal reefs while recovering thin translucent maritime cumulus.
+  function computeGeoColorDayCloudSoft(r, g, b, minC, maxC, cosZ = 1.0) {
+    const sat = maxC - minC;
+    const warmExcess = r > b ? r - b : 0;
+    const sunFactor = Math.max(0.0, Math.min(1.0, (cosZ - 0.15) / 0.35));
+    const warmMult = 0.85 + 1.55 * sunFactor;
+    const cyanBias = g > r + 8 && b > r + 8 && minC < 125 ? (g - r) * 0.45 : 0.0;
+    const dayWhiteness = minC - 0.78 * sat - warmMult * warmExcess - cyanBias;
+    if (dayWhiteness <= 69.0) return 0.0;
+    const dNorm = Math.min(1.0, (dayWhiteness - 69.0) / 139.0);
+    return Math.pow(dNorm, 0.85);
+  }
+
   // Physical Elevation & Latitude Lapse-Rate Thermal Ground Discriminator
   // Rejects nocturnal freezing ground (Central India ~92, Arabia ~88) & high elevation Tibet > 3500m
   function getLocalThermalThreshold(lng, lat, isBand09OrEumet) {
@@ -2032,6 +2645,7 @@ function getSectorSpatialWeight(url, lng, lat) {
     const isVisMode = realUrl.includes('spectral=vis');
     const isInfraMode = realUrl.includes('spectral=infra');
     const isBlueMode = realUrl.includes('spectral=blue') || (!isVisMode && !isInfraMode);
+    const useSoftCloud = /[?&]softCloud=1\b/i.test(realUrl);
     const isGeoColor = /product=geocolor|GeoColor/i.test(realUrl);
     const isBand09 = !isGeoColor && /Band09|band_09|ir108|msg_|eumet/i.test(realUrl);
     const isInfraLayer = !isGeoColor && (/Band13|band_13|Infrared|\bIR\b/i.test(realUrl) || isBand09);
@@ -2170,7 +2784,9 @@ function getSectorSpatialWeight(url, lng, lat) {
           let dSig = 0.0;
           let dayAlpha = 0.0;
           if (dayW > 0.01) {
-            dSig = computeGeoColorDayCloud(r, g, b, minC, maxC);
+            dSig = useSoftCloud
+              ? computeGeoColorDayCloudSoft(r, g, b, minC, maxC, cosZ)
+              : computeGeoColorDayCloud(r, g, b, minC, maxC);
             dayAlpha = 248.0 * dSig;
           }
 
@@ -2203,6 +2819,20 @@ function getSectorSpatialWeight(url, lng, lat) {
             continue;
           }
           const effSig = wSum > 0.001 ? (wDay * dSig + wNight * nSig) / wSum : dSig;
+          if (useSoftCloud && dayW >= 0.15) {
+            // Preserve true shaded cloud luminance relief on sunlit side instead of compressing into [224..255]
+            const shaded = Math.max(92, Math.min(255, Math.round(l * 0.90 + 26 * effSig)));
+            const dayBlend = dayW >= 0.85 ? 1.0 : (dayW - 0.15) / 0.70;
+            const nightTone = Math.min(255, Math.round(224 + 31 * effSig));
+            const rShaded = Math.min(255, Math.round(0.20 * r + 0.80 * shaded));
+            const gShaded = Math.min(255, Math.round(0.20 * g + 0.80 * shaded));
+            const bShaded = Math.min(255, Math.round(0.20 * b + 0.80 * Math.min(255, shaded + 5)));
+            d[i] = Math.min(255, Math.round(nightTone + (rShaded - nightTone) * dayBlend));
+            d[i + 1] = Math.min(255, Math.round(nightTone + (gShaded - nightTone) * dayBlend));
+            d[i + 2] = Math.min(255, Math.round(nightTone + (bShaded - nightTone) * dayBlend));
+            d[i + 3] = cloudAlpha;
+            continue;
+          }
           const thin = Math.max(0.0, 1.0 - effSig);
           const cloudTone = Math.min(255, Math.round(224 + 31 * effSig));
           d[i] = Math.min(255, Math.round(cloudTone - 3 * thin));
@@ -2305,10 +2935,10 @@ function getSectorSpatialWeight(url, lng, lat) {
 
     // 4. Sub-Pixel Spatial Anti-Aliasing (Windy Parity):
     // Eliminates isolated 1-2px sensor noise speckles over ocean and smooths blocky cloud edges into silky organic gradients
-    applySpatialAntiAliasing(d, width, height);
+    applySpatialAntiAliasing(d, width, height, useSoftCloud);
   }
 
-  function applySpatialAntiAliasing(d, width, height) {
+  function applySpatialAntiAliasing(d, width, height, preserveShadedRgb = false) {
     const numPixels = width * height;
     const alphaCopy = new Uint8Array(numPixels);
     for (let p = 0; p < numPixels; p++) {
@@ -2384,11 +3014,13 @@ function getSectorSpatialWeight(url, lng, lat) {
           ) >> 4;
 
           d[(idx << 2) + 3] = smoothed <= 3 ? 0 : smoothed;
-          const rgbIdx = idx << 2;
-          if (d[rgbIdx] < 200) {
-            d[rgbIdx] = 238;
-            d[rgbIdx + 1] = 238;
-            d[rgbIdx + 2] = 242;
+          if (!preserveShadedRgb) {
+            const rgbIdx = idx << 2;
+            if (d[rgbIdx] < 200) {
+              d[rgbIdx] = 238;
+              d[rgbIdx + 1] = 238;
+              d[rgbIdx + 2] = 242;
+            }
           }
         }
       }
@@ -2713,6 +3345,10 @@ if (typeof module !== 'undefined' && module.exports) {
     detectFooterStartRowRgb,
     sampleNoaaRgbBilinear,
     reprojectNoaaStarRgbLut32,
+    getAdaptiveCiraZoomLevel,
+    getScaledCiraGridSpec,
+    getIntersectingCiraTilesForSlippyTile,
+    reprojectCiraTilesLut32,
     fetchDirectHttpsGibsTile,
     readResponseBytesBounded,
     parseNoaaStarTileRequest,

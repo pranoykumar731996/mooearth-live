@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
   isNoaaStarPilotEnabled,
+  isSatHiResExperimentEnabled,
+  isSatSoftCloudExperimentEnabled,
   getNoaaStar1808CalibrationOffset,
   shouldUseNoaaStarPilotForSector,
   buildNoaaStarTileUrl,
@@ -809,9 +811,262 @@ async function runTests() {
     'Nighttime visible tile with nightIr=1 routes cleanly to CIRA Band09 IR and outputs luminous white clouds'
   );
 
+  // 11. Independent Flagged Clarity Experiments (satHiRes + satSoftCloud), Bounded CIRA Intersections & Overview Fallback
+  const origHiRes = process.env.NEXT_PUBLIC_SAT_HIRES_PILOT;
+  const origSoftCloud = process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT;
+  delete process.env.NEXT_PUBLIC_SAT_HIRES_PILOT;
+  delete process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT;
+  check(
+    !isSatHiResExperimentEnabled('?satHiRes=1') && !isSatSoftCloudExperimentEnabled('?satSoftCloud=1'),
+    'Hi-res and soft-cloud experiments stay strictly OFF in production without build-time env flags'
+  );
+  process.env.NEXT_PUBLIC_SAT_HIRES_PILOT = 'true';
+  process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT = 'true';
+  check(
+    !isSatHiResExperimentEnabled('') &&
+      !isSatSoftCloudExperimentEnabled('') &&
+      isSatHiResExperimentEnabled('?satHiRes=1') &&
+      !isSatSoftCloudExperimentEnabled('?satHiRes=1') &&
+      !isSatHiResExperimentEnabled('?satSoftCloud=1') &&
+      isSatSoftCloudExperimentEnabled('?satSoftCloud=1'),
+    'Hi-res (?satHiRes=1) and soft-cloud (?satSoftCloud=1) flags toggle strictly independently'
+  );
+
+  // Verify CIRA per-product adaptive zoom caps and intersection bounds
+  const m9VisSpec = workerMod.getGlobalSectorSpec('eumet-iodc', 'vis');
+  const g19VisSpec = workerMod.getGlobalSectorSpec('goes-east', 'vis');
+  const g19IrSpec = workerMod.getGlobalSectorSpec('goes-east', 'ir');
+  check(
+    workerMod.getAdaptiveCiraZoomLevel(g19VisSpec, 3) === 1 &&
+      workerMod.getAdaptiveCiraZoomLevel(g19VisSpec, 4) === 2 &&
+      workerMod.getAdaptiveCiraZoomLevel(g19VisSpec, 6) === 3 &&
+      workerMod.getAdaptiveCiraZoomLevel(g19VisSpec, 7) === 4 &&
+      workerMod.getAdaptiveCiraZoomLevel(m9VisSpec, 7) === 3 &&
+      workerMod.getAdaptiveCiraZoomLevel(g19IrSpec, 7) === 3,
+    'Adaptive CIRA zoom levels obey strict per-(sector, product) ceilings (z3 max for Meteosat/IR, z4 for GOES/Himawari GeoColor)'
+  );
+  const g19InterZ6 = workerMod.getIntersectingCiraTilesForSlippyTile(g19VisSpec, 3, 6, 19, 27, 1, 256);
+  const m9InterZ6 = workerMod.getIntersectingCiraTilesForSlippyTile(m9VisSpec, 3, 6, 43, 33, 1, 256);
+  check(
+    g19InterZ6.rcList.length >= 1 &&
+      g19InterZ6.rcList.length <= 4 &&
+      m9InterZ6.rcList.length >= 1 &&
+      m9InterZ6.rcList.length <= 4,
+    `CIRA adaptive z03 subsets for 6/19/27 (${g19InterZ6.rcList.length}) and 6/43/33 (${m9InterZ6.rcList.length}) stay strictly bounded (<=4 tiles)`
+  );
+
+  // Verify hiRes=1 CIRA z03 deduplication + same-provider CIRA z01 overview fallback on upstream hi-res 404 (no NOAA 1808 seam or GIBS failover!)
+  const hrFetchUrls: string[] = [];
+  let failHiRes = false;
+  const hiResHandler = workerMod.createNoaaStarProtocolHandler({
+    nowFn: () => 1_700_000_000_000,
+    fetchFn: async (u: string) => {
+      hrFetchUrls.push(u);
+      if (u.includes('cdn.star.nesdis.noaa.gov')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'Wed, 25 Nov 2026 15:30:00 GMT' },
+          arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer,
+        };
+      }
+      if (u.includes('action=meta')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ latestTs: '20261126153020', observedIso: '2026-11-26T15:30:20Z' }),
+        };
+      }
+      if (u.includes('action=tile')) {
+        const isSubZ = /([?&])z=(02|03|04)\b/.test(u);
+        if (failHiRes && isSubZ) {
+          return { ok: false, status: 404, headers: { get: () => null } };
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          arrayBuffer: async () => new Uint8Array([5, 6, 7, 8]).buffer,
+        };
+      }
+      throw new Error('Unexpected GIBS call: ' + u);
+    },
+    createImageBitmapFn: async (target: { type?: string }) =>
+      target && target.type === 'image/png'
+        ? { width: 678, height: 678, close() {} }
+        : { width: 1808, height: 1808, close() {} },
+    extractRgbStripFn: async (bmp: { width: number }) =>
+      bmp.width === 678
+        ? new Uint8Array(678 * 678 * 3).fill(180)
+        : new Uint8Array(1808 * 1808 * 3).fill(140),
+    processTilePixelsFn: (rgba: Uint8ClampedArray, w: number, h: number, u: string) =>
+      workerMod.processTilePixels(rgba, w, h, u),
+  });
+
+  const hrUrl6 = buildNoaaStarTileUrl({
+    sectorId: 'goes-east',
+    hiResExperiment: true,
+    softCloudExperiment: true,
+    layerName: 'GOES-East_ABI_GeoColor',
+    tileTime: '2026-11-26T15:30:00Z',
+    tileMatrixSet: 'GoogleMapsCompatible_Level7',
+    ext: 'png',
+    spectralParam: 'spectral=vis',
+    bucket: 1000,
+  });
+  check(hrUrl6.includes('hiRes=1') && hrUrl6.includes('softCloud=1'), 'URL builder attaches independent hiRes=1 and softCloud=1 parameters when opted in');
+  const hrRes1 = await hiResHandler.handleTileRequest(
+    { url: hrUrl6.replace('{z}', '6').replace('{x}', '19').replace('{y}', '27') },
+    new AbortController()
+  );
+  const stAfterHr1 = hiResHandler.getState();
+  check(
+    hrRes1.data instanceof ArrayBuffer &&
+      stAfterHr1.hiResFetches === g19InterZ6.rcList.length &&
+      stAfterHr1.hiResFallbacks === 0 &&
+      stAfterHr1.cooldownUntilMs === 0 &&
+      !hrFetchUrls.some((u) => u.includes('cdn.star.nesdis.noaa.gov')),
+    `hiRes=1 fetched exact ${g19InterZ6.rcList.length} intersecting CIRA z03 tiles directly without waiting for full-disk 1808 or calling GIBS`
+  );
+  // Repeating the same slippy tile hits hiResTileCache with 0 new fetches
+  await hiResHandler.handleTileRequest(
+    { url: hrUrl6.replace('{z}', '6').replace('{x}', '19').replace('{y}', '27') },
+    new AbortController()
+  );
+  const stAfterHr2 = hiResHandler.getState();
+  check(
+    stAfterHr2.hiResFetches === g19InterZ6.rcList.length && stAfterHr2.hiResCacheHits >= g19InterZ6.rcList.length,
+    'hiRes=1 reuses LRU-cached CIRA tiles without repeat /cira requests'
+  );
+  // Failing a new CIRA tile at z=7 drops cleanly to same-provider CIRA z01 overview without crossing to 1808, tripping cooldown, or calling GIBS
+  failHiRes = true;
+  const hrFallbackRes = await hiResHandler.handleTileRequest(
+    { url: hrUrl6.replace('{z}', '7').replace('{x}', '38').replace('{y}', '55') },
+    new AbortController()
+  );
+  const stAfterFail = hiResHandler.getState();
+  check(
+    hrFallbackRes.data instanceof ArrayBuffer &&
+      stAfterFail.hiResFallbacks >= 1 &&
+      stAfterFail.cooldownUntilMs === 0 &&
+      !hrFetchUrls.some((u) => u.includes('cdn.star.nesdis.noaa.gov')) &&
+      !hrFetchUrls.some((u) => u.includes('gibs.earthdata.nasa.gov')),
+    'hiRes tile failure falls back to same-provider CIRA z01 overview without crossing to NOAA 1808, tripping cooldown, or calling GIBS'
+  );
+
+  // Verify independent softCloud=1 desert-sand + coastal land-haze rejection & natural luminance preservation
+  const testTileCurr = new Uint8ClampedArray(256 * 256 * 4);
+  const testTileSoft = new Uint8ClampedArray(256 * 256 * 4);
+  // Pixel 0: Pale Arabia desert sand (150, 138, 126);
+  // Pixel 1: Cuba coastal forest land haze (75, 88, 88);
+  // Pixel 2: Mid storm trough (160, 162, 165);
+  // Pixel 3: Thin maritime cumulus (106, 114, 126)
+  const seedPixels = (buf: Uint8ClampedArray) => {
+    buf[0] = 150; buf[1] = 138; buf[2] = 126; buf[3] = 255;
+    buf[4] = 75; buf[5] = 88; buf[6] = 88; buf[7] = 255;
+    buf[8] = 160; buf[9] = 162; buf[10] = 165; buf[11] = 255;
+    buf[12] = 106; buf[13] = 114; buf[14] = 126; buf[15] = 255;
+  };
+  seedPixels(testTileCurr);
+  seedPixels(testTileSoft);
+  workerMod.processTilePixels(testTileCurr, 256, 256, 'https://live.mooearth.internal/tile/6/40/27.png?sector=eumet-iodc&spectral=vis&product=GeoColor&t=1700996400000');
+  workerMod.processTilePixels(testTileSoft, 256, 256, 'https://live.mooearth.internal/tile/6/40/27.png?sector=eumet-iodc&spectral=vis&product=GeoColor&softCloud=1&t=1700996400000');
+  check(
+    testTileCurr[3] > 0 &&
+      testTileSoft[3] === 0 &&
+      testTileSoft[7] === 0 &&
+      testTileCurr[9] >= 224 &&
+      testTileSoft[9] < 200 &&
+      testTileSoft[15] > 0,
+    'softCloud=1 rejects warm desert sand & coastal forest haze while preserving translucent cumulus and storm shading < 224'
+  );
+
+  // Verify applySpatialAntiAliasing does NOT overwrite softCloud=1 interior shaded RGB (<200 -> 238) or create a tile-edge seam
+  const seamCurr = new Uint8ClampedArray(256 * 256 * 4);
+  const seamSoft = new Uint8ClampedArray(256 * 256 * 4);
+  for (let i = 0; i < 256 * 256 * 4; i += 4) {
+    seamCurr[i] = 158; seamCurr[i + 1] = 160; seamCurr[i + 2] = 164; seamCurr[i + 3] = 255;
+    seamSoft[i] = 158; seamSoft[i + 1] = 160; seamSoft[i + 2] = 164; seamSoft[i + 3] = 255;
+  }
+  // 1701018000000 = 2023-11-26T17:00:00Z (solar noon over Caribbean 6/19/27)
+  workerMod.processTilePixels(seamCurr, 256, 256, 'https://live.mooearth.internal/tile/6/19/27.png?sector=goes-east&spectral=vis&product=GeoColor&t=1701018000000');
+  workerMod.processTilePixels(seamSoft, 256, 256, 'https://live.mooearth.internal/tile/6/19/27.png?sector=goes-east&spectral=vis&product=GeoColor&softCloud=1&t=1701018000000');
+  const edgeR = seamSoft[(10 * 256 + 0) * 4];
+  const interiorR = seamSoft[(10 * 256 + 10) * 4];
+  check(
+    interiorR < 200 && Math.abs(edgeR - interiorR) <= 4 && seamCurr[(10 * 256 + 10) * 4] >= 224,
+    `softCloud=1 preserves uniform shaded RGB across tile border (x=0:${edgeR} vs x=10:${interiorR}) with zero 238-clamp box seam`
+  );
+
+  // Verify refcounted hiRes abort cancellation & single 502 transient retry
+  let retryAttempt = 0;
+  let abortedUpstreamSignal = false;
+  const retryAbortHandler = workerMod.createNoaaStarProtocolHandler({
+    nowFn: () => 1_700_000_000_000,
+    fetchFn: async (u: string, init?: { signal?: AbortSignal }) => {
+      if (u.includes('action=meta')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ latestTs: '20261126153020', observedIso: '2026-11-26T15:30:20Z' }),
+        };
+      }
+      if (u.includes('action=tile') && u.includes('z=03')) {
+        retryAttempt++;
+        if (retryAttempt === 1) {
+          return { ok: false, status: 502, headers: { get: () => null } };
+        }
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          arrayBuffer: async () => new Uint8Array([5, 6, 7, 8]).buffer,
+        };
+      }
+      if (u.includes('action=tile') && u.includes('z=04')) {
+        return await new Promise((_, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            abortedUpstreamSignal = true;
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        });
+      }
+      throw new Error('Unexpected fetch: ' + u);
+    },
+    createImageBitmapFn: async () => ({ width: 678, height: 678, close() {} }),
+    extractRgbStripFn: async () => new Uint8Array(678 * 678 * 3).fill(180),
+  });
+  const retryRes = await retryAbortHandler.handleTileRequest(
+    { url: hrUrl6.replace('{z}', '6').replace('{x}', '19').replace('{y}', '27') },
+    new AbortController()
+  );
+  check(
+    retryRes.data instanceof ArrayBuffer && retryAttempt >= 2 && retryAbortHandler.getState().hiResFallbacks === 0,
+    'Transient CIRA 502 triggers fast retry before hiRes fallback'
+  );
+  const abortCtrl7 = new AbortController();
+  const z7Pending = retryAbortHandler.handleTileRequest(
+    { url: hrUrl6.replace('{z}', '7').replace('{x}', '38').replace('{y}', '55') },
+    abortCtrl7
+  );
+  setTimeout(() => abortCtrl7.abort(), 20);
+  let abortThrew = false;
+  try {
+    await z7Pending;
+  } catch (err) {
+    abortThrew = err instanceof Error && err.name === 'AbortError';
+  }
+  check(abortThrew && abortedUpstreamSignal, 'Cancelling all callers of an in-flight hiRes tile aborts upstream fetch immediately');
+
   // Restore env
   if (origPilot === undefined) delete process.env.NEXT_PUBLIC_NOAA_STAR_PILOT;
   else process.env.NEXT_PUBLIC_NOAA_STAR_PILOT = origPilot;
+  if (origHiRes === undefined) delete process.env.NEXT_PUBLIC_SAT_HIRES_PILOT;
+  else process.env.NEXT_PUBLIC_SAT_HIRES_PILOT = origHiRes;
+  if (origSoftCloud === undefined) delete process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT;
+  else process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT = origSoftCloud;
   if (origOffX === undefined) delete process.env.NEXT_PUBLIC_NOAA_STAR_1808_OFFSET_X;
   else process.env.NEXT_PUBLIC_NOAA_STAR_1808_OFFSET_X = origOffX;
   if (origOffY === undefined) delete process.env.NEXT_PUBLIC_NOAA_STAR_1808_OFFSET_Y;

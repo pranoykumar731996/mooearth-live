@@ -17,6 +17,8 @@ import Link from 'next/link';
 import { getLocationTime } from '@/services/weather/timeService';
 import {
   isNoaaStarPilotEnabled,
+  isSatHiResExperimentEnabled,
+  isSatSoftCloudExperimentEnabled,
   shouldUseNoaaStarPilotForSector,
   buildNoaaStarTileUrl,
   extractSectorFromUrl,
@@ -3604,6 +3606,8 @@ export default function CityMapViewer({
             const ext = sec.format === 'image/jpeg' ? (sec.layerName.includes('VIIRS') ? 'jpeg' : 'jpg') : 'png';
             const isEumet = (sec as any).isWms || sec.layerName.startsWith('msg_') || sec.layerName.startsWith('mumi:');
             const spectralParam = isVisibleMode ? 'spectral=vis' : spectralMode === 'infra' ? 'spectral=infra' : 'spectral=blue';
+            const satHiResExperiment = isSatHiResExperimentEnabled();
+            const satSoftCloudExperiment = isSatSoftCloudExperimentEnabled();
             const useNoaaPilot = shouldUseNoaaStarPilotForSector({
               sectorId: sec.id,
               spectralMode: isVisibleMode ? 'visible' : spectralMode === 'infra' ? 'infra' : 'blue',
@@ -3619,6 +3623,8 @@ export default function CityMapViewer({
                   sectorId: sec.id,
                   fallbackProto: isEumet ? 'eumet' : 'gibs',
                   enableNightIr: isVisibleMode,
+                  hiResExperiment: satHiResExperiment,
+                  softCloudExperiment: satSoftCloudExperiment,
                   layerName: sec.layerName,
                   tileTime,
                   tileMatrixSet: sec.tileMatrixSet,

@@ -49,6 +49,8 @@ export interface NoaaStarTileUrlParams {
   sectorId?: string;
   fallbackProto?: 'gibs' | 'eumet';
   enableNightIr?: boolean;
+  hiResExperiment?: boolean;
+  softCloudExperiment?: boolean;
   layerName: string;
   tileTime: string;
   tileMatrixSet: string;
@@ -93,6 +95,37 @@ export function isNoaaStarPilotEnabled(search?: string): boolean {
   return true;
 }
 
+/**
+ * Independent build-gated + query-opted experiment flags for separating
+ * source-resolution upgrades (?satHiRes=1) from soft-ramp cloud styling (?satSoftCloud=1).
+ * Both stay strictly disabled unless their build flag is 'true' AND opted in via query.
+ */
+export function isSatHiResExperimentEnabled(search?: string): boolean {
+  if (process.env.NEXT_PUBLIC_SAT_HIRES_PILOT !== 'true') return false;
+  const searchStr =
+    search !== undefined
+      ? search
+      : typeof window !== 'undefined'
+      ? window.location.search
+      : '';
+  if (!searchStr) return false;
+  const opt = new URLSearchParams(searchStr).get('satHiRes');
+  return opt === '1' || opt === 'true';
+}
+
+export function isSatSoftCloudExperimentEnabled(search?: string): boolean {
+  if (process.env.NEXT_PUBLIC_SAT_SOFT_CLOUD_PILOT !== 'true') return false;
+  const searchStr =
+    search !== undefined
+      ? search
+      : typeof window !== 'undefined'
+      ? window.location.search
+      : '';
+  if (!searchStr) return false;
+  const opt = new URLSearchParams(searchStr).get('satSoftCloud');
+  return opt === '1' || opt === 'true';
+}
+
 export function getNoaaStar1808CalibrationOffset(): { x: number; y: number } {
   return {
     x: parseClampedOffset(process.env.NEXT_PUBLIC_NOAA_STAR_1808_OFFSET_X, NOAA_STAR_DEFAULT_1808_OFFSET),
@@ -131,6 +164,8 @@ export function buildNoaaStarTileUrl({
   sectorId = 'goes-east',
   fallbackProto,
   enableNightIr = false,
+  hiResExperiment = false,
+  softCloudExperiment = false,
   layerName,
   tileTime,
   tileMatrixSet,
@@ -156,6 +191,8 @@ export function buildNoaaStarTileUrl({
     `fallbackExt=${encodeURIComponent(ext)}`,
     `spectral=${encodeURIComponent(spectral)}`,
     ...(enableNightIr && spectral === 'vis' ? ['nightIr=1'] : []),
+    ...(hiResExperiment ? ['hiRes=1'] : []),
+    ...(softCloudExperiment ? ['softCloud=1'] : []),
     `calX=${encodeURIComponent(String(cx))}`,
     `calY=${encodeURIComponent(String(cy))}`,
     `bucket=${encodeURIComponent(String(bucket))}`,

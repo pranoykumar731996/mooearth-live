@@ -25,6 +25,20 @@ const ALLOWED_RC = new Set([
   '001_001',
 ]);
 
+const RC_RE = /^(\d{3})_(\d{3})$/;
+const Z_RE = /^0?([1-4])$/;
+const CIRA_MAX_Z: Record<string, Record<string, number>> = {
+  'goes-19': { geocolor: 4, band_13: 3 },
+  'goes-18': { geocolor: 4, band_13: 3 },
+  himawari: { geocolor: 4, band_13: 3 },
+  'meteosat-9': { geocolor: 3, band_09: 3 },
+  'meteosat-0deg': { geocolor: 3, band_09: 3 },
+};
+
+function getCiraMaxZoom(sat: string, product: string): number {
+  return CIRA_MAX_Z[sat]?.[product] ?? 1;
+}
+
 const TS_RE = /^\d{14}$/;
 
 function formatTsIso(ts: string): string | null {
@@ -121,6 +135,7 @@ export async function GET(request: NextRequest) {
       }
       const observedIso = formatTsIso(rawTs);
       const lm = upstream.headers.get('last-modified') || observedIso;
+      const maxZoom = getCiraMaxZoom(sat, product);
       return NextResponse.json(
         {
           sat,
@@ -131,6 +146,7 @@ export async function GET(request: NextRequest) {
           lm,
           tiles: ['000_000', '000_001', '001_000', '001_001'],
           zoomLevel: '01',
+          maxZoom,
         },
         {
           headers: {
@@ -150,17 +166,38 @@ export async function GET(request: NextRequest) {
   if (action === 'tile') {
     const ts = searchParams.get('ts') || '';
     const rc = searchParams.get('rc') || '';
-    if (!TS_RE.test(ts) || !ALLOWED_RC.has(rc)) {
+    const rawZ = searchParams.get('z') || '01';
+    const zMatch = rawZ.match(Z_RE);
+    const rcMatch = rc.match(RC_RE);
+    if (!TS_RE.test(ts) || !zMatch || !rcMatch) {
       return NextResponse.json(
-        { error: 'Invalid ts or rc parameter' },
+        { error: 'Invalid ts, z, or rc parameter' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    const zNum = Number(zMatch[1]);
+    const maxZoom = getCiraMaxZoom(sat, product);
+    const gridLimit = 1 << zNum;
+    const rowIdx = Number(rcMatch[1]);
+    const colIdx = Number(rcMatch[2]);
+    if (zNum > maxZoom || rowIdx >= gridLimit || colIdx >= gridLimit) {
+      return NextResponse.json(
+        { error: `Requested zoom ${zNum} or tile ${rc} exceeds upstream bounds (maxZ=${maxZoom})` },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    if (zNum === 1 && !ALLOWED_RC.has(rc)) {
+      return NextResponse.json(
+        { error: 'Invalid z01 rc parameter' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
     }
 
+    const zPad = String(zNum).padStart(2, '0');
     const yyyy = ts.slice(0, 4);
     const mm = ts.slice(4, 6);
     const dd = ts.slice(6, 8);
-    const tileUrl = `${CIRA_BASE}/imagery/${yyyy}/${mm}/${dd}/${sat}---full_disk/${product}/${ts}/01/${rc}.png`;
+    const tileUrl = `${CIRA_BASE}/imagery/${yyyy}/${mm}/${dd}/${sat}---full_disk/${product}/${ts}/${zPad}/${rc}.png`;
 
     try {
       const upstream = await fetchUpstreamWithRetry(
